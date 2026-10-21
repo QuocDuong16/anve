@@ -1,7 +1,10 @@
 [versions]
 agp = "9.4.1"
-# AGP 9 has a runtime dependency on this exact Kotlin Gradle plugin version,
-# so the Compose compiler plugin has to use the same one.
+# AGP 9 depends on the Kotlin Gradle plugin at runtime and needs at least
+# 2.2.10. The Compose compiler plugin is a separate artifact that has to
+# match the Kotlin compiler, and its own version is what decides which
+# Kotlin the build actually runs with — so this pin is the Kotlin version
+# of the whole project, not only of the Compose compiler.
 kotlin = "2.4.21"
 compileSdk = "37"
 buildTools = "37.0.0"
