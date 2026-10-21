@@ -30,23 +30,18 @@ jobs:
       CMDLINE_TOOLS_VERSION: "15859902"
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # The JDK and the Gradle distribution come from mise.toml / mise.lock,
-      # so CI uses exactly the versions a developer machine uses. The tools
-      # are listed explicitly so that a runner carrying its own global mise
-      # config cannot pull extra tools into the locked install.
+      # so CI uses exactly the versions a developer machine uses. The action
+      # adds --locked on its own because the repository carries a mise lock
+      # file, and the tool list keeps a runner with its own global mise
+      # config from pulling in extra tools.
       - name: Set up mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v5
         with:
           version: 2026.9.15
-          install: false
-
-      - name: Install the locked toolchain
-        run: |
-          mise install --locked \
-            java \
-            gradle
+          install_args: java gradle
 
       # v4 is required: v3 still ran `sdkmanager tools`, and Google removed
       # that legacy package from the SDK repository, so every v3 run failed
@@ -94,7 +89,7 @@ jobs:
         run: ./gradlew :app:assembleDebug
 
       - name: Upload the debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: anve-debug-apk
           path: apps/android/app/build/outputs/apk/debug/app-debug.apk
