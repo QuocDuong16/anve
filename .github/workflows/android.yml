@@ -51,30 +51,31 @@ jobs:
       # v4 is required: v3 still ran `sdkmanager tools`, and Google removed
       # that legacy package from the SDK repository, so every v3 run failed
       # with "Failed to find package 'tools'". v4 skips it explicitly.
+      #
+      # The `packages` input is split on SPACES by the action, so it must be
+      # a single space-separated line — a YAML block scalar would arrive as
+      # one bogus package name.
       - name: Set up the Android SDK
         uses: android-actions/setup-android@v4
         with:
           cmdline-tools-version: ${{ env.CMDLINE_TOOLS_VERSION }}
-          packages: |
-            platform-tools
-            platforms;android-${{ env.COMPILE_SDK }}
-            build-tools;${{ env.BUILD_TOOLS }}
+          packages: platform-tools platforms;android-${{ env.COMPILE_SDK }} build-tools;${{ env.BUILD_TOOLS }}
 
       - name: Accept the Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
 
+      # The SDK layout is checked directly instead of through
+      # `sdkmanager --list_installed`, so the check keeps working when the
+      # command-line tools change their reporting interface.
       - name: Verify the Android SDK
         run: |
-          installed="$(sdkmanager --list_installed)"
-          echo "$installed"
-          grep -q "platforms;android-${COMPILE_SDK}" <<<"$installed" || {
-            echo "platforms;android-${COMPILE_SDK} is not installed" >&2
-            exit 1
-          }
-          grep -q "build-tools;${BUILD_TOOLS}" <<<"$installed" || {
-            echo "build-tools;${BUILD_TOOLS} is not installed" >&2
-            exit 1
-          }
+          for package in "platforms/android-${COMPILE_SDK}" "build-tools/${BUILD_TOOLS}" platform-tools; do
+            if [ ! -d "${ANDROID_HOME}/${package}" ]; then
+              echo "Android SDK package missing: ${ANDROID_HOME}/${package}" >&2
+              exit 1
+            fi
+            echo "✓ ${package}"
+          done
 
       - name: Verify toolchain pins
         working-directory: .
