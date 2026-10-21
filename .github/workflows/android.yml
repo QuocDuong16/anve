@@ -1,0 +1,89 @@
+name: Android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/android
+    env:
+      # Pinned in apps/android/gradle/libs.versions.toml. Keep both in sync
+      # with the compileSdk / buildTools the project declares.
+      COMPILE_SDK: "36"
+      BUILD_TOOLS: "36.0.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # The JDK and the Gradle distribution come from mise.toml / mise.lock,
+      # so CI uses exactly the versions a developer machine uses. The tools
+      # are listed explicitly so that a runner carrying its own global mise
+      # config cannot pull extra tools into the locked install.
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.9.15
+          install: false
+
+      - name: Install the locked toolchain
+        run: |
+          mise install --locked \
+            go \
+            java \
+            gradle \
+            golangci-lint \
+            actionlint \
+            go:golang.org/x/tools/gopls \
+            go:golang.org/x/vuln/cmd/govulncheck \
+            go:github.com/securego/gosec/v2/cmd/gosec
+
+      - name: Set up the Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install the Android platform and build tools
+        run: |
+          sdkmanager "platform-tools" \
+            "platforms;android-${COMPILE_SDK}" \
+            "build-tools;${BUILD_TOOLS}"
+
+      - name: Accept the Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      - name: Verify toolchain pins
+        working-directory: .
+        run: bash scripts/check_toolchain_versions.sh
+
+      - name: Point Gradle at the JDK pinned in mise.toml
+        run: echo "JAVA_HOME=$(mise where java)" >> "$GITHUB_ENV"
+
+      - name: Run the unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Run the lint checks
+        run: ./gradlew :app:lintDebug
+
+      - name: Build the debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload the debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: anve-debug-apk
+          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

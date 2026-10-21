@@ -1,0 +1,26 @@
+# Toolchain pins for the AnVề monorepo.
+#
+# Go, the JVM and the Gradle distribution are pinned here so that local
+# development and CI resolve identical versions. mise.lock records the
+# resolved artifacts together with their checksums.
+#
+# The Android SDK is intentionally NOT managed by mise: it is a large,
+# system-wide component that CI installs through android-actions/setup-android
+# and that developers keep in $ANDROID_HOME. The versions that appear in more
+# than one place (Gradle, Go, the Java release) are guarded by
+# scripts/check_toolchain_versions.sh, so drift fails fast.
+
+[settings]
+lockfile = true
+
+[tools]
+go = "1.27.3"
+java = "temurin-21.0.12+8.0.LTS"
+gradle = "8.14.6"
+
+"go:golang.org/x/tools/gopls" = "0.24.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
+"go:github.com/securego/gosec/v2/cmd/gosec" = "2.29.1-0.20261009120814-7b1b5cebe007"
+
+golangci-lint = "2.15.0"
+actionlint = "1.7.12"

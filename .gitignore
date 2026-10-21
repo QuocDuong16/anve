@@ -1,0 +1,29 @@
+# Local environment
+.env
+
+# Go
+bin/
+*.exe
+*.test
+*.out
+
+# Android / Gradle
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+captures/
+.cxx/
+
+# Editor / OS
+.idea/
+*.iml
+.DS_Store
+*.swp
+*.tmp
+*.log
+
+# Tooling
+.zcode/
+.serena/

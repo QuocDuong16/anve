@@ -1,0 +1,97 @@
+openapi: 3.1.0
+
+info:
+  title: AnVề API
+  version: 0.1.0
+  description: |
+    HTTP contract of the AnVề backend.
+
+    This file is the single source of truth for the API surface. The Go
+    server and the Android client are both expected to be generated from —
+    or at least checked against — this document.
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: health
+    description: Liveness and readiness probes
+  - name: meta
+    description: Build and service metadata
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe
+      description: |
+        Returns 200 as long as the process is running. It does not check any
+        downstream dependency, so a failing database never restarts the API.
+      tags: [health]
+      responses:
+        "200":
+          description: The service is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /readyz:
+    get:
+      operationId: getReadyz
+      summary: Readiness probe
+      description: |
+        Returns 200 when the service is ready to accept traffic. The database
+        check is added once the first feature that needs the database lands.
+      tags: [health]
+      responses:
+        "200":
+          description: The service is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/v1/version:
+    get:
+      operationId: getVersion
+      summary: Read the running build version
+      tags: [meta]
+      responses:
+        "200":
+          description: The running build version.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, version, time]
+      properties:
+        status:
+          type: string
+          description: The service state.
+          examples: ["ok"]
+        version:
+          type: string
+          description: The running build version.
+          examples: ["0.1.0"]
+        time:
+          type: string
+          format: date-time
+          description: The moment the response was produced, in UTC.
+
+    Version:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: string
+          description: The running build version.
+          examples: ["0.1.0"]

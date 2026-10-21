@@ -1,0 +1,117 @@
+# AnVề local development stack.
+#
+# Usage:
+#   make up        # start postgres + api
+#   make down      # stop the stack
+#   make logs      # follow the logs
+#
+# The compose file lives in infra/docker/ but runs with the repository root as
+# the project directory, so relative paths (../../apps/server) and the .env
+# file at the root behave the same locally and in CI.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Hardening for the application container: drop all capabilities, prevent
+# privilege escalation, and mount a read-only root filesystem.
+x-security: &security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+  tmpfs:
+    - /tmp
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.6@sha256:d7053f57b0d62c427ffbf412208b6625317124d62eebf40672e990fea81e9d53
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-anve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anve}
+      POSTGRES_DB: ${POSTGRES_DB:-anve}
+      # Deterministic collation so ORDER BY does not change between machines.
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-anve} -d $${POSTGRES_DB:-anve}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *logging
+    networks:
+      - data
+
+  migrate:
+    <<: *security
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    # The image has an exec-form ENTRYPOINT, so the migrator has to replace
+    # the entrypoint itself — a plain `command` would only be appended as
+    # arguments to the API binary.
+    entrypoint: ["/usr/local/bin/migrate"]
+    command: ["up"]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-anve}:${POSTGRES_PASSWORD:-anve}@postgres:5432/${POSTGRES_DB:-anve}?sslmode=disable
+      MIGRATIONS_DIR: /migrations
+    volumes:
+      - ./infra/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    networks:
+      - data
+
+  api:
+    <<: *security
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: "8080"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-anve}:${POSTGRES_PASSWORD:-anve}@postgres:5432/${POSTGRES_DB:-anve}?sslmode=disable
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging: *logging
+    networks:
+      - edge
+      - data
+
+volumes:
+  postgres_data:
+
+networks:
+  edge:
+    name: ${COMPOSE_PROJECT_NAME:-anve}-edge
+    driver: bridge
+  data:
+    name: ${COMPOSE_PROJECT_NAME:-anve}-data
+    driver: bridge
+    internal: true

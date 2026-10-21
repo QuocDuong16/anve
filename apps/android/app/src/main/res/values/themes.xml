@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The Compose theme (AnVeTheme) owns all in-app colours. This platform
+        theme only styles the window before the first frame is drawn, so it
+        mirrors the splash background to avoid a flash on cold start.
+    -->
+    <style name="Theme.AnVe" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/teal_700</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
