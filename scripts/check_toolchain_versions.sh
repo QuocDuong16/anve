@@ -32,6 +32,7 @@ fail() {
 # ─── Go ───────────────────────────────────────────────────────────────────────
 mise_go="$(extract mise.toml 'go = "([^"]+)"')"
 gomod_go="$(extract apps/server/go.mod 'go ([0-9]+\.[0-9]+(\.[0-9]+)?)')"
+dockerfile_go="$(extract apps/server/Dockerfile 'FROM golang:([0-9]+\.[0-9]+(\.[0-9]+)?)-alpine')"
 
 if [[ -z "$mise_go" ]]; then
     fail 'mise.toml: missing go = "x.y.z" pin'
@@ -39,6 +40,16 @@ elif [[ -z "$gomod_go" ]]; then
     fail 'apps/server/go.mod: missing "go x.y.z" directive'
 elif [[ "$mise_go" != "$gomod_go" ]]; then
     fail "Go pins disagree: mise.toml=$mise_go apps/server/go.mod=$gomod_go"
+fi
+
+# The builder image carries the Go release the binary is compiled with, so it
+# has to agree with the toolchain pin. Dependabot can move the image tag, and
+# this guard is what keeps that bump from silently changing the Go version the
+# server is built with.
+if [[ -z "$dockerfile_go" ]]; then
+    fail 'apps/server/Dockerfile: missing golang base image pin'
+elif [[ "$mise_go" != "$dockerfile_go" ]]; then
+    fail "Go pins disagree: mise.toml=$mise_go apps/server/Dockerfile=$dockerfile_go"
 fi
 
 # ─── Java ─────────────────────────────────────────────────────────────────────

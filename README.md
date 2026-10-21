@@ -97,6 +97,24 @@ than one place and the copies disagree (for example the Gradle version in
 `mise.toml` versus the one in the Gradle wrapper properties). Run it with
 `make toolchain-check`.
 
+## Dependency updates
+
+`.github/dependabot.yml` configures Dependabot for the five ecosystems this
+repository uses: `gomod`, `gradle`, `github-actions`, `docker-compose` and
+`docker`. Minor and patch updates arrive grouped as pull requests; major
+upgrades are not automated, except for GitHub Actions, whose majors have to
+follow GitHub's runtime retirements.
+
+The mise tool pins (`mise.toml` and `mise.lock`) are not covered by
+Dependabot and are updated by hand. The same applies to the Android platform
+levels in `gradle/libs.versions.toml`: they are not dependencies, so a
+plugin bump that raises the required compile SDK has to be reviewed and
+moved in lockstep.
+
+`scripts/check_dependabot.py` validates the configuration against the
+bundled Dependabot schema, so a typo cannot silently disable an update
+stream. Run it with `make deps-lint`.
+
 ## CI
 
 Two independent workflows run on every pull request:

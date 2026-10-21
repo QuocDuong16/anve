@@ -1,0 +1,114 @@
+# Dependency updates for AnVề.
+#
+# Only the ecosystems Dependabot supports are listed here. The mise tool pins
+# (go, java, gradle and the Go analysis tools) are updated by hand in
+# mise.toml + mise.lock, and the container digests follow the same manual
+# review.
+#
+# Policy, mirroring the other repositories in this workspace:
+#
+#   * Minor and patch updates arrive grouped as pull requests. Major upgrades
+#     are deliberate decisions, so they are not automated here — they would
+#     otherwise arrive as unreviewed surprise pull requests.
+#   * `ignore` with `update-types` only suppresses version updates: Dependabot
+#     security alerts still fire, so a vulnerable major is never hidden.
+#   * GitHub Actions are the exception: action majors must be picked up
+#     because older majors stop working when their runtime is retired.
+#
+version: 2
+updates:
+  # ── Go ────────────────────────────────────────────────────────────────────
+  # The go directive in apps/server/go.mod is deliberately not automated: a
+  # Dependabot PR that raises it also needs mise.toml, mise.lock and the
+  # golang base image in apps/server/Dockerfile moved together, and
+  # scripts/check_toolchain_versions.sh fails the build when they disagree.
+  - package-ecosystem: gomod
+    directory: /apps/server
+    schedule:
+      interval: weekly
+      day: tuesday
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'deps(go)'
+    groups:
+      go-minor-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # ── Android ───────────────────────────────────────────────────────────────
+  # The gradle ecosystem covers the version catalog (gradle/libs.versions.toml)
+  # and the Gradle wrapper (gradle/wrapper/gradle-wrapper.properties).
+  #
+  # The Android platform pins in libs.versions.toml — compileSdk, buildTools,
+  # minSdk and targetSdk — are not dependencies, so Dependabot never moves
+  # them. An Android Gradle Plugin bump can therefore raise the required
+  # compile SDK, and the resulting pull request fails the build until a human
+  # moves those pins in lockstep. That is intentional: the platform level and
+  # the plugin version have to be reviewed together.
+  - package-ecosystem: gradle
+    directory: /apps/android
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'deps(android)'
+    groups:
+      androidx-minor-patch:
+        patterns: ['androidx.*']
+        update-types: [minor, patch]
+      kotlin-minor-patch:
+        patterns: ['org.jetbrains.kotlin*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────
+  # Fully automated, majors included: actions must keep up with GitHub's
+  # runtime retirements, and every bump is a reviewed pull request.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: wednesday
+      timezone: Asia/Ho_Chi_Minh
+    commit-message:
+      prefix: 'deps(actions)'
+
+  # ── Docker ────────────────────────────────────────────────────────────────
+  # The Compose stack: PostgreSQL/PostGIS is the only image it runs.
+  - package-ecosystem: docker-compose
+    directory: /infra/docker
+    schedule:
+      interval: weekly
+      day: thursday
+      timezone: Asia/Ho_Chi_Minh
+    commit-message:
+      prefix: 'deps(docker)'
+    ignore:
+      # A PostgreSQL/PostGIS major upgrade needs a migration and restore plan,
+      # not a drive-by pull request.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # The base images of the image this repository builds. They are pinned by
+  # digest, so a pull request is the only way they move.
+  - package-ecosystem: docker
+    directory: /apps/server
+    schedule:
+      interval: weekly
+      day: thursday
+      timezone: Asia/Ho_Chi_Minh
+    commit-message:
+      prefix: 'deps(docker)'
+    ignore:
+      # The Go base image carries the Go release that mise.toml pins, so a
+      # major bump has to move mise.toml, mise.lock and go.mod together.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']

@@ -50,6 +50,20 @@ Use the Makefile rather than raw commands; CI runs the same targets.
   noise.
 - Commit messages are imperative and explain the intent, not the diff.
 
+## Dependency automation
+
+- Dependabot (`.github/dependabot.yml`) covers `gomod`, `gradle`,
+  `github-actions`, `docker-compose` and `docker`. Minor and patch updates
+  are grouped; major upgrades are manual, except for GitHub Actions.
+- The mise pins in `mise.toml` / `mise.lock` are not covered by Dependabot
+  and are updated by hand. So are the Android platform levels in
+  `apps/android/gradle/libs.versions.toml` — they move in lockstep with the
+  Android Gradle Plugin, never on their own.
+- `scripts/check_dependabot.py` validates the configuration against the
+  bundled schema. Run it with `make deps-lint`.
+- Pin runtime images by digest. Dependabot opens the pull request that moves
+  the digest; the tag and the digest move together.
+
 ## Definition of done
 
 A change is done when `make quality-check` passes and the relevant CI

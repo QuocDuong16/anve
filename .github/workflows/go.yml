@@ -104,3 +104,6 @@ jobs:
 
       - name: Lint the GitHub Actions workflows
         run: actionlint .github/workflows/*.yml
+
+      - name: Validate the Dependabot configuration
+        run: python3 scripts/check_dependabot.py

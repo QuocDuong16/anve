@@ -12,7 +12,7 @@
 	migrate-up migrate-down \
 	server-run server-build server-test server-test-race server-fix server-lint server-check \
 	android-sdk-check android-build android-test android-lint android-check android-clean \
-	contracts-lint \
+	contracts-lint deps-lint \
 	quality-check
 
 ##@ Getting started
@@ -146,8 +146,13 @@ contracts-lint: ## Validate the OpenAPI contract
 	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the OpenAPI contract." >&2; exit 1; }
 	python3 -c "import sys, yaml; yaml.safe_load(open('packages/api-contracts/openapi.yaml')); print('OpenAPI contract parses as YAML.')"
 
+##@ Dependency automation
+deps-lint: ## Validate the Dependabot configuration against its schema
+	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the Dependabot configuration." >&2; exit 1; }
+	python3 scripts/check_dependabot.py
+
 ##@ Quality gate
-quality-check: toolchain-check server-check android-check contracts-lint ## Run the full CI quality gate
+quality-check: toolchain-check server-check android-check contracts-lint deps-lint ## Run the full CI quality gate
 
 ##@ Cleanup
 clean: android-clean ## Remove all generated build outputs
