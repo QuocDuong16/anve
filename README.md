@@ -102,13 +102,18 @@ than one place and the copies disagree (for example the Gradle version in
 Two independent workflows run on every pull request:
 
 - `.github/workflows/go.yml` — format, tidy, vet, lint, vulnerability scan,
-  race-enabled tests and binaries for the Go server, plus the OpenAPI
-  contract validation.
+  race-enabled tests and binaries for the Go server; a second job validates
+  the OpenAPI contract and lints the workflow files themselves.
 - `.github/workflows/android.yml` — unit tests, lint and the debug APK for
   the Android app, with the APK uploaded as a build artifact.
 
 Neither workflow depends on the other, so a failure in one does not hide the
 other.
+
+The Android job installs the SDK with `android-actions/setup-android@v4`.
+v3 is not usable any more: it still ran `sdkmanager tools`, and Google
+removed that legacy package from the SDK repository, so every v3 run failed
+with `Failed to find package 'tools'`.
 
 ## License
 

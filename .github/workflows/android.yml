@@ -26,6 +26,8 @@ jobs:
       # with the compileSdk / buildTools the project declares.
       COMPILE_SDK: "36"
       BUILD_TOOLS: "36.0.0"
+      # Android command-line tools release installed by setup-android.
+      CMDLINE_TOOLS_VERSION: "15859902"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -43,26 +45,36 @@ jobs:
       - name: Install the locked toolchain
         run: |
           mise install --locked \
-            go \
             java \
-            gradle \
-            golangci-lint \
-            actionlint \
-            go:golang.org/x/tools/gopls \
-            go:golang.org/x/vuln/cmd/govulncheck \
-            go:github.com/securego/gosec/v2/cmd/gosec
+            gradle
 
+      # v4 is required: v3 still ran `sdkmanager tools`, and Google removed
+      # that legacy package from the SDK repository, so every v3 run failed
+      # with "Failed to find package 'tools'". v4 skips it explicitly.
       - name: Set up the Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install the Android platform and build tools
-        run: |
-          sdkmanager "platform-tools" \
-            "platforms;android-${COMPILE_SDK}" \
-            "build-tools;${BUILD_TOOLS}"
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: ${{ env.CMDLINE_TOOLS_VERSION }}
+          packages: |
+            platform-tools
+            platforms;android-${{ env.COMPILE_SDK }}
+            build-tools;${{ env.BUILD_TOOLS }}
 
       - name: Accept the Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
+
+      - name: Verify the Android SDK
+        run: |
+          installed="$(sdkmanager --list_installed)"
+          echo "$installed"
+          grep -q "platforms;android-${COMPILE_SDK}" <<<"$installed" || {
+            echo "platforms;android-${COMPILE_SDK} is not installed" >&2
+            exit 1
+          }
+          grep -q "build-tools;${BUILD_TOOLS}" <<<"$installed" || {
+            echo "build-tools;${BUILD_TOOLS} is not installed" >&2
+            exit 1
+          }
 
       - name: Verify toolchain pins
         working-directory: .

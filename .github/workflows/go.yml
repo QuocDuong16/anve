@@ -40,13 +40,8 @@ jobs:
         run: |
           mise install --locked \
             go \
-            java \
-            gradle \
             golangci-lint \
-            actionlint \
-            go:golang.org/x/tools/gopls \
-            go:golang.org/x/vuln/cmd/govulncheck \
-            go:github.com/securego/gosec/v2/cmd/gosec
+            go:golang.org/x/vuln/cmd/govulncheck
 
       - name: Verify toolchain pins
         working-directory: .
@@ -67,19 +62,31 @@ jobs:
       - name: Lint
         run: golangci-lint run
 
+      - name: Check for known vulnerabilities
+        run: govulncheck ./...
+
       - name: Test with race detector
         run: go test -race -count=1 ./...
 
       - name: Build binaries
         run: go build ./cmd/...
 
-  contracts:
-    name: Validate API contract
+  repository:
+    name: Repository checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.9.15
+          install: false
+
+      - name: Install the locked toolchain
+        run: mise install --locked actionlint
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -104,3 +111,6 @@ jobs:
               assert operations, f"no operations declared for {path}"
           print(f"OpenAPI contract OK: {len(spec['paths'])} paths")
           PY
+
+      - name: Lint the GitHub Actions workflows
+        run: actionlint .github/workflows/*.yml
