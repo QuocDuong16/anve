@@ -1,10 +1,12 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.2.21"
-compileSdk = "36"
-buildTools = "36.0.0"
+agp = "9.4.1"
+# AGP 9 has a runtime dependency on this exact Kotlin Gradle plugin version,
+# so the Compose compiler plugin has to use the same one.
+kotlin = "2.2.10"
+compileSdk = "37"
+buildTools = "37.0.0"
 minSdk = "26"
-targetSdk = "36"
+targetSdk = "37"
 coreKtx = "1.17.0"
 lifecycle = "2.9.4"
 activityCompose = "1.12.4"
@@ -29,5 +31,4 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

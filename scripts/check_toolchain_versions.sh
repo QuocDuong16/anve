@@ -92,6 +92,7 @@ toml_compile_sdk="$(extract apps/android/gradle/libs.versions.toml 'compileSdk =
 toml_build_tools="$(extract apps/android/gradle/libs.versions.toml 'buildTools = "([^"]+)"')"
 workflow_compile_sdk="$(extract .github/workflows/android.yml 'COMPILE_SDK: "([^"]+)"')"
 workflow_build_tools="$(extract .github/workflows/android.yml 'BUILD_TOOLS: "([^"]+)"')"
+workflow_platform="$(extract .github/workflows/android.yml 'ANDROID_PLATFORM: "([^"]+)"')"
 
 if [[ -z "$toml_compile_sdk" ]]; then
     fail 'apps/android/gradle/libs.versions.toml: missing compileSdk pin'
@@ -107,6 +108,14 @@ elif [[ -z "$workflow_build_tools" ]]; then
     fail '.github/workflows/android.yml: missing BUILD_TOOLS pin'
 elif [[ "$toml_build_tools" != "$workflow_build_tools" ]]; then
     fail "buildTools pins disagree: libs.versions.toml=$toml_build_tools android.yml=$workflow_build_tools"
+fi
+
+# The platform package carries a minor suffix (android-37.0), so it cannot be
+# derived from the API level alone. It still has to name the same API level.
+if [[ -z "$workflow_platform" ]]; then
+    fail '.github/workflows/android.yml: missing ANDROID_PLATFORM pin'
+elif [[ "$workflow_platform" != "platforms;android-${toml_compile_sdk}."* ]]; then
+    fail "ANDROID_PLATFORM '$workflow_platform' does not match compileSdk $toml_compile_sdk"
 fi
 
 # ─── Report ──────────────────────────────────────────────────────────────────

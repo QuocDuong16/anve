@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    // The Kotlin Android plugin is deliberately absent: AGP 9 compiles the
+    // Kotlin sources through its built-in Kotlin support. The Compose
+    // compiler plugin still has to be applied, because it is a separate
+    // artifact from the Kotlin compiler itself.
     alias(libs.plugins.kotlin.compose)
 }
 

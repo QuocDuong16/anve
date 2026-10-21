@@ -24,8 +24,11 @@ jobs:
     env:
       # Pinned in apps/android/gradle/libs.versions.toml. Keep both in sync
       # with the compileSdk / buildTools the project declares.
-      COMPILE_SDK: "36"
-      BUILD_TOOLS: "36.0.0"
+      COMPILE_SDK: "37"
+      BUILD_TOOLS: "37.0.0"
+      # The platform package carries a minor suffix (android-37.0), so it is
+      # pinned separately and checked against COMPILE_SDK.
+      ANDROID_PLATFORM: "platforms;android-37.0"
       # Android command-line tools release installed by setup-android.
       CMDLINE_TOOLS_VERSION: "15859902"
     steps:
@@ -54,7 +57,7 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           cmdline-tools-version: ${{ env.CMDLINE_TOOLS_VERSION }}
-          packages: platform-tools platforms;android-${{ env.COMPILE_SDK }} build-tools;${{ env.BUILD_TOOLS }}
+          packages: platform-tools ${{ env.ANDROID_PLATFORM }} build-tools;${{ env.BUILD_TOOLS }}
 
       - name: Accept the Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
@@ -64,12 +67,13 @@ jobs:
       # command-line tools change their reporting interface.
       - name: Verify the Android SDK
         run: |
-          for package in "platforms/android-${COMPILE_SDK}" "build-tools/${BUILD_TOOLS}" platform-tools; do
-            if [ ! -d "${ANDROID_HOME}/${package}" ]; then
-              echo "Android SDK package missing: ${ANDROID_HOME}/${package}" >&2
+          platform_dir="${ANDROID_HOME}/platforms/${ANDROID_PLATFORM#platforms;}"
+          for directory in "${platform_dir}" "${ANDROID_HOME}/build-tools/${BUILD_TOOLS}" "${ANDROID_HOME}/platform-tools"; do
+            if [ ! -d "$directory" ]; then
+              echo "Android SDK package missing: $directory" >&2
               exit 1
             fi
-            echo "✓ ${package}"
+            echo "✓ $directory"
           done
 
       - name: Verify toolchain pins

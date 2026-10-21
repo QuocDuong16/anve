@@ -28,7 +28,7 @@ anve/
 | Docker | ≥ 24    | Runs the PostgreSQL/PostGIS stack                          |
 | JDK    | 21      | Installed by mise                                         |
 | Go     | 1.27.3  | Installed by mise                                         |
-| Android SDK | API 36 | Set `ANDROID_HOME`; not managed by mise                   |
+| Android SDK | API 37 | Set `ANDROID_HOME`; not managed by mise                   |
 
 ```bash
 mise install          # installs the pinned toolchain
@@ -68,6 +68,12 @@ migrations with `make migrate-up` and roll the last one back with
 Kotlin + Jetpack Compose client built with Gradle. The Gradle wrapper is
 pinned to the same Gradle version as `mise.toml`, and the wrapper verifies
 the distribution checksum before it runs.
+
+The project is on Android Gradle Plugin 9, which compiles the Kotlin sources
+through AGP's built-in Kotlin support — the `org.jetbrains.kotlin.android`
+plugin is deliberately not applied. The Compose compiler plugin is still
+applied separately, because it is a different artifact from the Kotlin
+compiler itself.
 
 ```bash
 make android-build    # app/build/outputs/apk/debug/app-debug.apk
