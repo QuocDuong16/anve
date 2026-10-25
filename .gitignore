@@ -26,3 +26,4 @@ captures/
 
 # Tooling
 .zcode/
+apps/android/app/src/main/res/values/config_local.xml

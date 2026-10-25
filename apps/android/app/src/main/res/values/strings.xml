@@ -1,4 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Vietnamese is the primary (and currently only) language of the app. -->
 <resources>
     <string name="app_name">AnVề</string>
+    <string name="splash_tagline">Đường về nhà, gần hơn mỗi ngày</string>
+
+    <!-- Sign-in -->
+    <string name="signin_google">Đăng nhập bằng Google</string>
+    <string name="signin_google_caption">Tài khoản Google của bạn chỉ dùng để đăng nhập; AnVề không lấy gì khác.</string>
+    <string name="signin_google_unavailable">Đăng nhập Google chưa sẵn sàng trên máy chủ hoặc trên bản cài này. Kiểm tra kết nối tới máy chủ, hoặc xem hướng dẫn cấu hình.</string>
+    <string name="signin_retry">Thử lại</string>
+    <string name="signin_dev_title">Đăng nhập phát triển (chỉ máy chủ dev)</string>
+    <string name="signin_dev_email">Email</string>
+    <string name="signin_dev_button">Đăng nhập dev</string>
+
+    <!-- Home / account -->
+    <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
+    <string name="action_retry">Thử lại</string>
+    <string name="action_rename">Đổi tên</string>
+    <string name="action_save">Lưu</string>
+    <string name="action_cancel">Hủy</string>
+    <string name="home_sharing_title">Chia sẻ vị trí của tôi</string>
+    <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
+    <string name="home_sharing_on_notice">Đang bật: khi có nhóm và quyền, vị trí của bạn sẽ được chia sẻ theo thiết lập này.</string>
+    <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
+    <string name="home_device_this">Thiết bị này</string>
+    <string name="home_device_revoke">Đăng xuất</string>
+    <string name="home_sign_out">Đăng xuất</string>
+    <string name="home_delete_account">Xóa tài khoản và dữ liệu</string>
+    <string name="home_rename_title">Tên hiển thị</string>
+    <string name="home_rename_label">Tên mà người thân sẽ thấy</string>
+    <string name="home_delete_title">Xóa tài khoản?</string>
+    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.</string>
+    <string name="home_delete_confirm">Xóa vĩnh viễn</string>
 </resources>

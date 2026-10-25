@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The production API is HTTPS-only. Cleartext is permitted solely for the
+     local development backend (emulator host loopback and adb-reverse
+     localhost), which the debug build type overlays via its own manifest. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

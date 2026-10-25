@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Local build configuration. Copy this file to config_local.xml (which is
+     gitignored) and fill in real values; see docs/implementation/setup-android.md.
+     A value of REPLACE_ME leaves the corresponding feature disabled — the
+     app degrades gracefully instead of failing with fake credentials. -->
+<resources>
+    <!-- OAuth 2.0 Web Client ID of the AnVề backend (Google Cloud Console).
+         The Android client obtains ID tokens for this audience via
+         Credential Manager; the Go server verifies them against the same
+         value (AUTH_GOOGLE_CLIENT_ID). -->
+    <string name="anve_google_server_client_id" translatable="false">REPLACE_ME</string>
+</resources>
