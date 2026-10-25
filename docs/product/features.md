@@ -48,8 +48,12 @@ Từ mục 2 trở đi, **toàn bộ là Planned hoặc Proposed** cho đến kh
 
 ## 2. Family Circle
 
-> Trạng thái: **Planned — M2**. Hiện chưa có code: manifest Android chưa xin bất
-> kỳ permission nào, OpenAPI chưa có endpoint nghiệp vụ.
+> Trạng thái: **Implemented — Verified (M2)**: backend (PostgreSQL + integration
+> tests: authorization matrix, invite lifecycle, concurrent redeem, dissolve
+> cascade) và Android client (tạo/tham gia/rời/giải tán, mã mời, danh sách
+> thành viên; unit tests qua MockWebServer). Đã smoke test end-to-end qua HTTP
+> trên stack local. Chưa có field validation trên thiết bị thật. Chi tiết:
+> [`../implementation/progress.md`](../implementation/progress.md).
 
 **Mục đích.** Hệ thống nhóm gia đình — đơn vị chia sẻ và ủy quyền trung tâm của
 AnVề: ai thuộc cùng nhóm, ai được xem ai, và sự đồng ý của từng người được ghi

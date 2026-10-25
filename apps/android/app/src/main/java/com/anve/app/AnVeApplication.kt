@@ -7,6 +7,7 @@ import com.anve.app.data.auth.AuthRepository
 import com.anve.app.data.auth.DataStoreSessionStorage
 import com.anve.app.data.auth.DeviceIdentity
 import com.anve.app.data.auth.SessionInterceptor
+import com.anve.app.data.circles.CircleRepository
 import okhttp3.Interceptor
 
 /**
@@ -39,6 +40,8 @@ class AppContainer(application: Application) {
         storage = sessionStore,
         deviceIdentity = deviceIdentity,
     )
+
+    val circleRepository: CircleRepository = CircleRepository(api = authApi)
 
     companion object {
         /** An interceptor that changes nothing — used by token-free calls. */

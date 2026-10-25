@@ -127,8 +127,12 @@ class ApiException(
 ) : RuntimeException("[$code] $message")
 
 /** Unwraps a Retrofit response or throws the parsed error envelope. */
+@Suppress("UNCHECKED_CAST")
 fun <T> retrofit2.Response<T>.orThrow(): T {
     if (isSuccessful) {
+        // 204/205 carry no body by definition; endpoints returning Unit use
+        // these statuses, so null is the expected success shape there.
+        if (code() == 204 || code() == 205) return Unit as T
         return body() ?: throw ApiException(
             code = "EMPTY_BODY",
             message = "The server returned an empty body.",
@@ -146,3 +150,75 @@ fun <T> retrofit2.Response<T>.orThrow(): T {
         requestId = error?.requestId,
     )
 }
+
+// ── Circles (M2) ─────────────────────────────────────────────────────────────
+
+@JsonClass(generateAdapter = false)
+data class CircleDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "createdBy") val createdBy: String,
+    @Json(name = "createdAt") val createdAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class MembershipDto(
+    @Json(name = "circleId") val circleId: String,
+    @Json(name = "userId") val userId: String,
+    @Json(name = "role") val role: String,
+    @Json(name = "joinedAt") val joinedAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class CircleMembershipDto(
+    @Json(name = "circle") val circle: CircleDto?,
+    @Json(name = "membership") val membership: MembershipDto?,
+)
+
+@JsonClass(generateAdapter = false)
+data class MemberDto(
+    @Json(name = "userId") val userId: String,
+    @Json(name = "displayName") val displayName: String,
+    @Json(name = "role") val role: String,
+    @Json(name = "joinedAt") val joinedAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class MemberListDto(
+    @Json(name = "members") val members: List<MemberDto>,
+)
+
+@JsonClass(generateAdapter = false)
+data class InviteDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "circleId") val circleId: String,
+    @Json(name = "code") val code: String,
+    @Json(name = "createdBy") val createdBy: String,
+    @Json(name = "expiresAt") val expiresAt: String,
+    @Json(name = "createdAt") val createdAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class InviteListDto(
+    @Json(name = "invites") val invites: List<InviteDto>,
+)
+
+@JsonClass(generateAdapter = false)
+data class CreateCircleRequestDto(
+    @Json(name = "name") val name: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class CreateInviteRequestDto(
+    @Json(name = "expiresInHours") val expiresInHours: Int? = null,
+)
+
+@JsonClass(generateAdapter = false)
+data class RedeemInviteRequestDto(
+    @Json(name = "code") val code: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class LeaveCircleRequestDto(
+    @Json(name = "dissolve") val dissolve: Boolean,
+)

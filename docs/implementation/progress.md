@@ -6,13 +6,14 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-10-26 (after M1 backend + Android client).
+Last updated: 2026-10-26 (after M2 backend + Android client).
 
 ## Current milestone
 
 **M1 — Authentication, device identity, privacy foundation: Implemented —
 Verified (backend + client logic, no on-device field validation).**
-M2 (Family Circle) is next.
+**M2 — Family Circle: Implemented — Verified (backend + client logic).**
+M3 (Location Engine) is next.
 
 ## Milestones
 
@@ -20,7 +21,7 @@ M2 (Family Circle) is next.
 | --- | --- | --- |
 | M0 Foundation | Implemented — Verified | CI + Compose smoke test at `de54074`. |
 | M1 Auth & privacy | Implemented — Verified (server, JVM-level) | See evidence below; Google path needs real OAuth client (external), on-device run pending. |
-| M2 Family Circle | Not started | Contract + schema first. |
+| M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
 | M3 Location Engine | Not started | |
 | M4 Live Map | Not started | |
 | M5 History & Places | Not started | |
@@ -59,6 +60,27 @@ M2 (Family Circle) is next.
   green (lint + 20 unit tests + debug APK); `assembleRelease` green
   (minified, Moshi keep-rules).
 
+## M2 evidence (added 2026-10-26)
+
+- Contract: circles/members/invites endpoints (21 paths total).
+- Migration `0003_circles`: one-circle-per-user unique index is the MVP
+  invariant; invites single-use with expiry + revocation.
+- `internal/circles`: store-level authorization (membership checked before
+  any read; owner role governs administration only). Redeem is atomic
+  (FOR UPDATE serializes concurrent redeems — single winner, tested).
+  Owner leaving a populated circle requires explicit dissolve (cascades).
+  Joining never touches the consent switch.
+- Integration tests in CI + local: authorization matrix (outsider/member/
+  owner), invite lifecycle (expired/used/revoked indistinguishable),
+  concurrent redeem, removal ends access + frees the one-circle slot,
+  dissolve cascade, audit rows.
+- HTTP smoke on local stack: full lifecycle verified (create → invite →
+  redeem → burned code → FORBIDDEN → CIRCLE_HAS_MEMBERS → dissolve →
+  members see no circle).
+- Android: circle tab (create/join by code, members, owner invites, leave/
+  dissolve with confirmations), 26 unit tests green; fixed a real bug found
+  by tests (`orThrow` rejected 204 no-content responses).
+
 ## Known gaps / external blockers
 
 - **Google OAuth client ID not created** (needs Google Cloud project
@@ -70,14 +92,19 @@ M2 (Family Circle) is next.
 - Refresh-token reuse detection (rotation history) intentionally absent
   (ADR 0002 "Bad"); rotated-out tokens simply fail.
 
-## Next engineering tasks (M2 — Family Circle)
+## Next engineering tasks (M3 — Location Engine)
 
-1. OpenAPI: circles, invites, membership endpoints (contract-first).
-2. Migration `0003_circles`: circles, memberships (role, joined state),
-   invites (code, expiry, single-use), unique-one-circle-per-user MVP
-   constraint.
-3. `internal/circles` service + store: create/leave circle, invite
-   create/accept/reject/revoke, member list; authorization matrix tests
-   (cross-circle isolation, expired invite, leave revokes access).
-4. Android: circle creation/join screens, invite code entry, member list.
-5. Update docs + this file.
+1. OpenAPI: batch location ingestion endpoint (idempotency keys, device
+   ownership, consent enforcement at ingestion).
+2. Migration `0004_locations`: location_points with PostGIS geography,
+   device+recorded_at+received_at timestamps, dedup constraint.
+3. Go `internal/locations`: batch validation, idempotent writes,
+   out-of-order acceptance, consent check per batch.
+4. Android Location Engine: state machine (IDLE/STATIONARY/MOVING/…),
+   FusedLocationProvider behind an interface, foreground service type
+   `location`, permission flow (fine → background, prominent disclosure).
+5. Room durable queue + SyncManager (batch upload, backoff, dedup,
+   retention rules for paused/left states).
+6. Tests: fake location provider state machine tests; queue loss/retry/
+   restart tests; ingestion idempotency integration tests.
+7. Later: invite deep link (currently manual code entry).

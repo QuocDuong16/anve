@@ -61,4 +61,56 @@ interface AnveApi {
     suspend fun revokeDevice(
         @Path("deviceId") deviceId: String,
     ): Response<Unit>
+
+    @GET("api/v1/circles/mine")
+    suspend fun myCircle(): Response<CircleMembershipDto>
+
+    @POST("api/v1/circles")
+    suspend fun createCircle(
+        @Body body: CreateCircleRequestDto,
+    ): Response<CircleMembershipDto>
+
+    @PATCH("api/v1/circles/{circleId}")
+    suspend fun renameCircle(
+        @Path("circleId") circleId: String,
+        @Body body: CreateCircleRequestDto,
+    ): Response<CircleDto>
+
+    @GET("api/v1/circles/{circleId}/members")
+    suspend fun members(
+        @Path("circleId") circleId: String,
+    ): Response<MemberListDto>
+
+    @POST("api/v1/circles/{circleId}/members/{userId}/remove")
+    suspend fun removeMember(
+        @Path("circleId") circleId: String,
+        @Path("userId") userId: String,
+    ): Response<Unit>
+
+    @POST("api/v1/circles/{circleId}/leave")
+    suspend fun leaveCircle(
+        @Path("circleId") circleId: String,
+        @Body body: LeaveCircleRequestDto,
+    ): Response<Unit>
+
+    @POST("api/v1/circles/{circleId}/invites")
+    suspend fun createInvite(
+        @Path("circleId") circleId: String,
+        @Body body: CreateInviteRequestDto = CreateInviteRequestDto(),
+    ): Response<InviteDto>
+
+    @GET("api/v1/circles/{circleId}/invites")
+    suspend fun invites(
+        @Path("circleId") circleId: String,
+    ): Response<InviteListDto>
+
+    @DELETE("api/v1/invites/{inviteId}")
+    suspend fun revokeInvite(
+        @Path("inviteId") inviteId: String,
+    ): Response<Unit>
+
+    @POST("api/v1/invites/redeem")
+    suspend fun redeemInvite(
+        @Body body: RedeemInviteRequestDto,
+    ): Response<CircleMembershipDto>
 }

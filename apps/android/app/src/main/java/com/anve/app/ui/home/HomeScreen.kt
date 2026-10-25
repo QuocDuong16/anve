@@ -18,6 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -37,12 +41,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
+import com.anve.app.ui.circle.CircleScreen
 import com.anve.app.R
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.DeviceSessionDto
@@ -54,8 +66,58 @@ import com.anve.app.ui.theme.AnVeTheme
  * Later milestones grow the dashboard around this (Live Map first), so it
  * deliberately stays a working screen rather than a menu of buttons.
  */
+private enum class HomeTab(val labelRes: Int) {
+    CIRCLE(R.string.tab_circle),
+    ACCOUNT(R.string.tab_account),
+}
+
+/**
+ * The signed-in surface: a bottom bar with the circle tab (the family
+ * object) and the account tab. Later milestones add the map tab here.
+ */
 @Composable
 fun HomeScreen(
+    container: AppContainer,
+    onSignedOut: () -> Unit,
+) {
+    var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                HomeTab.entries.forEach { entry ->
+                    NavigationBarItem(
+                        selected = tab == entry,
+                        onClick = { tab = entry },
+                        icon = {
+                            Icon(
+                                imageVector = if (entry == HomeTab.CIRCLE) {
+                                    Icons.Default.Groups
+                                } else {
+                                    Icons.Default.Person
+                                },
+                                contentDescription = stringResource(entry.labelRes),
+                            )
+                        },
+                        label = { Text(stringResource(entry.labelRes)) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        Box(Modifier.padding(padding)) {
+            when (tab) {
+                HomeTab.CIRCLE -> CircleScreen(container = container)
+                HomeTab.ACCOUNT -> AccountContent(
+                    container = container,
+                    onSignedOut = onSignedOut,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountContent(
     container: AppContainer,
     onSignedOut: () -> Unit,
 ) {

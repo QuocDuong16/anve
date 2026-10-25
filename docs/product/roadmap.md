@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | [M0 — Foundation](#m0--foundation) | Android, Go, database, CI, migration, toolchain | **Implemented — Verified** (mức nền tảng) |
 | [M1 — Auth & Privacy foundation](#m1--authentication-device-identity-privacy-foundation) | Authentication, device identity, privacy foundation | **Implemented — Verified** (backend + client logic; chờ field validation) |
-| [M2 — Family Circle](#m2--family-circle--membership-authorization) | Circle, membership, authorization | Planned |
+| [M2 — Family Circle](#m2--family-circle--membership-authorization) | Circle, membership, authorization | **Implemented — Verified** (backend + client logic; chờ field validation) |
 | [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | Planned |
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, realtime, confidence engine | Planned |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Planned |
@@ -108,8 +108,24 @@ field validation trên thiết bị thật (thường trực, như mọi milesto
 **Scope:** tạo Circle, invite code/link, chấp nhận/từ chối, danh sách thành
 viên, rời nhóm, quyền xem theo chủ thể dữ liệu.
 
-**Exit criteria đề xuất:** không ai vào nhóm khi chưa tự chấp nhận; rời nhóm
-chấm dứt toàn bộ quyền; authorization Circle được test ở tầng API.
+**Status: Implemented — Verified** (backend + Android client logic).
+
+Bằng chứng: contract-first (OpenAPI 21 paths); migration `0003_circles` với
+bất biến one-circle-per-user bằng unique index; `internal/circles` thực thi
+authorization ở tầng store (outsider → 404, member thiếu role → 403); invite
+single-use hết hạn 48h, redeem atomic (FOR UPDATE, đúng 1 winner khi đồng thời
+— có test); chủ nhóm rời nhóm phải dissolve tường minh (cascade toàn bộ);
+tham gia KHÔNG tự bật chia sẻ vị trí. Integration tests chạy trong CI
+(`database-integration`), smoke test HTTP trên stack local. Android: tab Nhóm
+với tạo/tham gia bằng mã mời, thành viên, mã mời (chủ nhóm), rời/giải tán;
+`make android-check` xanh.
+
+Còn thiếu: field validation trên thiết bị thật; invite **link** (deep link)
+chưa làm — hiện nhập mã thủ công (đã ghi nhận ở progress.md).
+
+**Exit criteria M2:** ✅ không ai vào nhóm khi chưa tự chấp nhận (redeem là
+hành động chủ động của người được mời) · ✅ rời nhóm chấm dứt toàn bộ quyền
+(có test) · ✅ authorization Circle test ở tầng API (authorization matrix).
 
 **Phụ thuộc:** M1.
 
