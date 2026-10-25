@@ -27,6 +27,8 @@ tags:
     description: "The authenticated account: profile and privacy consent"
   - name: devices
     description: Devices and sessions of the authenticated account
+  - name: circles
+    description: Family Circle, membership and invites
 
 paths:
   /healthz:
@@ -407,6 +409,423 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/circles:
+    post:
+      operationId: createCircle
+      summary: Create a Family Circle
+      description: |
+        The creator becomes the circle's owner (administrative role). MVP
+        allows one active circle per user; a second create attempt answers
+        409 `ACTIVE_CIRCLE_EXISTS`. Creating a circle never turns on
+        location sharing for anyone.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCircleRequest"
+      responses:
+        "201":
+          description: The circle was created; the caller is its owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleMembership"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The caller already belongs to an active circle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/circles/mine:
+    get:
+      operationId: getMyCircle
+      summary: Read the caller's current circle and membership
+      description: |
+        Returns `circle: null` when the caller belongs to no circle — an
+        empty state, not an error.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The caller's circle and membership, or nulls.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleMembership"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/circles/{circleId}:
+    patch:
+      operationId: updateCircle
+      summary: Rename the circle (owner only)
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: circleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCircleRequest"
+      responses:
+        "200":
+          description: The updated circle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The caller is a member but not the owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such circle under the caller's membership.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/circles/{circleId}/members:
+    get:
+      operationId: listMembers
+      summary: List the circle's members
+      description: |
+        Members see each other's display name, role and join time — nothing
+        about devices or sessions, which stay private per account.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: circleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The member list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberList"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The caller is not an active member of this circle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/circles/{circleId}/members/{userId}/remove:
+    post:
+      operationId: removeMember
+      summary: Remove a member from the circle (owner only)
+      description: |
+        The owner may remove ordinary members. Owners cannot be removed by
+        another member; the owner leaves (or dissolves) through the leave
+        endpoint. Removal ends every access the member derived from the
+        circle.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: circleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The member was removed.
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The caller is a member but not the owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such member in a circle the caller belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/circles/{circleId}/leave:
+    post:
+      operationId: leaveCircle
+      summary: Leave the circle, or dissolve it as the owner
+      description: |
+        An ordinary member always leaves. The owner of a circle with other
+        members must pass `dissolve: true` (the circle and all memberships
+        are deleted); without it the request answers 409
+        `CIRCLE_HAS_MEMBERS` so dissolution stays an explicit choice. A
+        sole owner leaves by dissolving implicitly.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: circleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaveCircleRequest"
+      responses:
+        "204":
+          description: The caller left; the circle may have been dissolved.
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The caller is not an active member of this circle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The owner must confirm dissolution with `dissolve: true`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/circles/{circleId}/invites:
+    post:
+      operationId: createInvite
+      summary: Create an invite code (owner only)
+      description: |
+        Single-use code, default validity 48 hours. The code is the only
+        thing needed to join, so treat it as a capability: it can be
+        revoked and expires on its own.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: circleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInviteRequest"
+      responses:
+        "201":
+          description: The created invite.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invite"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The caller is a member but not the owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such circle under the caller's membership.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      operationId: listInvites
+      summary: List the circle's outstanding invites (owner only)
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: circleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The invites that are still redeemable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteList"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The caller is a member but not the owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such circle under the caller's membership.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/invites/{inviteId}:
+    delete:
+      operationId: revokeInvite
+      summary: Revoke an invite (owner only)
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The invite was revoked.
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The caller is a member but not the owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such invite in a circle the caller owns.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/invites/redeem:
+    post:
+      operationId: redeemInvite
+      summary: Join a circle with an invite code
+      description: |
+        Validates the code (exists, not expired, not used, not revoked),
+        requires that the caller belongs to no other active circle, then
+        creates the membership and burns the code — all in one
+        transaction. Joining never turns on location sharing.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemInviteRequest"
+      responses:
+        "200":
+          description: The joined circle and the caller's membership.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleMembership"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: |
+            The code is expired/used/revoked (`INVITE_UNAVAILABLE`) or the
+            caller already belongs to a circle (`ACTIVE_CIRCLE_EXISTS`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -631,3 +1050,142 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Device"
+
+    Circle:
+      type: object
+      required: [id, name, createdBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    Membership:
+      type: object
+      required: [circleId, userId, role, joinedAt]
+      properties:
+        circleId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [owner, member]
+        joinedAt:
+          type: string
+          format: date-time
+
+    CircleMembership:
+      type: object
+      required: [circle, membership]
+      properties:
+        circle:
+          allOf:
+            - $ref: "#/components/schemas/Circle"
+          nullable: true
+        membership:
+          allOf:
+            - $ref: "#/components/schemas/Membership"
+          nullable: true
+
+    Member:
+      type: object
+      required: [userId, displayName, role, joinedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [owner, member]
+        joinedAt:
+          type: string
+          format: date-time
+
+    MemberList:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/Member"
+
+    Invite:
+      type: object
+      required: [id, circleId, code, createdBy, expiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        circleId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Single-use join code; treat as a capability.
+        createdBy:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    InviteList:
+      type: object
+      required: [invites]
+      properties:
+        invites:
+          type: array
+          items:
+            $ref: "#/components/schemas/Invite"
+
+    CreateCircleRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    CreateInviteRequest:
+      type: object
+      properties:
+        expiresInHours:
+          type: integer
+          minimum: 1
+          maximum: 168
+          default: 48
+          description: Invite validity window; capped at 7 days.
+
+    RedeemInviteRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 4
+          maxLength: 32
+
+    LeaveCircleRequest:
+      type: object
+      required: [dissolve]
+      properties:
+        dissolve:
+          type: boolean
+          description: Must be true for an owner who still has members.
