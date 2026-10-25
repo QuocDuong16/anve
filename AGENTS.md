@@ -14,6 +14,23 @@ release, the JDK and the Gradle distribution. Never bump a version in only
 one place — change `mise.toml`, run `mise install`, and commit the updated
 `mise.lock`.
 
+## Product context & source of truth
+
+AnVề is a Family Safety & Location Sharing application for Android, backed by
+a Go API and PostgreSQL/PostGIS — not a spyware or covert-tracking tool.
+
+- Product vision, positioning and goals: `docs/product/overview.md`
+- Functional scope and per-feature status: `docs/product/features.md`
+- Milestone plan and verified status: `docs/product/roadmap.md`
+
+Before developing a feature, check its product requirements and status in
+those documents. Feature status uses the taxonomy defined in
+`docs/product/overview.md` (Implemented / Verified / Planned / Proposed /
+Not in scope) — never assume planned functionality is implemented, and never
+present planned work as shipped. When a feature's scope changes, evaluate the
+impact on the product documentation and on the privacy requirements in
+`docs/product/privacy-and-safety.md` as part of the same change.
+
 ## Layout rules
 
 - `apps/server` — the Go service. Business logic goes in `internal/`; the

@@ -28,6 +28,19 @@ plus a splash screen only; product features land milestone by milestone.
 - The dev database is published on loopback only; production deployments keep the database on an internal network with no published port.
 - Android backup/transfer rules exclude the `sharedpref` and `database` domains by default; the policy for a future Room database (location history, offline queue) must be decided per file before anything may leave the device.
 
+## Product documentation
+
+The product scope, status taxonomy (Implemented / Verified / Planned /
+Proposed / Not in scope) and milestone plan live in `docs/product/`
+(`overview.md`, `features.md`, `user-journeys.md`, `privacy-and-safety.md`,
+`roadmap.md`, `glossary.md`, `non-functional-requirements.md`) and
+`docs/architecture/overview.md`. These are the source of truth for product
+intent — check them before developing a feature, and update them when feature
+scope changes. Do not assume planned functionality is implemented: everything
+beyond M0 (splash screen, health/meta endpoints, migration framework) is
+planned work described in documentation only. AGENTS.md has a
+"Product context & source of truth" section pointing to the same documents.
+
 ## Other memories
 
 - Read `mem:tech_stack` for frameworks, libraries and where version pins live (including the AGP 9 / Kotlin setup, which is easy to get wrong).
