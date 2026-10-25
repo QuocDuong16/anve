@@ -4,12 +4,18 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/QuocDuong16/anve/server/internal/audit"
+	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
 )
@@ -45,9 +51,49 @@ func run() error {
 		"version", cfg.Version,
 	)
 
+	var authService *auth.Service
+	var pool *pgxpool.Pool
+	if cfg.DatabaseURL != "" {
+		// The pool outlives the HTTP server; the context only bounds the
+		// connect attempt.
+		connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		pool, err = pgxpool.New(connectCtx, cfg.DatabaseURL)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("connect to database: %w", err)
+		}
+		defer pool.Close()
+
+		pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = pool.Ping(pingCtx)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("ping database: %w", err)
+		}
+
+		var verifier auth.IdentityVerifier
+		if cfg.AuthGoogleClientID != "" {
+			verifier, err = auth.NewGoogleVerifier(cfg.AuthGoogleClientID)
+			if err != nil {
+				return fmt.Errorf("set up google verifier: %w", err)
+			}
+			logger.Info("google sign-in enabled")
+		} else {
+			logger.Warn("google sign-in disabled: AUTH_GOOGLE_CLIENT_ID is empty")
+		}
+		if cfg.AuthDevLoginEnabled {
+			logger.Warn("development login is mounted (AUTH_DEV_LOGIN_ENABLED=true); never enable this in production")
+		}
+
+		store := auth.NewPGStore(pool)
+		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled, audit.NewPG(pool))
+	} else {
+		logger.Warn("DATABASE_URL is empty: business endpoints answer 503")
+	}
+
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      httpapi.NewRouter(cfg.Version),
+		Handler:      httpapi.NewRouter(httpapi.Deps{Version: cfg.Version, Auth: authService, DB: pool}),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}

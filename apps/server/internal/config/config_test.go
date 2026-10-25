@@ -31,3 +31,21 @@ func TestLoadOverrides(t *testing.T) {
 	assert.Equal(t, "staging", cfg.Environment)
 	assert.Equal(t, 30*time.Second, cfg.ShutdownTimeout)
 }
+
+func TestDevLoginRefusedInProduction(t *testing.T) {
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("AUTH_DEV_LOGIN_ENABLED", "true")
+
+	_, err := config.Load()
+	require.Error(t, err, "the dev login must never start inside a production process")
+	assert.Contains(t, err.Error(), "AUTH_DEV_LOGIN_ENABLED")
+}
+
+func TestDevLoginAllowedOutsideProduction(t *testing.T) {
+	t.Setenv("ENVIRONMENT", "development")
+	t.Setenv("AUTH_DEV_LOGIN_ENABLED", "true")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	assert.True(t, cfg.AuthDevLoginEnabled)
+}

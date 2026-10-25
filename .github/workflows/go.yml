@@ -64,12 +64,13 @@ jobs:
       - name: Build binaries
         run: go build ./cmd/...
 
-  # The unit job above runs with the migrator's integration tests skipped
-  # (no TEST_DATABASE_URL). This job proves the migrations against a real
-  # PostgreSQL/PostGIS server: up → up → down → up, rollback of a failed
-  # migration, and the required extensions.
+  # The unit job above runs with the database-backed integration tests
+  # skipped (no TEST_DATABASE_URL). This job proves the migrations and the
+  # auth store against a real PostgreSQL/PostGIS server: up → up → down → up,
+  # rollback of a failed migration, the required extensions, and the M1
+  # session/consent/audit flows including cross-user isolation.
   database-integration:
-    name: Migrations against PostgreSQL/PostGIS
+    name: Migrations and store against PostgreSQL/PostGIS
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -100,10 +101,10 @@ jobs:
           version: 2026.9.15
           install_args: go
 
-      - name: Run migration integration tests
+      - name: Run migration and store integration tests
         env:
           TEST_DATABASE_URL: postgres://anve:anve@localhost:5432/anve?sslmode=disable
-        run: go test -race -count=1 ./cmd/migrate
+        run: go test -race -count=1 ./cmd/migrate ./internal/auth
 
   repository:
     name: Repository checks

@@ -2,12 +2,14 @@
 package httpapi
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/QuocDuong16/anve/server/internal/auth"
 )
 
 // HealthResponse is the payload returned by the health endpoints.
@@ -22,10 +24,30 @@ type VersionResponse struct {
 	Version string `json:"version"`
 }
 
+// Pinger reports whether a dependency is alive. *pgxpool.Pool satisfies it.
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
+
+// Deps are the runtime dependencies of the router. Auth is nil when the
+// server runs without a database: the business routes then answer 503 so
+// the process can still serve health and version probes (ADR: the API
+// server starts without a database until the first DB-backed feature).
+type Deps struct {
+	Version string
+	Auth    *auth.Service
+	DB      Pinger
+}
+
+// authRateLimitPerMinute and authRateLimitBurst blunt sign-in abuse from a
+// single address. Generous enough for a family sharing one NAT address.
+const (
+	authRateLimitPerMinute = 30
+	authRateLimitBurst     = 30
+)
+
 // NewRouter builds the HTTP router for the API server.
-//
-// version is the build version reported by the version and health endpoints.
-func NewRouter(version string) chi.Router {
+func NewRouter(deps Deps) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -39,11 +61,58 @@ func NewRouter(version string) chi.Router {
 	// unconditionally, so any client could spoof its own address. A trusted
 	// proxy CIDR allowlist is added when the API is deployed behind a proxy.
 
-	r.Get("/healthz", healthHandler(version))
-	r.Get("/readyz", healthHandler(version))
+	r.Get("/healthz", healthHandler(deps.Version))
+	r.Get("/readyz", readyHandler(deps))
 
 	r.Route("/api/v1", func(api chi.Router) {
-		api.Get("/version", versionHandler(version))
+		// Build metadata does not need the database and stays available in
+		// every configuration.
+		api.Get("/version", versionHandler(deps.Version))
+
+		if deps.Auth == nil {
+			// No database configured: the business endpoints exist in the
+			// contract but cannot serve. Answer explicitly rather than 404
+			// so a misconfigured deployment is diagnosable from the client.
+			api.HandleFunc("/*", func(w http.ResponseWriter, _ *http.Request) {
+				writeJSON(w, http.StatusServiceUnavailable, errorBody{
+					Code:    errCodeUnavailable,
+					Message: "Business endpoints need a configured database.",
+				})
+			})
+			return
+		}
+
+		svc := deps.Auth
+		authLimiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
+
+		api.Route("/auth", func(authGroup chi.Router) {
+			authGroup.Get("/config", authConfigHandler(svc))
+			authGroup.With(RateLimit(authLimiter)).Post("/google", googleSignInHandler(svc))
+			authGroup.With(RateLimit(authLimiter)).Post("/refresh", refreshHandler(svc))
+			// The development login is only mounted when explicitly enabled
+			// outside production (ADR 0002); production never registers it.
+			if svc.DevLoginEnabled() {
+				authGroup.With(RateLimit(authLimiter)).Post("/dev-login", devLoginHandler(svc))
+			}
+		})
+
+		api.Group(func(private chi.Router) {
+			private.Use(RequireAuth(svc))
+
+			private.Post("/auth/signout", signOutHandler(svc))
+
+			private.Route("/me", func(me chi.Router) {
+				me.Get("/", getMeHandler())
+				me.Patch("/", updateMeHandler(svc))
+				me.Delete("/", deleteMeHandler(svc))
+				me.Put("/location-sharing", setLocationSharingHandler(svc))
+			})
+
+			private.Route("/devices", func(devices chi.Router) {
+				devices.Get("/", listDevicesHandler(svc))
+				devices.Delete("/{deviceId}", deleteDeviceHandler(svc))
+			})
+		})
 	})
 
 	return r
@@ -59,14 +128,37 @@ func healthHandler(version string) http.HandlerFunc {
 	}
 }
 
+// readyHandler adds the database round-trip to readiness now that the
+// business endpoints are database-backed. Without a configured database the
+// server is never ready to serve business traffic.
+func readyHandler(deps Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.DB == nil {
+			writeJSON(w, http.StatusServiceUnavailable, errorBody{
+				Code:      errCodeUnavailable,
+				Message:   "Database is not configured.",
+				RequestID: middleware.GetReqID(r.Context()),
+			})
+			return
+		}
+		if err := deps.DB.Ping(r.Context()); err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, errorBody{
+				Code:      errCodeUnavailable,
+				Message:   "Database is not reachable.",
+				RequestID: middleware.GetReqID(r.Context()),
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, HealthResponse{
+			Status:  "ok",
+			Version: deps.Version,
+			Time:    time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+}
+
 func versionHandler(version string) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, VersionResponse{Version: version})
 	}
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
 }

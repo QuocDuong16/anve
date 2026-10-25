@@ -18,9 +18,9 @@ type Config struct {
 	Port string `env:"PORT" envDefault:"8080"`
 	// Environment names the deployment stage (development, staging, production).
 	Environment string `env:"ENVIRONMENT" envDefault:"development"`
-	// DatabaseURL points at the PostgreSQL/PostGIS instance. It is optional
-	// in M0: the server runs without a database until the first feature that
-	// needs one lands.
+	// DatabaseURL points at the PostgreSQL/PostGIS instance. The business
+	// endpoints (everything under /api/v1 except version) need it; when it is
+	// empty those routes answer 503 until the operator configures a database.
 	DatabaseURL string `env:"DATABASE_URL"`
 	// ShutdownTimeout bounds how long in-flight requests may take to finish
 	// when the server receives SIGINT or SIGTERM.
@@ -31,6 +31,13 @@ type Config struct {
 	// Version is the build version reported by /api/v1/version. It is
 	// injected at build time with -ldflags.
 	Version string `env:"VERSION" envDefault:"dev"`
+	// AuthGoogleClientID is the OAuth client ID that Google ID tokens must be
+	// issued for. Empty disables Google sign-in (the endpoint fails closed).
+	AuthGoogleClientID string `env:"AUTH_GOOGLE_CLIENT_ID"`
+	// AuthDevLoginEnabled mounts the development-only sign-in endpoint. It is
+	// refused in production by Load — the check exists so a leaked
+	// configuration cannot smuggle the endpoint into a production process.
+	AuthDevLoginEnabled bool `env:"AUTH_DEV_LOGIN_ENABLED" envDefault:"false"`
 }
 
 // Load reads the configuration from the process environment.
@@ -39,5 +46,15 @@ func Load() (Config, error) {
 	if err := env.Parse(&cfg); err != nil {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
+	if err := cfg.validate(); err != nil {
+		return Config{}, fmt.Errorf("validate config: %w", err)
+	}
 	return cfg, nil
+}
+
+func (c Config) validate() error {
+	if c.Environment == "production" && c.AuthDevLoginEnabled {
+		return fmt.Errorf("AUTH_DEV_LOGIN_ENABLED must be false when ENVIRONMENT is production")
+	}
+	return nil
 }

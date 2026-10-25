@@ -1,6 +1,7 @@
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +16,7 @@ import (
 func TestHealthz(t *testing.T) {
 	t.Parallel()
 
-	router := httpapi.NewRouter("test-version")
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
@@ -30,10 +31,27 @@ func TestHealthz(t *testing.T) {
 	assert.NotEmpty(t, body.Time)
 }
 
-func TestReadyz(t *testing.T) {
+func TestReadyzWithoutDatabaseIsNotReady(t *testing.T) {
 	t.Parallel()
 
-	router := httpapi.NewRouter("test-version")
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+
+	// Since M1 the business endpoints are database-backed, so readiness
+	// without a database must fail.
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+}
+
+type fakePinger struct{ err error }
+
+func (p fakePinger) Ping(context.Context) error { return p.err }
+
+func TestReadyzWithReachableDatabase(t *testing.T) {
+	t.Parallel()
+
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version", DB: fakePinger{}})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
@@ -41,10 +59,24 @@ func TestReadyz(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestReadyzWithFailingDatabase(t *testing.T) {
+	t.Parallel()
+
+	router := httpapi.NewRouter(httpapi.Deps{
+		Version: "test-version",
+		DB:      fakePinger{err: context.DeadlineExceeded},
+	})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+}
+
 func TestVersionEndpoint(t *testing.T) {
 	t.Parallel()
 
-	router := httpapi.NewRouter("1.2.3")
+	router := httpapi.NewRouter(httpapi.Deps{Version: "1.2.3"})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/version", nil))
@@ -59,10 +91,27 @@ func TestVersionEndpoint(t *testing.T) {
 func TestUnknownRouteReturns404(t *testing.T) {
 	t.Parallel()
 
-	router := httpapi.NewRouter("test-version")
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/does-not-exist", nil))
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestBusinessRoutesWithoutDatabaseReturn503(t *testing.T) {
+	t.Parallel()
+
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/me", nil))
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+
+	var body struct {
+		Code string `json:"code"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "SERVICE_UNAVAILABLE", body.Code)
 }
