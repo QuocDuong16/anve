@@ -16,8 +16,17 @@
 ## Go server
 
 - chi v5 for routing, pgx v5 (`pgxpool`) for PostgreSQL, `caarlos0/env/v11` for env config, testify for tests, `log/slog` with a JSON handler for all logging.
+- `github.com/google/uuid` for ids (v7 for sessions); `google.golang.org/api/idtoken` verifies Google ID tokens (audience = `AUTH_GOOGLE_CLIENT_ID`, fails closed when unset).
 - Build version is injected at link time (`-ldflags "-X main.version=..."`), falls back to the `VERSION` env var, then `"dev"`.
 - Database: PostgreSQL + PostGIS (extensions: `postgis`, `uuid-ossp`, `pg_trgm`). Runtime images are digest-pinned; Dependabot moves tag and digest together.
+- Integration tests beyond the migrator live in `internal/auth/store_pg_test.go` (skipped without `TEST_DATABASE_URL`); CI's `database-integration` job runs both packages.
+
+## Android app (since M1)
+
+- Retrofit 3 + Moshi reflection (`moshi-kotlin`, ADR 0003 — NO kotlinx-serialization: its compiler plugin fights AGP 9 built-in Kotlin) + OkHttp; one shared Moshi instance.
+- DataStore preferences; Keystore AES-256-GCM `TokenCipher` behind an interface (JVM tests fake it).
+- Credential Manager (`androidx.credentials` 1.6) + `googleid` 1.2.1 for sign-in; Navigation-Compose; ViewModels via manual `viewModel(factory=...)` (no DI framework; `AppContainer` is the root).
+- Tests use MockWebServer against the real repository/interceptor; ViewModel tests poll with `awaitUntil` (real IO, not virtual time).
 
 ## Migrations
 

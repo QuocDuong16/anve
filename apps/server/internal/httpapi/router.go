@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/circles"
 )
 
 // HealthResponse is the payload returned by the health endpoints.
@@ -36,6 +37,7 @@ type Pinger interface {
 type Deps struct {
 	Version string
 	Auth    *auth.Service
+	Circles *circles.Service
 	DB      Pinger
 }
 
@@ -112,6 +114,24 @@ func NewRouter(deps Deps) chi.Router {
 				devices.Get("/", listDevicesHandler(svc))
 				devices.Delete("/{deviceId}", deleteDeviceHandler(svc))
 			})
+
+			if deps.Circles != nil {
+				circleSvc := deps.Circles
+				private.Route("/circles", func(c chi.Router) {
+					c.Post("/", createCircleHandler(circleSvc))
+					c.Get("/mine", myCircleHandler(circleSvc))
+					c.Patch("/{circleId}", updateCircleHandler(circleSvc))
+					c.Get("/{circleId}/members", listMembersHandler(circleSvc))
+					c.Post("/{circleId}/members/{userId}/remove", removeMemberHandler(circleSvc))
+					c.Post("/{circleId}/leave", leaveCircleHandler(circleSvc))
+					c.Post("/{circleId}/invites", createInviteHandler(circleSvc))
+					c.Get("/{circleId}/invites", listInvitesHandler(circleSvc))
+				})
+				private.Route("/invites", func(inv chi.Router) {
+					inv.Delete("/{inviteId}", revokeInviteHandler(circleSvc))
+					inv.Post("/redeem", redeemInviteHandler(circleSvc))
+				})
+			}
 		})
 	})
 

@@ -27,6 +27,15 @@ const (
 	ActionAccountDeleted     = "auth.account_deleted"
 	ActionLocationSharingOn  = "consent.location_sharing.enabled"
 	ActionLocationSharingOff = "consent.location_sharing.disabled"
+
+	ActionCircleCreated   = "circle.created"
+	ActionCircleRenamed   = "circle.renamed"
+	ActionCircleJoined    = "circle.joined"
+	ActionCircleLeft      = "circle.left"
+	ActionCircleDissolved = "circle.dissolved"
+	ActionMemberRemoved   = "circle.member_removed"
+	ActionInviteCreated   = "invite.created"
+	ActionInviteRevoked   = "invite.revoked"
 )
 
 // Event is one auditable action.

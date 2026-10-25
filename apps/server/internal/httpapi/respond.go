@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/circles"
 )
 
 // Error codes of the structured error envelope. Stable API surface: clients
@@ -58,6 +59,18 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, auth.ErrGoogleNotConfigured):
 		body.Code, body.Message = errCodeAuthConfig, "Google sign-in is not configured on this server."
 		writeJSON(w, http.StatusServiceUnavailable, body)
+	case errors.Is(err, circles.ErrForbidden):
+		body.Code, body.Message = "FORBIDDEN", "This action requires the circle owner role."
+		writeJSON(w, http.StatusForbidden, body)
+	case errors.Is(err, circles.ErrActiveCircleExists):
+		body.Code, body.Message = "ACTIVE_CIRCLE_EXISTS", "The account already belongs to a circle."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, circles.ErrInviteUnavailable):
+		body.Code, body.Message = "INVITE_UNAVAILABLE", "The invite code is unknown, expired or already used."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, circles.ErrOwnerMustDissolve):
+		body.Code, body.Message = "CIRCLE_HAS_MEMBERS", "The owner must confirm dissolution with dissolve=true."
+		writeJSON(w, http.StatusConflict, body)
 	default:
 		body.Code, body.Message = errCodeInternal, "Internal server error."
 		writeJSON(w, http.StatusInternalServerError, body)

@@ -16,6 +16,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
 )
@@ -52,6 +53,7 @@ func run() error {
 	)
 
 	var authService *auth.Service
+	var circlesService *circles.Service
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
 		// The pool outlives the HTTP server; the context only bounds the
@@ -86,14 +88,18 @@ func run() error {
 		}
 
 		store := auth.NewPGStore(pool)
-		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled, audit.NewPG(pool))
+		recorder := audit.NewPG(pool)
+		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled, recorder)
+		circlesService = circles.NewService(circles.NewPGStore(pool), recorder)
 	} else {
 		logger.Warn("DATABASE_URL is empty: business endpoints answer 503")
 	}
 
 	server := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      httpapi.NewRouter(httpapi.Deps{Version: cfg.Version, Auth: authService, DB: pool}),
+		Addr: ":" + cfg.Port,
+		Handler: httpapi.NewRouter(httpapi.Deps{
+			Version: cfg.Version, Auth: authService, Circles: circlesService, DB: pool,
+		}),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}
