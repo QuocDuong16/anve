@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: AnVề API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     HTTP contract of the AnVề backend.
 
@@ -21,6 +21,12 @@ tags:
     description: Liveness and readiness probes
   - name: meta
     description: Build and service metadata
+  - name: auth
+    description: Sign-in, sessions and token refresh
+  - name: me
+    description: "The authenticated account: profile and privacy consent"
+  - name: devices
+    description: Devices and sessions of the authenticated account
 
 paths:
   /healthz:
@@ -44,8 +50,9 @@ paths:
       operationId: getReadyz
       summary: Readiness probe
       description: |
-        Returns 200 when the service is ready to accept traffic. The database
-        check is added once the first feature that needs the database lands.
+        Returns 200 when the service is ready to accept traffic. Since M1 the
+        business endpoints are database-backed, so readiness includes a
+        database round-trip.
       tags: [health]
       responses:
         "200":
@@ -54,6 +61,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+        "503":
+          description: The database is not reachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/v1/version:
     get:
@@ -68,7 +81,341 @@ paths:
               schema:
                 $ref: "#/components/schemas/Version"
 
+  /api/v1/auth/config:
+    get:
+      operationId: getAuthConfig
+      summary: Which sign-in methods this server supports
+      description: |
+        Public endpoint the app calls before showing a sign-in screen. A
+        production server never advertises the development login.
+      tags: [auth]
+      responses:
+        "200":
+          description: The enabled sign-in methods.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthConfig"
+
+  /api/v1/auth/google:
+    post:
+      operationId: signInWithGoogle
+      summary: Exchange a Google ID token for an AnVề session
+      description: |
+        Verifies the Google ID token (signature, issuer, audience, expiry),
+        creates the user on first sign-in, registers or reuses the device and
+        returns a freshly issued session (access + refresh token). The Google
+        token is used exactly once and never stored.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleSignInRequest"
+      responses:
+        "200":
+          description: A session for the verified Google identity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignInResponse"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: The Google token failed verification.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Google sign-in is not configured on this server (code `AUTH_NOT_CONFIGURED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/dev-login:
+    post:
+      operationId: devLogin
+      summary: Development-only sign-in without an identity provider
+      description: |
+        Only mounted when the server runs with `AUTH_DEV_LOGIN_ENABLED=true`
+        and `ENVIRONMENT != production`. A production process refuses to start
+        with this flag; the endpoint therefore does not exist in production.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DevLoginRequest"
+      responses:
+        "200":
+          description: A session for the development identity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignInResponse"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The endpoint is not mounted (code `NOT_FOUND`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshSession
+      summary: Rotate the session tokens
+      description: |
+        Validates the refresh token, then rotates both tokens: the response
+        carries a new access/refresh pair and the old pair stops working. A
+        revoked or rotated-out refresh token is rejected with 401.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  $ref: "#/components/schemas/PlainTextToken"
+      responses:
+        "200":
+          description: The rotated session tokens.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+        "401":
+          description: The refresh token is unknown, expired or revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/signout:
+    post:
+      operationId: signOut
+      summary: Revoke the session that issued the request
+      security:
+        - bearerAuth: []
+      tags: [auth]
+      responses:
+        "204":
+          description: The session was revoked.
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/me:
+    get:
+      operationId: getMe
+      summary: Read the authenticated account
+      security:
+        - bearerAuth: []
+      tags: [me]
+      responses:
+        "200":
+          description: The account profile and privacy consent state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateMe
+      summary: Update the account profile
+      security:
+        - bearerAuth: []
+      tags: [me]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: The updated account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteMe
+      summary: Delete the account and all related data
+      description: |
+        Deletes the user row; devices and sessions cascade. The audit log
+        keeps an anonymized record (user id and action only) that survives
+        the deletion.
+      security:
+        - bearerAuth: []
+      tags: [me]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm:
+                  type: boolean
+                  description: Must be `true`; guards against accidental deletion.
+      responses:
+        "204":
+          description: The account was deleted.
+        "400":
+          description: "The `confirm` field is missing or not `true`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/me/location-sharing:
+    put:
+      operationId: setLocationSharing
+      summary: Turn the account's location-sharing consent on or off
+      description: |
+        The single consent switch of the privacy foundation: while disabled,
+        the backend must refuse to ingest or distribute this user's location
+        regardless of what any client claims. Every change is audited.
+      security:
+        - bearerAuth: []
+      tags: [me]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        "200":
+          description: The updated consent state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/devices:
+    get:
+      operationId: listDevices
+      summary: List the devices and active sessions of the account
+      security:
+        - bearerAuth: []
+      tags: [devices]
+      responses:
+        "200":
+          description: The devices, each with its active session if any.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceList"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/devices/{deviceId}:
+    delete:
+      operationId: revokeDevice
+      summary: Revoke a device and all its sessions
+      description: |
+        Ownership is enforced per request: a device id that does not belong
+        to the authenticated account yields 404, never someone else's data.
+      security:
+        - bearerAuth: []
+      tags: [devices]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The device row and its sessions were removed.
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such device under this account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        The AnVề session access token issued by the auth endpoints. Not a
+        Google token: Google identity is only used once at sign-in.
+
   schemas:
     Health:
       type: object
@@ -81,7 +428,7 @@ components:
         version:
           type: string
           description: The running build version.
-          examples: ["0.1.0"]
+          examples: ["0.2.0"]
         time:
           type: string
           format: date-time
@@ -94,4 +441,193 @@ components:
         version:
           type: string
           description: The running build version.
-          examples: ["0.1.0"]
+          examples: ["0.2.0"]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable, stable error code (UPPER_SNAKE_CASE).
+          examples: ["UNAUTHENTICATED"]
+        message:
+          type: string
+          description: Human-readable explanation.
+        requestId:
+          type: string
+          description: The request id assigned by the router, for support correlation.
+
+    AuthConfig:
+      type: object
+      required: [googleSignIn, devLogin]
+      properties:
+        googleSignIn:
+          type: boolean
+          description: Whether `POST /api/v1/auth/google` is usable (OAuth client configured).
+        devLogin:
+          type: boolean
+          description: Whether the development login is mounted. Always `false` in production.
+
+    PlainTextToken:
+      type: string
+      description: An opaque, URL-safe token. Treat as a secret; it is valid exactly once per rotation.
+
+    DeviceRegistration:
+      type: object
+      required: [clientDeviceId]
+      properties:
+        clientDeviceId:
+          type: string
+          minLength: 8
+          maxLength: 64
+          description: Stable, app-generated device identifier (a UUID kept in private storage).
+        name:
+          type: string
+          maxLength: 120
+          description: Human-readable device name (e.g. model), shown in the device list.
+        platform:
+          type: string
+          enum: [android]
+          default: android
+        appVersion:
+          type: string
+          maxLength: 40
+          description: Version of the calling app build.
+
+    GoogleSignInRequest:
+      type: object
+      required: [idToken, device]
+      properties:
+        idToken:
+          type: string
+          description: The Google ID token obtained through Credential Manager.
+        device:
+          $ref: "#/components/schemas/DeviceRegistration"
+
+    DevLoginRequest:
+      type: object
+      required: [email, device]
+      properties:
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        device:
+          $ref: "#/components/schemas/DeviceRegistration"
+
+    User:
+      type: object
+      required: [id, email, displayName, locationSharingEnabled, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        locationSharingEnabled:
+          type: boolean
+          description: The account's location-sharing consent. Off by default; never turned on implicitly.
+        createdAt:
+          type: string
+          format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    SessionTokens:
+      type: object
+      required: [accessToken, refreshToken, accessExpiresAt, refreshExpiresAt]
+      properties:
+        accessToken:
+          $ref: "#/components/schemas/PlainTextToken"
+        refreshToken:
+          $ref: "#/components/schemas/PlainTextToken"
+        accessExpiresAt:
+          type: string
+          format: date-time
+        refreshExpiresAt:
+          type: string
+          format: date-time
+
+    SignInResponse:
+      type: object
+      required: [user, session]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        session:
+          $ref: "#/components/schemas/SessionTokens"
+
+    RefreshResponse:
+      type: object
+      required: [session]
+      properties:
+        session:
+          $ref: "#/components/schemas/SessionTokens"
+
+    DeviceSession:
+      type: object
+      required: [id, createdAt, lastUsedAt, expiresAt, current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the refresh token expires.
+        current:
+          type: boolean
+          description: Whether this is the session that served the request.
+
+    Device:
+      type: object
+      required: [id, name, platform, createdAt, lastSeenAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        platform:
+          type: string
+        appVersion:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        session:
+          $ref: "#/components/schemas/DeviceSession"
+
+    DeviceList:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
