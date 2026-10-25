@@ -21,7 +21,7 @@
 | Milestone | Phạm vi | Trạng thái |
 | --- | --- | --- |
 | [M0 — Foundation](#m0--foundation) | Android, Go, database, CI, migration, toolchain | **Implemented — Verified** (mức nền tảng) |
-| [M1 — Auth & Privacy foundation](#m1--authentication-device-identity-privacy-foundation) | Authentication, device identity, privacy foundation | Planned |
+| [M1 — Auth & Privacy foundation](#m1--authentication-device-identity-privacy-foundation) | Authentication, device identity, privacy foundation | **Implemented — Verified** (backend + client logic; chờ field validation) |
 | [M2 — Family Circle](#m2--family-circle--membership-authorization) | Circle, membership, authorization | Planned |
 | [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | Planned |
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, realtime, confidence engine | Planned |
@@ -71,10 +71,35 @@ xác minh"; field validation là nội dung thường trực của các mileston
 **Scope:** tài khoản, phiên đăng nhập, thiết bị đăng ký, khung authorization,
 sự kiện consent đầu tiên (bật/tắt chia sẻ), audit log nền móng.
 
-**Exit criteria đề xuất:** đăng nhập/đăng xuất hoạt động; một tài khoản có thể
-liệt kê thiết bị/phiên của chính mình; mọi endpoint mới đi qua authorization
-middleware; consent bật/tắt chia sẻ được ghi audit; OpenAPI cập nhật trước khi
-viết handler (contract-first).
+**Status: Implemented — Verified** (backend + Android client logic; bằng
+chứng dưới đây). Quyết định kỹ thuật: Google Sign-In + opaque session do
+backend cấp, token lưu hash, xác minh mỗi request — ADR 0002.
+
+Bằng chứng đã xác minh (chi tiết ở [`../implementation/progress.md`](../implementation/progress.md)):
+
+- Unit tests (service + HTTP handlers) và integration tests trên
+  PostgreSQL/PostGIS thật: đăng nhập/rotation (đúng 1 winner khi refresh
+  đồng thời), thu hồi phiên tức thì, cross-user device isolation (BOLA),
+  predicate hết hạn, cascade xóa tài khoản, audit row sống sót sau xóa —
+  chạy trong CI job `database-integration`.
+- Consent switch (mặc định TẮT) + audit trong cùng transaction — có test.
+- Smoke test runtime trên Compose stack local (2026-10-25): sign-in → me →
+  consent → devices → refresh (token cũ chết ngay) → 401 envelope.
+- Android: `make android-check` xanh (lint + unit tests qua MockWebServer +
+  APK debug); release build (minified) xanh.
+
+Còn thiếu (giữ milestone ở mức này, không nâng lên "hoàn thành tuyệt đối"):
+
+- **Field validation trên thiết bị Android thật** chưa có.
+- **Google Sign-In với OAuth client thật** chưa xác minh — chờ tạo Google
+  Cloud OAuth client (external blocker, đã có hướng dẫn
+  [`../implementation/setup-android.md`](../implementation/setup-android.md));
+  server hiện fail-closed, dev login phục vụ phát triển.
+
+**Exit criteria M1:** ✅ đăng nhập/đăng xuất hoạt động · ✅ liệt kê/thu hồi
+thiết bị của chính mình · ✅ mọi endpoint mới qua authorization middleware ·
+✅ consent bật/tắt có audit · ✅ OpenAPI trước handler (contract-first). ⏳
+field validation trên thiết bị thật (thường trực, như mọi milestone).
 
 **Phụ thuộc:** M0.
 

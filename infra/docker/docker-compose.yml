@@ -93,6 +93,9 @@ services:
       PORT: "8080"
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-anve}:${POSTGRES_PASSWORD:-anve}@postgres:5432/${POSTGRES_DB:-anve}?sslmode=disable
+      # Google sign-in stays disabled until an OAuth client ID is provided;
+      # the API fails closed rather than accepting unverified tokens.
+      AUTH_GOOGLE_CLIENT_ID: ${AUTH_GOOGLE_CLIENT_ID:-}
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:
       - "${API_PORT:-8080}:8080"

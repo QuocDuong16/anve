@@ -16,9 +16,33 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
 - Splash screen hiển thị wordmark “AnVề”, tagline và phiên bản build (JVM unit test).
 - Go API server (chi): `GET /healthz`, `GET /readyz`, `GET /api/v1/version` — đúng theo [`packages/api-contracts/openapi.yaml`](../../packages/api-contracts/openapi.yaml).
 - Custom migration runner (`cmd/migrate`): transaction từng file, advisory lock, rollback; integration test chạy trên PostgreSQL/PostGIS thật trong CI.
-- Migration `0001_extensions`: `postgis`, `uuid-ossp`, `pg_trgm`. **Chưa có bảng nghiệp vụ nào.**
+- Migration `0001_extensions`: `postgis`, `uuid-ossp`, `pg_trgm`.
 - Local stack Docker Compose (postgres/postgis + migrate + api), toolchain pin qua mise, hai workflow CI độc lập (Go, Android).
 - Android backup/transfer rules loại trừ sẵn domain `sharedpref` và `database`.
+
+### 1b. Authentication, thiết bị & privacy foundation — M1
+
+**Implemented** (backend + Android client logic; chi tiết và bằng chứng ở
+[`../implementation/progress.md`](../implementation/progress.md)):
+
+- Đăng nhập Google qua Credential Manager: app lấy Google ID token, Go
+  backend xác minh chữ ký/audience (ADR 0002) và cấp **session riêng của
+  AnVề** (opaque access + refresh token, chỉ lưu hash trên server).
+- Phiên đăng nhập bền (persistent), refresh có rotation, thu hồi tức thì
+  (mỗi request được kiểm tra lại session), đăng xuất, xóa tài khoản (cascade
+  + audit).
+- Đăng ký thiết bị theo device id do app sinh; liệt kê/thu hồi thiết bị của
+  chính mình; cross-user access bị từ chối (có test).
+- **Consent switch** chia sẻ vị trí (mặc định TẮT) với audit record trong
+  cùng transaction ghi nhận thay đổi.
+- Error envelope thống nhất (`code/message/requestId`), rate limiting cho
+  endpoint đăng nhập; `readyz` kiểm tra database.
+- Dev-only login (không mount ở production — từ chối ngay khi khởi động)
+  phục vụ phát triển trước khi có Google Cloud project.
+
+Chưa xác minh: chạy thực tế trên thiết bị (field validation) và luồng Google
+với OAuth client thật (đang chờ cấu hình bên ngoài — xem
+[`../implementation/setup-android.md`](../implementation/setup-android.md)).
 
 Từ mục 2 trở đi, **toàn bộ là Planned hoặc Proposed** cho đến khi có code tương ứng.
 
@@ -357,9 +381,13 @@ toàn vẹn được kiểm chứng bằng test tự động (không chỉ quan 
 
 ## 8. Privacy Controls
 
-> Trạng thái: **Planned — M1 làm nền móng (consent, authorization), hoàn thiện
-> qua M2–M6; xuyên suốt toàn sản phẩm.** Đặc tả chính sách đầy đủ nằm ở
-> [`privacy-and-safety.md`](privacy-and-safety.md) — mục này chỉ tóm tắt mặt chức năng.
+> Trạng thái: **Nền móng Implemented (M1: consent switch + audit + backend
+> authorization middleware + đăng nhập/phiên/thiết bị); hoàn thiện qua
+> M2–M6; xuyên suốt toàn sản phẩm.** Đặc tả chính sách đầy đủ nằm ở
+> [`privacy-and-safety.md`](privacy-and-safety.md) — mục này chỉ tóm tắt
+> mặt chức năng. Bằng chứng M1: audit record cho thay đổi consent (đã
+> test), session revocation tức thì (đã test), switch consent mặc định
+> TẮT ở tầng database.
 
 Privacy là **functional requirement bắt buộc, không phải trang Settings phụ**.
 
