@@ -3,7 +3,7 @@
 Monorepo for AnVề: an Android (Jetpack Compose) client backed by a Go HTTP
 API and PostgreSQL/PostGIS. Modular monorepo per ADR 0001 (`docs/adr/`):
 one repo, one pinned toolchain, but each app keeps its own build system and
-its own CI workflow. Phase: M0 + M1 (auth/device/consent) implemented; M2+
+its own CI workflow. Phase: M0–M2 implemented (auth/device/consent + Family Circle); M3+
 planned. Engineering session state lives in `docs/implementation/progress.md`
 — read it first when resuming work.
 
@@ -14,6 +14,7 @@ planned. Engineering session state lives in `docs/implementation/progress.md`
   - `internal/httpapi` — chi router. Surface: health/meta + M1 auth/me/devices routes; `RequireAuth` middleware verifies sessions per request; business routes 503 without a database.
   - `internal/auth` — M1 domain: opaque sessions (SHA-256 hashes only), Google ID-token verification (`google.golang.org/api/idtoken`), PG store with transactional audit; `internal/auth/authtest` holds the in-memory store fake shared by tests.
   - `internal/audit` — privacy event recorder; `audit_log` has NO FK to users by design (survives account deletion).
+  - `internal/circles` — M2 domain: circles/memberships/invites; authorization enforced AT THE STORE (membership checked before any read: outsider→404, member-without-owner-role→403); one-circle-per-user unique index is the MVP invariant; invite redeem is atomic (FOR UPDATE, single winner); owner leaving a populated circle requires dissolve=true (cascades).
   - `internal/config` — env-based config; refuses `AUTH_DEV_LOGIN_ENABLED` in production at load time.
 - `apps/android` — app `com.anve.app`; `data/` (api Retrofit+Moshi, auth token storage) + `ui/` grouped by feature (`splash`, `signin`, `home`, `theme`); `AppContainer` is the manual DI root.
 - `packages/api-contracts/openapi.yaml` — the HTTP contract; single source of truth for the API surface.
