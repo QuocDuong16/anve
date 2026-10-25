@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- SharedPreferences and Room databases are excluded everywhere by default:
+     once location history and the offline queue land in a Room database,
+     nothing may reach cloud backup or device transfer until a deliberate
+     per-file policy decides what may leave the device. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude
             domain="sharedpref"
             path="." />
+        <exclude
+            domain="database"
+            path="." />
     </cloud-backup>
     <device-transfer>
         <exclude
             domain="sharedpref"
+            path="." />
+        <exclude
+            domain="database"
             path="." />
     </device-transfer>
 </data-extraction-rules>

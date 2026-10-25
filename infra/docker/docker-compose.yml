@@ -38,7 +38,10 @@ services:
       POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Loopback only: with the dev default password, the database must not be
+      # reachable from other machines on the network. Production deployments
+      # keep the database on an internal network and publish no port at all.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -50,6 +53,11 @@ services:
     logging: *logging
     networks:
       - data
+      # Publishes the loopback port above: Docker does not install port
+      # forwarding for containers whose only network is internal, so the
+      # database also joins this otherwise-empty bridge. No other service
+      # attaches here.
+      - db-host
 
   migrate:
     <<: *security
@@ -115,3 +123,6 @@ networks:
     name: ${COMPOSE_PROJECT_NAME:-anve}-data
     driver: bridge
     internal: true
+  db-host:
+    name: ${COMPOSE_PROJECT_NAME:-anve}-db-host
+    driver: bridge

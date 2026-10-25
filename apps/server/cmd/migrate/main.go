@@ -57,6 +57,12 @@ func run() error {
 	}
 	defer pool.Close()
 
+	lock, err := acquireMigrationLock(ctx, pool)
+	if err != nil {
+		return err
+	}
+	defer lock.release()
+
 	if err := ensureBookkeepingTable(ctx, pool); err != nil {
 		return err
 	}
@@ -230,4 +236,41 @@ func applyFile(ctx context.Context, pool *pgxpool.Pool, version, path string, up
 		return fmt.Errorf("commit migration %s: %w", version, err)
 	}
 	return nil
+}
+
+// migrationLockKey identifies the AnVề migrator in pg_locks. Any constant
+// bigint works: pg advisory locks are scoped to one database, so concurrent
+// migrators against the same database serialize while different databases
+// migrate independently.
+const migrationLockKey = 0x616e7665 // "anve"
+
+// migrationLock is a session-level advisory lock held on a dedicated pooled
+// connection for the lifetime of one migrator run.
+type migrationLock struct {
+	conn *pgxpool.Conn
+}
+
+// acquireMigrationLock blocks until it holds the migrator advisory lock, so
+// two migrator processes can never race: both would read the same applied set
+// and could apply the same migration twice in separate transactions. The run
+// context bounds the wait — a stuck lock fails the run instead of hanging.
+func acquireMigrationLock(ctx context.Context, pool *pgxpool.Pool) (*migrationLock, error) {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("acquire connection for migration lock: %w", err)
+	}
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, migrationLockKey); err != nil {
+		conn.Release()
+		return nil, fmt.Errorf("acquire migration advisory lock: %w", err)
+	}
+	return &migrationLock{conn: conn}, nil
+}
+
+func (l *migrationLock) release() {
+	// Unlock on the same session that took the lock. WithoutCancel so a
+	// timed-out or canceled run still releases the lock instead of leaving it
+	// held on an idle pooled connection.
+	ctx := context.WithoutCancel(context.Background())
+	_, _ = l.conn.Exec(ctx, `SELECT pg_advisory_unlock($1)`, migrationLockKey)
+	l.conn.Release()
 }

@@ -10,7 +10,7 @@
 	docker-up docker-down docker-logs docker-clean docker-config \
 	up down logs \
 	migrate-up migrate-down \
-	server-run server-build server-test server-test-race server-fix server-lint server-check \
+	server-run server-build server-test server-test-race server-test-integration server-fix server-lint server-check \
 	android-sdk-check android-build android-test android-lint android-check android-clean \
 	contracts-lint deps-lint \
 	quality-check
@@ -73,7 +73,7 @@ migrate-down: ## Roll back the most recent applied migration
 	$(DOCKER_COMPOSE) run --rm migrate down
 
 ##@ Go server
-server-run: ## Run the API server locally with hot reload
+server-run: ## Run the API server locally (no hot reload; restart after changes)
 	cd apps/server && go run ./cmd/api
 
 server-build: ## Build the API and migrate binaries
@@ -85,6 +85,9 @@ server-test: ## Run the Go server tests
 
 server-test-race: ## Run the Go server tests with the race detector
 	cd apps/server && go test -race -count=1 ./...
+
+server-test-integration: ## Run the migration integration tests against the running local stack (make docker-up first)
+	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -race -count=1 ./cmd/migrate
 
 server-fix: ## Tidy Go modules and format Go sources
 	cd apps/server && go mod tidy && go fmt ./...

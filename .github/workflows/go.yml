@@ -64,6 +64,47 @@ jobs:
       - name: Build binaries
         run: go build ./cmd/...
 
+  # The unit job above runs with the migrator's integration tests skipped
+  # (no TEST_DATABASE_URL). This job proves the migrations against a real
+  # PostgreSQL/PostGIS server: up → up → down → up, rollback of a failed
+  # migration, and the required extensions.
+  database-integration:
+    name: Migrations against PostgreSQL/PostGIS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/server
+    services:
+      postgres:
+        # Pinned by digest to the same image the local Compose stack uses.
+        image: postgis/postgis:17-3.6@sha256:d7053f57b0d62c427ffbf412208b6625317124d62eebf40672e990fea81e9d53
+        env:
+          POSTGRES_USER: anve
+          POSTGRES_PASSWORD: anve
+          POSTGRES_DB: anve
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anve -d anve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up mise
+        uses: jdx/mise-action@v5
+        with:
+          version: 2026.9.15
+          install_args: go
+
+      - name: Run migration integration tests
+        env:
+          TEST_DATABASE_URL: postgres://anve:anve@localhost:5432/anve?sslmode=disable
+        run: go test -race -count=1 ./cmd/migrate
+
   repository:
     name: Repository checks
     runs-on: ubuntu-latest

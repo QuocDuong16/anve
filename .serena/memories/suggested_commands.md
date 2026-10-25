@@ -22,6 +22,7 @@ Everything goes through the Makefile from the repo root; `make help` is the defa
 - `make server-fix` — `go mod tidy` + `go fmt`.
 - `make server-test` / `make server-test-race`.
 - `make server-check` — full Go gate: gofmt clean, `go mod tidy -diff`, vet, golangci-lint, govulncheck, tests, build of `cmd/api` + `cmd/migrate`.
+- `make server-test-integration` — migrator integration tests against the running local stack (`make docker-up` first); skipped without `TEST_DATABASE_URL`.
 
 ## Android checks
 

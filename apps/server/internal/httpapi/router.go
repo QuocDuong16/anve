@@ -30,6 +30,10 @@ func NewRouter(version string) chi.Router {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
+	// Hard 15s ceiling for the current JSON API. Long-lived connection
+	// endpoints (the planned realtime WebSockets) do not fit a per-request
+	// deadline and need their own timeout and lifecycle design before they
+	// land on this router.
 	r.Use(middleware.Timeout(15 * time.Second))
 	// middleware.RealIP is deliberately NOT used: it trusts X-Forwarded-For
 	// unconditionally, so any client could spoof its own address. A trusted

@@ -3,4 +3,10 @@
     <exclude
         domain="sharedpref"
         path="." />
+    <!-- Room databases will hold location history and the offline queue.
+         They stay out of cloud backup until a deliberate per-file policy
+         decides what may leave the device. -->
+    <exclude
+        domain="database"
+        path="." />
 </full-backup-content>

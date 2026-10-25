@@ -1,6 +1,15 @@
 -- Rollback for 0001_extensions.
 --
--- The extensions are deliberately NOT dropped: other migrations and PostGIS
--- objects may depend on them, and dropping an extension invalidates every
--- dependent object. The bookkeeping table is safe to remove.
-DROP TABLE IF EXISTS schema_migrations;
+-- This migration has nothing to roll back, deliberately:
+--
+-- - The extensions are NOT dropped: other migrations and PostGIS objects may
+--   depend on them, and dropping an extension invalidates every dependent
+--   object.
+-- - schema_migrations is NOT dropped: the bookkeeping table belongs to the
+--   migration engine, not to a business migration. The engine runs
+--   `DELETE FROM schema_migrations` in the same transaction as this file, so
+--   dropping the table here would fail the rollback.
+--
+-- The SELECT is the explicit no-op the engine executes; `migrate down` only
+-- removes the bookkeeping row and the pair stays re-runnable.
+SELECT 1;
