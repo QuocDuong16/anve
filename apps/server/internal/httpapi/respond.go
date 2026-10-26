@@ -59,6 +59,14 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, auth.ErrGoogleNotConfigured):
 		body.Code, body.Message = errCodeAuthConfig, "Google sign-in is not configured on this server."
 		writeJSON(w, http.StatusServiceUnavailable, body)
+	case errors.Is(err, auth.ErrCircleHasMembers):
+		body.Code = "CIRCLE_HAS_MEMBERS"
+		body.Message = "The account owns a circle that still has members. Dissolve the circle before deleting the account."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, auth.ErrIdentityConflict):
+		body.Code = "IDENTITY_CONFLICT"
+		body.Message = "The email already belongs to an account of another identity type."
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, circles.ErrForbidden):
 		body.Code, body.Message = "FORBIDDEN", "This action requires the circle owner role."
 		writeJSON(w, http.StatusForbidden, body)

@@ -32,6 +32,15 @@ func isUniqueViolation(err error, constraint string) bool {
 		(constraint == "" || strings.Contains(pgErr.ConstraintName, constraint))
 }
 
+// isDeadlock reports a PostgreSQL deadlock or serialization abort. The
+// redeem/leave transactions lock invite and membership rows while a
+// concurrent account deletion cascades through the same rows — PostgreSQL
+// aborts one side, and a retry then observes the committed state.
+func isDeadlock(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && (pgErr.Code == "40P01" || pgErr.Code == "40001")
+}
+
 const circleColumns = `id, name, created_by, created_at`
 
 func scanCircle(row pgx.Row) (Circle, error) {
@@ -221,6 +230,17 @@ func (s *PGStore) RemoveMember(ctx context.Context, ownerID, circleID, targetID 
 // members must pass dissolve; dissolving deletes the circle and cascades
 // every membership and invite.
 func (s *PGStore) LeaveCircle(ctx context.Context, userID, circleID uuid.UUID, dissolve bool) error {
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		err = s.leaveCircle(ctx, userID, circleID, dissolve)
+		if !isDeadlock(err) {
+			return err
+		}
+	}
+	return err
+}
+
+func (s *PGStore) leaveCircle(ctx context.Context, userID, circleID uuid.UUID, dissolve bool) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin leave: %w", err)
@@ -358,10 +378,23 @@ func (s *PGStore) RevokeInvite(ctx context.Context, userID, inviteID uuid.UUID) 
 }
 
 // RedeemInvite joins the caller's circle with a code: validates the code
-// state, enforces one-circle-per-user, creates the membership and burns
-// the code in one transaction. Concurrent redeems serialize on the invite
+// state, enforces one-circle-per-user, creates the membership and burns the
+// code in one transaction. Concurrent redeems serialize on the invite
 // row (FOR UPDATE); the loser sees used_at set and fails cleanly.
 func (s *PGStore) RedeemInvite(ctx context.Context, userID uuid.UUID, code string) (Circle, Membership, error) {
+	var circle Circle
+	var membership Membership
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		circle, membership, err = s.redeemInvite(ctx, userID, code)
+		if !isDeadlock(err) {
+			return circle, membership, err
+		}
+	}
+	return Circle{}, Membership{}, err
+}
+
+func (s *PGStore) redeemInvite(ctx context.Context, userID uuid.UUID, code string) (Circle, Membership, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Circle{}, Membership{}, fmt.Errorf("begin redeem: %w", err)

@@ -90,28 +90,35 @@ func TestGoogleSignInRejectsFailedVerification(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
-func TestGoogleSignInLinksExistingEmailAccount(t *testing.T) {
+func TestGoogleAndDevIdentitiesAreIsolated(t *testing.T) {
 	t.Parallel()
+
+	// A development account exists first; a Google sign-in for the same
+	// email must not take it over — matching emails are not proof of the
+	// same subject (ADR 0004).
 	store := authtest.NewStore()
-	svc := newTestService(store, authtest.Verifier{})
-
-	// Start as a dev account, then sign in with Google for the same email.
-	first, _, err := svc.DevSignIn(context.Background(), "mai@example.com", "Mai", devDevice())
+	devSvc := newTestService(store, authtest.Verifier{})
+	_, _, err := devSvc.DevSignIn(context.Background(), "mai@example.com", "Mai", devDevice())
 	require.NoError(t, err)
 
-	sub := "google-sub-123"
 	googleSvc := newTestService(store, authtest.Verifier{Identity: auth.GoogleIdentity{
-		Sub: sub, Email: "mai@example.com", EmailVerified: true, Name: "Mai A",
+		Sub: "google-sub-123", Email: "mai@example.com", EmailVerified: true, Name: "Mai A",
 	}})
-	second, tokens, err := googleSvc.SignInWithGoogle(context.Background(), "gtoken", devDevice())
-	require.NoError(t, err)
-	assert.Equal(t, first.ID, second.ID, "the existing account is reused, not duplicated")
-	require.NotNil(t, second.GoogleSub)
-	assert.Equal(t, sub, *second.GoogleSub, "the google identity is linked")
-	assert.Equal(t, "Mai A", second.DisplayName, "the linked profile follows the google claims")
+	_, _, err = googleSvc.SignInWithGoogle(context.Background(), "gtoken", devDevice())
+	require.ErrorIs(t, err, auth.ErrIdentityConflict, "google may not enter a dev-created account")
 
-	_, _, err = svc.Authenticate(context.Background(), tokens.AccessToken)
+	// And the reverse: the development fixture may not sign into a
+	// Google-verified account.
+	googleOnly := authtest.NewStore()
+	googleSvc2 := newTestService(googleOnly, authtest.Verifier{Identity: auth.GoogleIdentity{
+		Sub: "google-sub-456", Email: "ba@example.com", EmailVerified: true, Name: "Ba",
+	}})
+	_, _, err = googleSvc2.SignInWithGoogle(context.Background(), "gtoken", devDevice())
 	require.NoError(t, err)
+
+	devSvc2 := newTestService(googleOnly, authtest.Verifier{})
+	_, _, err = devSvc2.DevSignIn(context.Background(), "ba@example.com", "Ba", devDevice())
+	require.ErrorIs(t, err, auth.ErrIdentityConflict, "dev login may not enter a Google account")
 }
 
 func TestRefreshRotatesTokens(t *testing.T) {

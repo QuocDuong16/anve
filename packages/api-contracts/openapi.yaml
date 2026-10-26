@@ -134,6 +134,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: "The verified email already belongs to an account created through the development login (code `IDENTITY_CONFLICT`). Development identities never take over a Google account and vice versa."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
           description: Google sign-in is not configured on this server (code `AUTH_NOT_CONFIGURED`).
           content:
@@ -147,8 +153,14 @@ paths:
       summary: Development-only sign-in without an identity provider
       description: |
         Only mounted when the server runs with `AUTH_DEV_LOGIN_ENABLED=true`
-        and `ENVIRONMENT != production`. A production process refuses to start
-        with this flag; the endpoint therefore does not exist in production.
+        and `ENVIRONMENT=development` (exactly that value; staging, production
+        and unknown environments refuse to start with the flag). The endpoint
+        therefore cannot exist in any other environment.
+
+        The fixture is an isolated identity: it refuses an email that already
+        belongs to a Google-verified account, and a Google sign-in never links
+        into a development-created account, so an arbitrary email can never
+        take over a real Google identity.
       tags: [auth]
       requestBody:
         required: true
@@ -171,6 +183,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: The endpoint is not mounted (code `NOT_FOUND`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The email already belongs to a Google-verified account (code `IDENTITY_CONFLICT`)."
           content:
             application/json:
               schema:
@@ -284,6 +302,13 @@ paths:
         Deletes the user row; devices and sessions cascade. The audit log
         keeps an anonymized record (user id and action only) that survives
         the deletion.
+
+        An owner of a circle that still has other members must dissolve the
+        circle explicitly first (`POST /circles/{circleId}/leave` with
+        `dissolve=true`); account deletion refuses with 409
+        `CIRCLE_HAS_MEMBERS` so a populated circle is never dissolved as a
+        side effect. Circles the caller owns that have no other members are
+        removed by the same transaction.
       security:
         - bearerAuth: []
       tags: [me]
@@ -309,6 +334,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The account owns a circle that still has members (code `CIRCLE_HAS_MEMBERS`). Dissolve the circle first."
           content:
             application/json:
               schema:

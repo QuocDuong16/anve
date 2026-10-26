@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/QuocDuong16/anve/server/internal/audit"
@@ -102,8 +103,10 @@ func (s *PGStore) SignIn(ctx context.Context, in SignInInput) (User, Session, er
 
 // resolveUser finds or creates the user for a sign-in inside the caller's
 // transaction. Matching order: google_sub first (returning Google users),
-// then email — which links a development-created account to its Google
-// owner on the first real Google sign-in.
+// then email — where identity isolation applies: a Google identity never
+// takes over a development-created account and the development fixture
+// never signs into a Google-verified account, because matching emails are
+// not proof that two identities belong to the same subject.
 func resolveUser(ctx context.Context, tx pgx.Tx, in SignInInput) (User, error) {
 	if in.GoogleSub != nil {
 		u, err := scanUser(tx.QueryRow(ctx,
@@ -120,30 +123,15 @@ func resolveUser(ctx context.Context, tx pgx.Tx, in SignInInput) (User, error) {
 		`SELECT `+userColumns+` FROM users WHERE email = $1 FOR UPDATE`, in.Email))
 	switch {
 	case err == nil:
-		// Same email, first Google sign-in: link the identity and adopt the
-		// Google profile (name/avatar). A different google_sub already
-		// present means two Google identities claim one address — refuse
-		// rather than merge.
 		if in.GoogleSub != nil {
-			if u.GoogleSub != nil && *u.GoogleSub != *in.GoogleSub {
-				return User{}, fmt.Errorf("identity conflict: email %q already belongs to another google identity", in.Email)
-			}
-			sub := *in.GoogleSub
-			if _, err := tx.Exec(ctx,
-				`UPDATE users
-				    SET google_sub = $2,
-				        display_name = $3,
-				        avatar_url = COALESCE($4, avatar_url),
-				        updated_at = now()
-				  WHERE id = $1`,
-				u.ID, sub, in.DisplayName, in.AvatarURL); err != nil {
-				return User{}, fmt.Errorf("link google identity: %w", err)
-			}
-			u.GoogleSub = &sub
-			u.DisplayName = in.DisplayName
-			if in.AvatarURL != nil {
-				u.AvatarURL = in.AvatarURL
-			}
+			// A Google identity reaching the email lookup means the account
+			// was not created through Google (its google_sub would have
+			// matched above) or belongs to another Google subject. Refuse
+			// both: no linking by email.
+			return User{}, fmt.Errorf("%w: email %q already belongs to another identity", ErrIdentityConflict, in.Email)
+		}
+		if u.GoogleSub != nil {
+			return User{}, fmt.Errorf("%w: email %q belongs to a Google account", ErrIdentityConflict, in.Email)
 		}
 		return u, nil
 	case errors.Is(err, pgx.ErrNoRows):
@@ -389,13 +377,61 @@ func (s *PGStore) SetLocationSharing(ctx context.Context, userID uuid.UUID, enab
 }
 
 // DeleteUser removes the account; devices and sessions cascade, and the
-// audit row (no foreign key, by design) survives in the same transaction.
+// audit rows (no foreign key, by design) survive in the same transaction.
+//
+// A circle owner with other members must dissolve the circle explicitly
+// first: deletion refuses with ErrCircleHasMembers instead of silently
+// ending other people's circle. Circles the caller owns alone are removed
+// by this transaction, each audited as a dissolution.
 func (s *PGStore) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+	// The circle lock below can deadlock against a concurrent invite
+	// redemption (each transaction ends up waiting on the other's row
+	// locks). PostgreSQL aborts one of them; a retry then sees the
+	// committed state and returns the precise outcome either way.
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		err = s.deleteUser(ctx, userID)
+		if !isDeadlock(err) {
+			return err
+		}
+	}
+	return err
+}
+
+// isDeadlock reports a PostgreSQL deadlock or serialization abort.
+func isDeadlock(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && (pgErr.Code == "40P01" || pgErr.Code == "40001")
+}
+
+func (s *PGStore) deleteUser(ctx context.Context, userID uuid.UUID) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin deletion transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Lock every circle the caller owns before counting their members. The
+	// row lock conflicts with the KEY SHARE that an invite redemption's
+	// membership insert needs on the circle row, so a concurrent redeem
+	// either commits before the count below (and is seen) or blocks until
+	// this transaction commits (and fails on the vanished circle) — there
+	// is no window in which a member joins and the deletion still proceeds.
+	ownedCircles, err := lockOwnedCircles(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
+	for _, circleID := range ownedCircles {
+		var others int
+		if err := tx.QueryRow(ctx,
+			`SELECT count(*) FROM memberships WHERE circle_id = $1 AND user_id != $2`,
+			circleID, userID).Scan(&others); err != nil {
+			return fmt.Errorf("count members: %w", err)
+		}
+		if others > 0 {
+			return ErrCircleHasMembers
+		}
+	}
 
 	ct, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 	if err != nil {
@@ -404,6 +440,14 @@ func (s *PGStore) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	if ct.RowsAffected() == 0 {
 		return fmt.Errorf("%w: user %s", ErrNotFound, userID)
 	}
+	for _, circleID := range ownedCircles {
+		if err := audit.InTx(ctx, tx, audit.Event{
+			ActorUserID: userID, Action: audit.ActionCircleDissolved,
+			Detail: map[string]any{"circle_id": circleID.String(), "via": "account_deletion"},
+		}); err != nil {
+			return err
+		}
+	}
 	if err := audit.InTx(ctx, tx, audit.Event{ActorUserID: userID, Action: audit.ActionAccountDeleted}); err != nil {
 		return err
 	}
@@ -411,6 +455,26 @@ func (s *PGStore) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 		return fmt.Errorf("commit deletion: %w", err)
 	}
 	return nil
+}
+
+// lockOwnedCircles returns the ids of every circle created by the user,
+// locked FOR UPDATE for the surrounding deletion transaction.
+func lockOwnedCircles(ctx context.Context, tx pgx.Tx, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := tx.Query(ctx,
+		`SELECT id FROM circles WHERE created_by = $1 FOR UPDATE`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("lock owned circles: %w", err)
+	}
+	defer rows.Close()
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan owned circle: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // ListDevices returns every device of the account with its live session (at

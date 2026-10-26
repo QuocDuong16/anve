@@ -8,6 +8,7 @@ package authtest
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -80,13 +81,15 @@ func (s *Store) SignIn(_ context.Context, in auth.SignInInput) (auth.User, auth.
 			DisplayName: in.DisplayName, AvatarURL: in.AvatarURL, GoogleSub: in.GoogleSub,
 			CreatedAt: time.Now().UTC()}
 		s.users[user.ID] = user
-	case in.GoogleSub != nil && user.GoogleSub == nil:
-		// Linking adopts the Google profile.
-		user.GoogleSub = in.GoogleSub
-		user.DisplayName = in.DisplayName
-		if in.AvatarURL != nil {
-			user.AvatarURL = in.AvatarURL
-		}
+	case in.GoogleSub != nil:
+		// Identity isolation, mirroring the PG store: a Google identity that
+		// fell through to the email lookup can only have found an account it
+		// must not take over.
+		return auth.User{}, auth.Session{}, fmt.Errorf(
+			"%w: email %q already belongs to another identity", auth.ErrIdentityConflict, in.Email)
+	case user.GoogleSub != nil:
+		return auth.User{}, auth.Session{}, fmt.Errorf(
+			"%w: email %q belongs to a Google account", auth.ErrIdentityConflict, in.Email)
 	}
 
 	var device *auth.Device

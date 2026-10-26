@@ -24,6 +24,15 @@ var (
 	ErrNotFound = errors.New("not found")
 	// ErrValidation covers malformed input that never reaches the store.
 	ErrValidation = errors.New("invalid request")
+	// ErrCircleHasMembers: the account owns a circle with other members and
+	// must dissolve it explicitly before deleting itself (M2 invariant: a
+	// populated circle is never dissolved as a side effect).
+	ErrCircleHasMembers = errors.New("circle has members")
+	// ErrIdentityConflict: the email already belongs to an account of the
+	// other identity type (Google vs development fixture). Matching emails
+	// are not proof of the same subject, so neither side may take the
+	// account over.
+	ErrIdentityConflict = errors.New("identity conflict")
 )
 
 // SignInInput carries everything the store needs to complete one sign-in
