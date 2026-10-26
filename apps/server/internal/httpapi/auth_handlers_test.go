@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,13 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/auth/authtest"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
 )
+
+// loopbackSources mirrors the allowlist config installs for a loopback
+// listener.
+var loopbackSources = []netip.Prefix{
+	netip.MustParsePrefix("127.0.0.0/8"),
+	netip.MustParsePrefix("::1/128"),
+}
 
 // testServer runs the full router with the real service on the fake store —
 // exactly what production runs minus PostgreSQL.
@@ -37,11 +45,19 @@ type userBody struct {
 
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
+	return newTestServerWithSources(t, loopbackSources)
+}
+
+func newTestServerWithSources(t *testing.T, sources []netip.Prefix) *testServer {
+	t.Helper()
 	store := authtest.NewStore()
 	svc := auth.NewService(store, nil, true)
 	return &testServer{
-		router: httpapi.NewRouter(httpapi.Deps{Version: "test", Auth: svc, DB: fakePinger{}}),
-		store:  store,
+		router: httpapi.NewRouter(httpapi.Deps{
+			Version: "test", Auth: svc, DB: fakePinger{},
+			DevLoginAllowedNetworks: sources,
+		}),
+		store: store,
 	}
 }
 
@@ -78,6 +94,11 @@ func (ts *testServer) do(t *testing.T, method, path string, body any, token stri
 		reader = bytes.NewReader(nil)
 	}
 	req := httptest.NewRequest(method, path, reader)
+	// httptest defaults to TEST-NET-1 (192.0.2.1), which the development
+	// login's source allowlist correctly refuses. Authenticated API calls
+	// are not network-restricted, so pinning loopback here also documents
+	// the deployment assumption: the fixture is a local tool.
+	req.RemoteAddr = "127.0.0.1:54321"
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -243,6 +264,7 @@ func TestMalformedBodiesAreRejected(t *testing.T) {
 	ts := newTestServer(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/dev-login", bytes.NewReader([]byte("not json")))
+	req.RemoteAddr = "127.0.0.1:54321"
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	ts.router.ServeHTTP(rec, req)

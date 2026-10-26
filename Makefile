@@ -7,7 +7,7 @@
 
 .PHONY: help clean \
 	toolchain-install toolchain-check \
-	docker-up docker-down docker-logs docker-clean docker-config \
+	docker-up docker-down docker-logs docker-clean docker-config compose-lint \
 	up down logs \
 	migrate-up migrate-down \
 	server-run server-build server-test server-test-race server-test-integration server-fix server-lint server-check \
@@ -59,6 +59,10 @@ docker-clean: ## Stop the local stack and delete its volumes
 
 docker-config: ## Validate the effective Docker Compose configuration
 	$(DOCKER_COMPOSE) config
+
+compose-lint: ## Verify that no Compose port is published beyond loopback
+	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the Compose exposure." >&2; exit 1; }
+	python3 scripts/check_compose_ports.py
 
 # Short aliases for the same targets.
 up: docker-up
@@ -155,7 +159,7 @@ deps-lint: ## Validate the Dependabot configuration against its schema
 	python3 scripts/check_dependabot.py
 
 ##@ Quality gate
-quality-check: toolchain-check server-check android-check contracts-lint deps-lint ## Run the full CI quality gate
+quality-check: toolchain-check server-check android-check contracts-lint deps-lint compose-lint ## Run the full CI quality gate
 
 ##@ Cleanup
 clean: android-clean ## Remove all generated build outputs

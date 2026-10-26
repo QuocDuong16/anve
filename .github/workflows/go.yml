@@ -149,3 +149,6 @@ jobs:
 
       - name: Validate the Dependabot configuration
         run: python3 scripts/check_dependabot.py
+
+      - name: Validate the local Compose network exposure
+        run: python3 scripts/check_compose_ports.py

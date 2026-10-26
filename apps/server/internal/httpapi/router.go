@@ -4,6 +4,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -39,6 +40,10 @@ type Deps struct {
 	Auth    *auth.Service
 	Circles *circles.Service
 	DB      Pinger
+	// DevLoginAllowedNetworks is the source-address allowlist for the
+	// development login. An empty list denies every request: the fixture
+	// fails closed rather than trusting the listener configuration alone.
+	DevLoginAllowedNetworks []netip.Prefix
 }
 
 // authRateLimitPerMinute and authRateLimitBurst blunt sign-in abuse from a
@@ -92,9 +97,16 @@ func NewRouter(deps Deps) chi.Router {
 			authGroup.With(RateLimit(authLimiter)).Post("/google", googleSignInHandler(svc))
 			authGroup.With(RateLimit(authLimiter)).Post("/refresh", refreshHandler(svc))
 			// The development login is only mounted when explicitly enabled
-			// outside production (ADR 0002); production never registers it.
+			// in development (ADR 0002, ADR 0005); production never
+			// registers it.
+			// The network guard is a second, independent gate: even a
+			// misconfigured listener cannot expose the fixture to an
+			// unexpected source network.
 			if svc.DevLoginEnabled() {
-				authGroup.With(RateLimit(authLimiter)).Post("/dev-login", devLoginHandler(svc))
+				authGroup.With(
+					RateLimit(authLimiter),
+					RequireDevNetwork(deps.DevLoginAllowedNetworks),
+				).Post("/dev-login", devLoginHandler(svc))
 			}
 		})
 

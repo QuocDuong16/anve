@@ -83,7 +83,10 @@ func run() error {
 			logger.Warn("google sign-in disabled: AUTH_GOOGLE_CLIENT_ID is empty")
 		}
 		if cfg.AuthDevLoginEnabled {
-			logger.Warn("development login is mounted (AUTH_DEV_LOGIN_ENABLED=true); never enable this in production")
+			logger.Warn("development login is mounted",
+				"listen_addr", cfg.ListenAddr,
+				"allowed_source_networks", len(cfg.AuthDevLoginNetworks),
+				"note", "this fixture mints sessions for arbitrary emails; never point it at production data")
 		}
 
 		store := auth.NewPGStore(pool)
@@ -94,9 +97,12 @@ func run() error {
 	}
 
 	server := &http.Server{
-		Addr: ":" + cfg.Port,
+		// ListenAddr is resolved by config: loopback in development unless
+		// explicitly overridden, mandatory outside development.
+		Addr: cfg.ListenAddr,
 		Handler: httpapi.NewRouter(httpapi.Deps{
 			Version: cfg.Version, Auth: authService, Circles: circlesService, DB: pool,
+			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
 		}),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,

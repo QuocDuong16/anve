@@ -157,6 +157,12 @@ paths:
         and unknown environments refuse to start with the flag). The endpoint
         therefore cannot exist in any other environment.
 
+        Network boundary: the request must originate from an address in the
+        server's development-login allowlist (loopback by default). Proxy
+        headers such as `X-Forwarded-For` are never trusted for this check.
+        A source outside the allowlist receives 403 `DEV_LOGIN_NETWORK_DENIED`
+        before any user or session is created.
+
         The fixture is an isolated identity: it refuses an email that already
         belongs to a Google-verified account, and a Google sign-in never links
         into a development-created account, so an arbitrary email can never
@@ -177,6 +183,14 @@ paths:
                 $ref: "#/components/schemas/SignInResponse"
         "400":
           description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: |
+            The request source is outside the configured development-login
+            network allowlist (code `DEV_LOGIN_NETWORK_DENIED`).
           content:
             application/json:
               schema:
