@@ -37,6 +37,15 @@ commits before the count (and is seen) or blocks until deletion commits
 the invite row, so the store retries a bounded number of times on
 PostgreSQL `40P01`/`40001`. `LeaveCircle` and `RedeemInvite` do the same.
 
+**Amendment (ADR 0005 §4):** the deletion transaction now locks the account
+row (`SELECT ... FOR UPDATE`) before scanning owned circles. That extends
+the same serialization to circle *creation*, whose foreign key holds a
+`KEY SHARE` on the account: deletion either observes the committed new
+circle and audits its dissolution, or the creation fails on the foreign
+key. Without the account lock, a circle created between the scan and the
+cascade could be removed without a member count or dissolution audit while
+both APIs reported success.
+
 ### 2. Development identities are isolated from Google identities
 
 Both sign-in paths may return 409 `IDENTITY_CONFLICT`:
@@ -96,6 +105,13 @@ achieved:
   old refresh token once and revokes the session; a rejected refresh
   clears the record. The record expires after seven days and a new
   sign-in never deletes it.
+
+**Amendment (ADR 0005 §3/§5):** the single record/key became a bounded
+encrypted queue (max 8 records, one id each, 7-day expiry per record) so
+two accounts signing out offline cannot overwrite each other; retries are
+per record with backoff. The user-facing message moved to an app-scoped
+notice published before the session is cleared and shown on the Sign-In
+destination, because Home state was disposed by the navigation.
 
 Account deletion clears the local session only after a 2xx response. Any
 HTTP failure keeps the account usable and retryable. A transport failure

@@ -108,7 +108,6 @@ Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M
 | `places` / `alerts` | Geofence events, verification, chống nhiễu | Planned (M5) |
 | `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
 | `notify` | Dispatcher FCM, lọc người nhận theo quyền | Planned (M6) |
-| `audit` | Ghi sự kiện privacy quan trọng | M1 (nền móng) |
 
 Nguyên tắc giữ nguyên: contract-first (đổi OpenAPI trước handler); API server
 chạy được không cần database cho đến khi tính năng đầu tiên cần; `log/slog`
@@ -190,8 +189,9 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 | Android device → Go API | **Không tin cậy** — mọi request từ client đều có thể giả mạo | Authorization per-request từ backend (không dựa UI); validation; idempotency; không tin timestamp client một cách mù quáng (ghi cả hai mốc) |
 | Internet → chi router | Bán tin cậy | Không dùng `middleware.RealIP` (spoofing `X-Forwarded-For` — bất biến Implemented); allowlist trusted-proxy là việc của deployment |
 | Go API → PostgreSQL | Tin cậy nội bộ | Dev: postgres publish **loopback only** qua network `db-host`; production: database trên internal network, không publish port |
+| Development listener → dev-login fixture | Chỉ nên là máy dev | `LISTEN_ADDR` mặc định loopback; non-loopback cần opt-in + CIDR allowlist; route tự kiểm tra `RemoteAddr`, không tin proxy header; Compose publish `127.0.0.1` và `compose-lint` chặn publish ra ngoài |
 | Go API → FCM | Dịch vụ bên thứ ba | FCM chỉ nhận payload sự kiện, không chứa tọa độ; kênh một chiều từ dispatcher |
-| Device storage | Tin cậy thiết bị | Backup/data-extraction rules loại trừ `sharedpref` + `database` (Implemented); chính sách từng file Room quyết định trước khi dữ liệu được backup |
+| Device storage | Tin cậy thiết bị | Backup/data-extraction rules loại trừ `sharedpref` + `database` + `file/datastore` (session, installation id, pending-revocation queue; Implemented); chính sách từng file Room quyết định trước khi dữ liệu được backup |
 | Logs | — | Không log token, tọa độ nhạy cảm, credentials (quy tắc chung, cả Go và Android) |
 
 ## 6. Technical decisions đã chốt (tham chiếu)
@@ -203,6 +203,9 @@ Các ranh giới tin cậy và biện pháp tương ứng:
   identity dev/Google, audit một sự kiện một dòng trong transaction, session
   lifecycle offline, backup exclusion, installation identity, consent ≠
   tracking — [ADR 0004](../adr/0004-m1-m2-hardening.md).
+- Final M1/M2 hardening: listener/allowlist cho development login, hàng đợi
+  pending-revocation có giới hạn, deletion serialize với tạo Circle, thông
+  báo offline sign-out ở app scope — [ADR 0005](../adr/0005-network-boundary-and-offline-revocation.md).
 - Custom migrator (không golang-migrate), advisory lock, transaction per file,
   bookkeeping table `schema_migrations` do migrator sở hữu — Implemented, có
   integration test trong CI.

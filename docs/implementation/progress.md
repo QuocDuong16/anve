@@ -121,6 +121,43 @@ Verification levels for this pass:
   OS-level behavior.
 - **External Integration Blocked** — Google OAuth client (unchanged).
 
+## M1/M2 final hardening (2026-10-26, second pass)
+
+A follow-up review of the same scope found four remaining issues. Decisions
+are recorded in [ADR 0005](../adr/0005-network-boundary-and-offline-revocation.md).
+
+| Finding | Root cause | Fix and evidence |
+| --- | --- | --- |
+| Development login could be exposed to the network | The environment flag said nothing about the listener; the server bound every interface and Compose published `0.0.0.0` | `LISTEN_ADDR` (loopback by default, mandatory outside development); non-loopback dev login requires an explicit opt-in plus a CIDR allowlist; a route-level source check never trusts proxy headers; catch-all prefixes are refused; Compose publishes loopback only and pins `172.28.0.0/24` for the container source; `compose-lint` guards the mappings. Config tests, router tests (foreign source with spoofed `X-Forwarded-For` → 403), runtime smoke |
+| Offline sign-outs overwrote each other | One DataStore key held one record, so account B's sign-out replaced account A's | Bounded (8) encrypted queue, independent ids, in-place token rotation, 7-day expiry per record, atomic read-merge-write; retry at app start walks every record, drops 401s, reschedules transport/server failures with 30s→6h backoff. Repository tests A–G: two accounts offline, partial success, process restart, rotation failure then later retry, expiry, active-session isolation, concurrent retry + sign-out |
+| A bare 401 could be reported as a confirmed revocation | The repository treated `UNAUTHENTICATED` as "session already dead", even when the interceptor's refresh had failed transiently | Confirmation now requires the refresh token to be rejected too (the interceptor clears storage); a transient refresh failure stays `LocalOnly`, and a rotation before the failed retry queues the **new** refresh token. Interceptor-wired repository tests: dead refresh → confirmed, 500 refresh → pending, rotated-then-500 → new token queued |
+| Deletion raced circle creation | Deletion locked owned circles but not the account row; a circle committed after the scan was cascaded away with no member count or dissolution audit while both APIs reported success | `SELECT … FOR UPDATE` on the account row before the circle scan; creation's FK `KEY SHARE` now serializes against it. Deterministic PostgreSQL tests: create-wins (exactly one `circle.dissolved` with `via=account_deletion`), delete-wins (creation fails on the foreign key, no `circle.created`), forced deadlock recovered by the bounded retry with one audit row |
+| Offline sign-out feedback disappeared before the user saw it | The message lived in Home screen state, which the session clear disposed immediately | App-scoped `SessionNoticeStore`; the repository publishes before clearing the session; Sign-In renders a dismissible card with the exact limitation, and a successful sign-in clears it. Repository test proves publish-before-clear and that a new sign-in clears a stale notice; ViewModel test proves the Home state no longer owns the message |
+
+Verification levels for this pass:
+
+- **Implemented + Automated Verified** — Go config/router tests, PostgreSQL
+  integration tests including the deterministic deletion/creation races
+  (race detector, scratch databases), Android JVM repository/ViewModel/queue
+  tests, `make quality-check`, CI.
+- **Runtime Verified (2026-10-26, local binary + Compose stack)** — with
+  `ENVIRONMENT=development AUTH_DEV_LOGIN_ENABLED=true` and no
+  `LISTEN_ADDR`, the process bound `127.0.0.1:18081` only and dev login from
+  loopback returned 200. Startup refused `0.0.0.0` + dev login without the
+  opt-in, refused `0.0.0.0/0` in the allowlist, and refused a non-development
+  environment without `LISTEN_ADDR`. The explicit network mode
+  (`AUTH_DEV_LOGIN_ALLOW_NETWORK=true` + `127.0.0.0/8,172.28.0.0/24`) bound
+  the requested address and served the fixture from an allowed source. The
+  rebuilt Compose stack publishes both ports on `127.0.0.1` only, pins
+  `anve-edge` to `172.28.0.0/24`, reports `devLogin: false` by default, and
+  served a dev login through the published loopback port when the container
+  was started with the opt-in and the pinned-subnet allowlist (`200`, then
+  reverted to the default configuration).
+- **Pending Device Validation** — emulator/real-device connectivity,
+  on-device backup exclusion, the Sign-In notice presentation and the
+  offline-retry pass across process death still need a physical-device run;
+  the JVM suites cover the logic, not the OS behavior.
+
 ## Known gaps / external blockers
 
 - **Google OAuth client ID not created** (needs Google Cloud project
@@ -131,6 +168,15 @@ Verification levels for this pass:
   of the app in this session. The Android CI proves build/tests only.
 - Refresh-token reuse detection (rotation history) intentionally absent
   (ADR 0002 "Bad"); rotated-out tokens simply fail.
+- **Offline revocation is best-effort.** If the device never reconnects, the
+  server-side session lives until its refresh token expires. If the process
+  dies between a successful rotation and persisting the new token, the next
+  retry receives 401 and drops the record; the app does not claim the
+  session was revoked (ADR 0005 §3).
+- **Development login network mode trusts the allowlisted network.** Any
+  host inside `AUTH_DEV_LOGIN_ALLOWED_CIDRS` can mint sessions while the
+  fixture is enabled. Compose limits this to the pinned bridge and publishes
+  loopback only; keep the CIDR as narrow as possible and prefer a tunnel.
 
 ## Next engineering tasks (M3 — Location Engine)
 

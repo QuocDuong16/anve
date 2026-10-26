@@ -14,38 +14,79 @@ The API base URL is a BuildConfig field:
   debug network security config allows cleartext **only** for `10.0.2.2`,
   `localhost` and `127.0.0.1`.
 - Override with `-PANVE_API_URL=https://your-host` (or a `gradle.properties`
-  entry) — needed for real devices on the same LAN (use your machine's LAN
-  IP and an HTTPS or deliberately-permitted setup) or deployed backends.
+  entry) for a deployed backend. For a physical device on the same machine,
+  prefer `adb reverse tcp:8080 tcp:8080` and
+  `-PANVE_API_URL=http://127.0.0.1:8080` over exposing the dev server on the
+  LAN (see the development sign-in section).
 - Release builds have **no default URL** that works: pass a real deployment
   with `-PANVE_API_URL=...` when assembling release artifacts.
 
 ## Development sign-in (no Google project yet)
 
-1. Start the stack with the development login mounted:
+The fixture only works when the server runs with
+`ENVIRONMENT=development` and `AUTH_DEV_LOGIN_ENABLED=true`, and the server
+additionally enforces a source-address allowlist. Two supported setups keep
+that allowlist local.
 
-   ```bash
-   make docker-up
-   AUTH_DEV_LOGIN_ENABLED=true DATABASE_URL=... PORT=8080 go run ./cmd/api  # from apps/server
-   ```
+### Option 1 — Go binary on the host (loopback only)
 
-   The Compose `api` service does not mount the dev login; run the binary
-   locally as above (or add the env var to `infra/docker/docker-compose.yml`
-   temporarily) and point the app at it.
+```bash
+cd apps/server
+DATABASE_URL='postgres://anve:anve@localhost:5432/anve?sslmode=disable' \
+AUTH_DEV_LOGIN_ENABLED=true \
+go run ./cmd/api
+```
 
-2. In the app (debug builds only), the sign-in screen shows a
-   "Đăng nhập phát triển" section when the server advertises `devLogin`.
-   Enter any email — the backend creates the account and returns a real
-   session; the flow is identical to production past the identity check.
+With no `LISTEN_ADDR`, the binary binds `127.0.0.1:8080` and allows only
+loopback sources.
+
+- **Emulator:** the debug BuildConfig default `http://10.0.2.2:8080`
+  resolves to the host loopback, so no extra configuration is needed.
+- **Physical device over USB:** run `adb reverse tcp:8080 tcp:8080`, then
+  build with `-PANVE_API_URL=http://127.0.0.1:8080` (the debug network
+  security config permits cleartext for loopback). The request arrives at
+  the host loopback through ADB.
+
+### Option 2 — Docker Compose
+
+The API container listens on `0.0.0.0:8080` internally (it must accept the
+port mapping), but the host port is published on `127.0.0.1` only. To mount
+the fixture in the container, add these to `.env` and restart the stack:
+
+```bash
+AUTH_DEV_LOGIN_ENABLED=true
+AUTH_DEV_LOGIN_ALLOW_NETWORK=true
+AUTH_DEV_LOGIN_ALLOWED_CIDRS=127.0.0.0/8,::1/128,172.28.0.0/24
+```
+
+The last CIDR is the pinned Compose `edge` bridge (`172.28.0.0/24`); Docker
+rewrites the source address of a published connection to that network. If
+the subnet collides with an existing Docker network on your machine, change
+the `edge` `ipam` pin and this allowlist together. The emulator still uses
+`10.0.2.2:8080`; nothing outside the host can reach the port.
+
+### Security boundary
 
 The development login is a privileged test fixture, not an authentication
-provider (ADR 0004). The server refuses to start with it enabled unless
-`ENVIRONMENT` is exactly `development` — staging, production, mis-cased and
-unknown environment names are all rejected — and release builds never render
-the section. Development identities are isolated from Google identities:
-neither side can sign into an account created by the other, so an arbitrary
-dev-login email can never take over a real Google account. Keep the flag off
-any host reachable from the Internet and never point it at a production
-database.
+provider (ADR 0002, ADR 0005):
+
+- The server refuses to start with the fixture enabled unless
+  `ENVIRONMENT` is exactly `development`; staging, production, mis-cased and
+  unknown names are rejected.
+- It also refuses a non-loopback `LISTEN_ADDR` unless
+  `AUTH_DEV_LOGIN_ALLOW_NETWORK=true` **and** a non-catch-all
+  `AUTH_DEV_LOGIN_ALLOWED_CIDRS` are set. The route checks the request
+  source itself; `X-Forwarded-For` and `X-Real-IP` are ignored.
+- The route is not mounted at all when the flag is false, and release
+  builds never render the form (UI hygiene — the server check is the
+  boundary).
+- Development identities are isolated from Google identities: neither side
+  can sign into an account created by the other, so an arbitrary dev-login
+  email can never take over a real Google account.
+- Never enable the fixture on a host reachable from an untrusted network,
+  and never point it at a production database. For genuinely remote
+  development, tunnel to the loopback listener (`ssh -L` or `adb reverse`)
+  instead of widening the allowlist.
 
 ## Google Sign-In (production path)
 

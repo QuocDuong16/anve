@@ -9,11 +9,13 @@
 > Trạng thái: các kiểm soát **đã Implemented** trong M1/M2 là: consent switch
 > (mặc định TẮT, audit trong cùng transaction), audit ownership một sự kiện
 > một dòng trong transaction (ADR 0004), xóa tài khoản không giải tán nhóm có
-> thành viên, cách ly identity dev/Google, loại trừ `sharedpref`, `database`
-> và `file/datastore` khỏi backup/transfer, và router chưa dùng
-> `middleware.RealIP` (lý do spoofing). Việc thu thập/phân phát vị trí, thu
-> hồi tức thì phía phân phát, retention và xóa history vẫn là **Planned** cho
-> M3–M5.
+> thành viên và được serialize với cả tạo nhóm lẫn redeem (ADR 0005 §4), cách
+> ly identity dev/Google, development login chỉ loopback/allowlist và không
+> mount ngoài development, hàng đợi pending-revocation mã hóa có giới hạn,
+> loại trừ `sharedpref`, `database` và `file/datastore` khỏi backup/transfer,
+> và router chưa dùng `middleware.RealIP` (lý do spoofing). Việc thu
+> thập/phân phát vị trí, thu hồi tức thì phía phân phát, retention và xóa
+> history vẫn là **Planned** cho M3–M5.
 
 ## 1. Nguyên tắc nền tảng
 
@@ -86,12 +88,17 @@ Quy tắc:
   xóa tài khoản — server trả `CIRCLE_HAS_MEMBERS` và app hướng dẫn giải tán
   nhóm trước; Circle rỗng của chủ tài khoản bị xóa trong cùng transaction và
   có audit `circle.dissolved`. Không có đường xóa tài khoản nào tự động giải
-  tán nhóm của người khác.
+  tán nhóm của người khác. Transaction xóa khóa **account row** trước khi
+  quyết định, nên một Circle đang được tạo đồng thời hoặc được nhìn thấy và
+  audit đầy đủ, hoặc việc tạo thất bại — không có cửa sổ cascade âm thầm
+  (ADR 0005 §4, test tất định).
 - **Đăng xuất**: xóa phiên trên thiết bị luôn thành công, kể cả khi offline.
-  Nếu server không xác nhận được việc thu hồi, app giữ một bản ghi
-  pending-revocation đã mã hóa (không dùng được như session, hết hạn sau 7
-  ngày) và thử thu hồi lại ở lần mở sau; UI nói rõ giới hạn này trước khi
-  đăng xuất thay vì tuyên bố "đã đăng xuất mọi nơi". Chi tiết: ADR 0004.
+  Nếu server không xác nhận được việc thu hồi, app thêm một bản ghi vào **hàng
+  đợi pending-revocation đã mã hóa** (tối đa 8 bản ghi, mỗi bản ghi độc lập
+  với id riêng, hết hạn sau 7 ngày kể từ lúc đăng xuất, không dùng được như
+  session) và thử thu hồi lại ở lần mở sau với backoff. Màn hình đăng nhập nói
+  rõ server chưa xác nhận thay vì tuyên bố "đã đăng xuất mọi nơi"; thông báo
+  sống ở app scope nên không mất khi navigation. Chi tiết: ADR 0005 §3 và §5.
 - **Rời Circle** chấm dứt mọi quyền đang cấp; dữ liệu vị trí của người đó đối
   với Circle đó được xử lý theo chính sách retention, không giữ "tàng hình".
 - Các hành động xóa đều xuất hiện trong audit log.
@@ -107,6 +114,13 @@ Quy tắc:
 - **Kiểm soát thiết bị/phiên đăng nhập:** thành viên xem được thiết bị và phiên
   của **chính mình** và có thể xóa phiên lạ — không ai xem được thiết bị của
   người khác.
+- **Development login là fixture nội bộ, không phải auth provider:** chỉ mount
+  khi `ENVIRONMENT=development`; listener mặc định loopback; nếu buộc phải
+  nghe non-loopback thì cần `AUTH_DEV_LOGIN_ALLOW_NETWORK=true` + CIDR
+  allowlist tường minh (catch-all bị từ chối) và endpoint tự kiểm tra địa chỉ
+  nguồn — không tin `X-Forwarded-For`/`X-Real-IP`. Compose chỉ publish cổng
+  trên `127.0.0.1`; `compose-lint` chặn cấu hình publish ra ngoài. Không nhúng
+  shared secret vào APK/repo (ADR 0005 §1–2).
 
 ## 7. Audit các sự kiện quan trọng
 
@@ -157,10 +171,10 @@ Mỗi điều khiển privacy ở trên phải tồn tại ở **cả hai** tầ
   thực thi retention, ghi audit.
 - **Android client**: thu thập chỉ khi đang bật chia sẻ, dừng sạch khi quyền OS
   bị thu hồi, không log tọa độ, tôn trọng backup/data-extraction rules. Đã
-  Implemented: session blob và device id nằm trong DataStore đã mã hóa bằng
-  Keystore và bị loại trừ khỏi cloud backup lẫn device transfer
-  (`file/datastore`, API < 31 và API 31+); đăng xuất offline giữ
-  pending-revocation đã mã hóa thay vì âm thầm bỏ qua việc thu hồi.
+  Implemented: session blob và installation id nằm trong DataStore đã mã hóa
+  bằng Keystore và bị loại trừ khỏi cloud backup lẫn device transfer
+  (`file/datastore`, API < 31 và API 31+); đăng xuất offline giữ một **hàng
+  đợi** pending-revocation đã mã hóa thay vì âm thầm bỏ qua việc thu hồi.
   Consent switch hiện chỉ ghi nhận đồng ý — app chưa thu thập vị trí trong
   bản này và UI nói rõ điều đó; Location Engine (M3) sẽ thêm permission flow
   và foreground-service notification riêng.

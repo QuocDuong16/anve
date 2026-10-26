@@ -95,6 +95,12 @@ Bằng chứng đã xác minh (chi tiết ở [`../implementation/progress.md`](
   và UI nói rõ giới hạn; backup/transfer loại trừ `file/datastore`. Chi tiết
   và bằng chứng:
   [`../implementation/progress.md`](../implementation/progress.md).
+- Final hardening 2026-10-26 (ADR 0005): listener mặc định loopback,
+  non-development bắt buộc `LISTEN_ADDR`, dev login cần thêm allowlist địa
+  chỉ nguồn (Compose chỉ publish loopback — `compose-lint` bảo vệ); pending
+  revocation là hàng đợi mã hóa có giới hạn (8 bản ghi × 7 ngày) với retry
+  độc lập/backoff; thông báo đăng xuất offline sống ở app scope và hiển thị
+  trên màn hình đăng nhập, không bị mất khi navigation.
 
 Còn thiếu (giữ milestone ở mức này, không nâng lên "hoàn thành tuyệt đối"):
 
@@ -134,6 +140,12 @@ của người khác; Circle rỗng bị xóa trong cùng transaction với audi
 `circle.dissolved`; deletion race-safe với redeem (khóa circle + retry
 deadlock, có integration test 5 round). Audit mỗi mutation đúng một dòng
 trong transaction, không còn duplicate giữa store và service.
+
+Final hardening 2026-10-26 (ADR 0005 §4): deletion khóa **account row**
+trước khi quét Circle, nên race với **tạo Circle** được xử lý tất định —
+test dùng lock-wait barrier chứng minh create-thắng (dissolution audit đúng
+một lần), delete-thắng (create fail FK, không có `circle.created`) và
+deadlock được retry với đúng một audit row.
 
 Còn thiếu: field validation trên thiết bị thật; invite **link** (deep link)
 chưa làm — hiện nhập mã thủ công (đã ghi nhận ở progress.md).

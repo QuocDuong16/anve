@@ -28,11 +28,13 @@ chuyên nghiệp.
 
 ## Trạng thái phát triển
 
-Dự án đang ở giai đoạn **nền tảng (M0 — Foundation)**: toolchain, CI, database
-migrations và infrastructure đã hoàn thành và được xác minh, cùng một Android
-app với splash screen. **Chưa có tính năng sản phẩm nào được hiện thực** — toàn
-bộ phạm vi chức năng là Planned. Trạng thái chi tiết từng mốc ở
-[`docs/product/roadmap.md`](docs/product/roadmap.md).
+Dự án đã hoàn thành **nền tảng M0** và hai mốc **M1 (authentication, thiết bị,
+privacy foundation)** và **M2 (Family Circle)** ở mức backend + client logic,
+với integration test trên PostgreSQL/PostGIS và Android JVM test trong CI.
+**Chưa có Location Engine/Live Map** — toàn bộ phạm vi từ M3 trở đi vẫn là
+Planned. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
+[`docs/product/roadmap.md`](docs/product/roadmap.md) và
+[`docs/implementation/progress.md`](docs/implementation/progress.md).
 
 ![Màn hình splash của AnVề](docs/screenshots/anve-splash.png)
 
@@ -44,6 +46,7 @@ Tổng quan các nhóm tính năng hướng tới. Đặc tả đầy đủ và 
 | Nhóm chức năng | Mô tả | Trạng thái |
 | --- | --- | --- |
 | Nền tảng M0 | Splash screen, health/meta API, migrations, CI, toolchain | **Implemented — Verified** |
+| Xác thực & phiên | Google/dev login, session opaque có rotation, thiết bị, xóa tài khoản | **Implemented — Verified** (M1) |
 | Family Circle | Nhóm gia đình, invite, ủy quyền theo chủ thể dữ liệu | **Implemented — Verified** (M2) |
 | Live Map | Bản đồ thành viên gần thời gian thực, last known location | Planned (M4) |
 | Smart Tracking | Location Engine thích ứng, tiết kiệm pin, chạy nền đúng quy trình | Planned (M3) |
@@ -100,6 +103,17 @@ flowchart LR
 
 \* *Các dependency Android đánh dấu sao chưa được thêm vào project — chúng thuộc
 các milestone tương ứng và sẽ được bổ sung khi hiện thực, không thêm trước.*
+
+### Local stack & development login
+
+`make docker-up` chỉ publish cổng API và PostgreSQL trên `127.0.0.1`; máy khác
+trong LAN không truy cập được. Chạy API trực tiếp (không Docker) mặc định bind
+`127.0.0.1:8080`. Development login chỉ mount khi
+`ENVIRONMENT=development` và `AUTH_DEV_LOGIN_ENABLED=true`, và còn phải qua
+allowlist địa chỉ nguồn; xem
+[`docs/implementation/setup-android.md`](docs/implementation/setup-android.md).
+`make compose-lint` (chạy trong `make quality-check` và CI) fail nếu một port
+Compose bị publish ra ngoài loopback.
 
 ## Roadmap
 

@@ -74,19 +74,22 @@ Requirements that shape the decision:
 ### Development sign-in (explicit debug-only mode)
 
 Before the Google Cloud project is configured, backend and app development
-needs a working session flow. `AUTH_DEV_LOGIN_ENABLED=true` (and
-`ENVIRONMENT != production`, enforced at startup) exposes
-`POST /api/v1/auth/dev-login`, which signs in an arbitrary email without a
-Google token. It is:
+needs a working session flow. `AUTH_DEV_LOGIN_ENABLED=true` (in development)
+exposes `POST /api/v1/auth/dev-login`, which signs in an arbitrary email
+without a Google token. It is:
 
-- refused at startup when `ENVIRONMENT=production` (config validation error,
-  the process does not start);
+- refused at startup unless `ENVIRONMENT` is exactly `development`
+  (hardened in ADR 0004: staging, production, mis-cased and unknown names all
+  fail), and network-restricted in ADR 0005: loopback listener by default, a
+  non-loopback listener needs an explicit opt-in plus a source CIDR
+  allowlist, and the route checks the real source address;
 - advertised as `devLogin: true` by the public auth-config endpoint so clients
   never guess; release servers never advertise it;
 - audited as `auth.dev_signin`.
 
 This is a deliberate development fixture, not a bypass that ships: it cannot
-exist in a production process by construction.
+exist in a production process by construction, and it cannot be reached from
+an unexpected network.
 
 ### Token storage on Android
 

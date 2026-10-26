@@ -37,8 +37,11 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
   timeout) **không** xóa phiên local; kết quả không rõ được đối soát bằng
   request có xác thực.
 - **Đăng xuất offline:** phiên local luôn bị xóa; nếu server không xác nhận,
-  một bản ghi pending-revocation đã mã hóa (hết hạn 7 ngày) được thử lại ở
-  lần mở sau. UI không tuyên bố server đã thu hồi khi chưa có xác nhận.
+  một bản ghi pending-revocation đã mã hóa được thêm vào **hàng đợi có giới hạn**
+  (tối đa 8 bản ghi, mỗi bản ghi hết hạn sau 7 ngày, không ghi đè lẫn nhau)
+  và được thử lại độc lập ở lần mở sau với backoff. Thông báo trên màn hình
+  đăng nhập nói rõ server **chưa** xác nhận thu hồi; UI không tuyên bố
+  "đã đăng xuất mọi nơi".
 - Đăng ký thiết bị theo **app installation id** do app sinh (ổn định qua
   restart/update/sign-out, mới sau reinstall; không đọc hardware id); liệt
   kê/thu hồi thiết bị của chính mình; cross-user access bị từ chối (có test).
@@ -48,12 +51,14 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
 - Error envelope thống nhất (`code/message/requestId`), rate limiting cho
   endpoint đăng nhập; `readyz` kiểm tra database.
 - Dev-only login chỉ mount khi `ENVIRONMENT=development` (staging/production/
-  unknown bị từ chối ngay khi khởi động) và **cách ly identity**: dev fixture
-  không thể đăng nhập vào tài khoản Google, Google không thể nhận tài khoản
-  dev (`IDENTITY_CONFLICT`).
-- Local data: session blob mã hóa Keystore trong DataStore, loại trừ khỏi
-  cloud backup và device transfer (`sharedpref`, `database`,
-  `file/datastore`).
+  unknown bị từ chối ngay khi khởi động), chỉ phục vụ từ allowlist địa chỉ
+  nguồn (mặc định loopback; non-loopback cần opt-in + CIDR tường minh; không
+  tin `X-Forwarded-For`), và **cách ly identity**: dev fixture không thể đăng
+  nhập vào tài khoản Google, Google không thể nhận tài khoản dev
+  (`IDENTITY_CONFLICT`).
+- Local data: session blob và hàng đợi pending-revocation mã hóa Keystore
+  trong DataStore, loại trừ khỏi cloud backup và device transfer
+  (`sharedpref`, `database`, `file/datastore`).
 
 Chưa xác minh: chạy thực tế trên thiết bị (field validation) và luồng Google
 với OAuth client thật (đang chờ cấu hình bên ngoài — xem
