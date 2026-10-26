@@ -21,16 +21,18 @@
     <string name="action_cancel">Hủy</string>
     <string name="home_sharing_title">Chia sẻ vị trí của tôi</string>
     <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
-    <string name="home_sharing_on_notice">Đang bật: khi có nhóm và quyền, vị trí của bạn sẽ được chia sẻ theo thiết lập này.</string>
+    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Ứng dụng chưa thu thập vị trí trong phiên bản này — việc thu thập chỉ bắt đầu khi tính năng vị trí được bật và bạn cấp quyền hệ thống.</string>
     <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
     <string name="home_device_revoke">Đăng xuất</string>
     <string name="home_sign_out">Đăng xuất</string>
+    <string name="home_sign_out_title">Đăng xuất thiết bị này?</string>
+    <string name="home_sign_out_body">Phiên trên thiết bị này sẽ bị xóa ngay. Nếu không có mạng, máy chủ có thể giữ phiên đến khi hết hạn — ứng dụng sẽ thử thu hồi lại ở lần mở sau.</string>
     <string name="home_delete_account">Xóa tài khoản và dữ liệu</string>
     <string name="home_rename_title">Tên hiển thị</string>
     <string name="home_rename_label">Tên mà người thân sẽ thấy</string>
     <string name="home_delete_title">Xóa tài khoản?</string>
-    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.</string>
+    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.\n\nNếu bạn là chủ nhóm còn thành viên, hãy vào Nhóm và giải tán nhóm trước: tài khoản sẽ không xóa được khi nhóm còn người khác.</string>
     <string name="home_delete_confirm">Xóa vĩnh viễn</string>
 
     <!-- Circle (M2) -->

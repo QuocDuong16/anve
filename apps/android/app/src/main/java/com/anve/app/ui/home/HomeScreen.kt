@@ -33,7 +33,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,10 +75,7 @@ private enum class HomeTab(val labelRes: Int) {
  * object) and the account tab. Later milestones add the map tab here.
  */
 @Composable
-fun HomeScreen(
-    container: AppContainer,
-    onSignedOut: () -> Unit,
-) {
+fun HomeScreen(container: AppContainer) {
     var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
     Scaffold(
         bottomBar = {
@@ -107,36 +103,27 @@ fun HomeScreen(
         Box(Modifier.padding(padding)) {
             when (tab) {
                 HomeTab.CIRCLE -> CircleScreen(container = container)
-                HomeTab.ACCOUNT -> AccountContent(
-                    container = container,
-                    onSignedOut = onSignedOut,
-                )
+                HomeTab.ACCOUNT -> AccountContent(container = container)
             }
         }
     }
 }
 
 @Composable
-private fun AccountContent(
-    container: AppContainer,
-    onSignedOut: () -> Unit,
-) {
+private fun AccountContent(container: AppContainer) {
     val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.factory(container.authRepository))
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.signedOut) {
-        if (state.signedOut) onSignedOut()
-    }
-
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
 
     HomeContent(
         state = state,
         onToggleSharing = viewModel::setLocationSharing,
         onRename = { showRenameDialog = true },
         onRevokeDevice = viewModel::revokeDevice,
-        onSignOut = { viewModel.signOut(onSignedOut) },
+        onSignOut = { showSignOutDialog = true },
         onDeleteAccount = { showDeleteDialog = true },
         onRetry = viewModel::refresh,
     )
@@ -151,10 +138,19 @@ private fun AccountContent(
             onDismiss = { showRenameDialog = false },
         )
     }
+    if (showSignOutDialog) {
+        SignOutDialog(
+            onConfirm = {
+                viewModel.signOut()
+                showSignOutDialog = false
+            },
+            onDismiss = { showSignOutDialog = false },
+        )
+    }
     if (showDeleteDialog) {
         DeleteAccountDialog(
             onConfirm = {
-                viewModel.deleteAccount(onDeleted = onSignedOut)
+                viewModel.deleteAccount()
                 showDeleteDialog = false
             },
             onDismiss = { showDeleteDialog = false },
@@ -230,12 +226,17 @@ fun HomeContent(
             }
             item {
                 HorizontalDivider()
-                OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = onSignOut,
+                    enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(stringResource(R.string.home_sign_out))
                 }
                 Spacer(Modifier.height(8.dp))
                 TextButton(
                     onClick = onDeleteAccount,
+                    enabled = !state.busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
@@ -378,6 +379,21 @@ private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank(),
             ) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.home_sign_out_title)) },
+        text = { Text(stringResource(R.string.home_sign_out_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.home_sign_out)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }

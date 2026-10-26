@@ -4,6 +4,8 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
+import retrofit2.http.Header
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -36,6 +38,16 @@ interface AnveApi {
     @POST("api/v1/auth/signout")
     suspend fun signOut(): Response<Unit>
 
+    /**
+     * Revokes a session whose token was already removed from local storage
+     * (the offline sign-out retry): the bearer header is passed explicitly
+     * because the interceptor has no session to attach.
+     */
+    @POST("api/v1/auth/signout")
+    suspend fun signOutWithAuthorization(
+        @Header("Authorization") authorization: String,
+    ): Response<Unit>
+
     @GET("api/v1/me")
     suspend fun me(): Response<UserDto>
 
@@ -44,7 +56,12 @@ interface AnveApi {
         @Body body: UpdateMeRequestDto,
     ): Response<UserDto>
 
-    @DELETE("api/v1/me")
+    /**
+     * Retrofit rejects `@Body` on a plain `@DELETE`; the contract requires
+     * the confirmation object, so the request is declared through @HTTP
+     * with hasBody = true (same verb and path).
+     */
+    @HTTP(method = "DELETE", path = "api/v1/me", hasBody = true)
     suspend fun deleteMe(
         @Body body: DeleteAccountRequestDto,
     ): Response<Unit>

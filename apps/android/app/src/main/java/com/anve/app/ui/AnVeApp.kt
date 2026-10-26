@@ -68,14 +68,7 @@ fun AnVeApp(container: AppContainer) {
                 SignInScreen(container = container, onSignedIn = { /* session flow reroutes */ })
             }
             composable(Routes.HOME) {
-                HomeScreen(
-                    container = container,
-                    onSignedOut = {
-                        navController.navigate(Routes.SIGN_IN) {
-                            popUpTo(Routes.HOME) { inclusive = true }
-                        }
-                    },
-                )
+                HomeScreen(container = container)
             }
         }
     }

@@ -8,6 +8,10 @@ import com.anve.app.data.auth.DataStoreSessionStorage
 import com.anve.app.data.auth.DeviceIdentity
 import com.anve.app.data.auth.SessionInterceptor
 import com.anve.app.data.circles.CircleRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import okhttp3.Interceptor
 
 /**
@@ -54,8 +58,16 @@ class AnVeApplication : Application() {
     lateinit var container: AppContainer
         private set
 
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Finishes a sign-out whose server revocation could not be delivered
+        // (offline sign-out). Best-effort and bounded: the record expires
+        // after PENDING_REVOCATION_TTL_MILLIS.
+        applicationScope.launch {
+            container.authRepository.retryPendingRevocation()
+        }
     }
 }

@@ -24,8 +24,23 @@ data class StoredSession(
 )
 
 /**
+ * A server-side revocation that a local sign-out could not deliver because
+ * the backend was unreachable. It is never usable as a session: it only
+ * feeds a best-effort retry that revokes the old session once the network
+ * allows it, and it expires after [PENDING_REVOCATION_TTL_MILLIS].
+ */
+@JsonClass(generateAdapter = false)
+data class PendingRevocation(
+    val refreshToken: String,
+    val recordedAtMillis: Long,
+)
+
+/** Retry window for an undelivered sign-out; older records are dropped. */
+const val PENDING_REVOCATION_TTL_MILLIS: Long = 7L * 24 * 60 * 60 * 1000
+
+/**
  * Durable session storage. Implementations must keep tokens encrypted at
- * rest (ADR 0002) — the DataStore implementation seals the JSON blob with
+ * rest (ADR 0002) — the DataStore implementation seals every blob with
  * [TokenCipher] before it ever reaches the file system.
  */
 interface SessionStorage {
@@ -33,6 +48,14 @@ interface SessionStorage {
     suspend fun current(): StoredSession?
     suspend fun save(session: StoredSession)
     suspend fun clear()
+
+    /** Records an undelivered server-side revocation (sealed at rest). */
+    suspend fun savePendingRevocation(pending: PendingRevocation)
+
+    /** Returns the pending revocation, or null when none or expired. */
+    suspend fun pendingRevocation(): PendingRevocation?
+
+    suspend fun clearPendingRevocation()
 }
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -48,6 +71,7 @@ class DataStoreSessionStorage(
 
     private val dataStore = context.applicationContext.sessionDataStore
     private val adapter = moshi.adapter(StoredSession::class.java)
+    private val pendingAdapter = moshi.adapter(PendingRevocation::class.java)
 
     override val session: Flow<StoredSession?> = dataStore.data.map { prefs ->
         decode(prefs[KEY_SESSION_BLOB])
@@ -66,7 +90,45 @@ class DataStoreSessionStorage(
         dataStore.edit { prefs -> prefs.remove(KEY_SESSION_BLOB) }
     }
 
+    override suspend fun savePendingRevocation(pending: PendingRevocation) {
+        val sealed = cipher.encrypt(pendingAdapter.toJson(pending).toByteArray(Charsets.UTF_8))
+        dataStore.edit { prefs ->
+            prefs[KEY_PENDING_REVOCATION] = encode(sealed)
+        }
+    }
+
+    override suspend fun pendingRevocation(): PendingRevocation? {
+        val pending = decodePending(dataStore.data.first()[KEY_PENDING_REVOCATION])
+        if (pending != null && isExpired(pending, System.currentTimeMillis())) {
+            clearPendingRevocation()
+            return null
+        }
+        return pending
+    }
+
+    override suspend fun clearPendingRevocation() {
+        dataStore.edit { prefs -> prefs.remove(KEY_PENDING_REVOCATION) }
+    }
+
     private fun decode(blob: String?): StoredSession? {
+        val plain = decryptBlob(blob) ?: return null
+        return try {
+            adapter.fromJson(String(plain, Charsets.UTF_8))
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun decodePending(blob: String?): PendingRevocation? {
+        val plain = decryptBlob(blob) ?: return null
+        return try {
+            pendingAdapter.fromJson(String(plain, Charsets.UTF_8))
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun decryptBlob(blob: String?): ByteArray? {
         if (blob.isNullOrBlank()) return null
         return try {
             val parts = blob.split(SEPARATOR)
@@ -75,7 +137,7 @@ class DataStoreSessionStorage(
                 Base64.getDecoder().decode(parts[0]),
                 Base64.getDecoder().decode(parts[1]),
             )
-            adapter.fromJson(String(cipher.decrypt(sealed), Charsets.UTF_8))
+            cipher.decrypt(sealed)
         } catch (_: Exception) {
             // A blob that cannot be decrypted (key rotated away by an OS
             // update, corrupted file) is equivalent to "signed out".
@@ -89,6 +151,10 @@ class DataStoreSessionStorage(
 
     companion object {
         private val KEY_SESSION_BLOB = stringPreferencesKey("session_blob")
+        private val KEY_PENDING_REVOCATION = stringPreferencesKey("pending_revocation")
         private const val SEPARATOR = "."
     }
 }
+
+internal fun isExpired(pending: PendingRevocation, nowMillis: Long): Boolean =
+    nowMillis - pending.recordedAtMillis > PENDING_REVOCATION_TTL_MILLIS
