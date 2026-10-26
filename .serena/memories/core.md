@@ -3,8 +3,10 @@
 Monorepo for AnVề: an Android (Jetpack Compose) client backed by a Go HTTP
 API and PostgreSQL/PostGIS. Modular monorepo per ADR 0001 (`docs/adr/`):
 one repo, one pinned toolchain, but each app keeps its own build system and
-its own CI workflow. Phase: M0–M2 implemented (auth/device/consent + Family Circle); M3+
-planned. Engineering session state lives in `docs/implementation/progress.md`
+its own CI workflow. Phase: M0–M3 implemented (auth/device/consent + Family
+Circle + location engine/ingestion/offline sync); M4+ planned. M3 is
+automated-verified and runtime-smoke-tested, but NOT field-validated on a
+device (battery/background/OEM). Engineering session state lives in `docs/implementation/progress.md`
 — read it first when resuming work.
 
 ## Source map
@@ -17,10 +19,11 @@ planned. Engineering session state lives in `docs/implementation/progress.md`
   - `internal/circles` — M2 domain: circles/memberships/invites; authorization enforced AT THE STORE (membership checked before any read: outsider→404, member-without-owner-role→403); one-circle-per-user unique index is the MVP invariant; invite redeem is atomic (FOR UPDATE, single winner); owner leaving a populated circle requires dissolve=true (cascades).
   - `internal/config` — env-based config. `LISTEN_ADDR` defaults to `127.0.0.1:<PORT>` in development and is mandatory in every other environment (fail closed). Refuses `AUTH_DEV_LOGIN_ENABLED` unless `ENVIRONMENT` is exactly `development`; a non-loopback listener additionally needs `AUTH_DEV_LOGIN_ALLOW_NETWORK=true` plus a non-catch-all `AUTH_DEV_LOGIN_ALLOWED_CIDRS`.
   - `internal/httpapi` also installs `RequireDevNetwork` on the dev-login route: it checks `RemoteAddr` against the configured prefixes and never trusts `X-Forwarded-For`/`X-Real-IP`. An empty allowlist denies every request; a blocked source gets 403 `DEV_LOGIN_NETWORK_DENIED`.
-- `apps/android` — app `com.anve.app`; `data/` (api Retrofit+Moshi, auth token storage) + `ui/` grouped by feature (`splash`, `signin`, `home`, `theme`); `AppContainer` is the manual DI root.
+  - `internal/locations` — M3 domain: batch validation (ranges/NaN/timestamp/bounds), transactional authorization (user FOR SHARE → session/device FOR SHARE → membership FOR SHARE), idempotent insert with unique (user_id,event_id), atomic batch semantics, retention purge. Contract codes: LOCATION_BATCH_INVALID/TOO_LARGE, LOCATION_EVENT_TOO_OLD, LOCATION_CONSENT_REQUIRED, LOCATION_CIRCLE_REQUIRED, DEVICE_NOT_AUTHORIZED, LOCATION_TEMPORARILY_UNAVAILABLE.
+- `apps/android` — app `com.anve.app`; `data/` (api Retrofit+Moshi, auth token storage, `data/location` Room queue + WorkManager sync) + `tracking/` (provider, adaptive policy, coordinator, foreground service, metrics) + `ui/` grouped by feature (`splash`, `signin`, `home`, `circle`, `tracking`, `theme`); `AppContainer` is the manual DI root.
 - `packages/api-contracts/openapi.yaml` — the HTTP contract; single source of truth for the API surface.
 - `infra/docker/docker-compose.yml` — local stack (postgres/postgis, one-shot `migrate`, `api`); always runs with the repo root as project directory so `.env` and relative paths work the same locally and in CI. EVERY published port is loopback-only: postgres `127.0.0.1:$POSTGRES_PORT` and API `127.0.0.1:$API_PORT`. The API container sets `LISTEN_ADDR=0.0.0.0:8080` (it must accept the port mapping) and the `edge` bridge is pinned to `172.28.0.0/24` so the dev-login source allowlist can name it. Postgres uses a dedicated, otherwise-empty `db-host` bridge network: Docker does not forward published ports for containers whose only network is `internal: true`, so without it `localhost:5432` silently refuses connections.
-- `infra/migrations` — ordered SQL migrations applied by the custom migrator in `apps/server/cmd/migrate` (not golang-migrate). The migrator owns `schema_migrations` (created in `ensureBookkeepingTable`) and serializes runs with a `pg_advisory_lock`; business migrations must never create or drop the bookkeeping table — `0001_extensions.down.sql` is a deliberate no-op for that reason. Integration tests for the migrator live in `apps/server/cmd/migrate` (skipped without `TEST_DATABASE_URL`; need a PostGIS-capable server).
+- `infra/migrations` — ordered SQL migrations applied by the custom migrator in `apps/server/cmd/migrate` (not golang-migrate). The migrator owns `schema_migrations` (created in `ensureBookkeepingTable`) and serializes runs with a `pg_advisory_lock`; business migrations must never create or drop the bookkeeping table — `0001_extensions.down.sql` is a deliberate no-op for that reason. `0004_locations` adds `location_points` (PostGIS geography, unique (user_id,event_id), user/device/capture-time/GIST indexes, FK cascade to users/devices). Integration tests for the migrator live in `apps/server/cmd/migrate` (skipped without `TEST_DATABASE_URL`; need a PostGIS-capable server).
 - `docs/adr` — accepted architecture decisions.
 - `scripts/` — toolchain drift check (`check_toolchain_versions.sh`), Dependabot schema validation (`check_dependabot.py`) and Compose exposure validation (`check_compose_ports.py`, Make target `compose-lint`, also a CI repository job): fails if any Compose port is published beyond loopback.
 
@@ -37,7 +40,16 @@ planned. Engineering session state lives in `docs/implementation/progress.md`
 - Device identity is an APP INSTALLATION identity: stable across restarts/updates/sign-out, new after reinstall/factory reset; no hardware identifier is read. The server keys `devices` on (user, client_device_id) and treats it accordingly.
 - `middleware.RealIP` is deliberately not used in the router (X-Forwarded-For spoofing); a trusted-proxy allowlist is a deployment-time concern.
 - The dev database is published on loopback only; production deployments keep the database on an internal network with no published port.
-- Android backup/transfer rules exclude `sharedpref`, `database` AND `file/datastore` (Preferences DataStore lives in files/datastore, not sharedpref — this is where the sealed session blob and installation id are) in both `backup_rules.xml` (API < 31) and `data_extraction_rules.xml` (API 31+, cloud backup and device transfer). The per-file policy for a future Room database (location history, offline queue) is still open.
+
+M3 location invariants (ADR 0006):
+- Ingestion is one atomic batch (1–200 events, 512 KiB), authenticated only by the session. The body's `clientDeviceId` must equal the session's device. User id never comes from the body.
+- Authorization is inside the write transaction: `users FOR SHARE` (consent + account deletion serialization) → `sessions JOIN devices FOR SHARE` (sign-out/device revocation) → membership `FOR SHARE` (Circle leave). No consent cache. A revoked session/device or account that commits first is invisible to the batch; a batch that locks first commits and is then cascaded by the revocation.
+- Idempotency is `(user_id, event_id)` + `ON CONFLICT DO NOTHING`; duplicates are reported, not inserted. `recorded_at` is preserved; `received_at` is server time. Future >2m rejected; capture older than retention rejected.
+- Retention: `LOCATION_RETENTION_DAYS` (default 30, 1–365) measured from capture time; purge runs at startup and hourly.
+- Android: `TrackingManager` (two dimensions: motion IDLE/STATIONARY/MOVING/JOURNEY and operational ACTIVE/DEGRADED/OFFLINE/PAUSED) only reports `activelyTracking` when the service AND provider are running. FGS is `location`, `START_NOT_STICKY`, notification + stop action, no BOOT_COMPLETED. Process death persists intent and surfaces `recoveryRequired` rather than auto-restarting.
+- Consent revocation is local-first: write `pending_consent_revocation` → stop acquisition/service → purge the Room queue → then call the server. Sync refuses all uploads while the flag is set and sends revocation first. Enabling is reported only after server confirmation. Consent mirror records its owner user id; another account's mirror is not trusted.
+- Room queue is owner-scoped, eventId PK, max 5,000 / 7 days, exported schema v1, no destructive migration, not app-level encrypted (documented threat model in ADR 0006 §6). WorkManager sync: unique + network constraint, 100/batch, 5 batches/pass, deletes only acknowledged ids, retries transport/5xx, drops only permanently invalid batch, stops/purges on server policy refusal.
+- Android backup/transfer rules exclude `sharedpref`, `database` AND `file/datastore` (Preferences DataStore lives in files/datastore, not sharedpref — this is where the sealed session blob and installation id are) in both `backup_rules.xml` (API < 31) and `data_extraction_rules.xml` (API 31+, cloud backup and device transfer). The Room database (`database` domain) stays out of both backup and device transfer; this is the per-file policy for M3. Room is not additionally encrypted at the application layer in M3 (private storage + OS FDE + backup exclusion + 7-day local retention; residual-risk decision in ADR 0006 §6).
 
 ## Product documentation
 
@@ -47,9 +59,12 @@ Proposed / Not in scope) and milestone plan live in `docs/product/`
 `roadmap.md`, `glossary.md`, `non-functional-requirements.md`) and
 `docs/architecture/overview.md`. These are the source of truth for product
 intent — check them before developing a feature, and update them when feature
-scope changes. Do not assume planned functionality is implemented: M0–M2 are implemented
-(automated-verified, pending on-device field validation); M3 and beyond are
-planned work described in documentation only. AGENTS.md has a
+scope changes. Do not assume planned functionality is implemented: M0–M3 are implemented
+(automated-verified and, for M3, runtime HTTP-smoke-tested; M3 still awaits
+on-device field validation for battery/background/OEM behavior); M4 and
+beyond are planned work described in documentation only. M3 has no Live Map,
+History, realtime distribution, geofencing, SOS or FCM — do not conflate
+ingestion with those later features. AGENTS.md has a
 "Product context & source of truth" section pointing to the same documents.
 
 ## Other memories

@@ -23,7 +23,7 @@
 | [M0 — Foundation](#m0--foundation) | Android, Go, database, CI, migration, toolchain | **Implemented — Verified** (mức nền tảng) |
 | [M1 — Auth & Privacy foundation](#m1--authentication-device-identity-privacy-foundation) | Authentication, device identity, privacy foundation | **Implemented — Verified** (backend + client logic; chờ field validation) |
 | [M2 — Family Circle](#m2--family-circle--membership-authorization) | Circle, membership, authorization | **Implemented — Verified** (backend + client logic; chờ field validation) |
-| [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | Planned |
+| [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, realtime, confidence engine | Planned |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Planned |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Planned |
@@ -163,10 +163,54 @@ hành động chủ động của người được mời) · ✅ rời nhóm ch
 background location đúng quy trình, ingestion API, Room durable queue, batch +
 retry + idempotency, location record có identity/timestamp/idempotency.
 
-**Exit criteria đề xuất:** chia sẻ hoạt động khi màn hình tắt; dữ liệu ghi
-bền vững không mất khi mất mạng; gửi lại không trùng; thứ tự thời gian đúng;
-tọa độ không vào log. **Bắt buộc field validation trên thiết bị thật** trước khi
-tuyên bố hoàn thành.
+**Status: Implemented — Automated Verified; Pending Field Validation.**
+Quyết định và threat model: [ADR 0006](../adr/0006-m3-location-engine.md).
+
+Bằng chứng đã xác minh (chi tiết ở
+[`../implementation/progress.md`](../implementation/progress.md)):
+
+- Contract-first: `POST /api/v1/locations/batch` (OpenAPI 0.3.0), atomic
+  batch 1–200 events, error codes ổn định (`LOCATION_BATCH_INVALID`,
+  `LOCATION_EVENT_TOO_OLD`, `LOCATION_CONSENT_REQUIRED`,
+  `LOCATION_CIRCLE_REQUIRED`, `DEVICE_NOT_AUTHORIZED`,
+  `LOCATION_TEMPORARILY_UNAVAILABLE`).
+- Migration `0004_locations`: PostGIS `GEOGRAPHY(Point, 4326)`, unique
+  `(user_id, event_id)`, indexes cho user/device/capture-time/GIST,
+  FK cascade tới users/devices.
+- `internal/locations`: validation (ranges, NaN/Inf, timestamp, batch
+  bounds), authorization trong transaction (user share lock → session/device
+  → membership), idempotent insert, retention purge; integration tests trên
+  PostgreSQL/PostGIS gồm concurrent same-event, consent revocation lock
+  ordering, device revocation ordering, account deletion cascade, backfill
+  order, retention.
+- Android: Fused Location Provider sau interface, policy thích ứng có
+  hysteresis/accuracy/stale/out-of-order rejection, foreground service type
+  `location` + notification + stop action, permission flow theo bước, Room
+  queue owner-scoped (5.000 điểm/7 ngày), WorkManager batch sync
+  (100/batch, 5 batch/pass) với network constraint, consent revocation
+  gửi trước upload; 148 JVM tests, lint, debug APK và release compile.
+- Runtime (2026-10-26, local binary + PostgreSQL/PostGIS): dev login →
+  Circle → consent ON → batch 200 accepted → retry trả duplicates → batch
+  không tăng row; foreign device claim 403; no-circle 409; consent OFF rồi
+  batch 409 và không thêm row; account deletion cascade hết row; retention
+  worker xóa đúng dòng 2 ngày tuổi khi API khởi động với
+  `LOCATION_RETENTION_DAYS=1`.
+
+Còn thiếu (giữ milestone ở mức này, **không** gọi là hoàn thành tuyệt đối):
+
+- **Field validation trên thiết bị thật** (Pixel/One UI/HyperOS): screen-off,
+  Battery Saver, Doze, process kill, reboot, GPS unavailable, permission
+  revoked, network loss, `adb reverse`/emulator connectivity, notification
+  visibility và OEM FGS kills.
+- **Chưa đo battery overhead** — các ngưỡng interval/displacement là
+  engineering defaults cần calibration; không có tuyên bố tiết kiệm pin.
+- Room queue không được mã hóa thêm ở tầng ứng dụng (ADR 0006 §6); chưa có
+  history UI/retention tùy chọn (M5).
+
+**Exit criteria:** ⏳ chia sẻ hoạt động khi màn hình tắt (field); ✅ dữ liệu
+bền vững + idempotent + event-time order (automated); ✅ tọa độ không vào
+log; ✅ server từ chối khi consent/Circle/device/session không hợp lệ.
+Field validation là điều kiện bắt buộc trước khi tuyên bố M3 hoàn thành.
 
 **Phụ thuộc:** M1–M2 (authorization để ai được gửi location).
 

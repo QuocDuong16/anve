@@ -28,11 +28,14 @@ chuyên nghiệp.
 
 ## Trạng thái phát triển
 
-Dự án đã hoàn thành **nền tảng M0** và hai mốc **M1 (authentication, thiết bị,
-privacy foundation)** và **M2 (Family Circle)** ở mức backend + client logic,
-với integration test trên PostgreSQL/PostGIS và Android JVM test trong CI.
-**Chưa có Location Engine/Live Map** — toàn bộ phạm vi từ M3 trở đi vẫn là
-Planned. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
+Dự án đã hoàn thành **M0 (foundation)**, **M1 (authentication, thiết bị,
+privacy foundation)**, **M2 (Family Circle)** và **M3 (Location Engine,
+consented ingestion, offline sync)** ở mức code + automated verification:
+PostgreSQL/PostGIS integration test, Android JVM test, lint/APK trong CI, cùng
+smoke test HTTP trên stack thật. M3 **chưa được field-validate trên điện thoại
+thật** — pin, hành vi nền, reboot và các giới hạn OEM vẫn là *Pending Field
+Validation*, không phải PASS. **Live Map (M4) chưa có**; phạm vi từ M4 trở đi
+vẫn là Planned. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
 [`docs/product/roadmap.md`](docs/product/roadmap.md) và
 [`docs/implementation/progress.md`](docs/implementation/progress.md).
 
@@ -49,11 +52,11 @@ Tổng quan các nhóm tính năng hướng tới. Đặc tả đầy đủ và 
 | Xác thực & phiên | Google/dev login, session opaque có rotation, thiết bị, xóa tài khoản | **Implemented — Verified** (M1) |
 | Family Circle | Nhóm gia đình, invite, ủy quyền theo chủ thể dữ liệu | **Implemented — Verified** (M2) |
 | Live Map | Bản đồ thành viên gần thời gian thực, last known location | Planned (M4) |
-| Smart Tracking | Location Engine thích ứng, tiết kiệm pin, chạy nền đúng quy trình | Planned (M3) |
+| Smart Tracking | Location Engine thích ứng, tiết kiệm pin, chạy nền đúng quy trình | **Implemented — Automated Verified** (M3); Pending Field Validation |
 | Location Confidence | Trạng thái độ mới/độ tin cậy của dữ liệu vị trí | Planned (M4) |
-| Location History | Hành trình theo ngày, phân biệt dữ liệu bù, retention, xóa | Planned (M5) |
-| Offline Sync | Room durable queue, batch, idempotency, preserve timestamps | Planned (M3) |
-| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Một phần — consent + audit + xóa tài khoản an toàn **Implemented** (M1); pause/thu hồi phân phát Planned (M3–M6) |
+| Location History | Hành trình theo ngày, phân biệt dữ liệu bù, retention, xóa | Planned (M5); server retention 30 ngày đã có ở M3 |
+| Offline Sync | Room durable queue, batch, idempotency, preserve timestamps | **Implemented — Automated Verified** (M3); Pending Field Validation |
+| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Consent + audit + xóa tài khoản (M1) và **consent/revocation tại ingestion + queue purge** (M3) **Implemented**; phân phát realtime/History theo quyền thuộc M4–M5 |
 | Place Alerts | Geofence cho địa điểm quan trọng, chống nhiễu, event time | Planned (M5) |
 | SOS & Emergency | Sự kiện cấp cứu, lifecycle, acknowledge qua FCM | Planned (M6) |
 | Safe Journey | Hành trình chủ động về đích, cảnh báo ngừng cập nhật | Planned (M7) |
@@ -75,8 +78,8 @@ component, data flows và các quyết định kỹ thuật chưa chốt.
 flowchart LR
     subgraph android["Android app — Kotlin + Jetpack Compose"]
         UI["UI features"]
-        LE["Location Engine (planned)"]
-        SQ["Offline queue — Room (planned)"]
+        LE["Location Engine + foreground service (M3)"]
+        SQ["Offline queue — Room + WorkManager (M3)"]
     end
     subgraph server["Go backend — modular monolith"]
         API["HTTP API — chi router"]
@@ -96,13 +99,13 @@ flowchart LR
 
 | Tầng | Công nghệ |
 | --- | --- |
-| Android | Kotlin, Jetpack Compose, Fused Location Provider*, Room*, WorkManager*, Google Maps SDK*, FCM*, Geofencing API* |
-| Backend | Go 1.27, chi router, pgx, PostgreSQL + PostGIS |
+| Android | Kotlin, Jetpack Compose, Fused Location Provider (M3), Room (M3), WorkManager (M3), Google Maps SDK*, FCM*, Geofencing API* |
+| Backend | Go 1.27, chi router, pgx, PostgreSQL + PostGIS (location ingestion + retention from M3) |
 | Contracts | OpenAPI (`packages/api-contracts/openapi.yaml`) — đổi contract trước handler |
 | Hạ tầng dev | Docker Compose (postgres/postgis + migrate + api), GitHub Actions, mise |
 
 \* *Các dependency Android đánh dấu sao chưa được thêm vào project — chúng thuộc
-các milestone tương ứng và sẽ được bổ sung khi hiện thực, không thêm trước.*
+các milestone tương ứng (M4/M5/M6) và sẽ được bổ sung khi hiện thực.*
 
 ### Local stack & development login
 
@@ -122,7 +125,7 @@ Compose bị publish ra ngoài loopback.
 | M0 | Foundation: toolchain, CI, migrations, local stack, splash | **Implemented — Verified** |
 | M1 | Authentication, device identity, privacy foundation | **Implemented — Verified** (automated; chờ field validation) |
 | M2 | Family Circle & membership authorization | **Implemented — Verified** (automated; chờ field validation) |
-| M3 | Location Engine, Smart Tracking, offline queue | Planned |
+| M3 | Location Engine, Smart Tracking, offline queue, consented ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
 | M4 | Live Map, realtime, confidence engine | Planned |
 | M5 | Location History & Place Alerts | Planned |
 | M6 | SOS, Firebase push, event acknowledgement | Planned |
@@ -177,6 +180,7 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 | Full local stack | `make docker-up` / `make docker-down` |
 | Chạy API local | `make server-run` (port 8080) |
 | Build APK debug | `make android-build` |
+| Compile release (minified) | `make android-release` |
 | Kiểm tra Go | `make server-check` |
 | Kiểm tra Android | `make android-check` |
 | Migrations | `make migrate-up` / `make migrate-down` |
@@ -236,7 +240,8 @@ Hai workflow độc lập chạy trên mọi pull request và push lên `main`:
   detector, build; thêm job chạy migrator integration test trên
   PostgreSQL/PostGIS thật (up → down → rollback); một job kiểm tra OpenAPI
   contract, lint workflow files và Dependabot config.
-- **Android** — unit test, lint, build debug APK và upload artifact.
+- **Android** — unit test, lint, build debug APK, compile the minified
+  release build và upload debug artifact.
 
 Lưu ý: CI PASS chứng minh build/test/lint sạch, **không** chứng minh hành vi
 tính năng Android trên điện thoại thật — bằng chứng on-device được ghi nhận

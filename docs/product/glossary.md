@@ -58,33 +58,35 @@
 
 ## Location Engine
 
-- **Location Engine** *(Planned)* — module Kotlin thu thập vị trí trên thiết bị,
-  thích ứng theo trạng thái di chuyển, tôn trọng pin và giới hạn OS.
-- **Smart Tracking** *(Planned)* — hành vi thích ứng của Location Engine: ưu
-  tiên cập nhật khi di chuyển, giảm truy cập vị trí khi đứng yên.
-- **Engine states** *(Planned)* — `IDLE`, `STATIONARY`, `MOVING`, `JOURNEY`,
-  `DEGRADED`, `OFFLINE`, `PAUSED`. Mô hình tham khảo, có thể tinh chỉnh khi
-  thiết kế chi tiết.
-- **Foreground service (location)** *(Planned)* — Android service với type
-  `location`, hiển thị persistent notification — bắt buộc theo Android khi theo
-  dõi nền, đồng thời là cơ chế transparency.
+- **Location Engine** *(Implemented — M3)* — module Kotlin thu thập vị trí trên
+  thiết bị, thích ứng theo trạng thái di chuyển, tôn trọng pin và giới hạn OS.
+- **Smart Tracking** *(Implemented — M3)* — hành vi thích ứng của Location
+  Engine: ưu tiên cập nhật khi di chuyển, giảm truy cập vị trí khi đứng yên.
+- **Engine states** *(Implemented — M3)* — hai trục độc lập: motion
+  `IDLE`, `STATIONARY`, `MOVING`, `JOURNEY`; operational `ACTIVE`, `DEGRADED`,
+  `OFFLINE`, `PAUSED`. `JOURNEY` là hook cho M7.
+- **Foreground service (location)** *(Implemented — M3)* — Android service với
+  type `location`, persistent notification + stop action, `START_NOT_STICKY`;
+  bắt buộc theo Android khi theo dõi nền và là cơ chế transparency.
 - **Battery Saver / Doze / OEM restrictions** — các cơ chế của Android và nhà
   sản xuất giới hạn background execution. Location Engine phải xử lý đúng, và
   **không** cam kết GPS đều đặn trong mọi điều kiện.
 
 ## Offline & đồng bộ
 
-- **Offline Sync** *(Planned)* — tập cơ chế đảm bảo dữ liệu đã ghi bền vững
-  không mất khi upload thất bại.
-- **Sync Queue** *(Planned)* — hàng đợi bền vững (Room) các Location Point chờ
-  gửi. Ghi trước, gửi sau.
-- **Backfill / đồng bộ bù** *(Planned)* — gửi lại sau offline các điểm đã ghi
-  trong lúc mất mạng. Backfill phải preserve original timestamps.
-- **Idempotency** *(Planned)* — tính chất của ingestion API: gửi lại cùng một
-  bản ghi (cùng idempotency key) không sinh bản ghi trùng.
-- **Deduplication** *(Planned)* — loại bỏ bản ghi trùng ở client hoặc server.
-- **Batch upload** *(Planned)* — gửi nhiều điểm trong một request để giảm số
-  kết nối.
+- **Offline Sync** *(Implemented — M3)* — tập cơ chế đảm bảo dữ liệu đã ghi
+  bền vững không mất khi upload thất bại; WorkManager unique + network
+  constraint, retry/backoff.
+- **Sync Queue** *(Implemented — M3)* — hàng đợi bền vững (Room) các Location
+  Point chờ gửi, owner-scoped, tối đa 5.000 điểm/7 ngày. Ghi trước, gửi sau.
+- **Backfill / đồng bộ bù** *(Implemented — M3)* — gửi lại sau offline các
+  điểm đã ghi trong lúc mất mạng; server giữ nguyên `recordedAt` gốc.
+- **Idempotency** *(Implemented — M3)* — gửi lại cùng `(user, eventId)` không
+  sinh bản ghi trùng; server trả các id đó trong `duplicates`.
+- **Deduplication** *(Implemented — M3)* — unique `(user_id, event_id)` ở
+  PostgreSQL cùng `ON CONFLICT DO NOTHING`; client cũng IGNORE eventId trùng.
+- **Batch upload** *(Implemented — M3)* — tối đa 100 điểm/request ở client,
+  server nhận tối đa 200; batch atomic.
 
 ## Sự kiện và tính năng
 

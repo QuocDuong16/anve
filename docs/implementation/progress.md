@@ -6,14 +6,16 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-10-26 (after M2 backend + Android client).
+Last updated: 2026-10-26 (after M3 Location Engine).
 
 ## Current milestone
 
 **M1 — Authentication, device identity, privacy foundation: Implemented —
 Verified (backend + client logic, no on-device field validation).**
 **M2 — Family Circle: Implemented — Verified (backend + client logic).**
-M3 (Location Engine) is next.
+**M3 — Location Engine, consented ingestion, offline sync: Implemented —
+Automated Verified; Pending Field Validation.**
+M4 (Live Map / realtime / confidence) is next, not started.
 
 ## Milestones
 
@@ -22,7 +24,7 @@ M3 (Location Engine) is next.
 | M0 Foundation | Implemented — Verified | CI + Compose smoke test at `de54074`. |
 | M1 Auth & privacy | Implemented — Verified (server, JVM-level) | See evidence below; Google path needs real OAuth client (external), on-device run pending. |
 | M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
-| M3 Location Engine | Not started | |
+| M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
 | M4 Live Map | Not started | |
 | M5 History & Places | Not started | |
 | M6 SOS & FCM | Not started | |
@@ -158,6 +160,58 @@ Verification levels for this pass:
   offline-retry pass across process death still need a physical-device run;
   the JVM suites cover the logic, not the OS behavior.
 
+## M3 evidence (2026-10-26)
+
+- ADR: [`docs/adr/0006-m3-location-engine.md`](../adr/0006-m3-location-engine.md)
+  (ingestion, authorization locks, retention, adaptive policy, FGS lifecycle,
+  Room threat model, sync/consent ordering).
+- Contract: `packages/api-contracts/openapi.yaml` 0.3.0 —
+  `POST /api/v1/locations/batch` with atomic semantics, limits and stable
+  error codes.
+- Migration `0004_locations`: PostGIS geography, unique
+  `(user_id, event_id)`, user/device/capture-time/GIST indexes, FK cascade.
+- `internal/locations`: validation, transactional authorization, idempotent
+  inserts, retention purge, aggregate metrics log. PostgreSQL/PostGIS
+  integration tests (race detector): happy path/timestamps/geography,
+  per-owner idempotency (including a second device), consent/Circle/device
+  refusals, revoked session, account deletion cascade, backfill order,
+  retention boundary, concurrent same event, consent-revocation lock
+  ordering, device-revocation lock ordering.
+- Android:
+  - `tracking/`: `LocationProvider` + Fused implementation,
+    `AdaptiveTrackingPolicy`, `TrackingManager`, `TrackingService`
+    (`foregroundServiceType=location`, persistent notification + stop
+    action, `START_NOT_STICKY`), permission/location/connectivity adapters,
+    persisted intent + recovery state, persisted `TrackingMetrics` counters
+    (callbacks/rejections/accuracy buckets/state time/uploads/service
+    lifetime; no coordinates).
+  - `data/location/`: Room `location_queue` (owner-scoped, 5,000/7-day
+    bounds, exported schema, no destructive migration), WorkManager unique
+    network-constrained sync (100 per batch, 5 batches per pass),
+    at-least-once + server idempotency, consent-revocation-first ordering,
+    policy-refusal stop/purge.
+  - `ui/tracking/`: Vietnamese tracking screen with prominent disclosure,
+    staged permission requests, separate consent vs actual-tracking state,
+    last fix/accuracy/upload, queue count, connectivity, battery saver,
+    diagnostics, start/stop/resume.
+  - 148 JVM tests pass; lint clean of errors; debug APK and minified release
+    build compile.
+- Reliability prerequisites: WorkManager scheduling for pending
+  revocations, first retry backoff corrected to 30s (off-by-one fix),
+  uniqueness/idempotence regression tests.
+- Runtime smoke (local Go binary + PostgreSQL/PostGIS, 2026-10-26):
+  dev login → Circle → consent ON → batch of 2 accepted → identical retry
+  returns 2 duplicates and adds no rows; foreign device claim 403
+  `DEVICE_NOT_AUTHORIZED`; no-Circle account 409 `LOCATION_CIRCLE_REQUIRED`;
+  consent OFF then batch 409 `LOCATION_CONSENT_REQUIRED` with no new row;
+  unauthenticated batch 401; account deletion removed all rows; retention
+  startup with `LOCATION_RETENTION_DAYS=1` deleted a 2-day-old row and
+  logged the count.
+- Not verified on a device/emulator: screen-off behavior, Battery Saver,
+  Doze/OEM kills, reboot recovery, notification visibility, permission
+  revocation UI, ADB/emulator connectivity, real battery drain. These are
+  **Pending Field Validation**, not PASS.
+
 ## Known gaps / external blockers
 
 - **Google OAuth client ID not created** (needs Google Cloud project
@@ -178,19 +232,36 @@ Verification levels for this pass:
   fixture is enabled. Compose limits this to the pinned bridge and publishes
   loopback only; keep the CIDR as narrow as possible and prefer a tunnel.
 
-## Next engineering tasks (M3 — Location Engine)
+## Known M3 limitations (not blockers to M4 code, blockers to "fully verified")
 
-1. OpenAPI: batch location ingestion endpoint (idempotency keys, device
-   ownership, consent enforcement at ingestion).
-2. Migration `0004_locations`: location_points with PostGIS geography,
-   device+recorded_at+received_at timestamps, dedup constraint.
-3. Go `internal/locations`: batch validation, idempotent writes,
-   out-of-order acceptance, consent check per batch.
-4. Android Location Engine: state machine (IDLE/STATIONARY/MOVING/…),
-   FusedLocationProvider behind an interface, foreground service type
-   `location`, permission flow (fine → background, prominent disclosure).
-5. Room durable queue + SyncManager (batch upload, backoff, dedup,
-   retention rules for paused/left states).
-6. Tests: fake location provider state machine tests; queue loss/retry/
-   restart tests; ingestion idempotency integration tests.
-7. Later: invite deep link (currently manual code entry).
+- **No on-device field validation yet.** No emulator or physical device was
+  available in this session. Battery, screen-off, Doze, reboot, OEM FGS
+  kills, GPS-disabled and permission-revocation behaviour are unproven.
+- **Battery figures are unmeasured.** Interval/displacement thresholds in
+  `AdaptiveTrackingPolicy` are engineering defaults, not calibrated optima.
+- **Room is not app-level encrypted in M3.** Documented threat model and
+  revisit criterion in ADR 0006 §6; file is app-private, backup-excluded and
+  short-lived.
+- **Retention is a provisional 30 days** (`LOCATION_RETENTION_DAYS`), not a
+  complete legal retention policy; M5 adds user-selectable history retention.
+- **Ingestion requires one active Circle membership** (MVP invariant); a
+  consenting account with no Circle is refused rather than collecting data
+  with no audience.
+- **Points are not tagged with a Circle.** M3 has no read path; M4/M5 must
+  define audience/history authorization (current membership must not grant
+  retroactive access, and leaving a Circle must not leave a hidden viewing
+  channel) before exposing locations.
+- **WorkManager scheduling is OS-bounded.** A force-stopped app or an OEM
+  that blocks background work may delay revocation/sync until the next
+  launch. Nothing is claimed beyond WorkManager's guarantees.
+- **No wakeup measurement** via public Android APIs; metrics cover
+  callbacks, accuracy distribution, state time, queue and uploads.
+
+## Next engineering tasks (M4 — Live Map, not started)
+
+1. Contract + authorization for reading latest/visible locations; per-viewer
+   consent enforced on every read.
+2. Realtime transport decision (WebSocket vs SSE/polling) and hub.
+3. Confidence states Fresh/Delayed/Stale/Offline/Unknown.
+4. Live Map UI, last-known location labels, no realtime guarantees.
+5. Later: invite deep link (currently manual code entry).

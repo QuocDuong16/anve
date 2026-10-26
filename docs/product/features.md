@@ -47,7 +47,8 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
   kê/thu hồi thiết bị của chính mình; cross-user access bị từ chối (có test).
 - **Consent switch** chia sẻ vị trí (mặc định TẮT) với audit record trong
   cùng transaction ghi nhận thay đổi; UI nói rõ switch là ghi nhận đồng ý,
-  chưa phải GPS đang chạy (Location Engine thuộc M3).
+  chưa phải GPS đang chạy. Từ M3, việc thu thập do tab Vị trí điều khiển
+  (bật theo dõi + quyền OS), tách biệt hoàn toàn khỏi consent switch.
 - Error envelope thống nhất (`code/message/requestId`), rate limiting cho
   endpoint đăng nhập; `readyz` kiểm tra database.
 - Dev-only login chỉ mount khi `ENVIRONMENT=development` (staging/production/
@@ -187,9 +188,14 @@ mất mạng của người xem không làm UI hiển thị dữ liệu sai như
 
 ## 4. Smart Tracking (Android Location Engine)
 
-> Trạng thái: **Planned — M3**. Đây là một trong những hệ thống quan trọng nhất
-> của AnVề. Hiện manifest chưa xin `ACCESS_FINE_LOCATION`,
-> `ACCESS_BACKGROUND_LOCATION`, chưa có foreground service nào.
+> Trạng thái: **Implemented — Automated Verified (M3); Pending Field
+> Validation.** Manifest đã khai báo quyền vị trí foreground/background,
+> foreground service type `location` và notification; engine dùng Fused
+> Location Provider sau interface `LocationProvider`, policy thích ứng có
+> unit test với fake clock, và trạng thái được hiển thị trong tab Vị trí.
+> Chưa có đo pin thực địa, chưa xác minh screen-off/reboot/OEM restrictions
+> trên thiết bị thật — xem [`../implementation/progress.md`](../implementation/progress.md)
+> và ADR 0006.
 
 **Mục đích.** Engine thu thập vị trí native Kotlin, thích ứng theo trạng thái
 di chuyển, tôn trọng pin và các giới hạn của Android.
@@ -355,7 +361,11 @@ có quyền không lấy được lịch sử bằng bất kỳ đường API n�
 
 ## 7. Offline Sync
 
-> Trạng thái: **Planned — M3** (cùng với Location Engine).
+> Trạng thái: **Implemented — Automated Verified (M3); Pending Field
+> Validation.** Room queue (owner-scoped, 5.000 điểm/7 ngày), WorkManager
+> batch 100 điểm/lần (tối đa 5 batch/pass) với network constraint, server
+> idempotency theo `(user, eventId)`, giữ nguyên `recordedAt`. Consent OFF
+> xóa các điểm chưa gửi và gửi revocation trước mọi upload; xem ADR 0006.
 
 **Mục đích.** Đảm bảo dữ liệu vị trí đã ghi nhận bền vững trên thiết bị không
 bị mất chỉ vì upload thất bại.
@@ -381,8 +391,10 @@ idempotency key. Batch API phía server phải chấp nhận băng giá trùng l
 
 **Business rules — điều kiện dừng bắt buộc.** Phải định nghĩa rõ xử lý khi:
 
-- Người dùng **tắt chia sẻ vị trí**: các điểm chưa gửi thuộc khoảng thời gian
-  chia sẻ vẫn được gửi và đánh dấu; điểm sinh sau khi tắt không được ghi/sinh.
+- Người dùng **tắt chia sẻ vị trí**: acquisition dừng ngay, các điểm **chưa
+  gửi bị xóa khỏi thiết bị** (privacy-first, ADR 0006 §8), revocation được
+  gửi trước mọi upload và chỉ được coi là server-confirmed sau khi server
+  xác nhận; điểm sinh sau khi tắt không được ghi/sinh.
 - Người dùng **rời Circle** hoặc bị thu hồi quyền: dữ liệu chưa gửi của người
   đó với Circle đó phải bị xử lý theo chính sách — mặc định **loại bỏ**, không
   gửi bù dữ liệu cho một nhóm người dùng đã không còn thuộc về.
@@ -402,16 +414,23 @@ retention/authorization (M1–M2).
 **Acceptance criteria.** Tắt máy bay rồi bật lại: dữ liệu không mất, không trùng,
 thứ tự thời gian đúng; tắt chia sẻ/rời nhóm được xử lý đúng quy tắc ở trên; tính
 toàn vẹn được kiểm chứng bằng test tự động (không chỉ quan sát thủ công).
+**Đã automated-verified ở M3:** queue sống qua process restart, retry không
+trùng nhờ `(user, eventId)`, out-of-order vẫn giữ event time, consent OFF
+xóa queue và chặn upload, account switch/sign-out purge queue. Chưa có
+field validation trên thiết bị thật.
 
 ## 8. Privacy Controls
 
-> Trạng thái: **Nền móng Implemented (M1: consent switch + audit + backend
-> authorization middleware + đăng nhập/phiên/thiết bị); hoàn thiện qua
-> M2–M6; xuyên suốt toàn sản phẩm.** Đặc tả chính sách đầy đủ nằm ở
+> Trạng thái: **Consent + audit + backend authorization Implemented (M1);
+> consent enforcement tại location ingestion và privacy-first revocation
+> Implemented (M3); realtime distribution/History theo quyền thuộc M4–M5.**
+> Đặc tả chính sách đầy đủ nằm ở
 > [`privacy-and-safety.md`](privacy-and-safety.md) — mục này chỉ tóm tắt
 > mặt chức năng. Bằng chứng M1: audit record cho thay đổi consent (đã
 > test), session revocation tức thì (đã test), switch consent mặc định
-> TẮT ở tầng database.
+> TẮT ở tầng database. M3: consent/session/device/Circle được kiểm tra
+> trong cùng transaction với batch ingestion; tắt consent dừng acquisition,
+> xóa điểm chưa gửi và gửi revocation trước mọi upload.
 
 Privacy là **functional requirement bắt buộc, không phải trang Settings phụ**.
 
@@ -619,6 +638,8 @@ tại thời điểm gửi.
 
 ---
 
-*Toàn bộ các mục từ 2 trở đi là Planned/Proposed — chưa có dòng code nghiệp vụ
-nào tồn tại cho chúng tại thời điểm viết tài liệu (xem chứng minh ở
-[`roadmap.md`](roadmap.md)).*
+*Các mục 2–4 và 7–8 đã có implementation tương ứng M2/M3 (xem trạng thái ở
+đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
+[`../implementation/progress.md`](../implementation/progress.md)). Các mục
+5–6, 9–13 vẫn là Planned/Proposed cho M4–M7 — không có dòng code nghiệp vụ
+nào tồn tại cho chúng tại thời điểm viết tài liệu.*

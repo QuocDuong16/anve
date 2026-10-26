@@ -135,8 +135,61 @@ available to your users (any normal Android device).
 ## Testing
 
 - `make android-test` — JVM unit tests (DTO parsing, session
-  refresh-retry against MockWebServer, ViewModel flows).
+  refresh-retry against MockWebServer, ViewModel flows, Room queue rules,
+  adaptive policy, sync engine, tracking coordinator).
 - `make android-build` — debug APK; install with `adb install -r
   apps/android/app/build/outputs/apk/debug/app-debug.apk`.
+- `make android-release` — minified release compile/APK (unsigned without a
+  release signing config). The mission gate requires release compile even
+  though distribution signing is M8 work.
 - Field validation on a real device is tracked as its own work item; a
   green CI build is not evidence of on-device behavior.
+
+## M3 location testing (manual, pending device validation)
+
+The JVM suites prove the state machine, queue and sync rules with fake
+providers/clocks. They do **not** prove OS behavior. Use this checklist on
+a real device/emulator and record the result as *Device Verified* only when
+observed.
+
+1. **Permission flow:** install fresh → open Vị trí → read the prominent
+   disclosure → enable consent → grant precise location → start tracking.
+   Deny once and verify the app remains usable and explains the limitation.
+   Grant approximate-only and verify the UI says "Gần đúng" and tracking
+   continues in `DEGRADED`.
+2. **Background location:** after foreground grant, request "Luôn cho
+   phép"; verify the explainer appears first. Deny and verify the UI says
+   tracking works only while the app is open (do not claim background
+   coverage).
+3. **Screen off / background:** start tracking, lock the screen for several
+   minutes, confirm the persistent notification and that new points arrive
+   (check queue count/last fix; server rows grow).
+4. **Network loss:** enable airplane mode → collect a few points → confirm
+   "Không có mạng — vị trí được lưu trên thiết bị" and queue growth →
+   disable airplane mode → confirm the queue drains and server rows exist
+   once, with original timestamps.
+5. **Process kill:** start tracking, swipe the app away or `adb shell am
+   force-stop com.anve.app.debug` → reopen → verify the screen says tracking
+   was stopped and offers "Tiếp tục theo dõi" (not a false active state).
+6. **Reboot:** reboot while tracking → open the app → same honest recovery
+   state; no hidden BOOT_COMPLETED restart.
+7. **GPS/location switch off:** turn off device location while tracking →
+   verify the engine reports the limitation and stops the empty service;
+   turn it back on and resume.
+8. **Permission revocation:** revoke location permission in system settings
+   while tracking → verify tracking stops, no crash, and the UI explains
+   how to restore it.
+9. **Battery Saver:** enable Battery Saver and verify the UI reports reduced
+   frequency; measure drain with `dumpsys batterystats` before/after — do
+   not publish a battery claim without measurements.
+10. **Consent OFF offline:** airplane mode → turn off sharing → verify
+    acquisition stops and the pending-sync message appears → restore
+    network → verify the server sees consent OFF before any location upload
+    (query `location_points`; the queue must have been purged).
+11. **Emulator injection:** use Extended Controls → Location or
+    `adb emu geo fix <lon> <lat>` and verify accepted coordinates, accuracy,
+    motion transitions and queue/sync. `10.0.2.2:8080` reaches a host API
+    bound to loopback.
+12. **ADB reverse (physical device):** `adb reverse tcp:8080 tcp:8080`,
+    build with `-PANVE_API_URL=http://127.0.0.1:8080`; never widen the
+    development-login allowlist for a LAN address.

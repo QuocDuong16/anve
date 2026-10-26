@@ -52,6 +52,9 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
   thời gian không bị bóp méo; điểm trùng bị loại.
 - **Cách đo:** constraint/idempotency test ở tầng API; kiểm tra out-of-order
   backfill; timestamp thiết bị vs server được ghi riêng.
+- **Đã automated-verified ở M3:** unique `(user_id, event_id)` + conflict
+  handling, concurrent same-event chỉ một row, backfill giữ event time,
+  future/old timestamp bị từ chối, `recorded_at`/`received_at` cùng tồn tại.
 - **Proposed target:** không bản ghi trùng; không điểm có timestamp sau hiện tại
   hợp lệ hóa được; hai mốc thời gian (thiết bị/server) luôn cùng tồn tại.
 
@@ -81,6 +84,11 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
 - **Cách đo:** field measurement trên thiết bị thật — so sánh drain theo giờ khi
   bật/tắt chia sẻ (battery stats/battery historian); theo engine state
   (STATIONARY phải gần như không wake GPS).
+- **M3 đã có measurement hooks (chưa có số đo):** `TrackingMetrics` đếm số
+  callback, accepted/rejected theo lý do, phân bố accuracy, thời gian theo
+  motion/operational state, số batch/điểm đã upload và thời lượng foreground
+  service. Các counter này không chứa tọa độ và không tự suy ra mức tiêu thụ
+  pin. Wakeup behavior không đo được qua public Android API.
 - **Proposed target:** chỉ đặt sau field validation; nguyên tắc chốt từ bây giờ:
   đứng yên không được tiêu pin đáng kể hơn so với không dùng app.
 
@@ -116,6 +124,11 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
 - **Cách đo:** danh sách dấu hiệu bắt buộc trong
   [Diagnostics](features.md#12-tracking-health--diagnostics); backend: structured
   logs (đã có), metrics/tracing theo mốc triển khai.
+- **Đã có ở M3:** backend log mỗi batch với accepted/duplicate/rejected,
+  duration và counter tổng hợp (không tọa độ); Android status store có
+  permission, service/provider state, last fix/upload, queue size, online và
+  battery saver; `TrackingMetrics` lưu counter tổng hợp để field validation.
+  Chưa có endpoint metrics/tracing production (M8).
 - **Proposed target:** mỗi failure mode của Location Engine có một dấu hiệu
   quan sát được tương ứng.
 

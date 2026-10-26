@@ -16,37 +16,42 @@ phải đổi.
 
 ```mermaid
 flowchart LR
-    subgraph androidI["apps/android — Kotlin/Compose — implemented (M0)"]
-        UI["Splash screen — MainActivity, Compose, theme"]
+    subgraph androidI["apps/android — Kotlin/Compose — implemented (M0–M3)"]
+        UI["Splash · sign-in · account/circle · tracking UI"]
+        LE["Location engine + foreground service"]
+        SQ["Room queue + WorkManager sync"]
     end
-    subgraph serverI["apps/server — Go — implemented (M0)"]
-        API["cmd/api — chi router<br/>/healthz · /readyz · /api/v1/version"]
+    subgraph serverI["apps/server — Go — implemented (M0–M3)"]
+        API["cmd/api — chi router<br/>health · auth · circles · locations"]
         MIG["cmd/migrate — custom migrator<br/>advisory lock · transaction per file"]
     end
     DB[("PostgreSQL + PostGIS<br/>extensions: postgis · uuid-ossp · pg_trgm")]
-    UI -. "business API: planned (M1+)" .-> API
+    UI --> API
+    LE --> SQ
+    SQ -. "HTTPS batch" .-> API
     MIG --> DB
+    API --> DB
 ```
 
-Kiến trúc đích khi các milestone M1–M7 hiện thực:
+Kiến trúc đích khi các milestone M4–M7 hiện thực (phần M1–M3 đã có):
 
 ```mermaid
 flowchart TB
-    subgraph androidT["Android app — planned components"]
-        UIF["UI features<br/>Circle · Live Map · History · Alerts · SOS · Diagnostics"]
-        LE["Location Engine<br/>state machine, battery-aware"]
-        SYNC["SyncManager<br/>durable queue, batch, retry"]
-        ROOM[("Room DB")]
-        FCMC["FCM client"]
+    subgraph androidT["Android app — M1–M3 implemented, M4+ planned"]
+        UIF["UI features<br/>Circle · Tracking (M3) · Live Map/History/Alerts/SOS/Diagnostics (planned)"]
+        LE["Location Engine<br/>state machine, battery-aware (M3)"]
+        SYNC["SyncManager — Room + WorkManager (M3)"]
+        ROOM[("Room DB — location queue (M3)")]
+        FCMC["FCM client (planned M6)"]
     end
-    subgraph serverT["Go backend — planned modules (modular monolith)"]
-        AUTH["auth · devices"]
-        CIRC["circles · membership"]
-        ING["location ingestion"]
-        RT["realtime hub<br/>transport: quyết định mở"]
-        EVT["places · alerts · SOS · journeys"]
-        NOTIF["notification dispatcher"]
-        AUDIT["audit · privacy enforcement"]
+    subgraph serverT["Go backend — M1–M3 implemented, M4+ planned"]
+        AUTH["auth · devices (M1)"]
+        CIRC["circles · membership (M2)"]
+        ING["location ingestion + retention (M3)"]
+        RT["realtime hub<br/>transport: quyết định mở (planned)"]
+        EVT["places · alerts · SOS · journeys (planned)"]
+        NOTIF["notification dispatcher (planned)"]
+        AUDIT["audit · privacy enforcement (M1–M3)"]
     end
     PG[("PostgreSQL + PostGIS")]
     FCM["Firebase Cloud Messaging"]
@@ -74,21 +79,26 @@ flowchart TB
 
 ## 2. Ranh giới component Android
 
-Hiện tại (M1–M2, Implemented): `MainActivity`, `ui/splash`, `ui/signin`,
-`ui/home` (account, consent, devices), `ui/circle`, `data/auth` (session
-storage sealed by Keystore, SessionInterceptor, pending revocation),
-`data/circles`, `data/api` (Retrofit/Moshi, ADR 0003), backup/data
-extraction rules excluding `sharedpref`, `database` and `file/datastore`.
-Chưa có permission location nào trong manifest — Location Engine là M3.
+Hiện tại (M1–M3, Implemented): `MainActivity`, `ui/splash`, `ui/signin`,
+`ui/home` (account, consent, devices), `ui/circle`, `ui/tracking` (tracking
+status, permission flow, disclosure), `data/auth` (session storage sealed by
+Keystore, SessionInterceptor, pending revocation), `data/circles`,
+`data/api` (Retrofit/Moshi, ADR 0003), `data/location` (Room queue,
+WorkManager sync engine), `tracking` (location provider interface, adaptive
+policy, coordinator, foreground service), backup/data extraction rules
+excluding `sharedpref`, `database` and `file/datastore`. Location
+permissions and foreground service type `location` are declared in the
+manifest; ingestion, retention and consent enforcement live in
+`internal/locations` on the server.
 
 Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư mục bắt buộc):
 
 | Component | Trách nhiệm | Ghi chú |
 | --- | --- | --- |
 | **UI features** (`ui/` theo feature) | Màn hình cho từng nhóm tính năng; Composable previewable | Không chứa logic thu thập/gửi dữ liệu vị trí |
-| **Location Engine** | State machine `IDLE/STATIONARY/MOVING/JOURNEY/DEGRADED/OFFLINE/PAUSED`; Fused Location Provider; foreground service type `location` | Module Kotlin riêng, quan sát được qua Diagnostics; không viết trực tiếp vào network |
-| **SyncManager** | Durable queue → batch upload → retry/backoff → idempotency | Dữ liệu đi qua đây, không đi thẳng từ Engine ra network |
-| **Room persistence** | Location Point chờ gửi, trạng thái sync | Nằm trong domain `database` — đã bị backup rules loại trừ; chính sách backup từng file quyết định trước khi cho phép rời thiết bị |
+| **Location Engine** (`tracking/`) | Motion state `IDLE/STATIONARY/MOVING/JOURNEY` + operational `ACTIVE/DEGRADED/OFFLINE/PAUSED`; `LocationProvider` (Fused); foreground service type `location` | **Implemented (M3)**; quan sát được qua tab Vị trí; không viết trực tiếp vào network |
+| **SyncManager** (`data/location/`) | Durable queue → batch upload → retry/backoff → idempotency | **Implemented (M3)**; WorkManager unique/network-constrained; dữ liệu không đi thẳng từ Engine ra network |
+| **Room persistence** | Location Point chờ gửi, retry metadata | **Implemented (M3)**: owner-scoped, eventId PK, 5.000 điểm/7 ngày, schema export, không destructive migration; domain `database` bị backup rules loại trừ |
 | **Network client** | HTTP đến Go API; kết nối realtime | Contract theo [`../../packages/api-contracts/openapi.yaml`](../../packages/api-contracts/openapi.yaml) |
 | **FCM client** | Nhận push sự kiện; không nhận GPS | Xem [Push notification flow](#43-push-notification-flow-planned--m6) |
 
@@ -103,7 +113,7 @@ Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M
 | `circles` | Circle, membership, invite, vai trò, giải tán | Implemented (M2) |
 | `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | Implemented (M1, ownership thống nhất ở ADR 0004) |
 | `testdb` | Scratch database cho integration tests | Implemented (test infrastructure) |
-| `locations` | Ingestion Location Point (identity, idempotency, validation), truy vấn history | Planned (M3, M5) |
+| `locations` | Ingestion Location Point (identity, idempotency, validation), retention purge; history query thuộc M5 | **Implemented (M3)** ingestion + retention |
 | `realtime` | Hub phân phát vị trí realtime | Planned (M4) |
 | `places` / `alerts` | Geofence events, verification, chống nhiễu | Planned (M5) |
 | `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
@@ -115,7 +125,7 @@ JSON; version inject lúc build.
 
 ## 4. Luồng dữ liệu
 
-### 4.1 Location ingestion + offline sync (Planned — M3)
+### 4.1 Location ingestion + offline sync (Implemented — M3)
 
 ```mermaid
 sequenceDiagram
@@ -133,12 +143,13 @@ sequenceDiagram
     I-->>Q: xác nhận → đánh dấu điểm đã gửi
 ```
 
-Bất biến của luồng này: điểm đã ghi vào Room không bị mất chỉ vì upload thất
-bại; gửi lại không sinh trùng (idempotency key); original timestamps được giữ
-nguyên — backfill không làm sai thứ tự thời gian; nếu người dùng tắt chia sẻ
-hoặc rời Circle, dữ liệu chưa gửi được xử lý theo quy tắc ở
-[`product/features.md`](../product/features.md#7-offline-sync) (mặc định loại bỏ
-với Circle đã rời).
+Bất biến của luồng này (đã automated-verified ở M3): điểm đã ghi vào Room
+không bị mất chỉ vì upload thất bại; gửi lại không sinh trùng
+(`(user_id, event_id)` unique + `ON CONFLICT DO NOTHING`); original
+timestamps được giữ nguyên — backfill không làm sai thứ tự thời gian; tắt
+chia sẻ xóa các điểm chưa gửi và gửi revocation trước mọi upload; rời
+Circle/device bị thu hồi làm server từ chối và client purge queue. Chi tiết:
+ADR 0006 và [`product/features.md`](../product/features.md#7-offline-sync).
 
 ### 4.2 Realtime distribution (Planned — M4)
 
@@ -191,7 +202,7 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 | Go API → PostgreSQL | Tin cậy nội bộ | Dev: postgres publish **loopback only** qua network `db-host`; production: database trên internal network, không publish port |
 | Development listener → dev-login fixture | Chỉ nên là máy dev | `LISTEN_ADDR` mặc định loopback; non-loopback cần opt-in + CIDR allowlist; route tự kiểm tra `RemoteAddr`, không tin proxy header; Compose publish `127.0.0.1` và `compose-lint` chặn publish ra ngoài |
 | Go API → FCM | Dịch vụ bên thứ ba | FCM chỉ nhận payload sự kiện, không chứa tọa độ; kênh một chiều từ dispatcher |
-| Device storage | Tin cậy thiết bị | Backup/data-extraction rules loại trừ `sharedpref` + `database` + `file/datastore` (session, installation id, pending-revocation queue; Implemented); chính sách từng file Room quyết định trước khi dữ liệu được backup |
+| Device storage | Tin cậy thiết bị | Backup/data-extraction rules loại trừ `sharedpref` + `database` + `file/datastore` (session, installation id, pending-revocation queue, Room location queue; Implemented). Room không được mã hóa thêm ở tầng ứng dụng trong M3: threat model/residual risk ở ADR 0006 §6. |
 | Logs | — | Không log token, tọa độ nhạy cảm, credentials (quy tắc chung, cả Go và Android) |
 
 ## 6. Technical decisions đã chốt (tham chiếu)
@@ -206,6 +217,10 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 - Final M1/M2 hardening: listener/allowlist cho development login, hàng đợi
   pending-revocation có giới hạn, deletion serialize với tạo Circle, thông
   báo offline sign-out ở app scope — [ADR 0005](../adr/0005-network-boundary-and-offline-revocation.md).
+- M3 Location Engine: atomic idempotent ingestion, consent/Circle/device
+  authorization trong transaction, retention 30 ngày, adaptive policy,
+  foreground-service lifecycle, Room/WorkManager offline delivery, privacy-first
+  consent revocation — [ADR 0006](../adr/0006-m3-location-engine.md).
 - Custom migrator (không golang-migrate), advisory lock, transaction per file,
   bookkeeping table `schema_migrations` do migrator sở hữu — Implemented, có
   integration test trong CI.
@@ -222,20 +237,24 @@ và nên có ADR riêng khi quyết:
 2. ~~**Phương thức authentication**~~ — đã chốt: Google Sign-In + opaque
    session ([ADR 0002](../adr/0002-authentication-google-signin-opaque-sessions.md)).
 3. **FCM data message làm tín hiệu fetch** — dùng hay không, và cơ chế debounce.
-4. **Idempotency key của Location Point** — thiết kế key (device-generated UUID,
-   hash của điểm…) và hành vi server khi trùng.
-5. **Retention mặc định** — số ngày cụ thể cho location history và event data.
+4. ~~**Idempotency key của Location Point**~~ — đã chốt `(user_id, event_id)`
+   với client UUID, server trả `duplicates`; ADR 0006 §1.
+5. **Retention mặc định** — M3 đặt tạm 30 ngày (`LOCATION_RETENTION_DAYS`);
+   con số cho history UI (M5) và event data vẫn mở.
 6. **Confidence calibration** — phương pháp nếu tiến tới confidence score.
 7. **Production deployment** — target (VPS, cloud, managed Postgres…) chưa quyết;
    ảnh hưởng observability và SLO đo được.
 8. **Một-Circle trong MVP** — xác nhận giữ một-Circle hay nới sớm; ảnh hưởng
-   schema membership và UX switcher.
+   schema membership và UX switcher. M3 hiện yêu cầu đúng một Circle active.
 9. **Rate limiting SOS/invite** — ngưỡng và cơ chế chống lạm dụng.
-10. **Chính sách backup từng file Room** — file nào được phép backup khi nào.
-    DataStore đã bị loại trừ hoàn toàn (ADR 0004); chính sách cho từng file
-    Room vẫn mở trước M3.
-11. **Pending-revocation retry ngoài app start** — hiện chỉ chạy khi app mở;
-    WorkManager/background scheduler là ứng viên khi M6 thêm bề mặt FCM.
+10. ~~**Chính sách backup từng file Room**~~ — đã chốt: toàn bộ domain
+    `database` bị loại khỏi backup/transfer; Room không mã hóa thêm ở M3 với
+    threat model ghi ở ADR 0006 §6.
+11. ~~**Pending-revocation retry ngoài app start**~~ — đã chốt: WorkManager
+    unique + network constraint (ADR 0006 §7 dùng cùng mô hình cho location
+    sync).
+12. **Mã hóa Room khi có History/M5** — SQLCipher hoặc payload seal; tiêu chí
+    đã ghi trong ADR 0006 §6.
 
 Mỗi quyết định khi chốt cần ADR mới trong [`../adr/`](../adr/) và cập nhật tài
 liệu liên quan ở `docs/product/`.

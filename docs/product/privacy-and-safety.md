@@ -13,9 +13,17 @@
 > ly identity dev/Google, development login chỉ loopback/allowlist và không
 > mount ngoài development, hàng đợi pending-revocation mã hóa có giới hạn,
 > loại trừ `sharedpref`, `database` và `file/datastore` khỏi backup/transfer,
-> và router chưa dùng `middleware.RealIP` (lý do spoofing). Việc thu
-> thập/phân phát vị trí, thu hồi tức thì phía phân phát, retention và xóa
-> history vẫn là **Planned** cho M3–M5.
+> và router chưa dùng `middleware.RealIP` (lý do spoofing).
+>
+> **M3 đã Implemented — Automated Verified:** ingestion batch chỉ nhận dữ
+> liệu khi session còn sống, device thuộc session, consent bật và Circle
+> membership còn hiệu lực, tất cả kiểm tra trong cùng transaction; tắt
+> consent dừng acquisition, xóa điểm chưa gửi và gửi revocation trước mọi
+> upload; retention 30 ngày mặc định (`LOCATION_RETENTION_DAYS`) chạy tự
+> động; account/device deletion cascade location rows; Room queue 7 ngày
+> trên thiết bị. **Chưa** có phân phát realtime, xóa history theo khoảng
+> thời gian (M4–M5) và chưa field-validate trên thiết bị thật. Quyết định
+> và threat model: ADR 0006.
 
 ## 1. Nguyên tắc nền tảng
 
@@ -52,6 +60,14 @@ Quy tắc:
   bị thu hồi không online** — server chặn từ nguồn.
 - Việc xin quyền hệ thống (location, background location, notifications) phải
   có màn hình giải thích *trước* khi gọi permission dialog của Android.
+- **Consent không đồng nghĩa tracking.** Consent là bản ghi đồng ý trên máy
+  chủ; điện thoại chỉ thực sự thu thập khi người dùng bật theo dõi và cấp
+  quyền OS. Foreground service phải hiển thị thông báo cố định; UI tách rõ
+  "đã đồng ý" khỏi "đang cập nhật vị trí".
+- **Tắt consent là hành động local-first:** acquisition dừng ngay, mọi điểm
+  chưa gửi bị xóa khỏi thiết bị, ý định thu hồi được lưu bền vững trước khi
+  gọi mạng và được gửi trước mọi upload khi có kết nối. App không tuyên bố
+  server đã thu hồi khi request chưa tới server (ADR 0006 §8).
 
 ## 3. Mô hình ủy quyền (authorization)
 
@@ -67,15 +83,19 @@ Quy tắc:
 
 ## 4. Retention (thời hạn giữ dữ liệu)
 
-- Location history có **thời hạn lưu tối đa** do sản phẩm đặt (mốc định lượng
-  cụ thể là quyết định mở — xem [`../architecture/overview.md`](../architecture/overview.md#7-các-quyết-định-kỹ-thuật-chưa-chốt));
-  người dùng có thể chọn ngắn hơn, không dài hơn mặc định.
-- Dữ liệu chờ đồng bộ (offline queue) quá hạn mà chưa gửi được thì bị loại,
-  không gửi bù dữ liệu đã vượt cửa sổ retention.
+- Location history có **thời hạn lưu tối đa** do sản phẩm đặt. M3 đặt mặc
+  định **30 ngày kể từ thời điểm thiết bị ghi nhận**, cấu hình bằng
+  `LOCATION_RETENTION_DAYS` (1–365); đây là chính sách tạm thời trong khi
+  History (M5) chưa có UI chọn thời hạn. Cùng cửa sổ này là giới hạn upload
+  bù: điểm cũ hơn bị từ chối thay vì lưu rồi xóa ngay.
+- Dữ liệu chờ đồng bộ (offline queue) trên thiết bị bị loại sau **7 ngày**
+  hoặc khi vượt 5.000 điểm; điểm chưa gửi không được gửi bù sau khi người
+  dùng tắt chia sẻ.
 - Dữ liệu sự kiện (SOS, Place Alert) giữ theo chính sách riêng, ngắn hơn history
   nếu không có giá trị sản phẩm.
-- Retention được thực thi **tự động phía backend** (dọn dẹp định kỳ), không phụ
-  thuộc hành vi người dùng.
+- Retention được thực thi **tự động phía backend** (chạy lúc khởi động và mỗi
+  giờ), không phụ thuộc hành vi người dùng. Đã có integration test cho purge
+  và runtime smoke test xác nhận dòng quá hạn bị xóa khi API khởi động.
 
 ## 5. Xóa dữ liệu và tài khoản
 
@@ -99,8 +119,18 @@ Quy tắc:
   session) và thử thu hồi lại ở lần mở sau với backoff. Màn hình đăng nhập nói
   rõ server chưa xác nhận thay vì tuyên bố "đã đăng xuất mọi nơi"; thông báo
   sống ở app scope nên không mất khi navigation. Chi tiết: ADR 0005 §3 và §5.
-- **Rời Circle** chấm dứt mọi quyền đang cấp; dữ liệu vị trí của người đó đối
-  với Circle đó được xử lý theo chính sách retention, không giữ "tàng hình".
+- **Rời Circle** chấm dứt mọi quyền đang cấp. M3 chặn ingestion mới ngay khi
+  membership đã bị xóa (kiểm tra trong transaction); điểm đã lưu xử lý theo
+  retention. Client purge queue của mình khi server trả
+  `LOCATION_CIRCLE_REQUIRED`.
+- **Tắt chia sẻ khi offline:** acquisition dừng, queue bị xóa, ý định thu hồi
+  được lưu bền vững; sync worker gửi revocation trước mọi location khi có
+  mạng. UI nói rõ "đã dừng trên thiết bị; chưa đồng bộ trạng thái với máy
+  chủ" thay vì tuyên bố đã thu hồi.
+- **Đăng xuất / xóa tài khoản:** đăng xuất dừng tracking và purge queue local
+  (không để dữ liệu của tài khoản cũ chờ upload); xóa tài khoản cascade
+  devices/sessions/location_points ở server. Queue local được purge khi
+  session biến mất, kể cả khi phiên bị thu hồi từ xa.
 - Các hành động xóa đều xuất hiện trong audit log.
 
 ## 6. Chống lạm dụng & an toàn sản phẩm
@@ -146,6 +176,14 @@ hiện thực:
 Audit log không chứa tọa độ; chỉ chứa ai, làm gì, với ai, khi nào và các id
 kỹ thuật nhỏ (device_id, circle_id, invite_id, session_id).
 
+**Location ingestion không tạo một audit row cho mỗi batch hay mỗi điểm.**
+Đó là telemetry vận hành tần suất cao, không phải thay đổi quyền; ghi nó
+vào audit sẽ tạo một bản sao dữ liệu vị trí thứ hai (kể cả khi chỉ ghi id)
+và làm audit log phình không kiểm soát. Các sự kiện *quyền* vẫn được audit:
+bật/tắt consent, đăng xuất, thu hồi thiết bị, xóa tài khoản, rời/giải tán
+nhóm. Log vận hành của ingestion chỉ chứa user/device id, số lượng
+accepted/duplicate/rejected và thời gian xử lý — không tọa độ.
+
 ## 8. Giới hạn của các tính năng an toàn (phải phản ánh trong UI)
 
 | Tính năng | Giới hạn bắt buộc phải công bố |
@@ -175,8 +213,13 @@ Mỗi điều khiển privacy ở trên phải tồn tại ở **cả hai** tầ
   bằng Keystore và bị loại trừ khỏi cloud backup lẫn device transfer
   (`file/datastore`, API < 31 và API 31+); đăng xuất offline giữ một **hàng
   đợi** pending-revocation đã mã hóa thay vì âm thầm bỏ qua việc thu hồi.
-  Consent switch hiện chỉ ghi nhận đồng ý — app chưa thu thập vị trí trong
-  bản này và UI nói rõ điều đó; Location Engine (M3) sẽ thêm permission flow
-  và foreground-service notification riêng.
+  **M3:** Fused Location Provider sau interface, foreground service type
+  `location` với notification cố định, permission flow theo bước (foreground
+  → background → notification), policy thích ứng và queue Room owner-scoped.
+  Room database **không được mã hóa thêm ở tầng ứng dụng trong M3**; file
+  nằm trong private storage, bị loại khỏi backup/transfer, chỉ giữ tối đa
+  7 ngày và bị xóa khi consent OFF/sign-out. Threat model, residual risk và
+  tiêu chí khi nào phải thêm Keystore/SQLCipher: ADR 0006 §6. Không có
+  tuyên bố "mọi dữ liệu đã mã hóa".
 
 Nếu một điều khiển chỉ tồn tại ở một tầng, nó **chưa hoàn thành**.
