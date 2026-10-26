@@ -6,10 +6,14 @@
 > milestone tương ứng — privacy là functional requirement, không phải trang
 > Settings phụ.
 >
-> Trạng thái: toàn bộ mô tả bên dưới là **Planned** trừ hai điều đã Implemented:
-> Android backup/transfer rules loại trừ domain `sharedpref` và `database`, và
-> router chưa dùng `middleware.RealIP` (lý do spoofing — bất biến kỹ thuật đã
-> ghi trong [`../../AGENTS.md`](../../AGENTS.md)).
+> Trạng thái: các kiểm soát **đã Implemented** trong M1/M2 là: consent switch
+> (mặc định TẮT, audit trong cùng transaction), audit ownership một sự kiện
+> một dòng trong transaction (ADR 0004), xóa tài khoản không giải tán nhóm có
+> thành viên, cách ly identity dev/Google, loại trừ `sharedpref`, `database`
+> và `file/datastore` khỏi backup/transfer, và router chưa dùng
+> `middleware.RealIP` (lý do spoofing). Việc thu thập/phân phát vị trí, thu
+> hồi tức thì phía phân phát, retention và xóa history vẫn là **Planned** cho
+> M3–M5.
 
 ## 1. Nguyên tắc nền tảng
 
@@ -78,7 +82,16 @@ Quy tắc:
 - **Xóa tài khoản**: xóa tài khoản và dữ liệu liên quan theo chính sách được
   định nghĩa khi hiện thực M1; danh sách chính xác những gì bị xóa/nguyên bản
   giữ lại (ví dụ nghĩa vụ sổ sách nếu sau này có thanh toán) phải được công bố
-  trong app.
+  trong app. **Đã Implemented:** chủ Circle còn thành viên khác **không thể**
+  xóa tài khoản — server trả `CIRCLE_HAS_MEMBERS` và app hướng dẫn giải tán
+  nhóm trước; Circle rỗng của chủ tài khoản bị xóa trong cùng transaction và
+  có audit `circle.dissolved`. Không có đường xóa tài khoản nào tự động giải
+  tán nhóm của người khác.
+- **Đăng xuất**: xóa phiên trên thiết bị luôn thành công, kể cả khi offline.
+  Nếu server không xác nhận được việc thu hồi, app giữ một bản ghi
+  pending-revocation đã mã hóa (không dùng được như session, hết hạn sau 7
+  ngày) và thử thu hồi lại ở lần mở sau; UI nói rõ giới hạn này trước khi
+  đăng xuất thay vì tuyên bố "đã đăng xuất mọi nơi". Chi tiết: ADR 0004.
 - **Rời Circle** chấm dứt mọi quyền đang cấp; dữ liệu vị trí của người đó đối
   với Circle đó được xử lý theo chính sách retention, không giữ "tàng hình".
 - Các hành động xóa đều xuất hiện trong audit log.
@@ -97,22 +110,33 @@ Quy tắc:
 
 ## 7. Audit các sự kiện quan trọng
 
-Các sự kiện sau bắt buộc phải có audit record (Planned — hiện thực cùng milestone
-của từng tính năng):
+Quy tắc đã Implemented (ADR 0004 §3): **mỗi thay đổi nghiệp vụ ghi đúng một
+audit row, bên trong cùng transaction với thay đổi đó.** Không có best-effort
+audit: một sự kiện bắt buộc mà có thể mất im lặng sau khi nghiệp vụ đã commit
+thì tệ hơn một request thất bại.
 
-- Tham gia / rời Circle; chấp nhận / từ chối invite.
-- Bật / tắt / tạm dừng chia sẻ vị trí.
+Các sự kiện đã có audit: đăng nhập (Google/dev), đăng xuất, thu hồi thiết bị,
+bật/tắt chia sẻ vị trí, xóa tài khoản, tạo/đổi tên/giải tán Circle, tham gia
+Circle (redeem), rời Circle, xóa thành viên, tạo/thu hồi invite. Session bị
+supersede khi đăng nhập lại được ghi trong event đăng nhập (detail
+`device_id`), không phải event riêng.
+
+Các sự kiện sau bắt buộc phải có audit record khi milestone tương ứng được
+hiện thực:
+
 - Cấp / thu hồi quyền xem; thay đổi người nhận sự kiện.
 - Đọc location history (ai đọc phần nào) — mức chi tiết là quyết định mở.
 - Kích hoạt / acknowledge SOS.
-- Xóa history; xóa tài khoản.
+- Xóa history.
 
-Audit log không chứa tọa độ; chỉ chứa ai, làm gì, với ai, khi nào.
+Audit log không chứa tọa độ; chỉ chứa ai, làm gì, với ai, khi nào và các id
+kỹ thuật nhỏ (device_id, circle_id, invite_id, session_id).
 
 ## 8. Giới hạn của các tính năng an toàn (phải phản ánh trong UI)
 
 | Tính năng | Giới hạn bắt buộc phải công bố |
 | --- | --- |
+| Consent switch (M1) | Là **ghi nhận đồng ý**, không phải GPS đang chạy. Bật switch không có nghĩa là vị trí đang được thu thập hay chia sẻ; các trạng thái đó là quyền OS, Location Engine, upload và realtime — tách biệt và chỉ tồn tại khi milestone tương ứng được hiện thực. |
 | Location Confidence | Là trạng thái **độ mới/độ tin cậy của dữ liệu**, không phải đánh giá độ an toàn của con người. Không hiển thị dạng xác suất nếu chưa qua calibration. |
 | Live Map | Không cam kết realtime tuyệt đối; luôn kèm thời điểm dữ liệu; last known location không được trình bày như vị trí hiện tại. |
 | Place Alerts | Geofence có thể được OS delivered chậm; không cam kết phát hiện tức thời. |
@@ -132,6 +156,13 @@ Mỗi điều khiển privacy ở trên phải tồn tại ở **cả hai** tầ
 - **Go backend**: authorization per-request, chấm dứt phân phát khi thu hồi,
   thực thi retention, ghi audit.
 - **Android client**: thu thập chỉ khi đang bật chia sẻ, dừng sạch khi quyền OS
-  bị thu hồi, không log tọa độ, tôn trọng backup/data-extraction rules.
+  bị thu hồi, không log tọa độ, tôn trọng backup/data-extraction rules. Đã
+  Implemented: session blob và device id nằm trong DataStore đã mã hóa bằng
+  Keystore và bị loại trừ khỏi cloud backup lẫn device transfer
+  (`file/datastore`, API < 31 và API 31+); đăng xuất offline giữ
+  pending-revocation đã mã hóa thay vì âm thầm bỏ qua việc thu hồi.
+  Consent switch hiện chỉ ghi nhận đồng ý — app chưa thu thập vị trí trong
+  bản này và UI nói rõ điều đó; Location Engine (M3) sẽ thêm permission flow
+  và foreground-service notification riêng.
 
 Nếu một điều khiển chỉ tồn tại ở một tầng, nó **chưa hoàn thành**.

@@ -81,6 +81,46 @@ M3 (Location Engine) is next.
   dissolve with confirmations), 26 unit tests green; fixed a real bug found
   by tests (`orThrow` rejected 204 no-content responses).
 
+## M1/M2 hardening (2026-10-26)
+
+A correctness/security pass over M1/M2 before M3. Every decision below is
+recorded in [ADR 0004](../adr/0004-m1-m2-hardening.md).
+
+| Fix | Root cause | Evidence |
+| --- | --- | --- |
+| Account deletion refuses to dissolve a populated circle | `circles.created_by ON DELETE CASCADE` cascaded through the circle when the owner row was deleted | 5 PostgreSQL integration tests: owner-with-members refused and nothing deleted (A), member deletion keeps circle (B), empty-circle owner deletion removes circle with `circle.dissolved` audit (C), explicit dissolve unblocks deletion (D), deletion racing invite redemption has exactly one winner (E) |
+| Deletion is race-safe | Lock order between deletion (circle) and redemption (invite) can deadlock | `FOR UPDATE` on owned circles closes the TOCTOU window; bounded retry on PostgreSQL `40P01`/`40001`; Test E |
+| Android keeps the session when deletion fails | `storage.clear()` sat in a `finally` | Repository tests: 400/401/409/500/transport failure/concurrent/double-tap keep the session; success clears it; unknown outcome reconciles through the 401 refresh chain and signs out only when the account is gone |
+| Two audit rows per business event | Stores used `InTx` and services also used `BestEffort` for removal and redemption; rename/invite create/revoke were best-effort only | Single ownership rule (ADR 0004 §3); integration tests: one row per mutation, none for failed operations, rollback with the business change, one row per concurrent invite |
+| Development login could mount outside development | Gate compared `ENVIRONMENT == "production"` | Allowlist of exactly `development`; config tests cover production, staging, `prod`, `Development`, `local`; endpoint not mounted when disabled |
+| Dev fixture could take over a Google account | Email-match linking ran in both directions | `IDENTITY_CONFLICT` in both directions; service tests; contract documents 409 |
+| Network failure navigated to sign-in | `HomeUiState.signedOut` (`!loading && user == null`) drove navigation | Navigation now follows the session flow only; ViewModel test proves a failed `/me` keeps the user with an error and retry |
+| Offline sign-out claimed more than it did | Local session cleared with no record of the undelivered revocation | `SignOutOutcome`; sealed 7-day pending revocation retried at app start (repository tests incl. process restart); dialog states the limitation |
+| DataStore was eligible for backup/transfer | Rules excluded `sharedpref` and `database`, but DataStore lives in `file/datastore` | Both rule sets exclude `file/datastore` (cloud backup + device transfer); merged manifest verified |
+| Device id semantics were wrong in the comment | Claimed stability across reinstall; private storage is deleted | Semantics documented as installation identity; injectable store covered by JVM tests |
+| Rapid consent toggles could diverge from the server | Optimistic updates with no ordering | Toggles serialized; tests for rapid sequence and mid-sequence failure roll back to the last confirmed state |
+| `deleteMe` could never be invoked | Retrofit rejects `@Body` on `@DELETE`; the proxy threw at call time, so CI could not see it | Request declared via `@HTTP(method = DELETE, hasBody = true)`; repository test asserts the verb, path and confirmation body |
+
+Verification levels for this pass:
+
+- **Implemented + Automated Verified** — Go unit tests, PostgreSQL/PostGIS
+  integration tests (race detector, per-test scratch databases), Android
+  JVM tests via MockWebServer, `make quality-check`, CI.
+- **Runtime Verified (2026-10-26, local stack)** — deletion lifecycle via
+  HTTP on the real binary: owner with member → 409 `CIRCLE_HAS_MEMBERS`,
+  owner session still valid (200 on `/me`), explicit dissolve → 204,
+  deletion → 204; the audit trail contains exactly one row per event
+  (`auth.dev_signin` ×2, `circle.created`, `invite.created`,
+  `circle.joined`, `circle.dissolved`, `auth.account_deleted`) and no
+  `account_deleted` from the refused attempt. Also verified at startup:
+  `ENVIRONMENT=staging` + `AUTH_DEV_LOGIN_ENABLED=true` refuses to start
+  with the allowlist error.
+- **Pending Device Validation** — offline sign-out retry, backup
+  exclusion and the deletion dialogs still need a physical-device pass;
+  the Android repository/ViewModel suites cover the logic but not the
+  OS-level behavior.
+- **External Integration Blocked** — Google OAuth client (unchanged).
+
 ## Known gaps / external blockers
 
 - **Google OAuth client ID not created** (needs Google Cloud project

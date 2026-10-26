@@ -44,13 +44,13 @@ Tổng quan các nhóm tính năng hướng tới. Đặc tả đầy đủ và 
 | Nhóm chức năng | Mô tả | Trạng thái |
 | --- | --- | --- |
 | Nền tảng M0 | Splash screen, health/meta API, migrations, CI, toolchain | **Implemented — Verified** |
-| Family Circle | Nhóm gia đình, invite, ủy quyền theo chủ thể dữ liệu | Planned (M2) |
+| Family Circle | Nhóm gia đình, invite, ủy quyền theo chủ thể dữ liệu | **Implemented — Verified** (M2) |
 | Live Map | Bản đồ thành viên gần thời gian thực, last known location | Planned (M4) |
 | Smart Tracking | Location Engine thích ứng, tiết kiệm pin, chạy nền đúng quy trình | Planned (M3) |
 | Location Confidence | Trạng thái độ mới/độ tin cậy của dữ liệu vị trí | Planned (M4) |
 | Location History | Hành trình theo ngày, phân biệt dữ liệu bù, retention, xóa | Planned (M5) |
 | Offline Sync | Room durable queue, batch, idempotency, preserve timestamps | Planned (M3) |
-| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Planned (M1–M6) |
+| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Một phần — consent + audit + xóa tài khoản an toàn **Implemented** (M1); pause/thu hồi phân phát Planned (M3–M6) |
 | Place Alerts | Geofence cho địa điểm quan trọng, chống nhiễu, event time | Planned (M5) |
 | SOS & Emergency | Sự kiện cấp cứu, lifecycle, acknowledge qua FCM | Planned (M6) |
 | Safe Journey | Hành trình chủ động về đích, cảnh báo ngừng cập nhật | Planned (M7) |
@@ -106,8 +106,8 @@ các milestone tương ứng và sẽ được bổ sung khi hiện thực, khô
 | Milestone | Phạm vi | Trạng thái |
 | --- | --- | --- |
 | M0 | Foundation: toolchain, CI, migrations, local stack, splash | **Implemented — Verified** |
-| M1 | Authentication, device identity, privacy foundation | Planned |
-| M2 | Family Circle & membership authorization | Planned |
+| M1 | Authentication, device identity, privacy foundation | **Implemented — Verified** (automated; chờ field validation) |
+| M2 | Family Circle & membership authorization | **Implemented — Verified** (automated; chờ field validation) |
 | M3 | Location Engine, Smart Tracking, offline queue | Planned |
 | M4 | Live Map, realtime, confidence engine | Planned |
 | M5 | Location History & Place Alerts | Planned |

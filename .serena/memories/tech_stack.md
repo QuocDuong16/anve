@@ -19,14 +19,17 @@
 - `github.com/google/uuid` for ids (v7 for sessions); `google.golang.org/api/idtoken` verifies Google ID tokens (audience = `AUTH_GOOGLE_CLIENT_ID`, fails closed when unset).
 - Build version is injected at link time (`-ldflags "-X main.version=..."`), falls back to the `VERSION` env var, then `"dev"`.
 - Database: PostgreSQL + PostGIS (extensions: `postgis`, `uuid-ossp`, `pg_trgm`). Runtime images are digest-pinned; Dependabot moves tag and digest together.
-- Integration tests beyond the migrator live in `internal/auth/store_pg_test.go` (skipped without `TEST_DATABASE_URL`); CI's `database-integration` job runs both packages.
+- Integration tests beyond the migrator live in `internal/auth` and `internal/circles` (skipped without `TEST_DATABASE_URL`); CI's `database-integration` job runs those packages. Each test gets its own scratch database (`internal/testdb.Scratch`: CREATE DATABASE, apply real migrations, DROP ... WITH FORCE) because `go test` runs packages in parallel and shared tables + TRUNCATE deadlock.
+- Concurrency invariants worth knowing: refresh, redeem and deletion serialize on row locks. Owner-deletion vs invite-redemption can deadlock (circle lock vs invite lock), so `DeleteUser`, `LeaveCircle` and `RedeemInvite` retry up to 3 times on PostgreSQL `40P01`/`40001` (`isDeadlock`).
 
 ## Android app (since M1)
 
 - Retrofit 3 + Moshi reflection (`moshi-kotlin`, ADR 0003 — NO kotlinx-serialization: its compiler plugin fights AGP 9 built-in Kotlin) + OkHttp; one shared Moshi instance.
 - DataStore preferences; Keystore AES-256-GCM `TokenCipher` behind an interface (JVM tests fake it).
 - Credential Manager (`androidx.credentials` 1.6) + `googleid` 1.2.1 for sign-in; Navigation-Compose; ViewModels via manual `viewModel(factory=...)` (no DI framework; `AppContainer` is the root).
-- Tests use MockWebServer against the real repository/interceptor; ViewModel tests poll with `awaitUntil` (real IO, not virtual time).
+- Tests use MockWebServer against the real repository/interceptor; ViewModel tests poll with `awaitUntil` (real IO, not virtual time; its condition is suspend so it can read `SessionStorage`). Repository-level suites (`AuthRepositoryTest`) cover session lifecycle with real HTTP and `InMemorySessionStorage`, independent of ViewModels.
+- MockWebServer `SocketPolicy.DISCONNECT_AT_START` is only deterministic on the first exchange of a fresh connection; for transport failures after earlier requests, shut the server down (connection refused) or inject an interceptor that throws before the request.
+- Retrofit rejects `@Body` on `@DELETE` at call time (not build time) — `deleteMe` uses `@HTTP(method="DELETE", hasBody=true)`. Watch for this class of bug: the proxy throws only when the method is first invoked.
 
 ## Migrations
 

@@ -74,8 +74,12 @@ flowchart TB
 
 ## 2. Ranh giới component Android
 
-Hiện tại (M0, Implemented): `MainActivity`, `ui/splash`, `ui/theme`, backup/data
-extraction rules. Không có permission location nào trong manifest.
+Hiện tại (M1–M2, Implemented): `MainActivity`, `ui/splash`, `ui/signin`,
+`ui/home` (account, consent, devices), `ui/circle`, `data/auth` (session
+storage sealed by Keystore, SessionInterceptor, pending revocation),
+`data/circles`, `data/api` (Retrofit/Moshi, ADR 0003), backup/data
+extraction rules excluding `sharedpref`, `database` and `file/datastore`.
+Chưa có permission location nào trong manifest — Location Engine là M3.
 
 Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư mục bắt buộc):
 
@@ -88,21 +92,22 @@ Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư m
 | **Network client** | HTTP đến Go API; kết nối realtime | Contract theo [`../../packages/api-contracts/openapi.yaml`](../../packages/api-contracts/openapi.yaml) |
 | **FCM client** | Nhận push sự kiện; không nhận GPS | Xem [Push notification flow](#43-push-notification-flow-planned--m6) |
 
-## 3. Module Go dự kiến
+## 3. Module Go
 
-Module nội bộ `internal/` dự kiến cho các milestone (Planned — chưa tồn tại;
-chỉ `httpapi` và `config` hiện có):
+Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M1/M2):
 
-| Module (dự kiến) | Trách nhiệm | Milestone |
+| Module | Trách nhiệm | Trạng thái |
 | --- | --- | --- |
-| `auth` + `devices` | Đăng nhập, phiên, đăng ký thiết bị | M1 |
-| `circles` | Circle, membership, invite, vai trò | M2 |
-| `authz` | Authorization middleware dùng chung, thực thi quyền per-request | M1–M2 |
-| `locations` | Ingestion Location Point (identity, idempotency, validation), truy vấn history | M3, M5 |
-| `realtime` | Hub phân phát vị trí realtime | M4 |
-| `places` / `alerts` | Geofence events, verification, chống nhiễu | M5 |
-| `sos` / `journeys` | Event lifecycle, acknowledge | M6, M7 |
-| `notify` | Dispatcher FCM, lọc người nhận theo quyền | M6 |
+| `httpapi` + `config` | Router, middleware, error envelope, cấu hình | Implemented (M0–M2) |
+| `auth` | Đăng nhập, phiên, thiết bị, consent switch, xóa tài khoản | Implemented (M1) |
+| `circles` | Circle, membership, invite, vai trò, giải tán | Implemented (M2) |
+| `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | Implemented (M1, ownership thống nhất ở ADR 0004) |
+| `testdb` | Scratch database cho integration tests | Implemented (test infrastructure) |
+| `locations` | Ingestion Location Point (identity, idempotency, validation), truy vấn history | Planned (M3, M5) |
+| `realtime` | Hub phân phát vị trí realtime | Planned (M4) |
+| `places` / `alerts` | Geofence events, verification, chống nhiễu | Planned (M5) |
+| `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
+| `notify` | Dispatcher FCM, lọc người nhận theo quyền | Planned (M6) |
 | `audit` | Ghi sự kiện privacy quan trọng | M1 (nền móng) |
 
 Nguyên tắc giữ nguyên: contract-first (đổi OpenAPI trước handler); API server
@@ -192,6 +197,12 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 ## 6. Technical decisions đã chốt (tham chiếu)
 
 - Modular monorepo — [ADR 0001](../adr/0001-modular-monorepo-foundation.md).
+- Authentication (Google Sign-In + opaque sessions) — [ADR 0002](../adr/0002-authentication-google-signin-opaque-sessions.md).
+- Android JSON (Moshi) — [ADR 0003](../adr/0003-android-json-moshi.md).
+- M1/M2 hardening: xóa tài khoản không giải tán Circle có thành viên, cách ly
+  identity dev/Google, audit một sự kiện một dòng trong transaction, session
+  lifecycle offline, backup exclusion, installation identity, consent ≠
+  tracking — [ADR 0004](../adr/0004-m1-m2-hardening.md).
 - Custom migrator (không golang-migrate), advisory lock, transaction per file,
   bookkeeping table `schema_migrations` do migrator sở hữu — Implemented, có
   integration test trong CI.
@@ -205,8 +216,8 @@ và nên có ADR riêng khi quyết:
 
 1. **Realtime transport** — WebSocket là định hướng; cân nhắc SSE/polling trước
    khi chốt (chi phí vận hành, reconnect, môi trường mạng của người dùng Việt Nam).
-2. **Phương thức authentication** — chưa chọn (OAuth provider, số điện thoại,
-   email/password…); ảnh hưởng đến device identity và UX onboarding.
+2. ~~**Phương thức authentication**~~ — đã chốt: Google Sign-In + opaque
+   session ([ADR 0002](../adr/0002-authentication-google-signin-opaque-sessions.md)).
 3. **FCM data message làm tín hiệu fetch** — dùng hay không, và cơ chế debounce.
 4. **Idempotency key của Location Point** — thiết kế key (device-generated UUID,
    hash của điểm…) và hành vi server khi trùng.
@@ -218,6 +229,10 @@ và nên có ADR riêng khi quyết:
    schema membership và UX switcher.
 9. **Rate limiting SOS/invite** — ngưỡng và cơ chế chống lạm dụng.
 10. **Chính sách backup từng file Room** — file nào được phép backup khi nào.
+    DataStore đã bị loại trừ hoàn toàn (ADR 0004); chính sách cho từng file
+    Room vẫn mở trước M3.
+11. **Pending-revocation retry ngoài app start** — hiện chỉ chạy khi app mở;
+    WorkManager/background scheduler là ứng viên khi M6 thêm bề mặt FCM.
 
 Mỗi quyết định khi chốt cần ADR mới trong [`../adr/`](../adr/) và cập nhật tài
 liệu liên quan ở `docs/product/`.

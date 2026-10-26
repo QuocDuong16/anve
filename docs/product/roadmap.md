@@ -87,6 +87,14 @@ Bằng chứng đã xác minh (chi tiết ở [`../implementation/progress.md`](
   consent → devices → refresh (token cũ chết ngay) → 401 envelope.
 - Android: `make android-check` xanh (lint + unit tests qua MockWebServer +
   APK debug); release build (minified) xanh.
+- Hardening 2026-10-26 (ADR 0004): xóa tài khoản không còn giải tán Circle
+  có thành viên (`CIRCLE_HAS_MEMBERS` + transaction race-safe); dev login chỉ
+  mount khi `ENVIRONMENT=development` và identity dev/Google cách ly hai
+  chiều; audit một sự kiện một dòng trong transaction; Android không xóa
+  session khi xóa tài khoản thất bại, đăng xuất offline có pending-revocation
+  và UI nói rõ giới hạn; backup/transfer loại trừ `file/datastore`. Chi tiết
+  và bằng chứng:
+  [`../implementation/progress.md`](../implementation/progress.md).
 
 Còn thiếu (giữ milestone ở mức này, không nâng lên "hoàn thành tuyệt đối"):
 
@@ -119,6 +127,13 @@ tham gia KHÔNG tự bật chia sẻ vị trí. Integration tests chạy trong C
 (`database-integration`), smoke test HTTP trên stack local. Android: tab Nhóm
 với tạo/tham gia bằng mã mời, thành viên, mã mời (chủ nhóm), rời/giải tán;
 `make android-check` xanh.
+
+Hardening 2026-10-26 (ADR 0004): chủ Circle còn thành viên **không thể** xóa
+tài khoản — server trả `CIRCLE_HAS_MEMBERS` thay vì cascade âm thầm phá nhóm
+của người khác; Circle rỗng bị xóa trong cùng transaction với audit
+`circle.dissolved`; deletion race-safe với redeem (khóa circle + retry
+deadlock, có integration test 5 round). Audit mỗi mutation đúng một dòng
+trong transaction, không còn duplicate giữa store và service.
 
 Còn thiếu: field validation trên thiết bị thật; invite **link** (deep link)
 chưa làm — hiện nhập mã thủ công (đã ghi nhận ở progress.md).

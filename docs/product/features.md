@@ -18,7 +18,7 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
 - Custom migration runner (`cmd/migrate`): transaction từng file, advisory lock, rollback; integration test chạy trên PostgreSQL/PostGIS thật trong CI.
 - Migration `0001_extensions`: `postgis`, `uuid-ossp`, `pg_trgm`.
 - Local stack Docker Compose (postgres/postgis + migrate + api), toolchain pin qua mise, hai workflow CI độc lập (Go, Android).
-- Android backup/transfer rules loại trừ sẵn domain `sharedpref` và `database`.
+- Android backup/transfer rules loại trừ `sharedpref`, `database` và `file/datastore` (nơi lưu session blob đã mã hóa và installation id).
 
 ### 1b. Authentication, thiết bị & privacy foundation — M1
 
@@ -31,14 +31,29 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
 - Phiên đăng nhập bền (persistent), refresh có rotation, thu hồi tức thì
   (mỗi request được kiểm tra lại session), đăng xuất, xóa tài khoản (cascade
   + audit).
-- Đăng ký thiết bị theo device id do app sinh; liệt kê/thu hồi thiết bị của
-  chính mình; cross-user access bị từ chối (có test).
+- **Xóa tài khoản an toàn:** chủ Circle còn thành viên khác nhận
+  `CIRCLE_HAS_MEMBERS` và được hướng dẫn giải tán nhóm trước — xóa tài khoản
+  không bao giờ âm thầm giải tán nhóm của người khác. Xóa thất bại (4xx/5xx/
+  timeout) **không** xóa phiên local; kết quả không rõ được đối soát bằng
+  request có xác thực.
+- **Đăng xuất offline:** phiên local luôn bị xóa; nếu server không xác nhận,
+  một bản ghi pending-revocation đã mã hóa (hết hạn 7 ngày) được thử lại ở
+  lần mở sau. UI không tuyên bố server đã thu hồi khi chưa có xác nhận.
+- Đăng ký thiết bị theo **app installation id** do app sinh (ổn định qua
+  restart/update/sign-out, mới sau reinstall; không đọc hardware id); liệt
+  kê/thu hồi thiết bị của chính mình; cross-user access bị từ chối (có test).
 - **Consent switch** chia sẻ vị trí (mặc định TẮT) với audit record trong
-  cùng transaction ghi nhận thay đổi.
+  cùng transaction ghi nhận thay đổi; UI nói rõ switch là ghi nhận đồng ý,
+  chưa phải GPS đang chạy (Location Engine thuộc M3).
 - Error envelope thống nhất (`code/message/requestId`), rate limiting cho
   endpoint đăng nhập; `readyz` kiểm tra database.
-- Dev-only login (không mount ở production — từ chối ngay khi khởi động)
-  phục vụ phát triển trước khi có Google Cloud project.
+- Dev-only login chỉ mount khi `ENVIRONMENT=development` (staging/production/
+  unknown bị từ chối ngay khi khởi động) và **cách ly identity**: dev fixture
+  không thể đăng nhập vào tài khoản Google, Google không thể nhận tài khoản
+  dev (`IDENTITY_CONFLICT`).
+- Local data: session blob mã hóa Keystore trong DataStore, loại trừ khỏi
+  cloud backup và device transfer (`sharedpref`, `database`,
+  `file/datastore`).
 
 Chưa xác minh: chạy thực tế trên thiết bị (field validation) và luồng Google
 với OAuth client thật (đang chờ cấu hình bên ngoài — xem
