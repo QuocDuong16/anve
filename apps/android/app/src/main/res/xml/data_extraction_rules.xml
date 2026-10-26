@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- SharedPreferences and Room databases are excluded everywhere by default:
-     once location history and the offline queue land in a Room database,
-     nothing may reach cloud backup or device transfer until a deliberate
-     per-file policy decides what may leave the device. -->
+<!-- Backup and transfer exclusions for API 31+ (android:dataExtractionRules).
+
+     - sharedpref / database: no preferences or Room files leave the device.
+     - file/datastore: Preferences DataStore stores its files in
+       files/datastore/ (the `file` domain), including the Keystore-sealed
+       session blob and the app installation id. Excluded from both cloud
+       backup and device-to-device transfer: the Keystore key does not
+       travel with the file, so a restored blob is useless — and the
+       ciphertext must not be transferred regardless.
+
+     Room databases holding location history and the offline queue stay out
+     of every transfer until a deliberate per-file policy decides what may
+     leave the device. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude
@@ -11,6 +20,9 @@
         <exclude
             domain="database"
             path="." />
+        <exclude
+            domain="file"
+            path="datastore" />
     </cloud-backup>
     <device-transfer>
         <exclude
@@ -19,5 +31,8 @@
         <exclude
             domain="database"
             path="." />
+        <exclude
+            domain="file"
+            path="datastore" />
     </device-transfer>
 </data-extraction-rules>

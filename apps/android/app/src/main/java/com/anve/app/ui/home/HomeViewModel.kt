@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 
 /**
@@ -40,6 +42,15 @@ class HomeViewModel(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
+    /**
+     * Serializes consent writes so rapid toggles cannot interleave: each
+     * request starts after the previous one settled, and a failed request
+     * rolls the switch back to the last state the server confirmed — never
+     * leaving the UI disagreeing with the backend.
+     */
+    private val consentLock = Mutex()
+    private var confirmedSharing: Boolean? = null
+
     init {
         refresh()
     }
@@ -50,6 +61,7 @@ class HomeViewModel(
             try {
                 val user = repository.me()
                 val devices = repository.devices().devices
+                confirmedSharing = user.locationSharingEnabled
                 _state.update {
                     it.copy(loading = false, user = user, devices = devices)
                 }
@@ -70,25 +82,29 @@ class HomeViewModel(
 
     /** The privacy consent switch — always the data subject's own call. */
     fun setLocationSharing(enabled: Boolean) {
-        val current = _state.value.user ?: return
+        val atCall = _state.value.user ?: return
         // Optimistic flip; the server's answer is authoritative.
-        _state.update { it.copy(user = current.copy(locationSharingEnabled = enabled)) }
+        _state.update { it.copy(user = it.user?.copy(locationSharingEnabled = enabled), error = null) }
         viewModelScope.launch {
-            try {
-                val user = repository.setLocationSharing(enabled)
-                _state.update { it.copy(user = user) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _state.update {
-                    it.copy(
-                        user = current,
-                        error = if (enabled) {
-                            "Không bật được chia sẻ vị trí. Vui lòng thử lại."
-                        } else {
-                            "Không tắt được chia sẻ vị trí. Vui lòng thử lại."
-                        },
-                    )
+            consentLock.withLock {
+                try {
+                    val user = repository.setLocationSharing(enabled)
+                    confirmedSharing = user.locationSharingEnabled
+                    _state.update { it.copy(user = user) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    val fallback = confirmedSharing ?: atCall.locationSharingEnabled
+                    _state.update {
+                        it.copy(
+                            user = it.user?.copy(locationSharingEnabled = fallback),
+                            error = if (enabled) {
+                                "Không bật được chia sẻ vị trí. Vui lòng thử lại."
+                            } else {
+                                "Không tắt được chia sẻ vị trí. Vui lòng thử lại."
+                            },
+                        )
+                    }
                 }
             }
         }

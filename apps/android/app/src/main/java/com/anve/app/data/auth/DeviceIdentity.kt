@@ -20,34 +20,71 @@ interface DeviceRegistrationProvider {
     suspend fun registration(): DeviceRegistrationDto
 }
 
-/**
- * The app-owned device identifier (ADR 0002): a random UUID generated once
- * and kept in private storage. It lets the server reuse one `devices` row
- * for the same physical phone across reinstalls and re-logins.
- */
-class DeviceIdentity(private val context: Context) : DeviceRegistrationProvider {
+/** Durable storage of the app installation id (DataStore in production). */
+interface InstallationIdStore {
+    suspend fun read(): String?
+    suspend fun write(id: String)
+}
 
-    private val dataStore = context.applicationContext.deviceDataStore
+private class DataStoreInstallationIdStore(
+    private val dataStore: DataStore<Preferences>,
+) : InstallationIdStore {
+    override suspend fun read(): String? = dataStore.data.first()[KEY_DEVICE_ID]
+
+    override suspend fun write(id: String) {
+        dataStore.edit { prefs -> prefs[KEY_DEVICE_ID] = id }
+    }
+
+    private companion object {
+        val KEY_DEVICE_ID = stringPreferencesKey("client_device_id")
+    }
+}
+
+/**
+ * The AnVề app installation identity (ADR 0002/0004): a random UUID created
+ * on first use and kept in private storage.
+ *
+ * Semantics, deliberately narrow:
+ *  - stable across app restarts, process death, app updates and
+ *    sign-out/sign-in (session storage is a different file);
+ *  - regenerated after a reinstall or a factory reset, because private app
+ *    storage is deleted with the app;
+ *  - it is an *installation* identity, not a hardware identity. No Android
+ *    hardware identifier is read, so two installs on one phone are two
+ *    devices and one install restored from backup is still a new install.
+ *
+ * The server keys its devices row on (user, client_device_id) and treats it
+ * the same way: reusing one row while the installation exists, creating a
+ * new one after a reinstall.
+ */
+class DeviceIdentity(
+    private val idStore: InstallationIdStore,
+    private val deviceName: () -> String = ::defaultDeviceName,
+) : DeviceRegistrationProvider {
+
+    /** Production wiring: the id lives in the app's DataStore. */
+    constructor(context: Context) : this(
+        DataStoreInstallationIdStore(context.applicationContext.deviceDataStore),
+    )
 
     override suspend fun registration(): DeviceRegistrationDto {
         val id = deviceId()
         return DeviceRegistrationDto(
             clientDeviceId = id,
-            name = android.os.Build.MODEL ?: "Thiết bị Android",
+            name = deviceName(),
             platform = "android",
             appVersion = BuildConfig.VERSION_NAME,
         )
     }
 
     suspend fun deviceId(): String {
-        val existing = dataStore.data.first()[KEY_DEVICE_ID]
+        val existing = idStore.read()
         if (!existing.isNullOrBlank()) return existing
         val generated = UUID.randomUUID().toString()
-        dataStore.edit { prefs -> prefs[KEY_DEVICE_ID] = generated }
+        idStore.write(generated)
         return generated
     }
-
-    companion object {
-        private val KEY_DEVICE_ID = stringPreferencesKey("client_device_id")
-    }
 }
+
+private fun defaultDeviceName(): String =
+    android.os.Build.MODEL?.takeIf { it.isNotBlank() } ?: "Thiết bị Android"

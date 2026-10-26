@@ -81,8 +81,8 @@ class HomeViewModelTest {
         )
     }
 
-    private fun userJson(sharing: Boolean) =
-        """{"id":"u1","email":"a@b.co","displayName":"Mai",
+    private fun userJson(sharing: Boolean, name: String = "Mai") =
+        """{"id":"u1","email":"a@b.co","displayName":"$name",
            "locationSharingEnabled":$sharing,"createdAt":"2026-10-25T00:00:00Z"}""".replace("\n", "")
 
     private fun enqueueHome(userJson: String = userJson(sharing = false)) {
@@ -145,6 +145,7 @@ class HomeViewModelTest {
         enqueueHome()
         val vm = HomeViewModel(repository)
         awaitUntil { !vm.state.value.loading }
+        consumeInitRequests()
 
         server.enqueue(MockResponse().setResponseCode(503).setBody("""{"code":"SERVICE_UNAVAILABLE","message":"no db"}"""))
         vm.setLocationSharing(true)
@@ -152,6 +153,61 @@ class HomeViewModelTest {
 
         assertFalse(vm.state.value.user!!.locationSharingEnabled)
         assertNotNull(vm.state.value.error)
+    }
+
+    @Test
+    fun `rapid consent toggles settle on the last server-confirmed state`() = runBlocking {
+        enqueueHome()
+        val vm = HomeViewModel(repository)
+        awaitUntil { !vm.state.value.loading }
+        consumeInitRequests()
+
+        // Three quick taps: on, off, on. Requests are serialized. The server
+        // answers true, false, false: the final UI state must be the last
+        // server-confirmed answer (false), not the optimistic last tap.
+        server.enqueue(MockResponse().setBody(userJson(sharing = true)))
+        server.enqueue(MockResponse().setBody(userJson(sharing = false)))
+        server.enqueue(MockResponse().setBody(userJson(sharing = false, name = "Settled")))
+        vm.setLocationSharing(true)
+        vm.setLocationSharing(false)
+        vm.setLocationSharing(true)
+
+        // The third answer carries a marker name: seeing it proves every
+        // queued response has been applied.
+        awaitUntil { vm.state.value.user?.displayName == "Settled" }
+
+        assertFalse("the server's last answer wins", vm.state.value.user!!.locationSharingEnabled)
+        val bodies = (1..3).map { server.takeRequest().body.readUtf8() }
+        assertEquals(
+            "requests reach the server in tap order",
+            listOf(true, false, true),
+            bodies.map { it.contains("\"enabled\":true") },
+        )
+    }
+
+    @Test
+    fun `a failure in the middle of a rapid sequence rolls back to the confirmed state`() = runBlocking {
+        enqueueHome()
+        val vm = HomeViewModel(repository)
+        awaitUntil { !vm.state.value.loading }
+        consumeInitRequests()
+
+        server.enqueue(MockResponse().setBody(userJson(sharing = true)))
+        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"code":"INTERNAL","message":"x"}"""))
+        vm.setLocationSharing(true)
+        vm.setLocationSharing(false)
+
+        awaitUntil { vm.state.value.error != null }
+        assertTrue(
+            "the server confirmed ON; the failed OFF must not stick",
+            vm.state.value.user!!.locationSharingEnabled,
+        )
+    }
+
+    /** Consumes the two requests the ViewModel init issues. */
+    private fun consumeInitRequests() {
+        server.takeRequest()
+        server.takeRequest()
     }
 
     @Test

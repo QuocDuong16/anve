@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Backup exclusions for API < 31 (android:fullBackupContent).
+
+     - sharedpref / database: no preferences or Room files leave the device.
+     - file/datastore: Preferences DataStore keeps its files in
+       files/datastore/, i.e. the `file` domain, not `sharedpref`. This is
+       where the encrypted session blob (anve_session) and the app
+       installation id (anve_device) live. The Keystore keys that seal the
+       blob are never backed up, so a restored blob could not be decrypted
+       anyway — but it must not leave the device in the first place.
+
+     Once location history and the offline queue land in a Room database,
+     nothing may reach cloud backup or device transfer until a deliberate
+     per-file policy decides what may leave the device. -->
 <full-backup-content>
     <exclude
         domain="sharedpref"
         path="." />
-    <!-- Room databases will hold location history and the offline queue.
-         They stay out of cloud backup until a deliberate per-file policy
-         decides what may leave the device. -->
     <exclude
         domain="database"
         path="." />
+    <exclude
+        domain="file"
+        path="datastore" />
 </full-backup-content>
