@@ -1,9 +1,9 @@
-// Package authtest provides in-memory fakes of the auth Store, the audit
-// Recorder and the Google IdentityVerifier. They mirror the semantics of
-// the PostgreSQL implementation — one active session per device, revocation
-// visible to Authenticate, every query scoped by user — so service and
-// handler tests can run without a database while still exercising real
-// authorization behavior.
+// Package authtest provides an in-memory fake of the auth Store and the
+// Google IdentityVerifier. It mirrors the semantics of the PostgreSQL
+// implementation — one active session per device, revocation visible to
+// Authenticate, every query scoped by user, audit events recorded with the
+// business change — so service and handler tests can run without a
+// database while still exercising real authorization behavior.
 package authtest
 
 import (
@@ -159,14 +159,21 @@ func (s *Store) Refresh(_ context.Context, in auth.RefreshInput) (auth.Session, 
 	return auth.Session{}, auth.User{}, auth.ErrUnauthenticated
 }
 
-// SignOut revokes one session.
+// SignOut revokes one session and records the audit event, mirroring the
+// PG store's single transaction.
 func (s *Store) SignOut(_ context.Context, sessionID uuid.UUID, _ string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if row, ok := s.sessions[sessionID]; ok && row.revokedAt == nil {
-		now := time.Now().UTC()
-		row.revokedAt = &now
+	row, ok := s.sessions[sessionID]
+	if !ok || row.revokedAt != nil {
+		return nil
 	}
+	now := time.Now().UTC()
+	row.revokedAt = &now
+	s.auditTrail = append(s.auditTrail, audit.Event{
+		ActorUserID: row.UserID, Action: audit.ActionSignOut,
+		Detail: map[string]any{"session_id": sessionID.String()},
+	})
 	return nil
 }
 
@@ -251,7 +258,8 @@ func (s *Store) ListDevices(_ context.Context, userID uuid.UUID) ([]auth.DeviceW
 	return out, nil
 }
 
-// DeleteDevice removes a device of the same user only.
+// DeleteDevice removes a device of the same user only, cascading its
+// sessions and recording the audit event.
 func (s *Store) DeleteDevice(_ context.Context, userID, deviceID uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -265,6 +273,10 @@ func (s *Store) DeleteDevice(_ context.Context, userID, deviceID uuid.UUID) erro
 			delete(s.sessions, id)
 		}
 	}
+	s.auditTrail = append(s.auditTrail, audit.Event{
+		ActorUserID: userID, Action: audit.ActionDeviceRevoked,
+		Detail: map[string]any{"device_id": deviceID.String()},
+	})
 	return nil
 }
 
@@ -277,29 +289,4 @@ type Verifier struct {
 // Verify implements auth.IdentityVerifier.
 func (v Verifier) Verify(context.Context, string) (auth.GoogleIdentity, error) {
 	return v.Identity, v.Err
-}
-
-// Recorder accepts audit events in memory.
-type Recorder struct {
-	mu     sync.Mutex
-	events []audit.Event
-}
-
-// Record implements audit.Recorder.
-func (r *Recorder) Record(_ context.Context, e audit.Event) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.events = append(r.events, e)
-	return nil
-}
-
-// Actions returns the recorded event actions in order.
-func (r *Recorder) Actions() []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	out := make([]string, 0, len(r.events))
-	for _, e := range r.events {
-		out = append(out, e.Action)
-	}
-	return out
 }

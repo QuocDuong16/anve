@@ -143,19 +143,35 @@ func (s *PGStore) MyCircle(ctx context.Context, userID uuid.UUID) (Circle, *Memb
 	return circle, &membership, nil
 }
 
-// RenameCircle renames a circle the caller belongs to; owner only.
+// RenameCircle renames a circle the caller belongs to; owner only. The
+// rename and its audit row commit together.
 func (s *PGStore) RenameCircle(ctx context.Context, userID, circleID uuid.UUID, name string) (Circle, error) {
-	m, err := callerMembership(ctx, s.pool, userID, circleID, false)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Circle{}, fmt.Errorf("begin rename circle: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	m, err := callerMembership(ctx, tx, userID, circleID, false)
 	if err != nil {
 		return Circle{}, err
 	}
 	if m.Role != "owner" {
 		return Circle{}, ErrForbidden
 	}
-	circle, err := scanCircle(s.pool.QueryRow(ctx,
+	circle, err := scanCircle(tx.QueryRow(ctx,
 		`UPDATE circles SET name = $2 WHERE id = $1 RETURNING `+circleColumns, circleID, name))
 	if err != nil {
 		return Circle{}, fmt.Errorf("rename circle: %w", err)
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{
+		ActorUserID: userID, Action: audit.ActionCircleRenamed,
+		Detail: map[string]any{"circle_id": circleID.String()},
+	}); err != nil {
+		return Circle{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Circle{}, fmt.Errorf("commit rename circle: %w", err)
 	}
 	return circle, nil
 }
@@ -291,9 +307,31 @@ func (s *PGStore) leaveCircle(ctx context.Context, userID, circleID uuid.UUID, d
 }
 
 // CreateInvite issues a single-use code; owner only. A generated code that
-// collides is retried once with a fresh random value.
+// collides is retried with a fresh random value — a unique violation aborts
+// the transaction, so the retry starts a new one. The invite and its audit
+// row commit together.
 func (s *PGStore) CreateInvite(ctx context.Context, userID, circleID uuid.UUID, expiresAt time.Time) (Invite, error) {
-	m, err := callerMembership(ctx, s.pool, userID, circleID, false)
+	for attempt := 0; attempt < 2; attempt++ {
+		invite, err := s.createInviteTx(ctx, userID, circleID, expiresAt)
+		if isUniqueViolation(err, "invites_code_key") {
+			continue
+		}
+		if err != nil {
+			return Invite{}, err
+		}
+		return invite, nil
+	}
+	return Invite{}, fmt.Errorf("invite code collision twice; retry")
+}
+
+func (s *PGStore) createInviteTx(ctx context.Context, userID, circleID uuid.UUID, expiresAt time.Time) (Invite, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Invite{}, fmt.Errorf("begin create invite: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	m, err := callerMembership(ctx, tx, userID, circleID, false)
 	if err != nil {
 		return Invite{}, err
 	}
@@ -301,30 +339,33 @@ func (s *PGStore) CreateInvite(ctx context.Context, userID, circleID uuid.UUID, 
 		return Invite{}, ErrForbidden
 	}
 
-	for attempt := 0; attempt < 2; attempt++ {
-		code, err := newInviteCode()
-		if err != nil {
-			return Invite{}, fmt.Errorf("generate invite code: %w", err)
-		}
-		var invite Invite
-		invite.CircleID = circleID
-		invite.CreatedBy = userID
-		invite.Code = code
-		err = s.pool.QueryRow(ctx,
-			`INSERT INTO invites (circle_id, code, created_by, expires_at)
-			 VALUES ($1, $2, $3, $4)
-			 RETURNING id, created_at`,
-			circleID, code, userID, expiresAt).Scan(&invite.ID, &invite.CreatedAt)
-		if isUniqueViolation(err, "invites_code_key") {
-			continue
-		}
-		if err != nil {
-			return Invite{}, fmt.Errorf("insert invite: %w", err)
-		}
-		invite.ExpiresAt = expiresAt
-		return invite, nil
+	code, err := newInviteCode()
+	if err != nil {
+		return Invite{}, fmt.Errorf("generate invite code: %w", err)
 	}
-	return Invite{}, fmt.Errorf("invite code collision twice; retry")
+	var invite Invite
+	invite.CircleID = circleID
+	invite.CreatedBy = userID
+	invite.Code = code
+	invite.ExpiresAt = expiresAt
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO invites (circle_id, code, created_by, expires_at)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, created_at`,
+		circleID, code, userID, expiresAt).Scan(&invite.ID, &invite.CreatedAt); err != nil {
+		return Invite{}, err
+	}
+
+	if err := audit.InTx(ctx, tx, audit.Event{
+		ActorUserID: userID, Action: audit.ActionInviteCreated,
+		Detail: map[string]any{"circle_id": circleID.String(), "invite_id": invite.ID.String()},
+	}); err != nil {
+		return Invite{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Invite{}, fmt.Errorf("commit create invite: %w", err)
+	}
+	return invite, nil
 }
 
 // ListInvites returns the circle's still-redeemable invites; owner only.
@@ -358,21 +399,39 @@ func (s *PGStore) ListInvites(ctx context.Context, userID, circleID uuid.UUID) (
 	return out, rows.Err()
 }
 
-// RevokeInvite revokes an outstanding invite; owner of its circle only.
+// RevokeInvite revokes an outstanding invite; owner of its circle only. The
+// revocation and its audit row commit together.
 func (s *PGStore) RevokeInvite(ctx context.Context, userID, inviteID uuid.UUID) error {
-	ct, err := s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin revoke invite: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var circleID uuid.UUID
+	err = tx.QueryRow(ctx,
 		`UPDATE invites SET revoked_at = now()
 		  WHERE id = $1 AND revoked_at IS NULL AND used_at IS NULL
 		    AND circle_id IN (SELECT circle_id FROM memberships
-		                       WHERE user_id = $2 AND role = 'owner')`,
-		inviteID, userID)
-	if err != nil {
-		return fmt.Errorf("revoke invite: %w", err)
-	}
-	if ct.RowsAffected() == 0 {
+		                       WHERE user_id = $2 AND role = 'owner')
+		 RETURNING circle_id`,
+		inviteID, userID).Scan(&circleID)
+	if errors.Is(err, pgx.ErrNoRows) {
 		// Either the invite does not exist, is already dead, or belongs to
 		// a circle the caller does not own — indistinguishable by design.
 		return fmt.Errorf("%w: invite %s", auth.ErrNotFound, inviteID)
+	}
+	if err != nil {
+		return fmt.Errorf("revoke invite: %w", err)
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{
+		ActorUserID: userID, Action: audit.ActionInviteRevoked,
+		Detail: map[string]any{"invite_id": inviteID.String(), "circle_id": circleID.String()},
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit revoke invite: %w", err)
 	}
 	return nil
 }

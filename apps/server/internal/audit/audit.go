@@ -3,17 +3,21 @@
 //
 // The audit log never contains coordinates or token material — only
 // identities, actions, timestamps and small non-sensitive details.
+//
+// Ownership rule (ADR 0004): every business change records exactly one
+// event, and it does so from inside the same database transaction as the
+// change. There is deliberately no best-effort path: a mandatory audit row
+// that could silently go missing after the business commit is worse than a
+// failed request. If an event is not worth a row, it is not an audit event.
 package audit
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Action names. They are part of the stable surface consumed by operators,
@@ -53,38 +57,6 @@ type Event struct {
 	Detail map[string]any
 }
 
-// Recorder stores audit events. Implementations must be safe for concurrent
-// use.
-type Recorder interface {
-	Record(ctx context.Context, e Event) error
-}
-
-// PG records audit events into the audit_log table.
-type PG struct {
-	pool *pgxpool.Pool
-}
-
-// NewPG returns a PostgreSQL-backed recorder.
-func NewPG(pool *pgxpool.Pool) *PG {
-	return &PG{pool: pool}
-}
-
-// Record inserts one audit row.
-func (p *PG) Record(ctx context.Context, e Event) error {
-	detail, err := json.Marshal(e.Detail)
-	if err != nil {
-		return fmt.Errorf("marshal audit detail: %w", err)
-	}
-	_, err = p.pool.Exec(ctx,
-		`INSERT INTO audit_log (actor_user_id, action, target_user_id, detail)
-		 VALUES ($1, $2, $3, $4)`,
-		e.ActorUserID, e.Action, e.TargetUserID, detail)
-	if err != nil {
-		return fmt.Errorf("insert audit row: %w", err)
-	}
-	return nil
-}
-
 // InTx records an audit event on an existing transaction, so the trail is
 // atomic with the business change it describes.
 func InTx(ctx context.Context, tx pgx.Tx, e Event) error {
@@ -100,13 +72,4 @@ func InTx(ctx context.Context, tx pgx.Tx, e Event) error {
 		return fmt.Errorf("insert audit row: %w", err)
 	}
 	return nil
-}
-
-// BestEffort records an event and, on failure, logs instead of failing the
-// caller's operation. Used where the operation itself already committed and
-// a missing audit row must not roll back user-visible state.
-func BestEffort(ctx context.Context, r Recorder, e Event) {
-	if err := r.Record(ctx, e); err != nil {
-		slog.WarnContext(ctx, "audit record failed", "action", e.Action, "error", err)
-	}
 }

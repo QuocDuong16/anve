@@ -14,7 +14,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
@@ -88,9 +87,8 @@ func run() error {
 		}
 
 		store := auth.NewPGStore(pool)
-		recorder := audit.NewPG(pool)
-		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled, recorder)
-		circlesService = circles.NewService(circles.NewPGStore(pool), recorder)
+		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled)
+		circlesService = circles.NewService(circles.NewPGStore(pool))
 	} else {
 		logger.Warn("DATABASE_URL is empty: business endpoints answer 503")
 	}

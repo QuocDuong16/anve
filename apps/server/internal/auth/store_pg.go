@@ -300,13 +300,37 @@ func (s *PGStore) Refresh(ctx context.Context, in RefreshInput) (Session, User, 
 	return sess, u, nil
 }
 
-// SignOut revokes one session.
+// SignOut revokes one session; the revocation and its audit row commit
+// together, so a signed-out session can never exist without its record.
 func (s *PGStore) SignOut(ctx context.Context, sessionID uuid.UUID, reason string) error {
-	if _, err := s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin sign-out transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var userID, deviceID uuid.UUID
+	err = tx.QueryRow(ctx,
 		`UPDATE sessions SET revoked_at = now(), revoked_reason = $2
-		  WHERE id = $1 AND revoked_at IS NULL`,
-		sessionID, reason); err != nil {
+		  WHERE id = $1 AND revoked_at IS NULL
+		 RETURNING user_id, device_id`,
+		sessionID, reason).Scan(&userID, &deviceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Already revoked: revoking twice is a no-op, and no second audit
+		// row is written.
+		return nil
+	}
+	if err != nil {
 		return fmt.Errorf("revoke session: %w", err)
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{
+		ActorUserID: userID, Action: audit.ActionSignOut,
+		Detail: map[string]any{"session_id": sessionID.String(), "device_id": deviceID.String()},
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit sign-out: %w", err)
 	}
 	return nil
 }
@@ -522,15 +546,32 @@ func (s *PGStore) ListDevices(ctx context.Context, userID uuid.UUID) ([]DeviceWi
 	return out, rows.Err()
 }
 
-// DeleteDevice removes one device of the same account only.
+// DeleteDevice removes one device of the same account only. The deletion
+// cascades the device's sessions and, together with its audit row, commits
+// in one transaction.
 func (s *PGStore) DeleteDevice(ctx context.Context, userID, deviceID uuid.UUID) error {
-	ct, err := s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin delete device: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	ct, err := tx.Exec(ctx,
 		`DELETE FROM devices WHERE id = $1 AND user_id = $2`, deviceID, userID)
 	if err != nil {
 		return fmt.Errorf("delete device: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
 		return fmt.Errorf("%w: device %s", ErrNotFound, deviceID)
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{
+		ActorUserID: userID, Action: audit.ActionDeviceRevoked,
+		Detail: map[string]any{"device_id": deviceID.String()},
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit delete device: %w", err)
 	}
 	return nil
 }

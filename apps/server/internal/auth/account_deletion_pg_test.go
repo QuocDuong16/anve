@@ -33,7 +33,7 @@ func newCircleFixture(t *testing.T, members int) circleFixture {
 	t.Helper()
 	ctx := context.Background()
 	svc, pool := newPGService(t)
-	circleSvc := circles.NewService(circles.NewPGStore(pool), audit.NewPG(pool))
+	circleSvc := circles.NewService(circles.NewPGStore(pool))
 
 	owner, _, err := svc.DevSignIn(ctx, "owner@x.co", "Owner", devDevice())
 	require.NoError(t, err)

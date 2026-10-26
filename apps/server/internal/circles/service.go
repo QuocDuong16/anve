@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
 )
 
@@ -93,16 +92,16 @@ type Store interface {
 	RedeemInvite(ctx context.Context, userID uuid.UUID, code string) (Circle, Membership, error)
 }
 
-// Service implements the circle use-cases; audit actions are recorded with
-// the store's transactions where atomicity matters.
+// Service implements the circle use-cases. Audit events are owned by the
+// store: each mutation records its event inside the same transaction, so a
+// business change and its audit row commit or roll back together (ADR 0004).
 type Service struct {
 	store Store
-	audit audit.Recorder
 }
 
 // NewService builds the circle use-cases on the given store.
-func NewService(store Store, recorder audit.Recorder) *Service {
-	return &Service{store: store, audit: recorder}
+func NewService(store Store) *Service {
+	return &Service{store: store}
 }
 
 // Create makes a new circle with the caller as owner.
@@ -125,15 +124,7 @@ func (s *Service) Rename(ctx context.Context, userID, circleID uuid.UUID, name s
 	if name == "" || len([]rune(name)) > 80 {
 		return Circle{}, fmt.Errorf("%w: circle name must be 1-80 characters", auth.ErrValidation)
 	}
-	circle, err := s.store.RenameCircle(ctx, userID, circleID, name)
-	if err != nil {
-		return Circle{}, err
-	}
-	audit.BestEffort(ctx, s.audit, audit.Event{
-		ActorUserID: userID, Action: audit.ActionCircleRenamed,
-		Detail: map[string]any{"circle_id": circleID.String()},
-	})
-	return circle, nil
+	return s.store.RenameCircle(ctx, userID, circleID, name)
 }
 
 // Members lists what members may see of each other.
@@ -143,15 +134,7 @@ func (s *Service) Members(ctx context.Context, userID, circleID uuid.UUID) ([]Me
 
 // RemoveMember removes an ordinary member; owner only.
 func (s *Service) RemoveMember(ctx context.Context, ownerID, circleID, targetID uuid.UUID) error {
-	if err := s.store.RemoveMember(ctx, ownerID, circleID, targetID); err != nil {
-		return err
-	}
-	audit.BestEffort(ctx, s.audit, audit.Event{
-		ActorUserID: ownerID, Action: audit.ActionMemberRemoved,
-		TargetUserID: &targetID,
-		Detail:       map[string]any{"circle_id": circleID.String()},
-	})
-	return nil
+	return s.store.RemoveMember(ctx, ownerID, circleID, targetID)
 }
 
 // Leave removes the caller; owners of populated circles must dissolve.
@@ -171,15 +154,7 @@ func (s *Service) CreateInvite(ctx context.Context, userID, circleID uuid.UUID, 
 		}
 		ttl = time.Duration(*expiresInHours) * time.Hour
 	}
-	invite, err := s.store.CreateInvite(ctx, userID, circleID, time.Now().UTC().Add(ttl))
-	if err != nil {
-		return Invite{}, err
-	}
-	audit.BestEffort(ctx, s.audit, audit.Event{
-		ActorUserID: userID, Action: audit.ActionInviteCreated,
-		Detail: map[string]any{"circle_id": circleID.String(), "invite_id": invite.ID.String()},
-	})
-	return invite, nil
+	return s.store.CreateInvite(ctx, userID, circleID, time.Now().UTC().Add(ttl))
 }
 
 // Invites lists the circle's outstanding invites; owner only.
@@ -189,32 +164,17 @@ func (s *Service) Invites(ctx context.Context, userID, circleID uuid.UUID) ([]In
 
 // RevokeInvite kills an outstanding invite; owner only.
 func (s *Service) RevokeInvite(ctx context.Context, userID, inviteID uuid.UUID) error {
-	if err := s.store.RevokeInvite(ctx, userID, inviteID); err != nil {
-		return err
-	}
-	audit.BestEffort(ctx, s.audit, audit.Event{
-		ActorUserID: userID, Action: audit.ActionInviteRevoked,
-		Detail: map[string]any{"invite_id": inviteID.String()},
-	})
-	return nil
+	return s.store.RevokeInvite(ctx, userID, inviteID)
 }
 
-// Redeem joins a circle with an invite code; the store burns the code in
-// the same transaction that creates the membership.
+// Redeem joins a circle with an invite code; the store burns the code and
+// records the join in the same transaction that creates the membership.
 func (s *Service) Redeem(ctx context.Context, userID uuid.UUID, code string) (Circle, Membership, error) {
 	code = strings.TrimSpace(code)
 	if len(code) < 4 || len(code) > 32 {
 		return Circle{}, Membership{}, fmt.Errorf("%w: code must be 4-32 characters", auth.ErrValidation)
 	}
-	circle, membership, err := s.store.RedeemInvite(ctx, userID, code)
-	if err != nil {
-		return Circle{}, Membership{}, err
-	}
-	audit.BestEffort(ctx, s.audit, audit.Event{
-		ActorUserID: userID, Action: audit.ActionCircleJoined,
-		Detail: map[string]any{"circle_id": circle.ID.String()},
-	})
-	return circle, membership, nil
+	return s.store.RedeemInvite(ctx, userID, code)
 }
 
 // codeAlphabet is Crockford-ish base32 without ambiguous glyphs; codes are

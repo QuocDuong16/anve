@@ -21,7 +21,7 @@ func devDevice() auth.DeviceRegistration {
 // newTestService wires the real service on the in-memory store; google
 // defaults to nil (Google disabled), dev login is mounted.
 func newTestService(store auth.Store, verifier auth.IdentityVerifier) *auth.Service {
-	return auth.NewService(store, verifier, true, &authtest.Recorder{})
+	return auth.NewService(store, verifier, true)
 }
 
 func TestDevSignInIssuesSession(t *testing.T) {
@@ -46,7 +46,7 @@ func TestDevSignInIssuesSession(t *testing.T) {
 
 func TestDevSignInDisabledWhenNotMounted(t *testing.T) {
 	t.Parallel()
-	svc := auth.NewService(authtest.NewStore(), nil, false, &authtest.Recorder{})
+	svc := auth.NewService(authtest.NewStore(), nil, false)
 
 	_, _, err := svc.DevSignIn(context.Background(), "a@b.co", "", devDevice())
 	require.ErrorIs(t, err, auth.ErrNotFound)
@@ -76,7 +76,7 @@ func TestDevSignInValidation(t *testing.T) {
 
 func TestGoogleSignInRequiresConfiguration(t *testing.T) {
 	t.Parallel()
-	svc := auth.NewService(authtest.NewStore(), nil, false, &authtest.Recorder{})
+	svc := auth.NewService(authtest.NewStore(), nil, false)
 
 	_, _, err := svc.SignInWithGoogle(context.Background(), "token", devDevice())
 	require.ErrorIs(t, err, auth.ErrGoogleNotConfigured)

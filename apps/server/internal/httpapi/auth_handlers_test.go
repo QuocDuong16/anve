@@ -38,7 +38,7 @@ type userBody struct {
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 	store := authtest.NewStore()
-	svc := auth.NewService(store, nil, true, &authtest.Recorder{})
+	svc := auth.NewService(store, nil, true)
 	return &testServer{
 		router: httpapi.NewRouter(httpapi.Deps{Version: "test", Auth: svc, DB: fakePinger{}}),
 		store:  store,
@@ -309,7 +309,7 @@ func TestSignInRateLimit(t *testing.T) {
 func TestDevLoginNotMountedIs404(t *testing.T) {
 	t.Parallel()
 	store := authtest.NewStore()
-	svc := auth.NewService(store, nil, false, &authtest.Recorder{})
+	svc := auth.NewService(store, nil, false)
 	router := httpapi.NewRouter(httpapi.Deps{Version: "test", Auth: svc, DB: fakePinger{}})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/dev-login", bytes.NewReader([]byte(`{}`)))

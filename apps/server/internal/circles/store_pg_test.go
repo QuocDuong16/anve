@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/testdb"
@@ -29,8 +28,8 @@ import (
 func newStack(t *testing.T) (*circles.Service, *auth.Service, *pgxpool.Pool) {
 	t.Helper()
 	pool := testdb.Scratch(t)
-	authSvc := auth.NewService(auth.NewPGStore(pool), nil, true, audit.NewPG(pool))
-	circleSvc := circles.NewService(circles.NewPGStore(pool), audit.NewPG(pool))
+	authSvc := auth.NewService(auth.NewPGStore(pool), nil, true)
+	circleSvc := circles.NewService(circles.NewPGStore(pool))
 	return circleSvc, authSvc, pool
 }
 

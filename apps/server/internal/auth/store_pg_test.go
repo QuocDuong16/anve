@@ -36,8 +36,7 @@ func newPGService(t *testing.T) (*auth.Service, *pgxpool.Pool) {
 	t.Helper()
 	pool := newTestDB(t)
 	store := auth.NewPGStore(pool)
-	recorder := audit.NewPG(pool)
-	return auth.NewService(store, nil, true, recorder), pool
+	return auth.NewService(store, nil, true), pool
 }
 
 func auditActions(t *testing.T, pool *pgxpool.Pool) []string {
@@ -258,6 +257,55 @@ func TestPGSignOutAndRefreshAfterRevocation(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 	_, err = svc.Refresh(ctx, tokens.RefreshToken)
 	require.ErrorIs(t, err, auth.ErrUnauthenticated, "a signed-out session cannot be refreshed back to life")
+}
+
+// ── audit integrity (ADR 0004) ───────────────────────────────────────────────
+
+func TestPGAuditOneRowPerSignOut(t *testing.T) {
+	svc, pool := newPGService(t)
+	ctx := context.Background()
+
+	_, tokens, err := svc.DevSignIn(ctx, "a@b.co", "", devDevice())
+	require.NoError(t, err)
+	sess := sessionOf(t, svc, tokens.AccessToken)
+
+	require.NoError(t, svc.SignOut(ctx, sess))
+	assert.Equal(t, 1, countRows(t, pool,
+		`SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionSignOut))
+
+	// A second sign-out is a no-op and must not duplicate the audit row.
+	require.NoError(t, svc.SignOut(ctx, sess))
+	assert.Equal(t, 1, countRows(t, pool,
+		`SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionSignOut))
+}
+
+func TestPGAuditOneRowPerDeviceRevoke(t *testing.T) {
+	svc, pool := newPGService(t)
+	ctx := context.Background()
+
+	_, tokens, err := svc.DevSignIn(ctx, "a@b.co", "", devDevice())
+	require.NoError(t, err)
+	deviceID := sessionOf(t, svc, tokens.AccessToken).DeviceID
+	userID := userOf(t, svc, tokens.AccessToken)
+
+	require.NoError(t, svc.RevokeDevice(ctx, userID, deviceID))
+	assert.Equal(t, 1, countRows(t, pool,
+		`SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionDeviceRevoked))
+
+	// Repeating against the vanished device fails and writes nothing new.
+	require.ErrorIs(t, svc.RevokeDevice(ctx, userID, deviceID), auth.ErrNotFound)
+	assert.Equal(t, 1, countRows(t, pool,
+		`SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionDeviceRevoked))
+}
+
+func TestPGAuditFailedConsentChangeWritesNothing(t *testing.T) {
+	svc, pool := newPGService(t)
+	ctx := context.Background()
+
+	_, err := svc.SetLocationSharing(ctx, uuid.New(), true)
+	require.ErrorIs(t, err, auth.ErrNotFound)
+	assert.Equal(t, 0, countRows(t, pool,
+		`SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionLocationSharingOn))
 }
 
 // ── small helpers ────────────────────────────────────────────────────────────

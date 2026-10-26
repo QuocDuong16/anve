@@ -101,25 +101,25 @@ type Store interface {
 	DeleteDevice(ctx context.Context, userID, deviceID uuid.UUID) error
 }
 
-// Service implements the auth use-cases on top of a Store.
+// Service implements the auth use-cases on top of a Store. Audit events are
+// owned by the store and recorded in the same transaction as the business
+// change (ADR 0004).
 type Service struct {
-	store        Store
-	google       IdentityVerifier
-	googleOn     bool
-	devLoginOn   bool
-	auditRecords audit.Recorder
+	store      Store
+	google     IdentityVerifier
+	googleOn   bool
+	devLoginOn bool
 }
 
 // NewService builds the service. google may be nil when Google sign-in is
 // not configured; devLoginEnabled mounts the development sign-in (the
-// config layer refuses it in production).
-func NewService(store Store, google IdentityVerifier, devLoginEnabled bool, recorder audit.Recorder) *Service {
+// config layer refuses it outside development).
+func NewService(store Store, google IdentityVerifier, devLoginEnabled bool) *Service {
 	return &Service{
-		store:        store,
-		google:       google,
-		googleOn:     google != nil,
-		devLoginOn:   devLoginEnabled,
-		auditRecords: recorder,
+		store:      store,
+		google:     google,
+		googleOn:   google != nil,
+		devLoginOn: devLoginEnabled,
 	}
 }
 
@@ -254,15 +254,7 @@ func (s *Service) Authenticate(ctx context.Context, accessToken string) (Session
 
 // SignOut revokes the session that issued the request.
 func (s *Service) SignOut(ctx context.Context, session Session) error {
-	if err := s.store.SignOut(ctx, session.ID, "user_signout"); err != nil {
-		return err
-	}
-	audit.BestEffort(ctx, s.auditRecords, audit.Event{
-		ActorUserID: session.UserID,
-		Action:      audit.ActionSignOut,
-		Detail:      map[string]any{"session_id": session.ID.String(), "device_id": session.DeviceID.String()},
-	})
-	return nil
+	return s.store.SignOut(ctx, session.ID, "user_signout")
 }
 
 // Profile returns the account of the authenticated user.
@@ -310,15 +302,7 @@ func (s *Service) ListDevices(ctx context.Context, userID uuid.UUID, currentSess
 // sessions. Revoking the device of the calling session signs the caller
 // out, which is intended ("đăng xuất thiết bị này").
 func (s *Service) RevokeDevice(ctx context.Context, userID, deviceID uuid.UUID) error {
-	if err := s.store.DeleteDevice(ctx, userID, deviceID); err != nil {
-		return err
-	}
-	audit.BestEffort(ctx, s.auditRecords, audit.Event{
-		ActorUserID: userID,
-		Action:      audit.ActionDeviceRevoked,
-		Detail:      map[string]any{"device_id": deviceID.String()},
-	})
-	return nil
+	return s.store.DeleteDevice(ctx, userID, deviceID)
 }
 
 // validateDevice enforces the contract's device constraints.
