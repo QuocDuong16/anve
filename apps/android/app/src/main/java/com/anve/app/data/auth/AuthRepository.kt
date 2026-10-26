@@ -55,6 +55,7 @@ class AuthRepository(
     private val deviceIdentity: DeviceRegistrationProvider,
     private val now: () -> Long = System::currentTimeMillis,
     private val notices: SessionNoticeStore = SessionNoticeStore(),
+    private val retryScheduler: PendingRevocationScheduler = NoOpPendingRevocationScheduler,
 ) {
 
     val session: Flow<StoredSession?> = storage.session
@@ -139,6 +140,7 @@ class AuthRepository(
                     SessionNoticeKind.LocalSignOutRetryUnavailable
                 },
             )
+            if (queued) retryScheduler.ensureScheduled()
         }
         storage.clear()
         return outcome
@@ -157,27 +159,37 @@ class AuthRepository(
      *
      * This is best-effort by definition: if the device never reconnects, the
      * old session stays alive server-side until its refresh token expires.
+     *
+     * Returning `true` means at least one record remains (offline, backoff,
+     * server error), so the caller — the WorkManager worker or the app-start
+     * pass — keeps a constrained retry scheduled. A completed pass returns
+     * `false` and the unique work finishes.
      */
-    suspend fun retryPendingRevocations() {
-        retryMutex.withLock {
-            val records = try {
-                storage.pendingRevocations()
+    suspend fun retryPendingRevocations(): Boolean = retryMutex.withLock {
+        val records = try {
+            storage.pendingRevocations()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return@withLock false
+        }
+        for (record in records) {
+            if (now() < record.nextAttemptAtMillis) continue
+            try {
+                retryPendingRevocation(record)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                return
+                // Never let one broken record starve the queue.
+                reschedule(record)
             }
-            for (record in records) {
-                if (now() < record.nextAttemptAtMillis) continue
-                try {
-                    retryPendingRevocation(record)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // Never let one broken record starve the queue.
-                    reschedule(record)
-                }
-            }
+        }
+        try {
+            storage.pendingRevocations().isNotEmpty()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -242,12 +254,15 @@ class AuthRepository(
 
     private suspend fun reschedule(record: PendingRevocation) {
         val attempts = record.attemptCount + 1
+        // attemptCount counts completed failures, so the first retry must
+        // use delay index 0 (30s) rather than 1 (60s).
         savePendingRevocation(
             record.copy(
                 attemptCount = attempts,
-                nextAttemptAtMillis = now() + retryDelayMillis(attempts),
+                nextAttemptAtMillis = now() + retryDelayMillis(attempts - 1),
             ),
         )
+        retryScheduler.ensureScheduled()
     }
 
     suspend fun me(): UserDto = api.me().orThrow()
@@ -288,6 +303,7 @@ class AuthRepository(
                 refreshToken = response.session.refreshToken,
                 accessExpiresAt = response.session.accessExpiresAt,
                 refreshExpiresAt = response.session.refreshExpiresAt,
+                userId = response.user.id,
             ),
         )
         // A new account must never inherit the previous sign-out message.
@@ -297,8 +313,10 @@ class AuthRepository(
 
 /**
  * Exponential backoff for the revocation retry: 30s, 1m, 2m… capped at six
- * hours. The record still expires at its original deadline, so backoff can
- * never extend the retention beyond [PENDING_REVOCATION_TTL_MILLIS].
+ * hours. [attemptCount] is zero-based: 0 means "the first retry after the
+ * first failure". The record still expires at its original deadline, so
+ * backoff can never extend the retention beyond
+ * [PENDING_REVOCATION_TTL_MILLIS].
  */
 internal fun retryDelayMillis(attemptCount: Int): Long {
     val doublings = attemptCount.coerceIn(0, 16)

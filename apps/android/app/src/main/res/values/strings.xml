@@ -26,7 +26,7 @@
     <string name="action_cancel">Hủy</string>
     <string name="home_sharing_title">Chia sẻ vị trí của tôi</string>
     <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
-    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Ứng dụng chưa thu thập vị trí trong phiên bản này — việc thu thập chỉ bắt đầu khi tính năng vị trí được bật và bạn cấp quyền hệ thống.</string>
+    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở tab Vị trí để bật theo dõi và cấp quyền hệ thống.</string>
     <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
     <string name="home_device_revoke">Đăng xuất</string>
@@ -68,7 +68,103 @@
     <string name="circle_dissolve_body">Toàn bộ nhóm, thành viên và mã mời sẽ bị xóa vĩnh viễn với mọi người. Hành động này không thể hoàn tác.</string>
     <string name="circle_dissolve_confirm">Giải tán</string>
 
+    <!-- Tracking (M3) -->
+    <string name="tracking_notification_channel">Theo dõi vị trí</string>
+    <string name="tracking_notification_channel_description">Thông báo cố định khi AnVề đang chia sẻ vị trí của bạn.</string>
+    <string name="tracking_notification_title">AnVề đang chia sẻ vị trí</string>
+    <string name="tracking_notification_text">Vị trí của bạn đang được ghi nhận để chia sẻ với nhóm gia đình. Nhấn để mở AnVề.</string>
+
+    <string name="tracking_notification_stop">Dừng</string>
+
+    <!-- Tracking screen -->
+    <string name="tracking_title">Vị trí &amp; chia sẻ</string>
+    <string name="tracking_subtitle">Bạn quyết định khi nào vị trí được ghi và chia sẻ. AnVề không theo dõi khi bạn chưa đồng ý.</string>
+    <string name="tracking_consent_title">Đồng ý chia sẻ vị trí</string>
+    <string name="tracking_consent_subtitle">Đây là sự đồng ý của bạn trên máy chủ, chưa phải điện thoại đang ghi vị trí. Việc ghi vị trí chỉ bắt đầu khi bạn bật theo dõi và cấp quyền.</string>
+    <string name="tracking_consent_on">Đã đồng ý</string>
+    <string name="tracking_consent_off">Chưa đồng ý</string>
+    <string name="tracking_consent_pending">Đã tắt trên thiết bị; chưa đồng bộ máy chủ</string>
+    <string name="tracking_state_title">Theo dõi trên thiết bị</string>
+    <string name="tracking_state_active">Đang cập nhật vị trí</string>
+    <string name="tracking_state_waiting">Đang chờ vị trí đầu tiên</string>
+    <string name="tracking_state_requested">Đã yêu cầu, chưa hoạt động</string>
+    <string name="tracking_state_stopped">Chưa theo dõi</string>
+    <string name="tracking_state_recovery">Theo dõi đã dừng khi ứng dụng bị đóng</string>
+    <string name="tracking_start">Bắt đầu theo dõi</string>
+    <string name="tracking_resume">Tiếp tục theo dõi</string>
+    <string name="tracking_stop">Dừng theo dõi</string>
+    <string name="tracking_enable_consent">Bật chia sẻ vị trí</string>
+    <string name="tracking_permissions_title">Quyền hệ thống</string>
+    <string name="tracking_permission_location">Quyền vị trí</string>
+    <string name="tracking_permission_precise">Chính xác</string>
+    <string name="tracking_permission_approximate">Gần đúng</string>
+    <string name="tracking_permission_denied">Chưa được cấp</string>
+    <string name="tracking_permission_grant">Cấp quyền vị trí</string>
+    <string name="tracking_permission_background">Vị trí khi ứng dụng ở nền</string>
+    <string name="tracking_permission_background_granted">Đã cho phép</string>
+    <string name="tracking_permission_background_missing">Chưa cho phép — chỉ theo dõi khi ứng dụng đang mở</string>
+    <string name="tracking_permission_background_grant">Cho phép vị trí nền</string>
+    <string name="tracking_permission_background_explainer">Android cần quyền “Luôn cho phép” để tiếp tục ghi vị trí khi màn hình tắt. Nếu bạn không cấp, AnVề chỉ ghi vị trí khi ứng dụng đang mở và sẽ nói rõ giới hạn đó.</string>
+    <string name="tracking_permission_notifications">Thông báo</string>
+    <string name="tracking_permission_notifications_granted">Đã cho phép</string>
+    <string name="tracking_permission_notifications_missing">Chưa cho phép — thông báo theo dõi có thể không hiển thị</string>
+    <string name="tracking_permission_notifications_grant">Bật thông báo</string>
+    <string name="tracking_permission_settings">Mở cài đặt quyền</string>
+    <string name="tracking_location_services_off">Vị trí của điện thoại đang tắt.</string>
+    <string name="tracking_location_services_settings">Mở cài đặt vị trí</string>
+    <string name="tracking_status_title">Trạng thái gần nhất</string>
+    <string name="tracking_last_fix">Vị trí gần nhất</string>
+    <string name="tracking_last_fix_accuracy">Độ chính xác</string>
+    <string name="tracking_last_upload">Lần gửi thành công gần nhất</string>
+    <string name="tracking_pending_count">Điểm đang chờ đồng bộ</string>
+    <plurals name="tracking_pending_value">
+        <item quantity="one">%1$d điểm</item>
+        <item quantity="other">%1$d điểm</item>
+    </plurals>
+    <string name="tracking_connection">Kết nối mạng</string>
+    <string name="tracking_connection_online">Có mạng</string>
+    <string name="tracking_connection_offline">Không có mạng — vị trí được lưu trên thiết bị</string>
+    <string name="tracking_battery_saver">Tiết kiệm pin</string>
+    <string name="tracking_battery_on">Đang bật — tần suất ghi giảm</string>
+    <string name="tracking_battery_off">Đang tắt</string>
+    <string name="tracking_retry_sync">Thử đồng bộ ngay</string>
+    <string name="tracking_refresh">Làm mới trạng thái</string>
+    <string name="tracking_never">Chưa có</string>
+    <string name="tracking_diagnostics">Chi tiết kỹ thuật</string>
+    <string name="tracking_diagnostics_motion">Trạng thái di chuyển</string>
+    <string name="tracking_diagnostics_operational">Trạng thái vận hành</string>
+    <string name="tracking_diagnostics_service">Dịch vụ nền</string>
+    <string name="tracking_diagnostics_provider">Nguồn vị trí</string>
+    <string name="tracking_diagnostics_yes">Đang chạy</string>
+    <string name="tracking_diagnostics_no">Không chạy</string>
+    <string name="tracking_motion_idle">Chưa xác định</string>
+    <string name="tracking_motion_stationary">Đứng yên</string>
+    <string name="tracking_motion_moving">Đang di chuyển</string>
+    <string name="tracking_motion_journey">Hành trình</string>
+    <string name="tracking_operational_active">Đang hoạt động</string>
+    <string name="tracking_operational_degraded">Đang hoạt động (hạn chế)</string>
+    <string name="tracking_operational_offline">Ngoại tuyến — vẫn ghi vào hàng đợi</string>
+    <string name="tracking_operational_paused">Đã dừng</string>
+    <string name="tracking_accuracy_value">±%1$d m</string>
+    <string name="tracking_problem_permission">Quyền vị trí chưa được cấp hoặc đã bị thu hồi. Cấp lại quyền để tiếp tục.</string>
+    <string name="tracking_problem_location_disabled">Vị trí của điện thoại đang tắt. Bật lại trong Cài đặt để tiếp tục.</string>
+    <string name="tracking_problem_provider_unavailable">Dịch vụ vị trí của Google Play không khả dụng trên thiết bị này.</string>
+    <string name="tracking_problem_consent">Bạn cần bật chia sẻ vị trí trước khi theo dõi.</string>
+    <string name="tracking_problem_circle">Bạn cần tham gia hoặc tạo nhóm gia đình trước khi chia sẻ vị trí.</string>
+    <string name="tracking_problem_session">Phiên đăng nhập không còn hiệu lực. Đăng nhập lại để tiếp tục.</string>
+    <string name="tracking_problem_service">Android chưa cho phép dịch vụ theo dõi khởi động. Mở ứng dụng và thử lại.</string>
+    <string name="tracking_problem_provider">Không nhận được vị trí từ thiết bị. Thử lại sau.</string>
+    <string name="tracking_problem_queue">Không lưu được vị trí trên thiết bị. Kiểm tra dung lượng bộ nhớ.</string>
+    <string name="tracking_problem_recovery">Theo dõi đã dừng khi ứng dụng bị đóng. Nhấn “Tiếp tục theo dõi” để bật lại.</string>
+    <string name="tracking_problem_clock">Đồng hồ của điện thoại có vẻ không chính xác (thời gian ghi nhận vượt quá hiện tại). Bật tự động đồng bộ thời gian rồi thử lại.</string>
+    <string name="tracking_disclosure_title">Trước khi bật theo dõi vị trí</string>
+    <string name="tracking_disclosure_body">Khi bạn bật theo dõi, AnVề ghi vị trí của bạn để chia sẻ với các thành viên trong nhóm gia đình.\n\n• Vị trí được ghi khi ứng dụng đang mở. Nếu bạn cho phép quyền vị trí nền, AnVề tiếp tục ghi khi màn hình tắt hoặc ứng dụng ở nền.\n• Khi mất mạng, vị trí được lưu tạm trên thiết bị và gửi khi có mạng.\n• Bạn có thể dừng bất cứ lúc nào. Khi bạn tắt chia sẻ, vị trí chưa gửi sẽ bị xóa khỏi thiết bị.\n• AnVề không theo dõi khi bạn chưa đồng ý và không che giấu hoạt động này.</string>
+    <string name="tracking_disclosure_accept">Đồng ý và tiếp tục</string>
+    <string name="tracking_disclosure_later">Để sau</string>
+    <string name="tracking_message_dismiss">Đã hiểu</string>
+
     <!-- Home tabs -->
     <string name="tab_circle">Nhóm</string>
+    <string name="tab_location">Vị trí</string>
     <string name="tab_account">Tài khoản</string>
 </resources>

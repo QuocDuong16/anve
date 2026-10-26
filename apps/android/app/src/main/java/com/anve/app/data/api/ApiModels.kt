@@ -151,6 +151,36 @@ fun <T> retrofit2.Response<T>.orThrow(): T {
     )
 }
 
+// ── Locations (M3) ───────────────────────────────────────────────────────────
+
+@JsonClass(generateAdapter = false)
+data class LocationEventDto(
+    @Json(name = "eventId") val eventId: String,
+    @Json(name = "clientDeviceId") val clientDeviceId: String,
+    @Json(name = "recordedAt") val recordedAt: String,
+    @Json(name = "latitude") val latitude: Double,
+    @Json(name = "longitude") val longitude: Double,
+    @Json(name = "horizontalAccuracyMeters") val horizontalAccuracyMeters: Double,
+    @Json(name = "altitudeMeters") val altitudeMeters: Double? = null,
+    @Json(name = "speedMetersPerSecond") val speedMetersPerSecond: Double? = null,
+    @Json(name = "bearingDegrees") val bearingDegrees: Double? = null,
+    @Json(name = "provider") val provider: String,
+    @Json(name = "isMock") val isMock: Boolean = false,
+    @Json(name = "schemaVersion") val schemaVersion: Int = 1,
+)
+
+@JsonClass(generateAdapter = false)
+data class LocationBatchRequestDto(
+    @Json(name = "events") val events: List<LocationEventDto>,
+)
+
+@JsonClass(generateAdapter = false)
+data class LocationBatchResponseDto(
+    @Json(name = "accepted") val accepted: List<String> = emptyList(),
+    @Json(name = "duplicates") val duplicates: List<String> = emptyList(),
+    @Json(name = "receivedAt") val receivedAt: String? = null,
+)
+
 // ── Circles (M2) ─────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = false)

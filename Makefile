@@ -11,7 +11,7 @@
 	up down logs \
 	migrate-up migrate-down \
 	server-run server-build server-test server-test-race server-test-integration server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-clean \
+	android-sdk-check android-build android-test android-lint android-check android-release android-clean \
 	contracts-lint deps-lint \
 	quality-check
 
@@ -144,6 +144,9 @@ android-lint: android-sdk-check ## Run the Android lint checks
 
 android-check: android-sdk-check ## Run the Android lint, unit test and debug build checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+
+android-release: android-sdk-check ## Compile the minified release build (unsigned without a signing config)
+	cd $(ANDROID_DIR) && ./gradlew :app:assembleRelease
 
 android-clean: ## Remove the Android build outputs
 	rm -rf $(ANDROID_DIR)/app/build $(ANDROID_DIR)/build $(ANDROID_DIR)/.gradle

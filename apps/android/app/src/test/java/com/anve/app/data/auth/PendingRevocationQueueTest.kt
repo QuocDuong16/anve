@@ -103,7 +103,9 @@ class PendingRevocationQueueTest {
     }
 
     @Test
-    fun `retry backoff grows exponentially and stops at the cap`() {
+    fun `retry backoff starts at 30 seconds and grows exponentially to the cap`() {
+        // Index 0 is the first retry after the first failure (ADR 0005 §3):
+        // 30s, not the 60s an off-by-one used to schedule.
         assertEquals(PENDING_RETRY_BASE_DELAY_MILLIS, retryDelayMillis(0))
         assertEquals(PENDING_RETRY_BASE_DELAY_MILLIS * 2, retryDelayMillis(1))
         assertEquals(PENDING_RETRY_BASE_DELAY_MILLIS * 8, retryDelayMillis(3))

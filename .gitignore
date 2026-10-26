@@ -9,6 +9,7 @@ bin/
 
 # Android / Gradle
 .gradle/
+.kotlin/
 build/
 local.properties
 *.apk

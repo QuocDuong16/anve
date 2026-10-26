@@ -92,6 +92,11 @@ jobs:
       - name: Build the debug APK
         run: ./gradlew :app:assembleDebug
 
+      # Release is unsigned without a signing config, but R8/minify must
+      # compile: a release-only shrinker failure is otherwise invisible.
+      - name: Compile the minified release build
+        run: ./gradlew :app:assembleRelease
+
       - name: Upload the debug APK
         uses: actions/upload-artifact@v7
         with:

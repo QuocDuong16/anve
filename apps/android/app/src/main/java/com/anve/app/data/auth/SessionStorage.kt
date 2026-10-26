@@ -26,6 +26,12 @@ data class StoredSession(
     val refreshToken: String,
     val accessExpiresAt: String,
     val refreshExpiresAt: String,
+    /**
+     * The server account id this session belongs to. The offline location
+     * queue is scoped by it, so queued points can never be uploaded by a
+     * different account. Null only for sessions persisted by pre-M3 builds.
+     */
+    val userId: String? = null,
 )
 
 /**
@@ -73,6 +79,13 @@ interface SessionStorage {
     suspend fun save(session: StoredSession)
     suspend fun clear()
 
+    /**
+     * Records the account id on the session without touching its tokens.
+     * This must not be implemented as read-copy-save: a concurrent token
+     * rotation between the read and the write would resurrect a dead token.
+     */
+    suspend fun setUserId(userId: String)
+
     /** Adds (or replaces, by id) an undelivered revocation, sealed at rest. */
     suspend fun savePendingRevocation(pending: PendingRevocation)
 
@@ -117,6 +130,16 @@ class DataStoreSessionStorage(
 
     override suspend fun clear() {
         dataStore.edit { prefs -> prefs.remove(KEY_SESSION_BLOB) }
+    }
+
+    override suspend fun setUserId(userId: String) {
+        dataStore.edit { prefs ->
+            val current = prefs[KEY_SESSION_BLOB]?.let { decode(it) } ?: return@edit
+            val sealed = cipher.encrypt(
+                adapter.toJson(current.copy(userId = userId)).toByteArray(Charsets.UTF_8),
+            )
+            prefs[KEY_SESSION_BLOB] = encode(sealed)
+        }
     }
 
     /**

@@ -68,6 +68,7 @@ class SessionInterceptor(
                             refreshToken = tokens.refreshToken,
                             accessExpiresAt = tokens.accessExpiresAt,
                             refreshExpiresAt = tokens.refreshExpiresAt,
+                            userId = current.userId,
                         ),
                     )
                     tokens.accessToken

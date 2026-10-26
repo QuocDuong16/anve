@@ -13,6 +13,7 @@ import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -35,7 +36,17 @@ class AuthRepositoryTest {
     private lateinit var server: MockWebServer
     private lateinit var storage: InMemorySessionStorage
     private lateinit var notices: SessionNoticeStore
+    private lateinit var scheduler: CountingScheduler
     private lateinit var repository: AuthRepository
+
+    private class CountingScheduler : PendingRevocationScheduler {
+        var scheduled = 0
+            private set
+
+        override fun ensureScheduled() {
+            scheduled++
+        }
+    }
 
     private val device = object : DeviceRegistrationProvider {
         override suspend fun registration() = DeviceRegistrationDto("test-device-0001")
@@ -47,6 +58,7 @@ class AuthRepositoryTest {
         server.start()
         storage = InMemorySessionStorage()
         notices = SessionNoticeStore()
+        scheduler = CountingScheduler()
         repository = repository()
     }
 
@@ -66,6 +78,7 @@ class AuthRepositoryTest {
         deviceIdentity = device,
         now = { nowMillis },
         notices = notices,
+        retryScheduler = scheduler,
     )
 
     /** Production wiring: the authenticated client carries SessionInterceptor. */
@@ -85,6 +98,7 @@ class AuthRepositoryTest {
             storage = storage,
             deviceIdentity = device,
             notices = notices,
+            retryScheduler = scheduler,
         )
     }
 
@@ -410,8 +424,9 @@ class AuthRepositoryTest {
         assertEquals("refresh-new", kept.refreshToken)
         assertEquals(1, kept.attemptCount)
 
-        // The next launch happens after the backoff delay for the first failure.
-        val later = start + retryDelayMillis(1) + 1
+        // The next launch happens after the first-retry backoff (30s), not
+        // the second one (60s).
+        val later = start + retryDelayMillis(0) + 1
         val restarted = repository(nowMillis = later)
         server.enqueue(MockResponse().setBody(sessionJson("access-new2", "refresh-new2")))
         server.enqueue(MockResponse().setResponseCode(204))
@@ -542,6 +557,41 @@ class AuthRepositoryTest {
         val kept = storage.pendingRevocations().single()
         assertEquals("refresh-keep", kept.refreshToken)
         assertTrue("the retry is pushed into the future", kept.nextAttemptAtMillis > 0)
+    }
+
+    @Test
+    fun `the first failed retry waits 30 seconds and keeps work scheduled`() = runBlocking {
+        val start = System.currentTimeMillis()
+        storage.savePendingRevocation(pending("refresh-keep", recordedAtMillis = start))
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+
+        val remaining = repository(nowMillis = start).retryPendingRevocations()
+
+        assertTrue("a failed record remains pending", remaining)
+        val kept = storage.pendingRevocations().single()
+        assertEquals(start + PENDING_RETRY_BASE_DELAY_MILLIS, kept.nextAttemptAtMillis)
+        assertEquals(1, scheduler.scheduled)
+    }
+
+    @Test
+    fun `a completed retry reports that no work needs to stay scheduled`() = runBlocking {
+        storage.savePendingRevocation(pending("refresh-dead"))
+        server.enqueue(MockResponse().setResponseCode(401).setBody(errorBody("UNAUTHENTICATED")))
+
+        val remaining = repository.retryPendingRevocations()
+
+        assertFalse("the dead session leaves nothing to retry", remaining)
+        assertTrue(storage.pendingRevocations().isEmpty())
+    }
+
+    @Test
+    fun `an offline sign-out schedules a constrained retry`() = runBlocking {
+        signedIn()
+        server.enqueue(MockResponse().setResponseCode(500).setBody(errorBody("INTERNAL")))
+
+        repository.signOut()
+
+        assertEquals(1, scheduler.scheduled)
     }
 
     @Test

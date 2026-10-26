@@ -5,6 +5,17 @@ plugins {
     // compiler plugin still has to be applied, because it is a separate
     // artifact from the Kotlin compiler itself.
     alias(libs.plugins.kotlin.compose)
+    // Room generates its DAO/database implementations at build time. KSP is
+    // the only supported annotation processor for Kotlin now that the Kotlin
+    // Android plugin (and therefore kapt) is gone.
+    alias(libs.plugins.ksp)
+}
+
+ksp {
+    // Exported schemas make every Room version reviewable in the diff and
+    // are the input for future migration tests. A destructive migration is
+    // never enabled: the offline location queue must survive app updates.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {
@@ -97,6 +108,15 @@ dependencies {
 
     // Encrypted-at-rest session storage (ADR 0002).
     implementation(libs.androidx.datastore.preferences)
+
+    // M3: durable offline location queue (Room) and scheduled background
+    // work (WorkManager). The location engine itself uses the Play Services
+    // FusedLocationProvider.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.play.services.location)
 
     // Network: Retrofit + Moshi reflection (ADR 0003 — no compiler plugins,
     // compatible with AGP 9's built-in Kotlin).

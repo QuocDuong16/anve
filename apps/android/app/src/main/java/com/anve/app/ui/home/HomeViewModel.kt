@@ -7,6 +7,7 @@ import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.auth.AuthRepository
+import com.anve.app.tracking.ConsentController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,7 @@ data class HomeUiState(
 
 class HomeViewModel internal constructor(
     private val repository: AuthRepository,
+    private val consentController: ConsentController,
     externalScope: CoroutineScope? = null,
 ) : ViewModel() {
 
@@ -56,7 +58,6 @@ class HomeViewModel internal constructor(
      * leaving the UI disagreeing with the backend.
      */
     private val consentLock = Mutex()
-    private var confirmedSharing: Boolean? = null
 
     init {
         refresh()
@@ -68,7 +69,9 @@ class HomeViewModel internal constructor(
             try {
                 val user = repository.me()
                 val devices = repository.devices().devices
-                confirmedSharing = user.locationSharingEnabled
+                // Keep the local consent mirror in step with the server so
+                // the tracking engine can start offline from confirmed state.
+                consentController.recordServerConsent(user.locationSharingEnabled)
                 _state.update {
                     it.copy(loading = false, user = user, devices = devices)
                 }
@@ -89,22 +92,26 @@ class HomeViewModel internal constructor(
 
     /** The privacy consent switch — always the data subject's own call. */
     fun setLocationSharing(enabled: Boolean) {
-        val atCall = _state.value.user ?: return
-        // Optimistic flip; the server's answer is authoritative.
+        if (_state.value.user == null) return
+        // Optimistic flip; the tracking engine's local consent mirror is
+        // authoritative for what the device is actually doing.
         _state.update { it.copy(user = it.user?.copy(locationSharingEnabled = enabled), error = null) }
         scope.launch {
             consentLock.withLock {
                 try {
-                    val user = repository.setLocationSharing(enabled)
-                    confirmedSharing = user.locationSharingEnabled
-                    _state.update { it.copy(user = user) }
+                    val result = consentController.setConsent(enabled)
+                    _state.update {
+                        it.copy(
+                            user = result.user ?: it.user?.copy(locationSharingEnabled = result.enabled),
+                            message = result.message,
+                        )
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    val fallback = confirmedSharing ?: atCall.locationSharingEnabled
                     _state.update {
                         it.copy(
-                            user = it.user?.copy(locationSharingEnabled = fallback),
+                            user = it.user?.copy(locationSharingEnabled = !enabled),
                             error = if (enabled) {
                                 "Không bật được chia sẻ vị trí. Vui lòng thử lại."
                             } else {
@@ -227,11 +234,13 @@ class HomeViewModel internal constructor(
     }
 
     companion object {
-        fun factory(repository: AuthRepository): ViewModelProvider.Factory =
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HomeViewModel(repository) as T
-            }
+        fun factory(
+            repository: AuthRepository,
+            consentController: ConsentController,
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                HomeViewModel(repository, consentController) as T
+        }
     }
 }

@@ -27,6 +27,10 @@ class InMemorySessionStorage(
         state.value = null
     }
 
+    override suspend fun setUserId(userId: String) {
+        state.value = state.value?.copy(userId = userId)
+    }
+
     override suspend fun savePendingRevocation(pending: PendingRevocation) {
         this.pending.value = mergePendingRevocation(
             records = this.pending.value,

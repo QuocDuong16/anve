@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -59,6 +60,7 @@ import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.DeviceSessionDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.tracking.TrackingScreen
 
 /**
  * M1 home: the account, the privacy consent switch and the device list.
@@ -67,6 +69,7 @@ import com.anve.app.ui.theme.AnVeTheme
  */
 private enum class HomeTab(val labelRes: Int) {
     CIRCLE(R.string.tab_circle),
+    LOCATION(R.string.tab_location),
     ACCOUNT(R.string.tab_account),
 }
 
@@ -86,10 +89,10 @@ fun HomeScreen(container: AppContainer) {
                         onClick = { tab = entry },
                         icon = {
                             Icon(
-                                imageVector = if (entry == HomeTab.CIRCLE) {
-                                    Icons.Default.Groups
-                                } else {
-                                    Icons.Default.Person
+                                imageVector = when (entry) {
+                                    HomeTab.CIRCLE -> Icons.Default.Groups
+                                    HomeTab.LOCATION -> Icons.Default.LocationOn
+                                    HomeTab.ACCOUNT -> Icons.Default.Person
                                 },
                                 contentDescription = stringResource(entry.labelRes),
                             )
@@ -103,6 +106,7 @@ fun HomeScreen(container: AppContainer) {
         Box(Modifier.padding(padding)) {
             when (tab) {
                 HomeTab.CIRCLE -> CircleScreen(container = container)
+                HomeTab.LOCATION -> TrackingScreen(container = container)
                 HomeTab.ACCOUNT -> AccountContent(container = container)
             }
         }
@@ -111,7 +115,9 @@ fun HomeScreen(container: AppContainer) {
 
 @Composable
 private fun AccountContent(container: AppContainer) {
-    val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.factory(container.authRepository))
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModel.factory(container.authRepository, container.trackingManager),
+    )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     var showRenameDialog by remember { mutableStateOf(false) }

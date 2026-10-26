@@ -10,6 +10,8 @@ import com.anve.app.data.auth.SessionInterceptor
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.data.auth.SessionNoticeStore
 import com.anve.app.data.auth.StoredSession
+import com.anve.app.tracking.ConsentController
+import com.anve.app.tracking.ConsentResult
 import com.anve.app.ui.awaitUntil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -68,6 +70,9 @@ class HomeViewModelTest {
         server.shutdown()
     }
 
+    private fun viewModel(repo: AuthRepository = repository): HomeViewModel =
+        HomeViewModel(repo, FakeConsentController(repo), scope)
+
     private fun device() = object : DeviceRegistrationProvider {
         override suspend fun registration() = DeviceRegistrationDto("test-device-0001")
     }
@@ -103,7 +108,7 @@ class HomeViewModelTest {
             MockResponse().setBody("""{"devices":[{"id":"d1","name":"Pixel","platform":"android",
                 "createdAt":"2026-10-25T00:00:00Z","lastSeenAt":"2026-10-25T00:00:00Z"}]}""".replace("\n", "")),
         )
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
 
         assertEquals(false, vm.state.value.loading)
@@ -114,7 +119,7 @@ class HomeViewModelTest {
     @Test
     fun `a failed refresh keeps the user and offers a retry`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
 
         server.enqueue(MockResponse().setResponseCode(500).setBody("""{"code":"INTERNAL","message":"x"}"""))
@@ -128,12 +133,13 @@ class HomeViewModelTest {
     @Test
     fun `consent toggle sends the request and applies the server state`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
 
         server.enqueue(MockResponse().setBody(userJson(sharing = true)))
         vm.setLocationSharing(true)
         awaitUntil { vm.state.value.user?.locationSharingEnabled == true }
+        awaitUntil { server.requestCount >= 3 }
 
         assertTrue(vm.state.value.user!!.locationSharingEnabled)
         val me = server.takeRequest()
@@ -149,22 +155,25 @@ class HomeViewModelTest {
     @Test
     fun `failed consent toggle rolls back`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
 
         server.enqueue(MockResponse().setResponseCode(503).setBody("""{"code":"SERVICE_UNAVAILABLE","message":"no db"}"""))
         vm.setLocationSharing(true)
-        awaitUntil { vm.state.value.error != null }
+        awaitUntil { vm.state.value.message != null }
 
         assertFalse(vm.state.value.user!!.locationSharingEnabled)
-        assertNotNull(vm.state.value.error)
+        assertTrue(
+            "the UI must explain that the consent write was not confirmed",
+            vm.state.value.message.orEmpty().contains("Không bật"),
+        )
     }
 
     @Test
     fun `rapid consent toggles settle on the last server-confirmed state`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
 
@@ -194,7 +203,7 @@ class HomeViewModelTest {
     @Test
     fun `a failure in the middle of a rapid sequence rolls back to the confirmed state`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
 
@@ -203,7 +212,7 @@ class HomeViewModelTest {
         vm.setLocationSharing(true)
         vm.setLocationSharing(false)
 
-        awaitUntil { vm.state.value.error != null }
+        awaitUntil { vm.state.value.message != null }
         assertTrue(
             "the server confirmed ON; the failed OFF must not stick",
             vm.state.value.user!!.locationSharingEnabled,
@@ -216,10 +225,37 @@ class HomeViewModelTest {
         server.takeRequest()
     }
 
+    /** Mirrors the tracking coordinator's consent semantics over real HTTP. */
+    private class FakeConsentController(
+        private val repository: AuthRepository,
+    ) : ConsentController {
+        private var confirmed = false
+
+        override suspend fun setConsent(enabled: Boolean): ConsentResult = try {
+            val user = repository.setLocationSharing(enabled)
+            confirmed = user.locationSharingEnabled
+            ConsentResult(
+                enabled = user.locationSharingEnabled,
+                serverConfirmed = true,
+                user = user,
+            )
+        } catch (e: Exception) {
+            ConsentResult(
+                enabled = confirmed,
+                serverConfirmed = false,
+                message = if (enabled) "Không bật được chia sẻ vị trí." else "Chưa xác nhận với máy chủ.",
+            )
+        }
+
+        override suspend fun recordServerConsent(enabled: Boolean) {
+            confirmed = enabled
+        }
+    }
+
     @Test
     fun `sign out clears the local session without a notice`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -234,7 +270,7 @@ class HomeViewModelTest {
     @Test
     fun `offline sign out clears locally and publishes the unconfirmed notice`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -258,7 +294,7 @@ class HomeViewModelTest {
     @Test
     fun `delete success clears the session`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -272,7 +308,7 @@ class HomeViewModelTest {
     @Test
     fun `delete refused by circle membership keeps the session and explains`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -291,7 +327,7 @@ class HomeViewModelTest {
     @Test
     fun `delete failure of any HTTP kind keeps the session`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -324,7 +360,7 @@ class HomeViewModelTest {
             deviceIdentity = device(),
         )
         enqueueHome()
-        val vm = HomeViewModel(wired, scope)
+        val vm = viewModel(wired)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -339,7 +375,7 @@ class HomeViewModelTest {
     @Test
     fun `double tap delete sends one request`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository, scope)
+        val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         signedIn()
         val before = server.requestCount

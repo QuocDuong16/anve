@@ -130,4 +130,9 @@ interface AnveApi {
     suspend fun redeemInvite(
         @Body body: RedeemInviteRequestDto,
     ): Response<CircleMembershipDto>
+
+    @POST("api/v1/locations/batch")
+    suspend fun uploadLocationBatch(
+        @Body body: LocationBatchRequestDto,
+    ): Response<LocationBatchResponseDto>
 }
