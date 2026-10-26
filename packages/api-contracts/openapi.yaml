@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: AnVề API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     HTTP contract of the AnVề backend.
 
@@ -27,6 +27,8 @@ tags:
     description: "The authenticated account: profile and privacy consent"
   - name: devices
     description: Devices and sessions of the authenticated account
+  - name: locations
+    description: Consented location ingestion
   - name: circles
     description: Family Circle, membership and invites
 
@@ -449,6 +451,115 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: No such device under this account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/locations/batch:
+    post:
+      operationId: ingestLocationBatch
+      summary: Upload a batch of location events
+      description: |
+        Ingests location points captured by the authenticated device. The
+        caller is identified by its session; a `userId` in the body is never
+        accepted as authority.
+
+        **Authorization, checked inside the ingestion transaction:** a live
+        session, an account that still exists, a device that belongs to that
+        session and account, server-confirmed location-sharing consent, and
+        an active Circle membership. A consent revocation or Circle leave
+        that committed before the batch is therefore visible to it; an
+        upload that holds the locks first commits while the state was still
+        valid. Circle administrative roles grant no location access: the
+        client device id must match the session's own device, so an owner
+        cannot upload on behalf of a member.
+
+        **Timestamps:** `recordedAt` is the device capture time and is
+        stored unchanged, even for a delayed offline upload. The server
+        records its own `receivedAt`. The server rejects a capture time more
+        than 2 minutes in the future (`LOCATION_BATCH_INVALID`) or older
+        than the retention window (`LOCATION_EVENT_TOO_OLD`); it never
+        rewrites the timestamp to the upload time.
+
+        **Atomic batch semantics:** the batch is accepted or rejected as a
+        whole. HTTP 200 means every listed event is durably committed (or
+        was already stored as a duplicate). There is no partial acceptance.
+        Retrying the same event id for the same account returns it in
+        `duplicates` and creates no new row, so an at-least-once client
+        cannot duplicate data. Within one batch an event id may appear only
+        once; a repeated id rejects the batch.
+
+        **Limits:** at most 200 events per request and 512 KiB of request
+        body. A batch larger than that is refused, not truncated.
+      tags: [locations]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationBatchRequest"
+      responses:
+        "200":
+          description: |
+            The batch is durably stored. `accepted` lists newly inserted
+            events; `duplicates` lists events that already existed for this
+            owner and were left untouched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationBatchResponse"
+        "400":
+          description: |
+            The body is malformed, a field is outside its range, an event id
+            repeats inside the batch, the batch is empty or too large
+            (`LOCATION_BATCH_INVALID` / `LOCATION_BATCH_TOO_LARGE`), or a
+            capture time is older than the retention window
+            (`LOCATION_EVENT_TOO_OLD`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: |
+            The batch claims a device other than the one behind the session,
+            or the session/device/account is no longer valid
+            (`DEVICE_NOT_AUTHORIZED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: |
+            Server-confirmed consent is off (`LOCATION_CONSENT_REQUIRED`) or
+            the account has no active Circle membership
+            (`LOCATION_CIRCLE_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: The request body exceeds the size limit (`LOCATION_BATCH_TOO_LARGE`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many ingestion requests from this address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: The database is temporarily unavailable (`LOCATION_TEMPORARILY_UNAVAILABLE`); retry with backoff.
           content:
             application/json:
               schema:
@@ -1095,6 +1206,113 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Device"
+
+    LocationEvent:
+      type: object
+      required:
+        - eventId
+        - clientDeviceId
+        - recordedAt
+        - latitude
+        - longitude
+        - horizontalAccuracyMeters
+        - provider
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Client-generated event identity; the server idempotency key (scoped to the account).
+        clientDeviceId:
+          type: string
+          minLength: 8
+          maxLength: 64
+          description: |
+            Must equal the client device id of the device that owns the
+            session. It identifies this app installation, never another
+            member or another account's device.
+        recordedAt:
+          type: string
+          format: date-time
+          description: |
+            Device capture time in UTC. Preserved unchanged on the server;
+            a delayed upload does not rewrite it.
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        horizontalAccuracyMeters:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100000
+          description: Provider-reported accuracy radius. Never fabricated or omitted.
+        altitudeMeters:
+          type: number
+          format: double
+        speedMetersPerSecond:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1000
+        bearingDegrees:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 360
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: "^[a-z0-9_-]+$"
+          description: Location source reported by the OS/provider (fused, gps, network, passive…).
+        isMock:
+          type: boolean
+          default: false
+          description: Client-reported mock-provider flag. Stored so consumers can exclude synthetic fixes.
+        schemaVersion:
+          type: integer
+          minimum: 1
+          maximum: 16
+          default: 1
+          description: Client event schema version, for forward-compatible parsing.
+
+    LocationBatchRequest:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/LocationEvent"
+
+    LocationBatchResponse:
+      type: object
+      required: [accepted, duplicates, receivedAt]
+      properties:
+        accepted:
+          type: array
+          description: Event ids inserted by this request.
+          items:
+            type: string
+            format: uuid
+        duplicates:
+          type: array
+          description: Event ids already stored for this account; no row was created.
+          items:
+            type: string
+            format: uuid
+        receivedAt:
+          type: string
+          format: date-time
+          description: Server write time of this batch. Never a replacement for the device capture time.
 
     Circle:
       type: object

@@ -12,6 +12,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
 // HealthResponse is the payload returned by the health endpoints.
@@ -36,10 +37,11 @@ type Pinger interface {
 // the process can still serve health and version probes (ADR: the API
 // server starts without a database until the first DB-backed feature).
 type Deps struct {
-	Version string
-	Auth    *auth.Service
-	Circles *circles.Service
-	DB      Pinger
+	Version   string
+	Auth      *auth.Service
+	Circles   *circles.Service
+	Locations *locations.Service
+	DB        Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
 	// development login. An empty list denies every request: the fixture
 	// fails closed rather than trusting the listener configuration alone.
@@ -51,6 +53,13 @@ type Deps struct {
 const (
 	authRateLimitPerMinute = 30
 	authRateLimitBurst     = 30
+
+	// Location batches are the steady-state traffic: one device uploads at
+	// most a few batches per minute, so this allows a family behind one NAT
+	// address while still bounding a runaway client. It is an abuse guard,
+	// not a quota.
+	locationRateLimitPerMinute = 120
+	locationRateLimitBurst     = 60
 )
 
 // NewRouter builds the HTTP router for the API server.
@@ -126,6 +135,13 @@ func NewRouter(deps Deps) chi.Router {
 				devices.Get("/", listDevicesHandler(svc))
 				devices.Delete("/{deviceId}", deleteDeviceHandler(svc))
 			})
+
+			if deps.Locations != nil {
+				locationSvc := deps.Locations
+				locationLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				private.With(RateLimit(locationLimiter)).
+					Post("/locations/batch", ingestLocationBatchHandler(locationSvc))
+			}
 
 			if deps.Circles != nil {
 				circleSvc := deps.Circles

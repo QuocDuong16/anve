@@ -62,6 +62,11 @@ type Config struct {
 	// AuthDevLoginNetworks is the parsed form of AuthDevLoginAllowedCIDRs,
 	// filled by Load. An empty list means "deny every source" (fail closed).
 	AuthDevLoginNetworks []netip.Prefix `env:"-"`
+	// LocationRetentionDays is how long consented location points are kept.
+	// It is also the backfill window for delayed uploads: a point older than
+	// this is refused rather than stored and immediately purged. The
+	// product default is deliberately short while M5 history is unimplemented.
+	LocationRetentionDays int `env:"LOCATION_RETENTION_DAYS" envDefault:"30"`
 }
 
 // Load reads the configuration from the process environment.
@@ -105,6 +110,10 @@ func (c *Config) resolve() error {
 	}
 	if err := validatePort(port); err != nil {
 		return fmt.Errorf("LISTEN_ADDR %q: %w", c.ListenAddr, err)
+	}
+	if c.LocationRetentionDays < 1 || c.LocationRetentionDays > 365 {
+		return fmt.Errorf("LOCATION_RETENTION_DAYS must be between 1 and 365 (got %d)",
+			c.LocationRetentionDays)
 	}
 
 	if !c.AuthDevLoginEnabled {

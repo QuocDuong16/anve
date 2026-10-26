@@ -110,6 +110,9 @@ services:
       AUTH_DEV_LOGIN_ENABLED: ${AUTH_DEV_LOGIN_ENABLED:-false}
       AUTH_DEV_LOGIN_ALLOW_NETWORK: ${AUTH_DEV_LOGIN_ALLOW_NETWORK:-false}
       AUTH_DEV_LOGIN_ALLOWED_CIDRS: ${AUTH_DEV_LOGIN_ALLOWED_CIDRS:-127.0.0.0/8,::1/128,172.28.0.0/24}
+      # M3: consented location retention, measured from device capture time.
+      # Also the accepted backfill window for late offline uploads.
+      LOCATION_RETENTION_DAYS: ${LOCATION_RETENTION_DAYS:-30}
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:
       # Loopback only: the API must not be reachable from the LAN by

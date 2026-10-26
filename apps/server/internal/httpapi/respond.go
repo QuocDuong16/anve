@@ -9,6 +9,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
 // Error codes of the structured error envelope. Stable API surface: clients
@@ -79,6 +80,27 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, circles.ErrOwnerMustDissolve):
 		body.Code, body.Message = "CIRCLE_HAS_MEMBERS", "The owner must confirm dissolution with dissolve=true."
 		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, locations.ErrBatchTooLarge):
+		body.Code, body.Message = "LOCATION_BATCH_TOO_LARGE", "The batch exceeds the allowed number of events."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locations.ErrEventTooOld):
+		body.Code, body.Message = "LOCATION_EVENT_TOO_OLD", "The location is older than the retention window."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locations.ErrBatchInvalid):
+		body.Code, body.Message = "LOCATION_BATCH_INVALID", "The location batch is invalid: "+err.Error()
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locations.ErrConsentRequired):
+		body.Code, body.Message = "LOCATION_CONSENT_REQUIRED", "Location sharing is disabled for this account."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, locations.ErrCircleRequired):
+		body.Code, body.Message = "LOCATION_CIRCLE_REQUIRED", "The account has no active Family Circle."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, locations.ErrDeviceNotAuthorized):
+		body.Code, body.Message = "DEVICE_NOT_AUTHORIZED", "The session or device is not authorized for this batch."
+		writeJSON(w, http.StatusForbidden, body)
+	case errors.Is(err, locations.ErrTemporarilyUnavailable):
+		body.Code, body.Message = "LOCATION_TEMPORARILY_UNAVAILABLE", "The location batch was not stored. Retry later."
+		writeJSON(w, http.StatusServiceUnavailable, body)
 	default:
 		body.Code, body.Message = errCodeInternal, "Internal server error."
 		writeJSON(w, http.StatusInternalServerError, body)

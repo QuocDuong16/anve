@@ -20,6 +20,23 @@ func TestLoadDefaults(t *testing.T) {
 		"a development process must not listen on every interface by default")
 	assert.Equal(t, 15*time.Second, cfg.ShutdownTimeout)
 	assert.Empty(t, cfg.AuthDevLoginNetworks, "the fixture is off by default")
+	assert.Equal(t, 30, cfg.LocationRetentionDays, "location retention is short by default")
+}
+
+func TestLocationRetentionDaysIsBounded(t *testing.T) {
+	for _, value := range []string{"0", "-1", "366"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("LOCATION_RETENTION_DAYS", value)
+			_, err := config.Load()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "LOCATION_RETENTION_DAYS")
+		})
+	}
+	t.Run("not-a-number", func(t *testing.T) {
+		t.Setenv("LOCATION_RETENTION_DAYS", "not-a-number")
+		_, err := config.Load()
+		require.Error(t, err)
+	})
 }
 
 func TestLoadOverrides(t *testing.T) {

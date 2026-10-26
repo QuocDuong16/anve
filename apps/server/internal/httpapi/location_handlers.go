@@ -1,0 +1,178 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
+
+	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/locations"
+)
+
+// batchRequest mirrors LocationBatchRequest in the OpenAPI contract. The
+// numeric fields that are required are pointers so a missing value is
+// distinguishable from a legitimate zero (0,0 is a real coordinate).
+type batchRequest struct {
+	Events []eventRequest `json:"events"`
+}
+
+type eventRequest struct {
+	EventID                  string   `json:"eventId"`
+	ClientDeviceID           string   `json:"clientDeviceId"`
+	RecordedAt               string   `json:"recordedAt"`
+	Latitude                 *float64 `json:"latitude"`
+	Longitude                *float64 `json:"longitude"`
+	HorizontalAccuracyMeters *float64 `json:"horizontalAccuracyMeters"`
+	AltitudeMeters           *float64 `json:"altitudeMeters"`
+	SpeedMetersPerSecond     *float64 `json:"speedMetersPerSecond"`
+	BearingDegrees           *float64 `json:"bearingDegrees"`
+	Provider                 string   `json:"provider"`
+	IsMock                   bool     `json:"isMock"`
+	SchemaVersion            int      `json:"schemaVersion"`
+}
+
+type locationBatchResponse struct {
+	Accepted   []uuid.UUID `json:"accepted"`
+	Duplicates []uuid.UUID `json:"duplicates"`
+	ReceivedAt time.Time   `json:"receivedAt"`
+}
+
+// ingestLocationBatchHandler is the only write path for location data.
+// Authorization comes exclusively from the authenticated session: the body
+// carries no user id, and the client device id is verified against the
+// session by the store.
+func ingestLocationBatchHandler(svc *locations.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, ok := AuthFromContext(r.Context())
+		if !ok {
+			writeError(w, r, auth.ErrUnauthenticated)
+			return
+		}
+
+		events, err := decodeBatch(w, r)
+		if err != nil {
+			var tooLarge *http.MaxBytesError
+			if errors.As(err, &tooLarge) {
+				writeJSON(w, http.StatusRequestEntityTooLarge, errorBody{
+					Code:      "LOCATION_BATCH_TOO_LARGE",
+					Message:   "The request body exceeds the batch size limit.",
+					RequestID: middleware.GetReqID(r.Context()),
+				})
+				return
+			}
+			writeError(w, r, err)
+			return
+		}
+
+		started := time.Now()
+		result, err := svc.Ingest(r.Context(), locations.Principal{
+			UserID:    ac.User.ID,
+			SessionID: ac.Session.ID,
+			DeviceID:  ac.Session.DeviceID,
+		}, events)
+		if err != nil {
+			// Log only ids/counts — never coordinates or the payload.
+			slog.WarnContext(r.Context(), "location batch rejected",
+				"user_id", ac.User.ID,
+				"device_id", ac.Session.DeviceID,
+				"events", len(events),
+				"error", err,
+			)
+			writeError(w, r, err)
+			return
+		}
+
+		accepted := result.Accepted
+		if accepted == nil {
+			accepted = []uuid.UUID{}
+		}
+		duplicates := result.Duplicates
+		if duplicates == nil {
+			duplicates = []uuid.UUID{}
+		}
+
+		slog.InfoContext(r.Context(), "location batch ingested",
+			"user_id", ac.User.ID,
+			"device_id", ac.Session.DeviceID,
+			"accepted", len(accepted),
+			"duplicates", len(duplicates),
+			"duration_ms", time.Since(started).Milliseconds(),
+		)
+		writeJSON(w, http.StatusOK, locationBatchResponse{
+			Accepted:   accepted,
+			Duplicates: duplicates,
+			ReceivedAt: result.ReceivedAt,
+		})
+	}
+}
+
+// decodeBatch enforces the body-size limit and turns the wire shape into
+// domain events. Every parse failure is a batch-invalid error, so clients
+// never have to interpret free text or a bare HTTP status.
+func decodeBatch(w http.ResponseWriter, r *http.Request) ([]locations.Event, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, locations.MaxBodyBytes)
+
+	var body batchRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&body); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: the body is not a valid batch", locations.ErrBatchInvalid)
+	}
+	// Exactly one JSON value per request: a second object would silently be
+	// ignored otherwise.
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%w: the body contains trailing data", locations.ErrBatchInvalid)
+	}
+
+	events := make([]locations.Event, 0, len(body.Events))
+	for i, raw := range body.Events {
+		event, err := raw.toEvent()
+		if err != nil {
+			return nil, fmt.Errorf("%w: event %d: %w", locations.ErrBatchInvalid, i+1, err)
+		}
+		events = append(events, event)
+	}
+	return events, nil
+}
+
+func (r eventRequest) toEvent() (locations.Event, error) {
+	eventID, err := uuid.Parse(r.EventID)
+	if err != nil {
+		return locations.Event{}, errors.New("eventId must be a UUID")
+	}
+	recordedAt, err := time.Parse(time.RFC3339Nano, r.RecordedAt)
+	if err != nil {
+		return locations.Event{}, errors.New("recordedAt must be an RFC 3339 timestamp")
+	}
+	if r.Latitude == nil || r.Longitude == nil || r.HorizontalAccuracyMeters == nil {
+		return locations.Event{}, errors.New("latitude, longitude and horizontalAccuracyMeters are required")
+	}
+	schemaVersion := r.SchemaVersion
+	if schemaVersion == 0 {
+		schemaVersion = 1
+	}
+	return locations.Event{
+		EventID:                  eventID,
+		ClientDeviceID:           r.ClientDeviceID,
+		RecordedAt:               recordedAt.UTC(),
+		Latitude:                 *r.Latitude,
+		Longitude:                *r.Longitude,
+		HorizontalAccuracyMeters: *r.HorizontalAccuracyMeters,
+		AltitudeMeters:           r.AltitudeMeters,
+		SpeedMetersPerSecond:     r.SpeedMetersPerSecond,
+		BearingDegrees:           r.BearingDegrees,
+		Provider:                 r.Provider,
+		IsMock:                   r.IsMock,
+		SchemaVersion:            schemaVersion,
+	}, nil
+}

@@ -18,6 +18,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
+	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
 // version is the build version, injected at link time with
@@ -53,6 +54,8 @@ func run() error {
 
 	var authService *auth.Service
 	var circlesService *circles.Service
+	var locationsService *locations.Service
+	var locationStore *locations.PGStore
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
 		// The pool outlives the HTTP server; the context only bounds the
@@ -92,6 +95,8 @@ func run() error {
 		store := auth.NewPGStore(pool)
 		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled)
 		circlesService = circles.NewService(circles.NewPGStore(pool))
+		locationStore = locations.NewPGStore(pool)
+		locationsService = locations.NewService(locationStore)
 	} else {
 		logger.Warn("DATABASE_URL is empty: business endpoints answer 503")
 	}
@@ -101,7 +106,11 @@ func run() error {
 		// explicitly overridden, mandatory outside development.
 		Addr: cfg.ListenAddr,
 		Handler: httpapi.NewRouter(httpapi.Deps{
-			Version: cfg.Version, Auth: authService, Circles: circlesService, DB: pool,
+			Version:                 cfg.Version,
+			Auth:                    authService,
+			Circles:                 circlesService,
+			Locations:               locationsService,
+			DB:                      pool,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
 		}),
 		ReadTimeout:  cfg.ReadTimeout,
@@ -112,6 +121,20 @@ func run() error {
 	// graceful shutdown below.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Retention is a product obligation, not best-effort cleanup: it runs
+	// on the same lifetime as the server and stops with the shutdown
+	// context. The first pass happens immediately, so a restart also
+	// catches up on rows that aged out while the process was down.
+	if locationStore != nil {
+		go locations.RunRetention(
+			ctx,
+			locationStore,
+			time.Duration(cfg.LocationRetentionDays)*24*time.Hour,
+			time.Hour,
+			logger.With("component", "location-retention"),
+		)
+	}
 
 	serverErr := make(chan error, 1)
 	go func() {
