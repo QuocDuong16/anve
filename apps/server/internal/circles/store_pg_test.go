@@ -2,7 +2,6 @@ package circles_test
 
 import (
 	"context"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/testdb"
 )
 
 // Integration tests for the circles store against real PostgreSQL: the
@@ -23,24 +23,12 @@ import (
 // and the one-circle-per-user invariant. Skipped without
 // TEST_DATABASE_URL; CI runs them in the database-integration job.
 
+// newStack wires the circles and auth services on a fresh scratch database
+// per test (fully migrated, dropped afterwards) — safe under `go test`'s
+// concurrent package execution, unlike shared tables plus TRUNCATE.
 func newStack(t *testing.T) (*circles.Service, *auth.Service, *pgxpool.Pool) {
 	t.Helper()
-	url := os.Getenv("TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping PostgreSQL integration tests")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, url)
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
-
-	_, err = pool.Exec(ctx,
-		`TRUNCATE invites, memberships, circles, audit_log, sessions, devices, users RESTART IDENTITY CASCADE`)
-	require.NoError(t, err)
-
+	pool := testdb.Scratch(t)
 	authSvc := auth.NewService(auth.NewPGStore(pool), nil, true, audit.NewPG(pool))
 	circleSvc := circles.NewService(circles.NewPGStore(pool), audit.NewPG(pool))
 	return circleSvc, authSvc, pool

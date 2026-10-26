@@ -3,14 +3,9 @@ package auth_test
 import (
 	"context"
 	"crypto/sha256"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,6 +14,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/testdb"
 )
 
 // These tests exercise the real PostgreSQL store: transactions, scoping by
@@ -27,81 +23,13 @@ import (
 // the migrator integration tests; CI runs them in the database-integration
 // job).
 
-func databaseURL() string {
-	return os.Getenv("TEST_DATABASE_URL")
-}
-
-// newTestDB applies every pending migration from infra/migrations and
-// returns a pool plus a cleanup that truncates the business tables. The
-// migrator binary owns migrations in production; the test re-applies the
-// same files so schema drift fails loudly here.
+// newTestDB returns a fresh, fully migrated scratch database per test —
+// package tests then run safely in parallel with every other DB-backed
+// package (shared tables plus TRUNCATE deadlock under `go test`'s
+// concurrent package execution).
 func newTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	url := databaseURL()
-	if url == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping PostgreSQL integration tests")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, url)
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
-
-	_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
-		version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`)
-	require.NoError(t, err)
-
-	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
-	entries, err := os.ReadDir(migrationsDir)
-	require.NoError(t, err)
-
-	var files []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".up.sql") {
-			files = append(files, e.Name())
-		}
-	}
-	sort.Strings(files)
-
-	for _, name := range files {
-		version := strings.TrimSuffix(name, ".up.sql")
-		var applied bool
-		require.NoError(t, pool.QueryRow(ctx,
-			`SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)`, version).Scan(&applied))
-		if applied {
-			continue
-		}
-		// #nosec G304 -- the path is built from the operator-controlled
-		// migrations directory of this repository, never from request data.
-		contents, err := os.ReadFile(filepath.Join(migrationsDir, name))
-		require.NoError(t, err)
-		tx, err := pool.Begin(ctx)
-		require.NoError(t, err)
-		_, err = tx.Exec(ctx, string(contents))
-		require.NoError(t, err, "migration %s failed", name)
-		_, err = tx.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, version)
-		require.NoError(t, err)
-		require.NoError(t, tx.Commit(ctx))
-	}
-
-	t.Cleanup(func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		// audit_log first is irrelevant (no FKs); CASCADE handles the rest.
-		_, err := pool.Exec(cleanupCtx,
-			`TRUNCATE audit_log, sessions, devices, users RESTART IDENTITY CASCADE`)
-		if err != nil {
-			t.Logf("truncate cleanup failed: %v", err)
-		}
-	})
-
-	// Start every test from empty tables.
-	_, err = pool.Exec(ctx, `TRUNCATE audit_log, sessions, devices, users RESTART IDENTITY CASCADE`)
-	require.NoError(t, err)
-
-	return pool
+	return testdb.Scratch(t)
 }
 
 func newPGService(t *testing.T) (*auth.Service, *pgxpool.Pool) {

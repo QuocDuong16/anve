@@ -86,8 +86,8 @@ server-test: ## Run the Go server tests
 server-test-race: ## Run the Go server tests with the race detector
 	cd apps/server && go test -race -count=1 ./...
 
-server-test-integration: ## Run the migration integration tests against the running local stack (make docker-up first)
-	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -race -count=1 ./cmd/migrate
+server-test-integration: ## Run the DB integration tests against the running local stack (make docker-up first)
+	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles
 
 server-fix: ## Tidy Go modules and format Go sources
 	cd apps/server && go mod tidy && go fmt ./...

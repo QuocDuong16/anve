@@ -155,33 +155,49 @@ func assertExtensionsInstalled(t *testing.T, pool *pgxpool.Pool, want ...string)
 }
 
 // TestMigrationLifecycle exercises the real repository migrations on a fresh
-// database: up, up again (idempotence), down, up. The down step is the
-// regression for the schema_migrations bug: rolling back a migration must
-// never drop the engine's bookkeeping table.
+// database: up, up again (idempotence), down, up. The expected version list
+// comes from the migration files themselves, so the test keeps working as
+// migrations accumulate. The full roll-down step is the regression for the
+// schema_migrations bug: rolling back migrations must never drop the
+// engine's bookkeeping table.
 func TestMigrationLifecycle(t *testing.T) {
 	pool, _ := scratchDatabase(t)
 	ctx := context.Background()
 	dir := migrationsDir()
 
+	migrations, err := loadMigrations(dir)
+	require.NoError(t, err)
+	require.NotEmpty(t, migrations, "the repository must ship at least one migration")
+	allVersions := make([]string, len(migrations))
+	for i, m := range migrations {
+		allVersions[i] = m.version
+	}
+
 	require.NoError(t, ensureBookkeepingTable(ctx, pool))
 	require.NoError(t, migrateUp(ctx, pool, dir, testLogger()))
-	assertAppliedVersions(t, pool, "0001_extensions")
+	assertAppliedVersions(t, pool, allVersions...)
 	assertExtensionsInstalled(t, pool, "postgis", "uuid-ossp", "pg_trgm")
 
 	// A second up must be a no-op, not a duplicate bookkeeping row.
 	require.NoError(t, migrateUp(ctx, pool, dir, testLogger()))
-	assertAppliedVersions(t, pool, "0001_extensions")
+	assertAppliedVersions(t, pool, allVersions...)
 
-	// Down clears the bookkeeping row but keeps the engine-owned table and
-	// the extensions: 0001_extensions.down.sql is a deliberate no-op.
+	// One down rolls back exactly the most recent migration.
 	require.NoError(t, migrateDown(ctx, pool, dir, testLogger()))
+	assertAppliedVersions(t, pool, allVersions[:len(allVersions)-1]...)
+
+	// Rolling all the way down empties the bookkeeping but keeps the
+	// engine-owned table (and, per 0001's deliberate no-op, the extensions).
+	for range len(allVersions) - 1 {
+		require.NoError(t, migrateDown(ctx, pool, dir, testLogger()))
+	}
 	assertAppliedVersions(t, pool)
 	assertTable(t, pool, "schema_migrations", true)
 	assertExtensionsInstalled(t, pool, "postgis", "uuid-ossp", "pg_trgm")
 
-	// Up after down re-applies cleanly.
+	// Up after a full roll-down re-applies cleanly.
 	require.NoError(t, migrateUp(ctx, pool, dir, testLogger()))
-	assertAppliedVersions(t, pool, "0001_extensions")
+	assertAppliedVersions(t, pool, allVersions...)
 }
 
 // TestFailedMigrationLeavesNoTrace proves a migration file is atomic: when
