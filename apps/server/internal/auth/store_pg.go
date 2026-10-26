@@ -18,6 +18,11 @@ import (
 // PGStore is the PostgreSQL implementation of Store.
 type PGStore struct {
 	pool *pgxpool.Pool
+	// testAfterUserLock runs after the deletion transaction has taken the
+	// user row lock. It is installed only by export_test.go helpers and is
+	// nil in production; it lets concurrency tests stop the transaction at a
+	// precise boundary instead of relying on timing.
+	testAfterUserLock func()
 }
 
 // NewPGStore returns a Store backed by the given pool.
@@ -406,12 +411,16 @@ func (s *PGStore) SetLocationSharing(ctx context.Context, userID uuid.UUID, enab
 // A circle owner with other members must dissolve the circle explicitly
 // first: deletion refuses with ErrCircleHasMembers instead of silently
 // ending other people's circle. Circles the caller owns alone are removed
-// by this transaction, each audited as a dissolution.
+// by this transaction, each audited as a dissolution. The account row lock
+// serializes the whole decision against circle creation, so a circle that
+// was being created concurrently is either fully visible to the member
+// count or fails to be created at all.
 func (s *PGStore) DeleteUser(ctx context.Context, userID uuid.UUID) error {
-	// The circle lock below can deadlock against a concurrent invite
-	// redemption (each transaction ends up waiting on the other's row
-	// locks). PostgreSQL aborts one of them; a retry then sees the
-	// committed state and returns the precise outcome either way.
+	// The user-then-circle lock order can deadlock against a concurrent
+	// invite redemption holding the invite row while inserting a membership
+	// (each transaction ends up waiting on the other's row locks).
+	// PostgreSQL aborts one of them; a retry then sees the committed state
+	// and returns the precise outcome either way.
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
 		err = s.deleteUser(ctx, userID)
@@ -434,6 +443,29 @@ func (s *PGStore) deleteUser(ctx context.Context, userID uuid.UUID) error {
 		return fmt.Errorf("begin deletion transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Lock the account row first. Every circle creation takes a KEY SHARE
+	// lock on this row through its foreign key, so this FOR UPDATE
+	// serializes deletion against creation: a creation either commits
+	// before this lock is granted (and the circle scan below sees it) or
+	// waits here and then fails its foreign key once the user is gone.
+	//
+	// Without this lock the deletion could scan for owned circles, a
+	// concurrent CreateCircle could commit, and the cascade would delete
+	// that circle without ever counting its members or auditing its
+	// dissolution — both APIs reporting success.
+	var lockedID uuid.UUID
+	err = tx.QueryRow(ctx,
+		`SELECT id FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&lockedID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("%w: user %s", ErrNotFound, userID)
+	}
+	if err != nil {
+		return fmt.Errorf("lock user: %w", err)
+	}
+	if s.testAfterUserLock != nil {
+		s.testAfterUserLock()
+	}
 
 	// Lock every circle the caller owns before counting their members. The
 	// row lock conflicts with the KEY SHARE that an invite redemption's
