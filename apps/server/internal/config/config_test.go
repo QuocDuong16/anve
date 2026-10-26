@@ -32,16 +32,33 @@ func TestLoadOverrides(t *testing.T) {
 	assert.Equal(t, 30*time.Second, cfg.ShutdownTimeout)
 }
 
-func TestDevLoginRefusedInProduction(t *testing.T) {
-	t.Setenv("ENVIRONMENT", "production")
-	t.Setenv("AUTH_DEV_LOGIN_ENABLED", "true")
+func TestDevLoginRefusedOutsideDevelopment(t *testing.T) {
+	// Fail closed: production, staging, unknown and mis-cased names all
+	// refuse to start with the fixture enabled. Only the exact documented
+	// value "development" may mount it.
+	for _, env := range []string{"production", "staging", "prod", "Development", "local"} {
+		t.Run("env="+env, func(t *testing.T) {
+			t.Setenv("ENVIRONMENT", env)
+			t.Setenv("AUTH_DEV_LOGIN_ENABLED", "true")
 
-	_, err := config.Load()
-	require.Error(t, err, "the dev login must never start inside a production process")
-	assert.Contains(t, err.Error(), "AUTH_DEV_LOGIN_ENABLED")
+			_, err := config.Load()
+			require.Error(t, err, "the dev login must not start outside development")
+			assert.Contains(t, err.Error(), "AUTH_DEV_LOGIN_ENABLED")
+		})
+	}
 }
 
-func TestDevLoginAllowedOutsideProduction(t *testing.T) {
+// An unset ENVIRONMENT keeps the documented development default (the binary
+// starts with no configuration at all for local work). Production and
+// staging must set the variable explicitly, at which point the allowlist
+// above applies.
+func TestUnsetEnvironmentDefaultsToDevelopment(t *testing.T) {
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	assert.Equal(t, config.EnvironmentDevelopment, cfg.Environment)
+}
+
+func TestDevLoginAllowedInDevelopment(t *testing.T) {
 	t.Setenv("ENVIRONMENT", "development")
 	t.Setenv("AUTH_DEV_LOGIN_ENABLED", "true")
 

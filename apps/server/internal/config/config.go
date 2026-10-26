@@ -52,9 +52,18 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
+// EnvironmentDevelopment is the only environment in which the development
+// login may be mounted. It is an allowlist of one on purpose: "not
+// production" would also admit staging, a typo or an unknown value, and a
+// fixture that mints sessions for arbitrary emails must fail closed.
+const EnvironmentDevelopment = "development"
+
+// validate refuses configurations that are unsafe by construction.
 func (c Config) validate() error {
-	if c.Environment == "production" && c.AuthDevLoginEnabled {
-		return fmt.Errorf("AUTH_DEV_LOGIN_ENABLED must be false when ENVIRONMENT is production")
+	if c.AuthDevLoginEnabled && c.Environment != EnvironmentDevelopment {
+		return fmt.Errorf(
+			"AUTH_DEV_LOGIN_ENABLED must be false unless ENVIRONMENT is %q (got %q)",
+			EnvironmentDevelopment, c.Environment)
 	}
 	return nil
 }

@@ -37,8 +37,15 @@ The API base URL is a BuildConfig field:
    Enter any email — the backend creates the account and returns a real
    session; the flow is identical to production past the identity check.
 
-The development login is refused at startup when `ENVIRONMENT=production`
-(ADR 0002) and release builds never render the section.
+The development login is a privileged test fixture, not an authentication
+provider (ADR 0004). The server refuses to start with it enabled unless
+`ENVIRONMENT` is exactly `development` — staging, production, mis-cased and
+unknown environment names are all rejected — and release builds never render
+the section. Development identities are isolated from Google identities:
+neither side can sign into an account created by the other, so an arbitrary
+dev-login email can never take over a real Google account. Keep the flag off
+any host reachable from the Internet and never point it at a production
+database.
 
 ## Google Sign-In (production path)
 
