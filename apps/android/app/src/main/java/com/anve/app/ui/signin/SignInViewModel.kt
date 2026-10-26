@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.auth.AuthRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,9 +30,13 @@ sealed interface SignInUiState {
  * Google ID token (obtained by the screen through Credential Manager) or
  * use the development login when the server mounts it.
  */
-class SignInViewModel(
+class SignInViewModel internal constructor(
     private val repository: AuthRepository,
+    externalScope: CoroutineScope? = null,
 ) : ViewModel() {
+
+    /** Production uses `viewModelScope`; tests inject a disposable scope. */
+    private val scope: CoroutineScope = externalScope ?: viewModelScope
 
     private val _state = MutableStateFlow<SignInUiState>(SignInUiState.Loading)
     val state: StateFlow<SignInUiState> = _state.asStateFlow()
@@ -48,7 +53,7 @@ class SignInViewModel(
     }
 
     fun refreshConfig() {
-        viewModelScope.launch {
+        scope.launch {
             _state.value = SignInUiState.Loading
             try {
                 val config = repository.authConfig()
@@ -66,7 +71,7 @@ class SignInViewModel(
     /** The screen has already obtained the Google ID token. */
     fun signInWithGoogleToken(idToken: String) {
         if (_busy.value) return
-        viewModelScope.launch {
+        scope.launch {
             _busy.value = true
             _error.value = null
             try {
@@ -82,7 +87,7 @@ class SignInViewModel(
 
     fun signInDev(email: String) {
         if (_busy.value || email.isBlank()) return
-        viewModelScope.launch {
+        scope.launch {
             _busy.value = true
             _error.value = null
             try {

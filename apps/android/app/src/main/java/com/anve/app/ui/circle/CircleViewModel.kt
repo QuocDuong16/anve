@@ -9,6 +9,7 @@ import com.anve.app.data.api.CircleMembershipDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.CircleRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,9 +30,13 @@ data class CircleUiState(
     val isOwner: Boolean get() = myRole == "owner"
 }
 
-class CircleViewModel(
+class CircleViewModel internal constructor(
     private val repository: CircleRepository,
+    externalScope: CoroutineScope? = null,
 ) : ViewModel() {
+
+    /** Production uses `viewModelScope`; tests inject a disposable scope. */
+    private val scope: CoroutineScope = externalScope ?: viewModelScope
 
     private val _state = MutableStateFlow(CircleUiState())
     val state: StateFlow<CircleUiState> = _state.asStateFlow()
@@ -41,7 +46,7 @@ class CircleViewModel(
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        scope.launch {
             try {
                 val mine = repository.myCircle()
                 if (mine.circle == null || mine.membership == null) {
@@ -65,7 +70,7 @@ class CircleViewModel(
     }
 
     private fun loadDetails(circleId: String) {
-        viewModelScope.launch {
+        scope.launch {
             try {
                 val members = repository.members(circleId)
                 _state.update { it.copy(members = members) }
@@ -84,7 +89,7 @@ class CircleViewModel(
 
     fun create(name: String) {
         if (_state.value.busy || name.isBlank()) return
-        viewModelScope.launch {
+        scope.launch {
             setBusy(message = null, error = null)
             try {
                 repository.create(name.trim())
@@ -98,7 +103,7 @@ class CircleViewModel(
 
     fun join(code: String) {
         if (_state.value.busy || code.isBlank()) return
-        viewModelScope.launch {
+        scope.launch {
             setBusy(message = null, error = null)
             try {
                 repository.joinWithCode(code.trim().uppercase())
@@ -112,7 +117,7 @@ class CircleViewModel(
 
     fun createInvite() {
         val circle = _state.value.circle ?: return
-        viewModelScope.launch {
+        scope.launch {
             setBusy(message = null, error = null)
             try {
                 repository.createInvite(circle.id)
@@ -126,7 +131,7 @@ class CircleViewModel(
 
     fun revokeInvite(inviteId: String) {
         val circle = _state.value.circle ?: return
-        viewModelScope.launch {
+        scope.launch {
             try {
                 repository.revokeInvite(inviteId)
                 loadDetails(circle.id)
@@ -138,7 +143,7 @@ class CircleViewModel(
 
     fun removeMember(userId: String) {
         val circle = _state.value.circle ?: return
-        viewModelScope.launch {
+        scope.launch {
             try {
                 repository.removeMember(circle.id, userId)
                 loadDetails(circle.id)
@@ -151,7 +156,7 @@ class CircleViewModel(
 
     fun leave(dissolve: Boolean) {
         val circle = _state.value.circle ?: return
-        viewModelScope.launch {
+        scope.launch {
             setBusy(message = null, error = null)
             try {
                 repository.leave(circle.id, dissolve)

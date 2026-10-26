@@ -3,12 +3,12 @@ package com.anve.app.ui.circle
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.circles.CircleRepository
 import com.anve.app.ui.awaitUntil
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -30,10 +30,11 @@ class CircleViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var server: MockWebServer
     private lateinit var repository: CircleRepository
+    private lateinit var scope: CoroutineScope
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(dispatcher)
+        scope = CoroutineScope(SupervisorJob() + dispatcher)
         server = MockWebServer()
         server.start()
         repository = CircleRepository(
@@ -48,8 +49,8 @@ class CircleViewModelTest {
 
     @After
     fun tearDown() {
+        scope.cancel()
         server.shutdown()
-        Dispatchers.resetMain()
     }
 
     private fun enqueueMyCircle(name: String? = "Gia đình", role: String = "owner") {
@@ -72,7 +73,7 @@ class CircleViewModelTest {
     fun `empty state shows the setup screen`() = runBlocking {
         enqueueMyCircle(name = null)
 
-        val vm = CircleViewModel(repository)
+        val vm = CircleViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
 
         assertNull(vm.state.value.circle)
@@ -95,7 +96,7 @@ class CircleViewModelTest {
             ),
         )
 
-        val vm = CircleViewModel(repository)
+        val vm = CircleViewModel(repository, scope)
         awaitUntil { vm.state.value.members.isNotEmpty() && vm.state.value.invites.isNotEmpty() }
 
         assertEquals("owner", vm.state.value.myRole)
@@ -109,7 +110,7 @@ class CircleViewModelTest {
         enqueueMyCircle(role = "member")
         server.enqueue(MockResponse().setBody("""{"members":[]}"""))
 
-        val vm = CircleViewModel(repository)
+        val vm = CircleViewModel(repository, scope)
         awaitUntil { server.requestCount >= 2 }
 
         assertEquals("only my-circle and members are called", 2, server.requestCount)
@@ -120,7 +121,7 @@ class CircleViewModelTest {
     fun `join maps INVITE_UNAVAILABLE to a friendly message`() = runBlocking {
         enqueueMyCircle(name = null)
 
-        val vm = CircleViewModel(repository)
+        val vm = CircleViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
 
         server.enqueue(
@@ -142,7 +143,7 @@ class CircleViewModelTest {
     fun `create sends the trimmed name`() = runBlocking {
         enqueueMyCircle(name = null)
 
-        val vm = CircleViewModel(repository)
+        val vm = CircleViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
 
         server.enqueue(
@@ -171,7 +172,7 @@ class CircleViewModelTest {
         server.enqueue(MockResponse().setBody("""{"members":[]}"""))
         server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
 
-        val vm = CircleViewModel(repository)
+        val vm = CircleViewModel(repository, scope)
         awaitUntil { server.requestCount >= 3 }
 
         server.enqueue(MockResponse().setResponseCode(204))

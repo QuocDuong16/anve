@@ -8,6 +8,7 @@ import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.auth.AuthRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,9 +35,16 @@ data class HomeUiState(
     val busy: Boolean = false,
 )
 
-class HomeViewModel(
+class HomeViewModel internal constructor(
     private val repository: AuthRepository,
+    externalScope: CoroutineScope? = null,
 ) : ViewModel() {
+
+    /**
+     * Production uses `viewModelScope`; tests inject their own scope so they
+     * never mutate the global Main dispatcher while a coroutine is alive.
+     */
+    private val scope: CoroutineScope = externalScope ?: viewModelScope
 
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -55,7 +63,7 @@ class HomeViewModel(
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        scope.launch {
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val user = repository.me()
@@ -84,7 +92,7 @@ class HomeViewModel(
         val atCall = _state.value.user ?: return
         // Optimistic flip; the server's answer is authoritative.
         _state.update { it.copy(user = it.user?.copy(locationSharingEnabled = enabled), error = null) }
-        viewModelScope.launch {
+        scope.launch {
             consentLock.withLock {
                 try {
                     val user = repository.setLocationSharing(enabled)
@@ -111,7 +119,7 @@ class HomeViewModel(
 
     fun rename(displayName: String) {
         if (displayName.isBlank()) return
-        viewModelScope.launch {
+        scope.launch {
             try {
                 val user = repository.updateDisplayName(displayName.trim())
                 _state.update { it.copy(user = user, message = "Đã cập nhật tên hiển thị.") }
@@ -124,7 +132,7 @@ class HomeViewModel(
     }
 
     fun revokeDevice(deviceId: String) {
-        viewModelScope.launch {
+        scope.launch {
             try {
                 repository.revokeDevice(deviceId)
                 _state.update {
@@ -149,7 +157,7 @@ class HomeViewModel(
      */
     fun signOut() {
         if (_state.value.busy) return
-        viewModelScope.launch {
+        scope.launch {
             _state.update { it.copy(busy = true, error = null) }
             try {
                 repository.signOut()
@@ -166,7 +174,7 @@ class HomeViewModel(
 
     fun deleteAccount() {
         if (_state.value.busy) return
-        viewModelScope.launch {
+        scope.launch {
             _state.update { it.copy(busy = true, error = null) }
             try {
                 repository.deleteAccount()

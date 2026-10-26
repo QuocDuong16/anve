@@ -11,12 +11,12 @@ import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.data.auth.SessionNoticeStore
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.ui.awaitUntil
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -44,10 +44,11 @@ class HomeViewModelTest {
     private lateinit var storage: InMemorySessionStorage
     private lateinit var notices: SessionNoticeStore
     private lateinit var repository: AuthRepository
+    private lateinit var scope: CoroutineScope
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(dispatcher)
+        scope = CoroutineScope(SupervisorJob() + dispatcher)
         server = MockWebServer()
         server.start()
         storage = InMemorySessionStorage()
@@ -63,8 +64,8 @@ class HomeViewModelTest {
 
     @After
     fun tearDown() {
+        scope.cancel()
         server.shutdown()
-        Dispatchers.resetMain()
     }
 
     private fun device() = object : DeviceRegistrationProvider {
@@ -102,7 +103,7 @@ class HomeViewModelTest {
             MockResponse().setBody("""{"devices":[{"id":"d1","name":"Pixel","platform":"android",
                 "createdAt":"2026-10-25T00:00:00Z","lastSeenAt":"2026-10-25T00:00:00Z"}]}""".replace("\n", "")),
         )
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
 
         assertEquals(false, vm.state.value.loading)
@@ -113,7 +114,7 @@ class HomeViewModelTest {
     @Test
     fun `a failed refresh keeps the user and offers a retry`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
 
         server.enqueue(MockResponse().setResponseCode(500).setBody("""{"code":"INTERNAL","message":"x"}"""))
@@ -127,7 +128,7 @@ class HomeViewModelTest {
     @Test
     fun `consent toggle sends the request and applies the server state`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
 
         server.enqueue(MockResponse().setBody(userJson(sharing = true)))
@@ -148,7 +149,7 @@ class HomeViewModelTest {
     @Test
     fun `failed consent toggle rolls back`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
 
@@ -163,7 +164,7 @@ class HomeViewModelTest {
     @Test
     fun `rapid consent toggles settle on the last server-confirmed state`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
 
@@ -193,7 +194,7 @@ class HomeViewModelTest {
     @Test
     fun `a failure in the middle of a rapid sequence rolls back to the confirmed state`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
 
@@ -218,7 +219,7 @@ class HomeViewModelTest {
     @Test
     fun `sign out clears the local session without a notice`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -233,7 +234,7 @@ class HomeViewModelTest {
     @Test
     fun `offline sign out clears locally and publishes the unconfirmed notice`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -257,7 +258,7 @@ class HomeViewModelTest {
     @Test
     fun `delete success clears the session`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -271,7 +272,7 @@ class HomeViewModelTest {
     @Test
     fun `delete refused by circle membership keeps the session and explains`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -290,7 +291,7 @@ class HomeViewModelTest {
     @Test
     fun `delete failure of any HTTP kind keeps the session`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -323,7 +324,7 @@ class HomeViewModelTest {
             deviceIdentity = device(),
         )
         enqueueHome()
-        val vm = HomeViewModel(wired)
+        val vm = HomeViewModel(wired, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
 
@@ -338,7 +339,7 @@ class HomeViewModelTest {
     @Test
     fun `double tap delete sends one request`() = runBlocking {
         enqueueHome()
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, scope)
         awaitUntil { !vm.state.value.loading }
         signedIn()
         val before = server.requestCount

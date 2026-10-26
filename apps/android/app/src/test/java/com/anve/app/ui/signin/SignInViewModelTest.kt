@@ -6,12 +6,12 @@ import com.anve.app.data.auth.AuthRepository
 import com.anve.app.data.auth.DeviceRegistrationProvider
 import com.anve.app.data.auth.InMemorySessionStorage
 import com.anve.app.ui.awaitUntil
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -29,10 +29,11 @@ class SignInViewModelTest {
     private lateinit var server: MockWebServer
     private lateinit var storage: InMemorySessionStorage
     private lateinit var repository: AuthRepository
+    private lateinit var scope: CoroutineScope
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(dispatcher)
+        scope = CoroutineScope(SupervisorJob() + dispatcher)
         server = MockWebServer()
         server.start()
         storage = InMemorySessionStorage()
@@ -49,8 +50,8 @@ class SignInViewModelTest {
 
     @After
     fun tearDown() {
+        scope.cancel()
         server.shutdown()
-        Dispatchers.resetMain()
     }
 
     private fun api() = ApiFactory.api(
@@ -62,7 +63,7 @@ class SignInViewModelTest {
         server.enqueue(
             MockResponse().setBody("""{"googleSignIn":true,"devLogin":false}"""),
         )
-        val vm = SignInViewModel(repository)
+        val vm = SignInViewModel(repository, scope)
         awaitUntil { vm.state.value is SignInUiState.Ready && vm.error.value == null }
 
         val state = vm.state.value
@@ -83,7 +84,7 @@ class SignInViewModelTest {
                    "accessExpiresAt":"2026-10-25T00:30:00Z","refreshExpiresAt":"2026-11-24T00:00:00Z"}}""".replace("\n", ""),
             ),
         )
-        val vm = SignInViewModel(repository)
+        val vm = SignInViewModel(repository, scope)
         awaitUntil { vm.state.value is SignInUiState.Ready }
 
         vm.signInDev("dev@x.co")
@@ -111,7 +112,7 @@ class SignInViewModelTest {
                 """{"code":"UNAUTHENTICATED","message":"rejected"}""",
             ),
         )
-        val vm = SignInViewModel(repository)
+        val vm = SignInViewModel(repository, scope)
         awaitUntil { vm.state.value is SignInUiState.Ready }
 
         vm.signInDev("wrong@example.com")
@@ -125,7 +126,7 @@ class SignInViewModelTest {
     @Test
     fun `unreachable server still shows the screen with an error`() = runBlocking {
         server.shutdown()
-        val vm = SignInViewModel(repository)
+        val vm = SignInViewModel(repository, scope)
         awaitUntil { vm.state.value is SignInUiState.Ready && vm.error.value != null }
 
         val state = vm.state.value
