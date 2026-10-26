@@ -43,6 +43,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
 import com.anve.app.R
+import com.anve.app.data.auth.SessionNotice
+import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.theme.AnVeTheme
 
 import kotlinx.coroutines.launch
@@ -64,6 +66,7 @@ fun SignInScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val notice by container.sessionNotices.notice.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -75,6 +78,8 @@ fun SignInScreen(
         state = state,
         error = error,
         busy = busy,
+        notice = notice,
+        onDismissNotice = { notice?.let { container.sessionNotices.dismiss(it.id) } },
         onGoogleSignIn = {
             val activity = context.findActivity()
             if (activity == null) {
@@ -107,6 +112,8 @@ fun SignInContent(
     state: SignInUiState,
     error: String?,
     busy: Boolean,
+    notice: SessionNotice?,
+    onDismissNotice: () -> Unit,
     onGoogleSignIn: () -> Unit,
     onDevSignIn: (String) -> Unit,
     onRetry: () -> Unit,
@@ -140,6 +147,11 @@ fun SignInContent(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 Spacer(Modifier.height(32.dp))
+
+                if (notice != null) {
+                    SignOutNoticeCard(notice = notice, onDismiss = onDismissNotice)
+                    Spacer(Modifier.height(16.dp))
+                }
 
                 if (error != null) {
                     Text(
@@ -197,6 +209,29 @@ fun SignInContent(
 }
 
 @Composable
+private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
+    val text = when (notice.kind) {
+        SessionNoticeKind.LocalSignOutRetryScheduled ->
+            stringResource(R.string.signin_local_signout_retry)
+        SessionNoticeKind.LocalSignOutRetryUnavailable ->
+            stringResource(R.string.signin_local_signout_no_retry)
+    }
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = text, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_dismiss))
+            }
+        }
+    }
+}
+
+@Composable
 private fun DevLoginForm(enabled: Boolean, onSignIn: (String) -> Unit) {
     var email by remember { mutableStateOf("") }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -243,6 +278,8 @@ private fun SignInContentGooglePreview() {
             state = SignInUiState.Ready(googleSignIn = true, devLogin = false),
             error = null,
             busy = false,
+            notice = null,
+            onDismissNotice = {},
             onGoogleSignIn = {},
             onDevSignIn = {},
             onRetry = {},
@@ -258,6 +295,8 @@ private fun SignInContentUnavailablePreview() {
             state = SignInUiState.Ready(googleSignIn = false, devLogin = false),
             error = "Không kết nối được máy chủ.",
             busy = false,
+            notice = null,
+            onDismissNotice = {},
             onGoogleSignIn = {},
             onDevSignIn = {},
             onRetry = {},

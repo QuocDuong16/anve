@@ -7,6 +7,7 @@ import com.anve.app.data.auth.AuthRepository
 import com.anve.app.data.auth.DataStoreSessionStorage
 import com.anve.app.data.auth.DeviceIdentity
 import com.anve.app.data.auth.SessionInterceptor
+import com.anve.app.data.auth.SessionNoticeStore
 import com.anve.app.data.circles.CircleRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,12 @@ class AppContainer(application: Application) {
     val deviceIdentity: DeviceIdentity = DeviceIdentity(application)
 
     val sessionStore: DataStoreSessionStorage = DataStoreSessionStorage(application)
+
+    /**
+     * App-scoped so a sign-out notice survives the navigation caused by
+     * clearing the session, and survives configuration changes.
+     */
+    val sessionNotices: SessionNoticeStore = SessionNoticeStore()
 
     /** Token-free client: auth config, sign-in endpoints and refresh. */
     private val plainApi: AnveApi = ApiFactory.api(
@@ -43,6 +50,7 @@ class AppContainer(application: Application) {
         plainApi = plainApi,
         storage = sessionStore,
         deviceIdentity = deviceIdentity,
+        notices = sessionNotices,
     )
 
     val circleRepository: CircleRepository = CircleRepository(api = authApi)
@@ -63,11 +71,11 @@ class AnVeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        // Finishes a sign-out whose server revocation could not be delivered
-        // (offline sign-out). Best-effort and bounded: the record expires
-        // after PENDING_REVOCATION_TTL_MILLIS.
+        // Finishes every sign-out whose server revocation could not be
+        // delivered (offline sign-out). Best-effort and bounded: each queue
+        // record expires independently after PENDING_REVOCATION_TTL_MILLIS.
         applicationScope.launch {
-            container.authRepository.retryPendingRevocation()
+            container.authRepository.retryPendingRevocations()
         }
     }
 }

@@ -12,6 +12,11 @@
     <string name="signin_dev_title">Đăng nhập phát triển (chỉ máy chủ dev)</string>
     <string name="signin_dev_email">Email</string>
     <string name="signin_dev_button">Đăng nhập dev</string>
+    <!-- Offline sign-out outcome, shown on this screen after the session
+         flow rerouted here. It never claims the server revoked the session. -->
+    <string name="signin_local_signout_retry">Đã đăng xuất khỏi thiết bị này. Máy chủ chưa xác nhận thu hồi phiên. AnVề sẽ thử lại khi có kết nối.</string>
+    <string name="signin_local_signout_no_retry">Đã đăng xuất khỏi thiết bị này. Máy chủ chưa xác nhận thu hồi phiên; lần thử lại không được lưu trên thiết bị, nên phiên có thể còn hiệu lực đến khi hết hạn.</string>
+    <string name="action_dismiss">Đã hiểu</string>
 
     <!-- Home / account -->
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>

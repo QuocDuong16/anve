@@ -7,7 +7,6 @@ import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.auth.AuthRepository
-import com.anve.app.data.auth.SignOutOutcome
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -143,30 +142,24 @@ class HomeViewModel(
     }
 
     /**
-     * Local sign-out always succeeds; the message only distinguishes whether
-     * the backend confirmed the revocation. Navigation happens on the
-     * session flow once storage is cleared.
+     * Local sign-out always succeeds; whether the backend confirmed the
+     * revocation is published as an app-scoped notice by the repository,
+     * because clearing the session immediately navigation-away disposes this
+     * screen. Home state stays free of messages that could vanish unseen.
      */
     fun signOut() {
         if (_state.value.busy) return
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
-            val outcome = try {
+            try {
                 repository.signOut()
+                _state.update { it.copy(busy = false) }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                null
-            }
-            _state.update {
-                it.copy(
-                    busy = false,
-                    message = if (outcome == SignOutOutcome.LocalOnly) {
-                        "Đã đăng xuất khỏi thiết bị này; chưa liên hệ được máy chủ nên phiên có thể còn hiệu lực đến khi hết hạn."
-                    } else {
-                        null
-                    },
-                )
+                _state.update {
+                    it.copy(busy = false, error = "Không đăng xuất được. Vui lòng thử lại.")
+                }
             }
         }
     }

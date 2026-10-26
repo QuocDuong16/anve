@@ -7,6 +7,8 @@ import com.anve.app.data.auth.AuthRepository
 import com.anve.app.data.auth.DeviceRegistrationProvider
 import com.anve.app.data.auth.InMemorySessionStorage
 import com.anve.app.data.auth.SessionInterceptor
+import com.anve.app.data.auth.SessionNoticeKind
+import com.anve.app.data.auth.SessionNoticeStore
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.ui.awaitUntil
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +42,7 @@ class HomeViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var server: MockWebServer
     private lateinit var storage: InMemorySessionStorage
+    private lateinit var notices: SessionNoticeStore
     private lateinit var repository: AuthRepository
 
     @Before
@@ -48,11 +51,13 @@ class HomeViewModelTest {
         server = MockWebServer()
         server.start()
         storage = InMemorySessionStorage()
+        notices = SessionNoticeStore()
         repository = AuthRepository(
             api = api(),
             plainApi = api(),
             storage = storage,
             deviceIdentity = device(),
+            notices = notices,
         )
     }
 
@@ -211,7 +216,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `sign out clears the local session`() = runBlocking {
+    fun `sign out clears the local session without a notice`() = runBlocking {
         enqueueHome()
         val vm = HomeViewModel(repository)
         awaitUntil { !vm.state.value.loading }
@@ -222,10 +227,11 @@ class HomeViewModelTest {
         awaitUntil { storage.current() == null }
 
         assertFalse(vm.state.value.busy)
+        assertNull(notices.notice.value)
     }
 
     @Test
-    fun `offline sign out clears locally and reports the unconfirmed revocation`() = runBlocking {
+    fun `offline sign out clears locally and publishes the unconfirmed notice`() = runBlocking {
         enqueueHome()
         val vm = HomeViewModel(repository)
         awaitUntil { !vm.state.value.loading }
@@ -236,10 +242,15 @@ class HomeViewModelTest {
         vm.signOut()
         awaitUntil { storage.current() == null }
 
-        assertNotNull(storage.rawPendingRevocation())
-        assertTrue(
-            "the user must be told the server could not be reached",
-            vm.state.value.message.orEmpty().contains("chưa liên hệ được máy chủ"),
+        assertEquals(1, storage.rawPendingRevocations().size)
+        assertEquals(
+            "the destination screen must be able to tell the user the server was not reached",
+            SessionNoticeKind.LocalSignOutRetryScheduled,
+            notices.notice.value?.kind,
+        )
+        assertNull(
+            "the message must not live on the disposed Home screen",
+            vm.state.value.message,
         )
     }
 
