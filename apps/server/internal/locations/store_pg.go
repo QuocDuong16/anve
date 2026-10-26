@@ -19,6 +19,9 @@ type PGStore struct {
 	// and is nil in production; it orders the deterministic concurrency
 	// tests instead of relying on sleeps.
 	testAfterConsentLock func()
+	// testAfterDeviceLock runs after the session/device share locks are
+	// held, so a concurrency test can order a device revocation precisely.
+	testAfterDeviceLock func()
 }
 
 // NewPGStore returns a Store backed by the given pool.
@@ -87,6 +90,9 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 	}
 	if err != nil {
 		return BatchResult{}, fmt.Errorf("lock session and device: %w", err)
+	}
+	if s.testAfterDeviceLock != nil {
+		s.testAfterDeviceLock()
 	}
 	// The session already fixes the device; the body's clientDeviceId is
 	// accepted only when it names that same installation. This stops an

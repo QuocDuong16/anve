@@ -133,6 +133,7 @@ func (s *Service) Ingest(ctx context.Context, principal Principal, events []Even
 	})
 	if err != nil {
 		s.metrics.batches.Add(1)
+		s.metrics.eventsRejected.Add(int64(len(events)))
 		if IsPermanentIngestionError(err) || IsPolicyRefusal(err) {
 			return BatchResult{}, err
 		}

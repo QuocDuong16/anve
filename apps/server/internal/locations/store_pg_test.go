@@ -290,6 +290,36 @@ func TestPGRetentionPurgesOnlyExpiredPoints(t *testing.T) {
 	assert.Equal(t, recent.EventID, remaining)
 }
 
+// TestPGBatchRollsBackOnDatabaseError proves the atomic contract: if any
+// insert in a batch fails, none of the earlier inserts survive. A test-only
+// trigger rejects one specific provider so validation passes and the failure
+// happens inside the transaction.
+func TestPGBatchRollsBackOnDatabaseError(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	_, err := f.pool.Exec(f.ctx, `
+		CREATE FUNCTION anve_test_reject_poison() RETURNS trigger AS $body$
+		BEGIN
+			IF NEW.provider = 'poison' THEN
+				RAISE EXCEPTION 'poison provider rejected for test';
+			END IF;
+			RETURN NEW;
+		END;
+		$body$ LANGUAGE plpgsql;
+		CREATE TRIGGER anve_test_reject_poison
+			BEFORE INSERT ON location_points
+			FOR EACH ROW EXECUTE FUNCTION anve_test_reject_poison();`)
+	require.NoError(t, err)
+
+	now := time.Now().UTC()
+	first := f.event(now)
+	second := f.event(now)
+	second.Provider = "poison"
+
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{first, second})
+	require.ErrorIs(t, err, locations.ErrTemporarilyUnavailable)
+	assert.Zero(t, countPoints(t, f.pool), "the first insert must roll back with the failed one")
+}
+
 func TestPGConcurrentSameEventProducesOneRow(t *testing.T) {
 	f := newAuthorizedFixture(t)
 	event := f.event(time.Now().UTC().Add(-time.Minute))
@@ -376,6 +406,47 @@ func TestPGIngestSerializesWithConsentRevocation(t *testing.T) {
 	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{f.event(time.Now().UTC())})
 	require.ErrorIs(t, err, locations.ErrConsentRequired)
 	assert.Equal(t, 1, countPoints(t, f.pool))
+}
+
+// TestPGIngestSerializesWithDeviceRevocation proves the session/device lock
+// boundary: a revocation that starts while a batch is in flight waits for
+// the batch, then cascades its rows. The batch therefore never commits a
+// location for a device that was already revoked, and no orphan row
+// survives the delete.
+func TestPGIngestSerializesWithDeviceRevocation(t *testing.T) {
+	f := newAuthorizedFixture(t)
+
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	f.store.SetTestAfterDeviceLock(func() {
+		close(locked)
+		<-release
+	})
+
+	ingestErr := make(chan error, 1)
+	go func() {
+		_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{f.event(time.Now().UTC())})
+		ingestErr <- err
+	}()
+
+	select {
+	case <-locked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("ingestion never reached the device lock")
+	}
+
+	revoked := make(chan error, 1)
+	go func() {
+		revoked <- f.authSvc.RevokeDevice(f.ctx, f.user.ID, f.session.DeviceID)
+	}()
+	waitForLockWait(t, f.pool)
+
+	close(release)
+	require.NoError(t, <-ingestErr)
+	require.NoError(t, <-revoked)
+	f.store.SetTestAfterDeviceLock(nil)
+
+	assert.Zero(t, countPoints(t, f.pool), "revoking the device must cascade its location rows")
 }
 
 // waitForLockWait blocks until at least one connection on this scratch

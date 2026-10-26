@@ -78,12 +78,14 @@ func ingestLocationBatchHandler(svc *locations.Service) http.HandlerFunc {
 			DeviceID:  ac.Session.DeviceID,
 		}, events)
 		if err != nil {
-			// Log only ids/counts — never coordinates or the payload.
+			// Log only ids, counts and a stable code. Even an error string
+			// can echo a database row value, so the message is not logged;
+			// the client receives it in the response envelope.
 			slog.WarnContext(r.Context(), "location batch rejected",
 				"user_id", ac.User.ID,
 				"device_id", ac.Session.DeviceID,
 				"events", len(events),
-				"error", err,
+				"error_code", locationErrorCode(err),
 			)
 			writeError(w, r, err)
 			return
@@ -98,18 +100,48 @@ func ingestLocationBatchHandler(svc *locations.Service) http.HandlerFunc {
 			duplicates = []uuid.UUID{}
 		}
 
+		metrics := svc.Metrics().Snapshot()
 		slog.InfoContext(r.Context(), "location batch ingested",
 			"user_id", ac.User.ID,
 			"device_id", ac.Session.DeviceID,
 			"accepted", len(accepted),
 			"duplicates", len(duplicates),
 			"duration_ms", time.Since(started).Milliseconds(),
+			// Aggregate operational counters, never per-point labels or
+			// coordinates.
+			"batches_total", metrics.Batches,
+			"events_accepted_total", metrics.EventsAccepted,
+			"events_duplicate_total", metrics.EventsDuplicate,
+			"events_rejected_total", metrics.EventsRejected,
 		)
 		writeJSON(w, http.StatusOK, locationBatchResponse{
 			Accepted:   accepted,
 			Duplicates: duplicates,
 			ReceivedAt: result.ReceivedAt,
 		})
+	}
+}
+
+// locationErrorCode is the log-safe classification of an ingestion error.
+// It intentionally matches the API codes rather than exposing raw messages.
+func locationErrorCode(err error) string {
+	switch {
+	case errors.Is(err, locations.ErrBatchTooLarge):
+		return "LOCATION_BATCH_TOO_LARGE"
+	case errors.Is(err, locations.ErrEventTooOld):
+		return "LOCATION_EVENT_TOO_OLD"
+	case errors.Is(err, locations.ErrBatchInvalid):
+		return "LOCATION_BATCH_INVALID"
+	case errors.Is(err, locations.ErrConsentRequired):
+		return "LOCATION_CONSENT_REQUIRED"
+	case errors.Is(err, locations.ErrCircleRequired):
+		return "LOCATION_CIRCLE_REQUIRED"
+	case errors.Is(err, locations.ErrDeviceNotAuthorized):
+		return "DEVICE_NOT_AUTHORIZED"
+	case errors.Is(err, locations.ErrTemporarilyUnavailable):
+		return "LOCATION_TEMPORARILY_UNAVAILABLE"
+	default:
+		return "INTERNAL"
 	}
 }
 
