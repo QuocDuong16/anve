@@ -222,6 +222,7 @@ fun HomeContent(
                     user = user,
                     requestedEnabled = state.locationSharingRequested ?: user.locationSharingEnabled,
                     syncPending = state.consentSyncPending,
+                    conflict = state.consentConflict,
                     busy = state.consentBusy,
                     onToggle = onToggleSharing,
                 )
@@ -309,6 +310,7 @@ private fun ConsentCard(
     user: UserDto,
     requestedEnabled: Boolean,
     syncPending: Boolean,
+    conflict: Boolean,
     busy: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
@@ -332,7 +334,14 @@ private fun ConsentCard(
                     onCheckedChange = onToggle,
                 )
             }
-            if (syncPending) {
+            if (conflict) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.home_sharing_conflict_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else if (syncPending) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     stringResource(R.string.home_sharing_pending_notice),

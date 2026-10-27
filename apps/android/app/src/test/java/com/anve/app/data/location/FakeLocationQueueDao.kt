@@ -15,6 +15,8 @@ class FakeLocationQueueDao : LocationQueueDao {
     var lastRetentionCutoff: Long? = null
     var lastDeleteOldest: Pair<String, Int>? = null
     var lastAttemptMarked: Pair<List<String>, Long>? = null
+    var beforeMarkAttempt: (suspend () -> Unit)? = null
+    var failDeleteAll = false
 
     private val counts = mutableMapOf<String, MutableStateFlow<Int>>()
 
@@ -39,6 +41,7 @@ class FakeLocationQueueDao : LocationQueueDao {
     }
 
     override suspend fun deleteAll(): Int {
+        if (failDeleteAll) throw java.io.IOException("simulated queue purge failure")
         val count = rows.size
         rows.clear()
         publishCounts()
@@ -80,6 +83,10 @@ class FakeLocationQueueDao : LocationQueueDao {
     }
 
     override suspend fun markAttempt(eventIds: List<String>, nowMillis: Long): Int {
+        beforeMarkAttempt?.also {
+            beforeMarkAttempt = null
+            it()
+        }
         lastAttemptMarked = eventIds to nowMillis
         var updated = 0
         eventIds.forEach { id ->

@@ -78,7 +78,14 @@ data class PendingConsentOperation(
     val signOutAfterConsent: Boolean = false,
     val requiresOwnerAuthentication: Boolean = false,
     val lastErrorCode: String? = null,
+    /** Non-null only when a newer authoritative server choice conflicts with this operation. */
+    val conflictServerEnabled: Boolean? = null,
+    val conflictServerVersion: Long? = null,
+    val conflictObservedAtMillis: Long? = null,
 )
+
+val PendingConsentOperation.hasConsentConflict: Boolean
+    get() = conflictServerEnabled != null && conflictServerVersion != null
 
 /** Retry window for an undelivered sign-out; older records are dropped. */
 const val PENDING_REVOCATION_TTL_MILLIS: Long = 7L * 24 * 60 * 60 * 1000

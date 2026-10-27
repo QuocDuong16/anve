@@ -48,4 +48,17 @@ class ConsentMutationCoordinatorTest {
 
         assertFalse(coordinator.authorizeLocationUpload { pendingOff })
     }
+
+    @Test
+    fun `synchronous privacy stop blocks upload before durable intent exists`() = runBlocking {
+        val coordinator = ConsentMutationCoordinator()
+
+        assertTrue(coordinator.authorizeLocationUpload { false })
+        coordinator.closeLocationAdmission()
+
+        assertTrue(coordinator.isLocationAdmissionClosed())
+        assertFalse(coordinator.authorizeLocationUpload { false })
+        coordinator.openLocationAdmission()
+        assertTrue(coordinator.authorizeLocationUpload { false })
+    }
 }

@@ -7,6 +7,7 @@ import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.auth.AuthRepository
+import com.anve.app.data.auth.hasConsentConflict
 import com.anve.app.tracking.ConsentController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +37,7 @@ data class HomeUiState(
     val busy: Boolean = false,
     val locationSharingRequested: Boolean? = null,
     val consentSyncPending: Boolean = false,
+    val consentConflict: Boolean = false,
     val consentBusy: Boolean = false,
 )
 
@@ -69,9 +71,10 @@ class HomeViewModel internal constructor(
                 val user = repository.me()
                 val devices = repository.devices().devices
                 val pendingConsent = repository.pendingConsentOperation(user.id)
+                val consentConflict = pendingConsent?.hasConsentConflict == true
                 // Keep the local consent mirror in step with the server so
                 // the tracking engine can start offline from confirmed state.
-                consentController.recordServerConsent(user.locationSharingEnabled)
+                consentController.recordServerConsent(user)
                 _state.update {
                     val newerIntentExists = consentGeneration != generationAtStart || it.consentBusy
                     val displayedUser = it.user?.takeIf {
@@ -83,6 +86,8 @@ class HomeViewModel internal constructor(
                         devices = devices,
                         locationSharingRequested = if (newerIntentExists) {
                             it.locationSharingRequested
+                        } else if (consentConflict) {
+                            user.locationSharingEnabled
                         } else {
                             pendingConsent?.desiredEnabled ?: user.locationSharingEnabled
                         },
@@ -90,6 +95,12 @@ class HomeViewModel internal constructor(
                             it.consentSyncPending
                         } else {
                             pendingConsent != null
+                        },
+                        consentConflict = if (newerIntentExists) it.consentConflict else consentConflict,
+                        message = if (consentConflict && !newerIntentExists) {
+                            "Chia sẻ đã thay đổi trên một thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới."
+                        } else {
+                            it.message
                         },
                     )
                 }
@@ -117,6 +128,7 @@ class HomeViewModel internal constructor(
                 locationSharingRequested = enabled,
                 consentBusy = true,
                 consentSyncPending = true,
+                consentConflict = false,
                 error = null,
                 message = null,
             )
@@ -136,8 +148,13 @@ class HomeViewModel internal constructor(
                         if (generation == consentGeneration) {
                             current.copy(
                                 user = serverUser,
-                                locationSharingRequested = result.enabled,
-                                consentSyncPending = !result.serverConfirmed,
+                                locationSharingRequested = if (result.conflict) {
+                                    result.user?.locationSharingEnabled ?: current.user?.locationSharingEnabled
+                                } else {
+                                    result.enabled
+                                },
+                                consentSyncPending = !result.serverConfirmed && result.pendingOperationPersisted,
+                                consentConflict = result.conflict,
                                 consentBusy = false,
                                 message = result.message,
                             )
@@ -153,6 +170,7 @@ class HomeViewModel internal constructor(
                             it.copy(
                                 locationSharingRequested = it.user?.locationSharingEnabled,
                                 consentSyncPending = false,
+                                consentConflict = false,
                                 consentBusy = false,
                                 error = if (enabled) {
                                     "Không bật được chia sẻ vị trí. Vui lòng thử lại."

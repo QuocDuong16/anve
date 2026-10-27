@@ -258,6 +258,42 @@ Verification levels for this pass:
   field/battery behavior remain **Pending Device Validation**. Hosted CI is
   separate evidence and is checked after push.
 
+## M3 final consent safety hardening (2026-10-27)
+
+- **P1-A Confirmed & Fixed:** Android no longer rebases a pending ON/OFF after
+  `CONSENT_VERSION_CONFLICT`. An authenticated server snapshot that already
+  matches is reconciled without another write/audit. A differing state/version
+  is persisted as an owner-scoped conflict and parked; Home and Tracking show
+  the authoritative state and require a fresh explicit action/new operation.
+  The PostgreSQL CAS and audit transaction remain unchanged; integration tests
+  already prove one winner for concurrent same-version writes.
+- **P1-B Confirmed & Fixed:** OFF closes the app-scoped acquisition/upload gate,
+  invalidates starts, cancels provider callbacks and requests service stop
+  before DataStore/Room work. A narrow non-cancellable section attempts the
+  durable outbox, local stop flags and queue purge; cancellation is rethrown
+  afterward and no HTTP is held non-cancellable. Storage, queue-purge and
+  service-stop failures stay visible and do not reopen upload admission. If all
+  storage writes fail and the process dies, no durable OFF can be guaranteed;
+  the UI does not claim server confirmation.
+- Added deterministic regressions for stale ON/OFF, matching-state
+  reconciliation, explicit fresh operation IDs, delayed worker/process resume,
+  stale `/me` versus OFF/start, storage write failure, cancellation, Room purge
+  failure, service-stop failure, and worker OFF immediately before HTTP
+  admission. Home also restores conflict state and the authoritative server
+  toggle after process recreation.
+- Targeted Android JVM regressions pass for `AuthRepositoryTest`,
+  `ConsentMutationCoordinatorTest`, `LocationSyncEngineTest`,
+  `TrackingManagerTest` and `HomeViewModelTest`. `make quality-check` passes
+  (Go format/tidy/vet/lint/vulnerability scan/tests/build, Android lint/full
+  JVM suite/debug APK, API and repository checks); `make server-test-race`,
+  `make server-test-integration` against PostgreSQL/PostGIS, and
+  `make android-release` also pass. The first concurrent release attempt lost
+  its Gradle daemon; an isolated rerun completed successfully. Hosted CI is
+  still pending push and final-HEAD verification.
+- On-device service-stop, provider cancellation and process-restart behavior
+  remain **Pending Device Validation**; no GPS field or battery validation is
+  claimed.
+
 ## Known gaps / external blockers
 
 - **Google OAuth client ID not created** (needs Google Cloud project

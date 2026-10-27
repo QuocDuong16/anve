@@ -113,7 +113,7 @@ class TrackingService : Service() {
 /** Starts/stops the foreground service and reports whether the OS accepted the start. */
 interface TrackingServiceController {
     fun start(): Boolean
-    fun stop()
+    fun stop(): Boolean
 }
 
 class AndroidTrackingServiceController(context: Context) : TrackingServiceController {
@@ -133,7 +133,5 @@ class AndroidTrackingServiceController(context: Context) : TrackingServiceContro
         false
     }
 
-    override fun stop() {
-        appContext.stopService(Intent(appContext, TrackingService::class.java))
-    }
+    override fun stop(): Boolean = appContext.stopService(Intent(appContext, TrackingService::class.java))
 }

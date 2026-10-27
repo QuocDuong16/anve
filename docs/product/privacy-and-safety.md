@@ -74,9 +74,21 @@ Quy tắc:
   chờ, operation owner-scoped còn nguyên; credential chỉ được giữ mã hóa,
   giới hạn 7 ngày và chỉ dùng cho consent OFF rồi sign-out. Hết hạn/401 để
   operation ở trạng thái cần chủ tài khoản xác thực lại, không báo thành công.
-- Consent API dùng `expectedVersion` và CAS ở server. Response hoặc retry của
-  generation cũ không được ghi đè lựa chọn mới hơn; operation khác tài khoản
-  không được thực thi dưới session của tài khoản đang đăng nhập.
+- OFF đóng cổng thu thập và upload trong process trước khi ghi DataStore/Room.
+  Nếu ghi outbox thất bại, GPS vẫn dừng và worker không mở request mới trong
+  process hiện tại; máy chủ chưa được xác nhận và bảo đảm này không bền qua
+  process death nếu mọi lần lưu đều thất bại. Purge Room hoặc dừng foreground
+  service thất bại được báo riêng; các điểm cũ không được backfill.
+- Consent API dùng `expectedVersion` và CAS ở server. Khi nhận conflict, client
+  chỉ reconcile bằng snapshot có xác thực: nếu server đã ở đúng trạng thái thì
+  chỉ cập nhật snapshot, không ghi lại/audit lần hai; nếu khác thì park operation
+  cùng version/state server và yêu cầu chủ tài khoản đưa ra lựa chọn mới. Không
+  tự rebase ON/OFF cũ lên version mới. Operation khác tài khoản không được thực
+  thi dưới session đang đăng nhập.
+- ON/OFF conflict giữ location acquisition fail-closed trên thiết bị này. OFF
+  vẫn dừng máy hiện tại khi server mới hơn đang ON, nhưng không âm thầm đổi
+  account-wide state. UI cho biết quyết định server mới hơn và cho phép một thao
+  tác mới dựa trên snapshot đó.
 - Request GPS đã gửi trước khi OFF có thể commit nếu lấy khóa giao dịch server
   trước consent update. Sau khi consent OFF commit, ingestion mới bị từ chối.
   Hủy WorkManager không được coi là bằng chứng request đã gửi bị rollback.

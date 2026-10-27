@@ -3,6 +3,7 @@ package com.anve.app.data.location
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.LocationBatchResponseDto
 import com.anve.app.data.auth.InMemorySessionStorage
+import com.anve.app.data.auth.ConsentMutationCoordinator
 import com.anve.app.data.auth.PendingConsentOperation
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.tracking.FakeSyncGateway
@@ -28,6 +29,7 @@ class LocationSyncEngineTest {
     private lateinit var queue: LocationQueueRepository
     private lateinit var store: FakeTrackingStore
     private lateinit var sessions: InMemorySessionStorage
+    private lateinit var consentMutations: ConsentMutationCoordinator
     private lateinit var gateway: FakeSyncGateway
     private lateinit var engine: LocationSyncEngine
     private val policyRefusals = mutableListOf<String>()
@@ -41,6 +43,7 @@ class LocationSyncEngineTest {
         )
         sessions = InMemorySessionStorage()
         sessions.save(session("u1"))
+        consentMutations = ConsentMutationCoordinator()
         gateway = FakeSyncGateway(owner = "u1")
         engine = LocationSyncEngine(
             gateway = gateway,
@@ -49,6 +52,7 @@ class LocationSyncEngineTest {
             sessions = sessions,
             now = { now },
             onPolicyRefusal = { policyRefusals += it },
+            consentMutations = consentMutations,
         )
     }
 
@@ -128,6 +132,28 @@ class LocationSyncEngineTest {
         assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
         assertEquals(2, outcome.uploaded)
         assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `local OFF before HTTP admission prevents a prepared worker upload`() = runBlocking {
+        seed()
+        val reachedAdmission = CompletableDeferred<Unit>()
+        val continueWorker = CompletableDeferred<Unit>()
+        dao.beforeMarkAttempt = {
+            reachedAdmission.complete(Unit)
+            continueWorker.await()
+        }
+
+        val worker = async { engine.sync() }
+        reachedAdmission.await()
+        consentMutations.closeLocationAdmission()
+        continueWorker.complete(Unit)
+
+        val result = worker.await()
+
+        assertEquals(SyncDisposition.BLOCKED, result.disposition)
+        assertEquals("no HTTP request begins after the local barrier", 0, gateway.uploads.size)
+        assertEquals("the worker preserves rows when privacy cleanup is unresolved", 1, dao.rows.size)
     }
 
     @Test

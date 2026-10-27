@@ -2,6 +2,8 @@ package com.anve.app.tracking
 
 import com.anve.app.data.auth.InMemorySessionStorage
 import com.anve.app.data.auth.ConsentMutationCoordinator
+import com.anve.app.data.auth.PendingConsentOperation
+import com.anve.app.data.auth.SessionStorage
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.data.location.FakeLocationQueueDao
 import com.anve.app.data.location.LocationQueueRepository
@@ -33,6 +35,7 @@ class TrackingManagerTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var scope: CoroutineScope
     private lateinit var sessions: InMemorySessionStorage
+    private lateinit var managerSessions: SessionStorage
     private lateinit var dao: FakeLocationQueueDao
     private lateinit var queue: LocationQueueRepository
     private lateinit var store: FakeTrackingStore
@@ -47,12 +50,26 @@ class TrackingManagerTest {
     private var now = 2_000_000L
     private var elapsed = 1_000_000L
     private var saver = false
+    private var failConsentOperationWrite = false
+    private var consentWriteEntered: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+    private var releaseConsentWrite: kotlinx.coroutines.CompletableDeferred<Unit>? = null
 
     @Before
     fun setUp() = runBlocking {
         scope = CoroutineScope(SupervisorJob() + dispatcher)
         sessions = InMemorySessionStorage(now = { now })
         sessions.save(session("u1"))
+        failConsentOperationWrite = false
+        consentWriteEntered = null
+        releaseConsentWrite = null
+        managerSessions = object : SessionStorage by sessions {
+            override suspend fun savePendingConsentOperation(operation: PendingConsentOperation) {
+                consentWriteEntered?.complete(Unit)
+                releaseConsentWrite?.await()
+                if (failConsentOperationWrite) throw java.io.IOException("simulated storage failure")
+                sessions.savePendingConsentOperation(operation)
+            }
+        }
         dao = FakeLocationQueueDao()
         queue = LocationQueueRepository(dao, now = { now })
         store = FakeTrackingStore(
@@ -84,7 +101,7 @@ class TrackingManagerTest {
 
     private fun newManager(trackingStore: TrackingStore) = TrackingManager(
         server = gateway,
-        sessions = sessions,
+        sessions = managerSessions,
         deviceIdentity = FakeDeviceIdentity(),
         queue = queue,
         store = trackingStore,
@@ -150,6 +167,33 @@ class TrackingManagerTest {
     }
 
     @Test
+    fun `stale start response cannot restore consent or restart after local OFF`() = runBlocking {
+        sessions.save(session("u1").copy(locationSharingEnabled = true, locationSharingVersion = 4))
+        gateway.consent = true
+        gateway.consentVersion = 4
+        val readStarted = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finishRead = kotlinx.coroutines.CompletableDeferred<Unit>()
+        gateway.beforeCurrentUser = {
+            readStarted.complete(Unit)
+            finishRead.await()
+        }
+
+        manager.startTracking()
+        readStarted.await()
+        val result = manager.setConsent(false)
+        finishRead.complete(Unit)
+
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CONSENT_REQUIRED }
+        assertTrue(result.serverConfirmed)
+        assertFalse(gateway.consent)
+        assertEquals(5L, gateway.consentVersion)
+        assertFalse(store.current().localConsentConfirmed)
+        assertFalse(manager.status.value.consentEnabled)
+        assertEquals(0, service.starts)
+        assertEquals(0, provider.activeCollectors)
+    }
+
+    @Test
     fun `an accepted fix becomes a durable queued point and schedules sync`() = runBlocking {
         startAndConfirm()
         awaitUntil { provider.activeCollectors == 1 }
@@ -204,6 +248,22 @@ class TrackingManagerTest {
     }
 
     @Test
+    fun `durable OFF remains closed after tracking manager recreation`() = runBlocking {
+        gateway.failConsentWith = networkError()
+        val result = manager.setConsent(false)
+        assertFalse(result.serverConfirmed)
+        assertEquals(false, sessions.pendingConsentOperations().single().desiredEnabled)
+
+        consentMutations = ConsentMutationCoordinator()
+        manager = newManager(store)
+        manager.startTracking()
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CONSENT_REQUIRED }
+
+        assertEquals("process restart cannot revive the stale sharing state", 0, service.starts)
+        assertFalse(manager.status.value.activelyTracking)
+    }
+
+    @Test
     fun `stale version conflict cannot replace a newer consent operation`() = runBlocking {
         sessions.save(session("u1").copy(locationSharingEnabled = true, locationSharingVersion = 1))
         gateway.consent = true
@@ -233,6 +293,164 @@ class TrackingManagerTest {
         assertEquals(3L, gateway.consentVersion)
         assertEquals(listOf(true), gateway.consentCalls)
         assertTrue(sessions.pendingConsentOperations().isEmpty())
+    }
+
+    @Test
+    fun `stale ON does not override a newer server OFF`() = runBlocking {
+        sessions.save(session("u1").copy(locationSharingEnabled = false, locationSharingVersion = 4))
+        store.setLocalConsentConfirmed(false)
+        gateway.consent = false
+        gateway.consentVersion = 5
+
+        val result = manager.setConsent(true)
+
+        assertFalse(result.serverConfirmed)
+        assertFalse(gateway.consent)
+        assertEquals(5L, gateway.consentVersion)
+        assertTrue(gateway.consentCalls.isEmpty())
+        val conflict = sessions.pendingConsentOperations().single()
+        assertTrue(conflict.desiredEnabled)
+        assertEquals(4L, conflict.expectedVersion)
+        assertEquals("CONSENT_VERSION_CONFLICT", conflict.lastErrorCode)
+        assertFalse(manager.status.value.consentEnabled)
+        assertTrue(manager.status.value.consentConflict)
+        assertTrue(consentMutations.isLocationAdmissionClosed())
+
+        val staleOperationId = conflict.operationId
+        val explicitRetry = manager.setConsent(true)
+        val committed = gateway.consentOperationIds.single()
+        assertTrue(explicitRetry.serverConfirmed)
+        assertTrue(gateway.consent)
+        assertEquals(6L, gateway.consentVersion)
+        assertTrue("fresh user intent gets a new operation id", staleOperationId != committed)
+    }
+
+    @Test
+    fun `stale OFF stays local OFF and does not override a newer server ON`() = runBlocking {
+        sessions.save(session("u1").copy(locationSharingEnabled = true, locationSharingVersion = 4))
+        gateway.consent = true
+        gateway.consentVersion = 5
+
+        val result = manager.setConsent(false)
+
+        assertFalse(result.serverConfirmed)
+        assertTrue("the local device stays stopped", !manager.status.value.activelyTracking)
+        assertTrue(gateway.consent)
+        assertEquals(5L, gateway.consentVersion)
+        assertTrue(gateway.consentCalls.isEmpty())
+        val conflict = sessions.pendingConsentOperations().single()
+        assertFalse(conflict.desiredEnabled)
+        assertEquals(4L, conflict.expectedVersion)
+        assertEquals("CONSENT_VERSION_CONFLICT", conflict.lastErrorCode)
+        assertTrue(manager.status.value.consentConflict)
+        assertEquals(true, manager.status.value.conflictServerConsent)
+
+        val staleOperationId = conflict.operationId
+        val explicitOff = manager.setConsent(false)
+        val committed = gateway.consentOperationIds.single()
+        assertTrue(explicitOff.serverConfirmed)
+        assertFalse(gateway.consent)
+        assertEquals(6L, gateway.consentVersion)
+        assertTrue("fresh user intent gets a new operation id", staleOperationId != committed)
+    }
+
+    @Test
+    fun `CAS conflict whose server state matches reconciles without another write`() = runBlocking {
+        sessions.save(session("u1").copy(locationSharingEnabled = false, locationSharingVersion = 4))
+        gateway.consent = false
+        gateway.consentVersion = 5
+
+        val result = manager.setConsent(false)
+
+        assertTrue(result.serverConfirmed)
+        assertFalse(result.conflict)
+        assertFalse(gateway.consent)
+        assertEquals(5L, gateway.consentVersion)
+        assertTrue(gateway.consentCalls.isEmpty())
+        assertTrue(sessions.pendingConsentOperations().isEmpty())
+    }
+
+    @Test
+    fun `storage failure while turning consent OFF still closes tracking locally`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        emitFix(eventId = "purged-on-off")
+        awaitUntil { dao.rows.size == 1 }
+        failConsentOperationWrite = true
+
+        val result = manager.setConsent(false)
+
+        assertFalse(result.serverConfirmed)
+        assertFalse(result.pendingOperationPersisted)
+        assertTrue(result.message.orEmpty().contains("Không lưu được"))
+        assertTrue(service.stops >= 1)
+        assertEquals(0, provider.activeCollectors)
+        assertTrue(dao.rows.isEmpty())
+        assertFalse(manager.status.value.trackingRequested)
+        assertEquals(TrackingProblem.CONSENT_STORAGE_UNAVAILABLE, manager.status.value.lastError)
+        assertTrue("the server must not be told the operation is durable", gateway.consentCalls.isEmpty())
+    }
+
+    @Test
+    fun `queue purge failure keeps acquisition and upload admission closed`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        emitFix(eventId = "queue-purge-fails")
+        awaitUntil { dao.rows.size == 1 }
+        dao.failDeleteAll = true
+
+        val result = manager.setConsent(false)
+
+        assertTrue(result.serverConfirmed)
+        assertTrue(result.message.orEmpty().contains("hàng đợi vị trí"))
+        assertEquals(1, dao.rows.size)
+        assertEquals(0, provider.activeCollectors)
+        assertTrue(service.stops >= 1)
+        assertTrue(consentMutations.isLocationAdmissionClosed())
+        assertFalse(consentMutations.authorizeLocationUpload { false })
+    }
+
+    @Test
+    fun `failed service stop is reported while provider and upload gates stay closed`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        service.failStop = true
+
+        val result = manager.setConsent(false)
+
+        assertTrue(result.serverConfirmed)
+        assertTrue(result.message.orEmpty().contains("không xác nhận được việc dừng dịch vụ"))
+        assertEquals(0, provider.activeCollectors)
+        assertFalse(manager.status.value.activelyTracking)
+        assertTrue(manager.status.value.serviceRunning)
+        assertEquals(TrackingProblem.SERVICE_STOP_FAILED, manager.status.value.lastError)
+        assertTrue(consentMutations.isLocationAdmissionClosed())
+    }
+
+    @Test
+    fun `cancellation during OFF persistence still completes local shutdown and propagates`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        emitFix(eventId = "cancelled-off")
+        awaitUntil { dao.rows.size == 1 }
+        val writeEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finishWrite = kotlinx.coroutines.CompletableDeferred<Unit>()
+        consentWriteEntered = writeEntered
+        releaseConsentWrite = finishWrite
+
+        val revoke = async { manager.setConsent(false) }
+        writeEntered.await()
+        revoke.cancel()
+        finishWrite.complete(Unit)
+        revoke.join()
+
+        assertTrue(revoke.isCancelled)
+        assertTrue(service.stops >= 1)
+        assertEquals(0, provider.activeCollectors)
+        assertTrue(dao.rows.isEmpty())
+        assertEquals(false, sessions.pendingConsentOperations().single().desiredEnabled)
+        assertTrue(consentMutations.isLocationAdmissionClosed())
+        assertTrue(gateway.consentCalls.isEmpty())
     }
 
     @Test

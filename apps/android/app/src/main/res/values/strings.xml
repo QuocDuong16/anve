@@ -28,6 +28,7 @@
     <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
     <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở tab Vị trí để bật theo dõi và cấp quyền hệ thống.</string>
     <string name="home_sharing_pending_notice">Thay đổi đã lưu trên thiết bị nhưng máy chủ chưa xác nhận. Quyền chia sẻ đang chờ đồng bộ; trạng thái này chưa có hiệu lực trên máy chủ.</string>
+    <string name="home_sharing_conflict_notice">Chia sẻ đã thay đổi trên thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới; vị trí vẫn dừng trên thiết bị này.</string>
     <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
     <string name="home_device_revoke">Đăng xuất</string>
@@ -85,6 +86,11 @@
     <string name="tracking_consent_on">Đã đồng ý</string>
     <string name="tracking_consent_off">Chưa đồng ý</string>
     <string name="tracking_consent_pending">Đã tắt trên thiết bị; chưa đồng bộ máy chủ</string>
+    <string name="tracking_consent_conflict">Có thay đổi mới trên thiết bị khác</string>
+    <string name="tracking_problem_consent_conflict">Máy chủ có quyết định mới hơn. Vị trí vẫn dừng trên thiết bị này; chọn lại trạng thái để xác nhận.</string>
+    <string name="tracking_problem_consent_storage">Đã dừng theo dõi trên thiết bị này, nhưng không lưu được yêu cầu tắt chia sẻ. Máy chủ chưa được xác nhận; hãy kiểm tra ứng dụng và thử lại.</string>
+    <string name="tracking_problem_consent_queue">Đã dừng theo dõi, nhưng chưa xóa được hàng đợi vị trí. AnVề sẽ không tải các điểm này lên.</string>
+    <string name="tracking_problem_service_stop">Đã chặn nhận điểm vị trí mới, nhưng không xác nhận được việc dừng dịch vụ định vị. Hãy kiểm tra ứng dụng.</string>
     <string name="tracking_state_title">Theo dõi trên thiết bị</string>
     <string name="tracking_state_active">Đang cập nhật vị trí</string>
     <string name="tracking_state_waiting">Đang chờ vị trí đầu tiên</string>

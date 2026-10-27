@@ -6,6 +6,7 @@ import com.anve.app.data.api.DeviceRegistrationDto
 import com.anve.app.data.auth.AuthRepository
 import com.anve.app.data.auth.DeviceRegistrationProvider
 import com.anve.app.data.auth.InMemorySessionStorage
+import com.anve.app.data.auth.PendingConsentOperation
 import com.anve.app.data.auth.SessionInterceptor
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.data.auth.SessionNoticeStore
@@ -47,6 +48,7 @@ class HomeViewModelTest {
     private lateinit var notices: SessionNoticeStore
     private lateinit var repository: AuthRepository
     private lateinit var scope: CoroutineScope
+    private var nextConsentResult: ConsentResult? = null
 
     @Before
     fun setUp() {
@@ -71,7 +73,7 @@ class HomeViewModelTest {
     }
 
     private fun viewModel(repo: AuthRepository = repository): HomeViewModel =
-        HomeViewModel(repo, FakeConsentController(repo), scope)
+        HomeViewModel(repo, FakeConsentController(repo) { nextConsentResult.also { nextConsentResult = null } }, scope)
 
     private fun device() = object : DeviceRegistrationProvider {
         override suspend fun registration() = DeviceRegistrationDto("test-device-0001")
@@ -118,6 +120,35 @@ class HomeViewModelTest {
         assertEquals(false, vm.state.value.loading)
         assertEquals("Mai", vm.state.value.user?.displayName)
         assertTrue(vm.state.value.devices.isNotEmpty())
+    }
+
+    @Test
+    fun `refresh shows authoritative state and explicit conflict for a parked operation`() = runBlocking {
+        signedIn()
+        storage.savePendingConsentOperation(
+            PendingConsentOperation(
+                operationId = "stale-on",
+                ownerUserId = "u1",
+                desiredEnabled = true,
+                expectedVersion = 4,
+                generation = 2,
+                createdAtMillis = System.currentTimeMillis(),
+                expiresAtMillis = Long.MAX_VALUE,
+                conflictServerEnabled = false,
+                conflictServerVersion = 5,
+                conflictObservedAtMillis = System.currentTimeMillis(),
+                lastErrorCode = "CONSENT_VERSION_CONFLICT",
+            ),
+        )
+        enqueueHome(userJson(sharing = false, version = 5))
+
+        val vm = viewModel()
+        awaitUntil { !vm.state.value.loading }
+
+        assertTrue(vm.state.value.consentConflict)
+        assertTrue(vm.state.value.consentSyncPending)
+        assertEquals(false, vm.state.value.locationSharingRequested)
+        assertTrue(vm.state.value.message.orEmpty().contains("thiết bị khác"))
     }
 
     @Test
@@ -181,6 +212,27 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `storage failure does not claim a consent operation is waiting to sync`() = runBlocking {
+        enqueueHome()
+        val vm = viewModel()
+        awaitUntil { !vm.state.value.loading }
+        consumeInitRequests()
+        signedIn()
+        nextConsentResult = ConsentResult(
+            enabled = false,
+            serverConfirmed = false,
+            message = "Không lưu được yêu cầu tắt chia sẻ.",
+            pendingOperationPersisted = false,
+        )
+
+        vm.setLocationSharing(false)
+        awaitUntil { !vm.state.value.consentBusy }
+
+        assertFalse(vm.state.value.consentSyncPending)
+        assertEquals("Không lưu được yêu cầu tắt chia sẻ.", vm.state.value.message)
+    }
+
+    @Test
     fun `rapid consent toggles settle on the last server-confirmed state`() = runBlocking {
         enqueueHome()
         val vm = viewModel()
@@ -238,10 +290,11 @@ class HomeViewModelTest {
     /** Mirrors the tracking coordinator's consent semantics over real HTTP. */
     private class FakeConsentController(
         private val repository: AuthRepository,
+        private val nextResult: () -> ConsentResult?,
     ) : ConsentController {
         private var confirmed = false
 
-        override suspend fun setConsent(enabled: Boolean): ConsentResult = try {
+        override suspend fun setConsent(enabled: Boolean): ConsentResult = nextResult() ?: try {
             val user = repository.setLocationSharing(enabled, expectedOwnerUserId = "u1")
             confirmed = user.locationSharingEnabled
             ConsentResult(
@@ -254,6 +307,7 @@ class HomeViewModelTest {
                 enabled = enabled,
                 serverConfirmed = false,
                 message = if (enabled) "Không bật được chia sẻ vị trí." else "Chưa xác nhận với máy chủ.",
+                pendingOperationPersisted = true,
             )
         }
 

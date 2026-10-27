@@ -38,6 +38,7 @@ class AuthRepositoryTest {
     private lateinit var storage: InMemorySessionStorage
     private lateinit var notices: SessionNoticeStore
     private lateinit var scheduler: CountingScheduler
+    private lateinit var consentMutations: ConsentMutationCoordinator
     private lateinit var repository: AuthRepository
 
     private class CountingScheduler : PendingRevocationScheduler {
@@ -60,6 +61,7 @@ class AuthRepositoryTest {
         storage = InMemorySessionStorage()
         notices = SessionNoticeStore()
         scheduler = CountingScheduler()
+        consentMutations = ConsentMutationCoordinator()
         repository = repository()
     }
 
@@ -68,7 +70,10 @@ class AuthRepositoryTest {
         server.shutdown()
     }
 
-    private fun repository(clock: () -> Long = System::currentTimeMillis) = AuthRepository(
+    private fun repository(
+        clock: () -> Long = System::currentTimeMillis,
+        coordinator: ConsentMutationCoordinator = consentMutations,
+    ) = AuthRepository(
         api = ApiFactory.api(
             ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())),
         ),
@@ -80,6 +85,7 @@ class AuthRepositoryTest {
         now = clock,
         notices = notices,
         retryScheduler = scheduler,
+        consentMutations = coordinator,
     )
 
     /** Production wiring: the authenticated client carries SessionInterceptor. */
@@ -100,6 +106,7 @@ class AuthRepositoryTest {
             deviceIdentity = device,
             notices = notices,
             retryScheduler = scheduler,
+            consentMutations = consentMutations,
         )
     }
 
@@ -143,11 +150,12 @@ class AuthRepositoryTest {
         token: String? = null,
         generation: Long = 1,
         version: Long = 0,
+        desiredEnabled: Boolean = false,
         signOutAfterConsent: Boolean = false,
     ) = PendingConsentOperation(
         operationId = "consent-$owner-$generation",
         ownerUserId = owner,
-        desiredEnabled = false,
+        desiredEnabled = desiredEnabled,
         expectedVersion = version,
         generation = generation,
         createdAtMillis = 1_000,
@@ -370,7 +378,7 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `CAS conflict rebases the latest owner intent before confirming it`() = runBlocking {
+    fun `stale ON conflict with newer server OFF is parked without replay`() = runBlocking {
         var now = 10_000L
         storage.save(
             StoredSession(
@@ -379,31 +387,69 @@ class AuthRepositoryTest {
                 accessExpiresAt = "later",
                 refreshExpiresAt = "later",
                 userId = "user-a",
+                locationSharingEnabled = false,
+                locationSharingVersion = 4,
+            ),
+        )
+        storage.savePendingConsentOperation(consentOperation("user-a", version = 4, desiredEnabled = true))
+        server.enqueue(MockResponse().setResponseCode(409).setBody(errorBody("CONSENT_VERSION_CONFLICT")))
+        server.enqueue(MockResponse().setBody(userJson("user-a", enabled = false, version = 5)))
+        val retrying = repository(clock = { now })
+        consentMutations.openLocationAdmission()
+
+        val hasMoreWork = retrying.retryPendingRevocations()
+
+        val conflicted = storage.pendingConsentOperations().single()
+        assertTrue(conflicted.desiredEnabled)
+        assertEquals(4L, conflicted.expectedVersion)
+        assertEquals(false, conflicted.conflictServerEnabled)
+        assertEquals(5L, conflicted.conflictServerVersion)
+        assertEquals("CONSENT_VERSION_CONFLICT", conflicted.lastErrorCode)
+        assertEquals(2, server.requestCount)
+        assertFalse("a parked conflict must not keep a worker loop scheduled", hasMoreWork)
+        assertTrue("background reconciliation must fail closed", consentMutations.isLocationAdmissionClosed())
+
+        now += retryDelayMillis(0) + 1
+        val retryAfterRestart = repository(clock = { now }).retryPendingRevocations()
+
+        assertEquals("conflicting intent requires a fresh user action", conflicted.operationId,
+            storage.pendingConsentOperations().single().operationId)
+        assertFalse(storage.current()!!.locationSharingEnabled!!)
+        assertEquals(5L, storage.current()!!.locationSharingVersion)
+        assertEquals("the worker must not automatically replay a conflicting write", 2, server.requestCount)
+        assertFalse(retryAfterRestart)
+    }
+
+    @Test
+    fun `stale OFF conflict with newer server ON stays local-only and parks`() = runBlocking {
+        storage.save(
+            StoredSession(
+                accessToken = "access-1",
+                refreshToken = "refresh-1",
+                accessExpiresAt = "2026-10-30T00:00:00Z",
+                refreshExpiresAt = "2026-11-25T00:00:00Z",
+                userId = "user-a",
                 locationSharingEnabled = true,
                 locationSharingVersion = 4,
             ),
         )
-        storage.savePendingConsentOperation(consentOperation("user-a", version = 4))
+        storage.savePendingConsentOperation(
+            consentOperation("user-a", version = 4, desiredEnabled = false),
+        )
         server.enqueue(MockResponse().setResponseCode(409).setBody(errorBody("CONSENT_VERSION_CONFLICT")))
         server.enqueue(MockResponse().setBody(userJson("user-a", enabled = true, version = 5)))
-        val retrying = repository(clock = { now })
+        consentMutations.openLocationAdmission()
 
-        retrying.retryPendingRevocations()
+        val hasMoreWork = repository().retryPendingRevocations()
+        val conflicted = storage.pendingConsentOperations().single()
 
-        val rebased = storage.pendingConsentOperations().single()
-        assertEquals("the original user intent remains authoritative", false, rebased.desiredEnabled)
-        assertEquals(5L, rebased.expectedVersion)
-        assertFalse(rebased.requiresOwnerAuthentication)
+        assertFalse(hasMoreWork)
+        assertFalse(conflicted.desiredEnabled)
+        assertEquals(true, conflicted.conflictServerEnabled)
+        assertEquals(5L, conflicted.conflictServerVersion)
+        assertEquals(true, storage.current()!!.locationSharingEnabled)
+        assertTrue("the local OFF remains fail-closed", consentMutations.isLocationAdmissionClosed())
         assertEquals(2, server.requestCount)
-
-        now += retryDelayMillis(0) + 1
-        server.enqueue(MockResponse().setBody(userJson("user-a", enabled = false, version = 6)))
-        retrying.retryPendingRevocations()
-
-        assertTrue(storage.pendingConsentOperations().isEmpty())
-        assertFalse(storage.current()!!.locationSharingEnabled!!)
-        assertEquals(6L, storage.current()!!.locationSharingVersion)
-        assertEquals(3, server.requestCount)
     }
 
     @Test

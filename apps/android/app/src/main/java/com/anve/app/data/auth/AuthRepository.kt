@@ -251,10 +251,10 @@ class AuthRepository(
         try {
             val remainingRevocations = storage.pendingRevocations().isNotEmpty()
             val remainingConsent = storage.pendingConsentOperations().any {
-                !it.requiresOwnerAuthentication ||
+                !it.hasConsentConflict && (!it.requiresOwnerAuthentication ||
                     (storage.current()?.userId == it.ownerUserId &&
                         it.lastErrorCode != "CONSENT_VERSION_CONFLICT" &&
-                        it.lastErrorCode != "CONSENT_OPERATION_EXPIRED")
+                        it.lastErrorCode != "CONSENT_OPERATION_EXPIRED"))
             }
             remainingRevocations || remainingConsent
         } catch (e: CancellationException) {
@@ -355,6 +355,7 @@ class AuthRepository(
         val currentOperation = storage.pendingConsentOperations()
             .firstOrNull { it.operationId == original.operationId } ?: return
         var operation = currentOperation
+        if (operation.hasConsentConflict) return
         var explicitAccessToken: String? = null
         val active = storage.current()?.takeIf { it.userId == operation.ownerUserId }
 
@@ -494,13 +495,17 @@ class AuthRepository(
                 throw e
             } catch (e: ApiException) {
                 if (e.code == "CONSENT_VERSION_CONFLICT") {
-                    val latest = runCatching {
+                    val latest = try {
                         if (explicitAccessToken != null) {
                             meWithAuthorization(explicitAccessToken, operation.ownerUserId)
                         } else {
                             me()
                         }
-                    }.getOrNull()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        null
+                    }
                     if (latest == null) {
                         rescheduleConsentOperation(operation, "CONSENT_RECONCILE_FAILED")
                         return
@@ -517,7 +522,11 @@ class AuthRepository(
                     if (latest.locationSharingEnabled == operation.desiredEnabled) {
                         latest
                     } else {
-                        val rebased = consentMutations.withLocalMutation {
+                        // A worker can resume after process recreation with a
+                        // fresh coordinator. Keep this device fail-closed even
+                        // when the authoritative account choice conflicts.
+                        consentMutations.closeLocationAdmission()
+                        consentMutations.withLocalMutation {
                             val current = storage.pendingConsentOperations().firstOrNull {
                                 it.ownerUserId == operation.ownerUserId
                             }
@@ -525,18 +534,21 @@ class AuthRepository(
                                 false
                             } else {
                                 storage.savePendingConsentOperation(
-                                    operation.copy(
-                                        expectedVersion = latest.locationSharingVersion,
-                                        requiresOwnerAuthentication = false,
-                                        attemptCount = operation.attemptCount + 1,
-                                        nextAttemptAtMillis = now() + retryDelayMillis(0),
-                                        lastErrorCode = null,
+                                    current.copy(
+                                        conflictServerEnabled = latest.locationSharingEnabled,
+                                        conflictServerVersion = latest.locationSharingVersion,
+                                        conflictObservedAtMillis = now(),
+                                        lastErrorCode = "CONSENT_VERSION_CONFLICT",
                                     ),
+                                )
+                                storage.updateConsent(
+                                    latest.id,
+                                    latest.locationSharingEnabled,
+                                    latest.locationSharingVersion,
                                 )
                                 true
                             }
                         }
-                        if (rebased) retryScheduler.ensureScheduled()
                         return
                     }
                 } else if (e.code == "UNAUTHENTICATED") {
@@ -573,6 +585,7 @@ class AuthRepository(
                     storage.updateConsent(user.id, user.locationSharingEnabled, user.locationSharingVersion)
                     operation = operation.copy(consentConfirmed = true)
                     storage.savePendingConsentOperation(operation)
+                    if (user.locationSharingEnabled) consentMutations.openLocationAdmission()
                     true
                 }
             }
@@ -670,6 +683,7 @@ class AuthRepository(
         expectedOwnerUserId: String? = null,
         expectedOperationId: String? = null,
     ): UserDto {
+        if (!enabled) consentMutations.closeLocationAdmission()
         val before = storage.current() ?: throw IOException("There is no active session")
         val authenticatedOwner = before.userId ?: me().id
         val owner = expectedOwnerUserId ?: authenticatedOwner
@@ -696,7 +710,10 @@ class AuthRepository(
         if (user.id != owner) throw IOException("The consent response belongs to another account")
         consentMutations.withLocalMutation {
             val pending = storage.pendingConsentOperations().any { it.ownerUserId == owner }
-            if (!pending) storage.updateConsent(owner, user.locationSharingEnabled, user.locationSharingVersion)
+            if (!pending) {
+                storage.updateConsent(owner, user.locationSharingEnabled, user.locationSharingVersion)
+                if (user.locationSharingEnabled) consentMutations.openLocationAdmission()
+            }
         }
         return user
     }

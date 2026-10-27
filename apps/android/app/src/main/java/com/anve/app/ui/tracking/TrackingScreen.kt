@@ -443,6 +443,7 @@ private fun ConsentCard(
     enabled: Boolean,
 ) {
     val label = when {
+        status.consentConflict -> stringResource(R.string.tracking_consent_conflict)
         status.consentSyncPending -> stringResource(R.string.tracking_consent_pending)
         status.consentEnabled -> stringResource(R.string.tracking_consent_on)
         else -> stringResource(R.string.tracking_consent_off)
@@ -462,12 +463,20 @@ private fun ConsentCard(
                     )
                 }
                 Switch(
-                    checked = status.consentEnabled,
+                    checked = status.conflictServerConsent ?: status.consentEnabled,
                     onCheckedChange = onToggle,
                     enabled = enabled,
                 )
             }
             Spacer(Modifier.height(8.dp))
+            if (status.consentConflict) {
+                Text(
+                    stringResource(R.string.tracking_problem_consent_conflict),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             AssistChip(
                 onClick = {},
                 label = { Text(label) },
@@ -840,9 +849,13 @@ private fun problemText(problem: TrackingProblem?): String? = when (problem) {
     TrackingProblem.LOCATION_DISABLED -> stringResource(R.string.tracking_problem_location_disabled)
     TrackingProblem.PROVIDER_UNAVAILABLE -> stringResource(R.string.tracking_problem_provider_unavailable)
     TrackingProblem.CONSENT_REQUIRED -> stringResource(R.string.tracking_problem_consent)
+    TrackingProblem.CONSENT_CONFLICT -> stringResource(R.string.tracking_problem_consent_conflict)
+    TrackingProblem.CONSENT_STORAGE_UNAVAILABLE -> stringResource(R.string.tracking_problem_consent_storage)
+    TrackingProblem.CONSENT_QUEUE_PURGE_FAILED -> stringResource(R.string.tracking_problem_consent_queue)
     TrackingProblem.CIRCLE_REQUIRED -> stringResource(R.string.tracking_problem_circle)
     TrackingProblem.SESSION_UNAVAILABLE -> stringResource(R.string.tracking_problem_session)
     TrackingProblem.SERVICE_START_FAILED -> stringResource(R.string.tracking_problem_service)
+    TrackingProblem.SERVICE_STOP_FAILED -> stringResource(R.string.tracking_problem_service_stop)
     TrackingProblem.PROVIDER_ERROR -> stringResource(R.string.tracking_problem_provider)
     TrackingProblem.QUEUE_UNAVAILABLE -> stringResource(R.string.tracking_problem_queue)
     TrackingProblem.RECOVERY_REQUIRED -> stringResource(R.string.tracking_problem_recovery)

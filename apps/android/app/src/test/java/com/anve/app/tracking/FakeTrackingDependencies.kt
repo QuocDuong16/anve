@@ -114,14 +114,18 @@ class FakeConnectivity(var online: Boolean = true) : ConnectivityMonitor {
 class FakeServiceController(var startResult: Boolean = true) : TrackingServiceController {
     var starts = 0
     var stops = 0
+    var failStop = false
+    var stopResult = true
 
     override fun start(): Boolean {
         starts++
         return startResult
     }
 
-    override fun stop() {
+    override fun stop(): Boolean {
         stops++
+        if (failStop) throw IllegalStateException("simulated service-stop failure")
+        return stopResult
     }
 }
 
@@ -159,14 +163,16 @@ class FakeServerGateway(
     var pendingAtConsentCall: Boolean? = null
     var beforeCurrentUser: (suspend () -> Unit)? = null
     val consentCalls = mutableListOf<Boolean>()
+    val consentOperationIds = mutableListOf<String>()
 
     override suspend fun currentUser(): UserDto {
+        val snapshot = user(consent)
         beforeCurrentUser?.also {
             beforeCurrentUser = null
             it()
         }
         failCurrentUserWith?.let { throw it }
-        return user(consent)
+        return snapshot
     }
 
     override suspend fun setLocationSharing(
@@ -180,6 +186,7 @@ class FakeServerGateway(
             throw ApiException("CONSENT_VERSION_CONFLICT", "version conflict", null)
         }
         consentCalls += enabled
+        consentOperationIds += operationId
         pendingAtConsentCall = store?.current()?.pendingConsentRevocation
         failConsentWith?.let { throw it }
         consent = enabled

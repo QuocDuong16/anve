@@ -2,11 +2,25 @@ package com.anve.app.data.auth
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Coordinates short local consent mutations; network calls never hold this lock. */
 class ConsentMutationCoordinator {
     private val mutex = Mutex()
     private val generations = mutableMapOf<String, Long>()
+    private val locationAdmissionClosed = AtomicBoolean(false)
+
+    /** Closes location and upload admission synchronously at the local OFF barrier. */
+    fun closeLocationAdmission() {
+        locationAdmissionClosed.set(true)
+    }
+
+    /** Reopens admission only after an explicit ON operation is server-confirmed. */
+    fun openLocationAdmission() {
+        locationAdmissionClosed.set(false)
+    }
+
+    fun isLocationAdmissionClosed(): Boolean = locationAdmissionClosed.get()
 
     suspend fun <T> withLocalMutation(block: suspend () -> T): T = mutex.withLock { block() }
 
@@ -16,7 +30,7 @@ class ConsentMutationCoordinator {
      * used to persist consent intent, then performs network I/O after release.
      */
     suspend fun authorizeLocationUpload(hasPendingConsentMutation: suspend () -> Boolean): Boolean =
-        mutex.withLock { !hasPendingConsentMutation() }
+        mutex.withLock { !locationAdmissionClosed.get() && !hasPendingConsentMutation() }
 
     /** Grants a consent-request start only while that durable generation is still current. */
     suspend fun authorizeConsentRequest(isCurrentGeneration: suspend () -> Boolean): Boolean =

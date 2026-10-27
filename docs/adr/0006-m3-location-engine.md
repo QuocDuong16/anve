@@ -213,20 +213,43 @@ session; it is usable only for the owner-scoped consent and sign-out steps.
 
 Consent writes use compare-and-set against `location_sharing_version`. The
 server increments that version atomically with the consent update and audit
-record. A stale request receives `CONSENT_VERSION_CONFLICT`; its response
-cannot overwrite a newer local generation. Reconciliation may acknowledge
-the operation when the authoritative state already matches, or retry only
-the current generation against the latest version.
+record. A stale request receives `CONSENT_VERSION_CONFLICT`; clients never
+rebase a conflicting operation onto the new version. They first read the
+owner-authorized server snapshot. If it already matches the requested state,
+they reconcile the snapshot without another write or audit row. If it differs,
+they persist the conflict snapshot and park that operation. A new explicit
+owner action creates a new operation against the latest known version; client
+timestamps do not claim to order intent across devices.
 
 When sharing is disabled:
 
-1. persist the owner-scoped OFF operation before network access;
-2. stop acquisition and the location foreground service;
-3. **purge all unsent location points locally** and prevent new upload
-   requests for that owner;
-4. attempt the operation; UI separates local stop from server confirmation;
-5. remove the operation only after the server confirms the same owner and
-   generation, or after an explicit newer owner action.
+1. synchronously close the process-wide location/upload admission gate,
+   invalidate pending starts, unregister provider callbacks and request the
+   foreground service to stop;
+2. persist the owner-scoped OFF operation, clear local tracking intent, and
+   **purge all unsent location points locally**; the closed gate blocks new
+   Room inserts and WorkManager HTTP admissions while these writes run;
+3. attempt the server CAS; UI separates local stop from server confirmation;
+4. remove the operation only after the server confirms the same owner and
+   operation, or after an explicit newer owner action.
+
+The gate is closed before DataStore, Room or network access. A DataStore write
+failure therefore still stops collection and blocks uploads in the current
+process, but leaves no durable outbox guarantee. The UI reports that the
+server is unconfirmed and asks the user to retry; after process death, a fully
+failed storage layer cannot prove that the earlier OFF tap occurred. A Room
+purge or service-stop failure is reported separately; the upload gate remains
+closed and no old point is backfilled. Mandatory local persistence/purge
+cleanup may finish in a non-cancellable section limited to local operations;
+HTTP work remains cancellable. A request admitted before the local gate closes may already be
+in flight and follows the backend's transactional row-lock order.
+
+For Android consent conflicts, matching authoritative state is a read-only
+reconciliation. A conflicting state is not retried or treated as success. The
+operation stores the observed server state/version, the UI shows the conflict,
+and the device remains fail-closed until the owner makes a fresh choice. A
+stale `ON` cannot re-enable GPS after a newer `OFF`; a stale `OFF` stops this
+device locally but cannot silently override a newer account-wide `ON`.
 
 `Stop Tracking` pauses acquisition on this installation. `Disable Location
 Sharing` changes account-wide consent. `Sign Out` revokes this session and

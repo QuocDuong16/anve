@@ -115,6 +115,14 @@ class LocationSyncEngine(
         val budget = RequestBudget(MAX_HTTP_REQUESTS_PER_PASS)
         var batches = 0
         while (batches < MAX_BATCHES_PER_PASS && budget.remaining > 0) {
+            if (consentMutations.isLocationAdmissionClosed()) {
+                return SyncOutcome(
+                    SyncDisposition.BLOCKED,
+                    uploaded = uploaded,
+                    dropped = dropped,
+                    errorCode = "LOCAL_CONSENT_STOP",
+                )
+            }
             if (hasPendingConsentOperation(ownerUserId)) {
                 val pendingOff = sessions.pendingConsentOperations().any {
                     it.ownerUserId == ownerUserId && !it.desiredEnabled
@@ -187,7 +195,11 @@ class LocationSyncEngine(
         }
         if (!uploadAuthorized) {
             if (pendingOff || legacyOff) queue.purgeAll()
-            return SyncOutcome(SyncDisposition.COMPLETE, errorCode = "CONSENT_MUTATION_PENDING")
+            return if (consentMutations.isLocationAdmissionClosed()) {
+                SyncOutcome(SyncDisposition.BLOCKED, errorCode = "LOCAL_CONSENT_STOP")
+            } else {
+                SyncOutcome(SyncDisposition.COMPLETE, errorCode = "CONSENT_MUTATION_PENDING")
+            }
         }
         budget.remaining--
         val response = try {
