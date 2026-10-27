@@ -288,8 +288,9 @@ Verification levels for this pass:
   JVM suite/debug APK, API and repository checks); `make server-test-race`,
   `make server-test-integration` against PostgreSQL/PostGIS, and
   `make android-release` also pass. The first concurrent release attempt lost
-  its Gradle daemon; an isolated rerun completed successfully. Hosted CI is
-  still pending push and final-HEAD verification.
+  its Gradle daemon; an isolated rerun completed successfully. GitHub Actions
+  passed at implementation commit `55cc6d1`: [Go](https://github.com/QuocDuong16/anve/actions/runs/40492500413)
+  and [Android](https://github.com/QuocDuong16/anve/actions/runs/40492500322).
 - On-device service-stop, provider cancellation and process-restart behavior
   remain **Pending Device Validation**; no GPS field or battery validation is
   claimed.
