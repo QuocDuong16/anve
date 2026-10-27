@@ -31,12 +31,12 @@ func NewPGStore(pool *pgxpool.Pool) *PGStore {
 }
 
 const userColumns = `id, google_sub, email, display_name, avatar_url,
-	location_sharing_enabled, created_at, updated_at`
+	location_sharing_enabled, location_sharing_version, created_at, updated_at`
 
 func scanUser(row pgx.Row) (User, error) {
 	var u User
 	err := row.Scan(&u.ID, &u.GoogleSub, &u.Email, &u.DisplayName, &u.AvatarURL,
-		&u.LocationSharingEnabled, &u.CreatedAt, &u.UpdatedAt)
+		&u.LocationSharingEnabled, &u.LocationSharingVersion, &u.CreatedAt, &u.UpdatedAt)
 	return u, err
 }
 
@@ -217,7 +217,7 @@ func (s *PGStore) Authenticate(ctx context.Context, accessHash []byte) (Session,
 		`SELECT s.id, s.user_id, s.device_id, s.refresh_expires_at, s.access_expires_at,
 		        s.created_at, s.last_used_at,
 		        u.id, u.google_sub, u.email, u.display_name, u.avatar_url,
-		        u.location_sharing_enabled, u.created_at, u.updated_at
+		        u.location_sharing_enabled, u.location_sharing_version, u.created_at, u.updated_at
 		   FROM sessions s
 		   JOIN users u ON u.id = s.user_id
 		  WHERE s.access_token_hash = $1
@@ -227,7 +227,7 @@ func (s *PGStore) Authenticate(ctx context.Context, accessHash []byte) (Session,
 	).Scan(&sess.ID, &sess.UserID, &sess.DeviceID, &sess.RefreshExpiresAt, &sess.AccessExpiresAt,
 		&sess.CreatedAt, &sess.LastUsedAt,
 		&u.ID, &u.GoogleSub, &u.Email, &u.DisplayName, &u.AvatarURL,
-		&u.LocationSharingEnabled, &u.CreatedAt, &u.UpdatedAt)
+		&u.LocationSharingEnabled, &u.LocationSharingVersion, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, User{}, fmt.Errorf("%w: session not found, revoked or expired", ErrUnauthenticated)
 	}
@@ -265,7 +265,7 @@ func (s *PGStore) Refresh(ctx context.Context, in RefreshInput) (Session, User, 
 		`SELECT s.id, s.user_id, s.device_id, s.refresh_expires_at, s.access_expires_at,
 		        s.created_at, s.last_used_at,
 		        u.id, u.google_sub, u.email, u.display_name, u.avatar_url,
-		        u.location_sharing_enabled, u.created_at, u.updated_at
+		        u.location_sharing_enabled, u.location_sharing_version, u.created_at, u.updated_at
 		   FROM sessions s
 		   JOIN users u ON u.id = s.user_id
 		  WHERE s.refresh_token_hash = $1
@@ -276,7 +276,7 @@ func (s *PGStore) Refresh(ctx context.Context, in RefreshInput) (Session, User, 
 	).Scan(&sess.ID, &sess.UserID, &sess.DeviceID, &sess.RefreshExpiresAt, &sess.AccessExpiresAt,
 		&sess.CreatedAt, &sess.LastUsedAt,
 		&u.ID, &u.GoogleSub, &u.Email, &u.DisplayName, &u.AvatarURL,
-		&u.LocationSharingEnabled, &u.CreatedAt, &u.UpdatedAt)
+		&u.LocationSharingEnabled, &u.LocationSharingVersion, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, User{}, fmt.Errorf("%w: refresh token not found, revoked or rotated", ErrUnauthenticated)
 	}
@@ -369,10 +369,10 @@ func (s *PGStore) UpdateProfile(ctx context.Context, userID uuid.UUID, displayNa
 	return u, nil
 }
 
-// SetLocationSharing flips the consent switch and writes the audit event in
+// SetLocationSharingAtVersion flips the consent switch if its version matches and writes the audit event in
 // the same transaction: a consent change without its audit record must
 // never commit.
-func (s *PGStore) SetLocationSharing(ctx context.Context, userID uuid.UUID, enabled bool) (User, error) {
+func (s *PGStore) SetLocationSharingAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return User{}, fmt.Errorf("begin consent transaction: %w", err)
@@ -380,12 +380,21 @@ func (s *PGStore) SetLocationSharing(ctx context.Context, userID uuid.UUID, enab
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	u, err := scanUser(tx.QueryRow(ctx,
-		`UPDATE users SET location_sharing_enabled = $2, updated_at = now()
-		  WHERE id = $1
+		`UPDATE users SET location_sharing_enabled = $2,
+		                  location_sharing_version = location_sharing_version + 1,
+	                  updated_at = now()
+		  WHERE id = $1 AND location_sharing_version = $3
 		  RETURNING `+userColumns,
-		userID, enabled))
+		userID, enabled, expectedVersion))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, fmt.Errorf("%w: user %s", ErrNotFound, userID)
+		var exists bool
+		if checkErr := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&exists); checkErr != nil {
+			return User{}, fmt.Errorf("check user after consent conflict: %w", checkErr)
+		}
+		if !exists {
+			return User{}, fmt.Errorf("%w: user %s", ErrNotFound, userID)
+		}
+		return User{}, ErrConsentVersionConflict
 	}
 	if err != nil {
 		return User{}, fmt.Errorf("set location sharing: %w", err)

@@ -27,6 +27,7 @@
     <string name="home_sharing_title">Chia sẻ vị trí của tôi</string>
     <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
     <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở tab Vị trí để bật theo dõi và cấp quyền hệ thống.</string>
+    <string name="home_sharing_pending_notice">Thay đổi đã lưu trên thiết bị nhưng máy chủ chưa xác nhận. Quyền chia sẻ đang chờ đồng bộ; trạng thái này chưa có hiệu lực trên máy chủ.</string>
     <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
     <string name="home_device_revoke">Đăng xuất</string>
@@ -100,11 +101,16 @@
     <string name="tracking_permission_approximate">Gần đúng</string>
     <string name="tracking_permission_denied">Chưa được cấp</string>
     <string name="tracking_permission_grant">Cấp quyền vị trí</string>
+    <string name="tracking_permission_permanently_denied">Quyền vị trí đã bị từ chối nhiều lần. Mở Cài đặt ứng dụng để bật lại nếu bạn muốn chia sẻ vị trí.</string>
     <string name="tracking_permission_background">Vị trí khi ứng dụng ở nền</string>
     <string name="tracking_permission_background_granted">Đã cho phép</string>
-    <string name="tracking_permission_background_missing">Chưa cho phép — chỉ theo dõi khi ứng dụng đang mở</string>
+    <string name="tracking_permission_background_missing">Chưa được cấp quyền nền</string>
     <string name="tracking_permission_background_grant">Cho phép vị trí nền</string>
-    <string name="tracking_permission_background_explainer">Android cần quyền “Luôn cho phép” để tiếp tục ghi vị trí khi màn hình tắt. Nếu bạn không cấp, AnVề chỉ ghi vị trí khi ứng dụng đang mở và sẽ nói rõ giới hạn đó.</string>
+    <string name="tracking_permission_background_explainer">Quyền nền giúp AnVề tiếp tục chia sẻ khi bạn không mở ứng dụng. Nếu chưa cấp, việc cập nhật nền có thể bị giới hạn; bạn vẫn dùng được các chức năng khác.</string>
+    <string name="tracking_background_settings_title">Cho phép vị trí khi chạy nền</string>
+    <string name="tracking_background_settings_body">AnVề cần quyền này để tiếp tục chia sẻ vị trí khi ứng dụng không mở. Trong phần quyền vị trí của AnVề, chọn “%1$s”. Bạn có thể quay lại và đổi lựa chọn bất cứ lúc nào.</string>
+    <string name="tracking_background_settings_open">Mở cài đặt ứng dụng</string>
+    <string name="tracking_background_option_fallback">Cho phép mọi lúc</string>
     <string name="tracking_permission_notifications">Thông báo</string>
     <string name="tracking_permission_notifications_granted">Đã cho phép</string>
     <string name="tracking_permission_notifications_missing">Chưa cho phép — thông báo theo dõi có thể không hiển thị</string>

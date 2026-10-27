@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-10-26 (after M3 Location Engine).
+Last updated: 2026-10-27 (M3 correctness, privacy and reliability hardening).
 
 ## Current milestone
 
@@ -165,9 +165,12 @@ Verification levels for this pass:
 - ADR: [`docs/adr/0006-m3-location-engine.md`](../adr/0006-m3-location-engine.md)
   (ingestion, authorization locks, retention, adaptive policy, FGS lifecycle,
   Room threat model, sync/consent ordering).
-- Contract: `packages/api-contracts/openapi.yaml` 0.3.0 —
+- Contract: `packages/api-contracts/openapi.yaml` 0.4.0 —
   `POST /api/v1/locations/batch` with atomic semantics, limits and stable
-  error codes.
+  error codes; consent writes carry `expectedVersion` and return a monotonic
+  `locationSharingVersion` for compare-and-set.
+- Migration `0005_location_consent_version`: non-negative per-account CAS
+  version, incremented atomically with consent change and audit record.
 - Migration `0004_locations`: PostGIS geography, unique
   `(user_id, event_id)`, user/device/capture-time/GIST indexes, FK cascade.
 - `internal/locations`: validation, transactional authorization, idempotent
@@ -187,15 +190,16 @@ Verification levels for this pass:
     lifetime; no coordinates).
   - `data/location/`: Room `location_queue` (owner-scoped, 5,000/7-day
     bounds, exported schema, no destructive migration), WorkManager unique
-    network-constrained sync (100 per batch, 5 batches per pass),
-    at-least-once + server idempotency, consent-revocation-first ordering,
-    policy-refusal stop/purge.
+    network-constrained sync (100 per batch, 5 normal batches, 64 total HTTP
+    requests per pass), at-least-once + server idempotency, bounded binary
+    isolation for atomic validation rejection, owner-scoped consent outbox
+    and upload-start coordination, policy-refusal stop/purge.
   - `ui/tracking/`: Vietnamese tracking screen with prominent disclosure,
     staged permission requests, separate consent vs actual-tracking state,
     last fix/accuracy/upload, queue count, connectivity, battery saver,
     diagnostics, start/stop/resume.
-  - 148 JVM tests pass; lint clean of errors; debug APK and minified release
-    build compile.
+  - 179 JVM tests pass after M3 correctness/privacy hardening; lint/debug and
+    minified release checks are recorded below for this final pass.
 - Reliability prerequisites: WorkManager scheduling for pending
   revocations, first retry backoff corrected to 30s (off-by-one fix),
   uniqueness/idempotence regression tests.
@@ -212,6 +216,48 @@ Verification levels for this pass:
   revocation UI, ADB/emulator connectivity, real battery drain. These are
   **Pending Field Validation**, not PASS.
 
+## M3 correctness/privacy hardening (2026-10-27)
+
+- Confirmed and fixed batch-wide loss: a permanent atomic validation rejection
+  now splits within a 64-request pass budget, acknowledges accepted/duplicate
+  ids only, and drops only a rejected singleton. Client prevalidation removes
+  only the affected row. JVM regressions cover one invalid among 100, first/
+  last/multiple invalid events, oversized batches, expiry, 500/lost response,
+  process interruption, bounded requests and OFF during isolation.
+- Confirmed and fixed background permission flow: API 28 has no background
+  runtime request; API 29 requests it only after foreground; API 30+ displays
+  education then opens supported app Settings and refreshes on resume. API 33,
+  34 and later are covered by pure decision tests. No emulator/device is
+  attached, so Settings/FGS behavior remains **Pending Device Validation**.
+- Confirmed and fixed offline consent loss: owner-scoped encrypted outbox
+  operations survive local session clear, preserve only a bounded credential
+  TTL, and become explicit owner-auth-required state when no usable session
+  remains. Sign-out waits for a pending OFF; concurrent sign-out/OFF keeps the
+  operation unresolved if sign-out wins. Account B cannot execute A's consent
+  operation as its session.
+- Added app-scoped consent mutation and request-start coordination. Room
+  upload admission and consent request admission serialize against durable
+  intent writes, but no network call holds the coordinator. PostgreSQL
+  `location_sharing_version` CAS is the cross-process/device ordering
+  boundary; stale workers cannot overwrite newer local generations.
+- ADR 0007 accepts circle-scoped audience grants bounded by membership
+  periods and sharing epochs. Existing M3 points receive no grants by default;
+  no M4 read API, map, or WebSocket was implemented.
+- Local verification (2026-10-27): Android JVM `179/179` passed; full
+  `make quality-check` passed (toolchain, Go format/tidy/vet/lint/
+  govulncheck/tests/build, Android lint/tests/debug APK, OpenAPI, Dependabot
+  and Compose checks); `make android-release` passed with minification; and
+  `make server-test-integration` passed the Go race-enabled migration,
+  PostgreSQL/PostGIS auth, circle and location suites. Android lint reported
+  0 errors and 11 warnings, including the guarded API 29 background-permission
+  constant and existing dependency/manifest recommendations. `govulncheck`
+  found no reachable code vulnerability and reported one required-module
+  advisory outside the analyzed call graph. `git diff --check` passed.
+- No Android device/emulator is attached (`adb devices -l` is empty), so
+  background Settings, FGS behavior, Room/Keystore restart persistence and
+  field/battery behavior remain **Pending Device Validation**. Hosted CI is
+  separate evidence and is checked after push.
+
 ## Known gaps / external blockers
 
 - **Google OAuth client ID not created** (needs Google Cloud project
@@ -226,7 +272,10 @@ Verification levels for this pass:
   server-side session lives until its refresh token expires. If the process
   dies between a successful rotation and persisting the new token, the next
   retry receives 401 and drops the record; the app does not claim the
-  session was revoked (ADR 0005 §3).
+  session was revoked (ADR 0005 §3). Location-sharing OFF is a separate
+  owner-scoped operation: it remains unresolved after its narrow credential
+  expires and requires the same owner to authenticate again; it is never
+  reported as server-confirmed from local intent alone (ADR 0006 §8).
 - **Development login network mode trusts the allowlisted network.** Any
   host inside `AUTH_DEV_LOGIN_ALLOWED_CIDRS` can mint sessions while the
   fixture is enabled. Compose limits this to the pinned bridge and publishes
@@ -259,8 +308,9 @@ Verification levels for this pass:
 
 ## Next engineering tasks (M4 — Live Map, not started)
 
-1. Contract + authorization for reading latest/visible locations; per-viewer
-   consent enforced on every read.
+1. Implement the accepted design in [ADR 0007](../adr/0007-location-read-audience-authorization.md):
+   contract + authorization for latest/visible locations; per-viewer grant,
+   membership interval and sharing epoch checked on every read.
 2. Realtime transport decision (WebSocket vs SSE/polling) and hub.
 3. Confidence states Fresh/Delayed/Stale/Offline/Unknown.
 4. Live Map UI, last-known location labels, no realtime guarantees.

@@ -198,15 +198,19 @@ func (s *Store) UpdateProfile(_ context.Context, userID uuid.UUID, displayName s
 	return auth.User{}, auth.ErrNotFound
 }
 
-// SetLocationSharing flips consent and audits the change.
-func (s *Store) SetLocationSharing(_ context.Context, userID uuid.UUID, enabled bool) (auth.User, error) {
+// SetLocationSharingAtVersion flips consent if the version matches and audits the change.
+func (s *Store) SetLocationSharingAtVersion(_ context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (auth.User, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	u, ok := s.users[userID]
 	if !ok {
 		return auth.User{}, auth.ErrNotFound
 	}
+	if u.LocationSharingVersion != expectedVersion {
+		return auth.User{}, auth.ErrConsentVersionConflict
+	}
 	u.LocationSharingEnabled = enabled
+	u.LocationSharingVersion++
 	action := audit.ActionLocationSharingOff
 	if enabled {
 		action = audit.ActionLocationSharingOn

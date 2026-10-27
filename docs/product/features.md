@@ -49,6 +49,10 @@ Các thành phần sau **Implemented** và được CI xác nhận (chi tiết �
   cùng transaction ghi nhận thay đổi; UI nói rõ switch là ghi nhận đồng ý,
   chưa phải GPS đang chạy. Từ M3, việc thu thập do tab Vị trí điều khiển
   (bật theo dõi + quyền OS), tách biệt hoàn toàn khỏi consent switch.
+  Thay đổi consent dùng phiên bản compare-and-set; khi tắt offline, ý định
+  thu hồi được lưu trong outbox mã hóa theo owner, dừng thu thập và xóa queue
+  chưa gửi ngay. Sign-out không xóa ý định này; account khác không thể dùng
+  credential hoặc operation của owner trước.
 - Error envelope thống nhất (`code/message/requestId`), rate limiting cho
   endpoint đăng nhập; `readyz` kiểm tra database.
 - Dev-only login chỉ mount khi `ENVIRONMENT=development` (staging/production/
@@ -209,6 +213,11 @@ liên tục.*
 - Theo dõi vị trí khi ứng dụng chạy nền, trong phạm vi quyền và trạng thái hệ
   điều hành cho phép (foreground service với kiểu `location`, permission
   `ACCESS_BACKGROUND_LOCATION` được cấp đúng quy trình Android).
+- Flow quyền phân biệt foreground precise/approximate, background, dịch vụ
+  vị trí tắt và quyền bị từ chối. API 28 không hỏi quyền background riêng;
+  API 29 chỉ hỏi background sau foreground; API 30+ giải thích rồi mở trang
+  quyền ứng dụng trong Settings. Khi quay lại, app đọc lại trạng thái OS;
+  từ chối quyền không chặn các chức năng khác.
 - Điều chỉnh chiến lược cập nhật theo trạng thái di chuyển: ưu tiên cập nhật
   khi đang di chuyển, giảm truy cập vị trí khi đứng yên.
 - Xử lý thay đổi độ chính xác do provider báo cáo.
@@ -363,9 +372,12 @@ có quyền không lấy được lịch sử bằng bất kỳ đường API n�
 
 > Trạng thái: **Implemented — Automated Verified (M3); Pending Field
 > Validation.** Room queue (owner-scoped, 5.000 điểm/7 ngày), WorkManager
-> batch 100 điểm/lần (tối đa 5 batch/pass) với network constraint, server
-> idempotency theo `(user, eventId)`, giữ nguyên `recordedAt`. Consent OFF
-> xóa các điểm chưa gửi và gửi revocation trước mọi upload; xem ADR 0006.
+> batch 100 điểm/lần (tối đa 5 batch và 64 request/pass) với network
+> constraint, server idempotency theo `(user, eventId)`, giữ nguyên
+> `recordedAt`. Batch validation bị từ chối được tách có giới hạn; chỉ event
+> invalid đã cô lập mới bị loại. Consent OFF chặn batch mới và purge queue;
+> outbox theo owner được reconcile riêng, server vẫn kiểm tra quyền trong
+> transaction. Xem ADR 0006.
 
 **Mục đích.** Đảm bảo dữ liệu vị trí đã ghi nhận bền vững trên thiết bị không
 bị mất chỉ vì upload thất bại.
@@ -391,10 +403,11 @@ idempotency key. Batch API phía server phải chấp nhận băng giá trùng l
 
 **Business rules — điều kiện dừng bắt buộc.** Phải định nghĩa rõ xử lý khi:
 
-- Người dùng **tắt chia sẻ vị trí**: acquisition dừng ngay, các điểm **chưa
-  gửi bị xóa khỏi thiết bị** (privacy-first, ADR 0006 §8), revocation được
-  gửi trước mọi upload và chỉ được coi là server-confirmed sau khi server
-  xác nhận; điểm sinh sau khi tắt không được ghi/sinh.
+- Người dùng **tắt chia sẻ vị trí**: intent OFF được lưu bền vững trước
+  network access, acquisition dừng ngay, các điểm **chưa gửi bị xóa khỏi
+  thiết bị** (privacy-first, ADR 0006 §8), không bắt đầu upload mới khi có
+  operation consent đang chờ. Server-confirmed chỉ sau acknowledgment đúng
+  owner/generation; request đã bay theo lock ordering transaction phía server.
 - Người dùng **rời Circle** hoặc bị thu hồi quyền: dữ liệu chưa gửi của người
   đó với Circle đó phải bị xử lý theo chính sách — mặc định **loại bỏ**, không
   gửi bù dữ liệu cho một nhóm người dùng đã không còn thuộc về.
@@ -415,9 +428,10 @@ retention/authorization (M1–M2).
 thứ tự thời gian đúng; tắt chia sẻ/rời nhóm được xử lý đúng quy tắc ở trên; tính
 toàn vẹn được kiểm chứng bằng test tự động (không chỉ quan sát thủ công).
 **Đã automated-verified ở M3:** queue sống qua process restart, retry không
-trùng nhờ `(user, eventId)`, out-of-order vẫn giữ event time, consent OFF
-xóa queue và chặn upload, account switch/sign-out purge queue. Chưa có
-field validation trên thiết bị thật.
+trùng nhờ `(user, eventId)`, out-of-order vẫn giữ event time, 99 event hợp lệ
+được giữ khi một event trong batch 100 bị từ chối, split có ngân sách request,
+consent OFF xóa queue và chặn upload, account switch/sign-out purge queue.
+Chưa có field validation trên thiết bị thật.
 
 ## 8. Privacy Controls
 
@@ -429,8 +443,10 @@ field validation trên thiết bị thật.
 > mặt chức năng. Bằng chứng M1: audit record cho thay đổi consent (đã
 > test), session revocation tức thì (đã test), switch consent mặc định
 > TẮT ở tầng database. M3: consent/session/device/Circle được kiểm tra
-> trong cùng transaction với batch ingestion; tắt consent dừng acquisition,
-> xóa điểm chưa gửi và gửi revocation trước mọi upload.
+> trong cùng transaction với batch ingestion; consent mutation có CAS version,
+> tắt consent dừng acquisition, xóa điểm chưa gửi và giữ outbox operation
+> owner-scoped tới xác nhận server. Batch validation isolation không xóa
+> event hợp lệ cùng batch.
 
 Privacy là **functional requirement bắt buộc, không phải trang Settings phụ**.
 

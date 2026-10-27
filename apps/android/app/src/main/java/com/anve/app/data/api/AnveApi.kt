@@ -36,7 +36,9 @@ interface AnveApi {
     ): Response<RefreshResponseDto>
 
     @POST("api/v1/auth/signout")
-    suspend fun signOut(): Response<Unit>
+    suspend fun signOut(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
+    ): Response<Unit>
 
     /**
      * Revokes a session whose token was already removed from local storage
@@ -46,10 +48,17 @@ interface AnveApi {
     @POST("api/v1/auth/signout")
     suspend fun signOutWithAuthorization(
         @Header("Authorization") authorization: String,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
     ): Response<Unit>
 
     @GET("api/v1/me")
     suspend fun me(): Response<UserDto>
+
+    @GET("api/v1/me")
+    suspend fun meWithAuthorization(
+        @Header("Authorization") authorization: String,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+    ): Response<UserDto>
 
     @PATCH("api/v1/me")
     suspend fun updateMe(
@@ -68,6 +77,14 @@ interface AnveApi {
 
     @PUT("api/v1/me/location-sharing")
     suspend fun setLocationSharing(
+        @Body body: LocationSharingRequestDto,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
+    ): Response<UserDto>
+
+    @PUT("api/v1/me/location-sharing")
+    suspend fun setLocationSharingWithAuthorization(
+        @Header("Authorization") authorization: String,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
         @Body body: LocationSharingRequestDto,
     ): Response<UserDto>
 

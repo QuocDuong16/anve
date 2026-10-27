@@ -4,7 +4,10 @@ import android.os.SystemClock
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.auth.DeviceRegistrationProvider
+import com.anve.app.data.auth.ConsentMutationCoordinator
+import com.anve.app.data.auth.PendingConsentOperation
 import com.anve.app.data.auth.SessionStorage
+import com.anve.app.data.auth.newPendingConsentOperation
 import com.anve.app.data.location.LocationQueueRepository
 import com.anve.app.data.location.LocationSyncScheduler
 import kotlinx.coroutines.CancellationException
@@ -78,6 +81,9 @@ class TrackingManager(
     private val now: () -> Long = System::currentTimeMillis,
     private val elapsedNow: () -> Long = { SystemClock.elapsedRealtime() },
     private val batterySaver: () -> Boolean = { false },
+    private val consentMutations: ConsentMutationCoordinator = ConsentMutationCoordinator(),
+    private val pendingConsentScheduler: com.anve.app.data.auth.PendingRevocationScheduler =
+        com.anve.app.data.auth.NoOpPendingRevocationScheduler,
 ) : TrackingControl {
 
     private val _status = MutableStateFlow(TrackingStatus())
@@ -92,6 +98,7 @@ class TrackingManager(
     private var starting = false
     private var startTimeoutJob: Job? = null
     private var sessionOwner: String? = null
+    private var lastSession: com.anve.app.data.auth.StoredSession? = null
     private var clientDeviceId: String? = null
     private var initialIntentLoaded = false
     private var lastMetricsTickElapsed = elapsedNow()
@@ -111,13 +118,17 @@ class TrackingManager(
             store.state.collectLatest { local ->
                 val wasInitial = !initialIntentLoaded
                 initialIntentLoaded = true
+                val owner = currentOwnerId()
+                val pendingOperation = owner != null && sessions.pendingConsentOperations().any {
+                    it.ownerUserId == owner
+                }
                 _status.update { current ->
                     current.copy(
                         consentEnabled = local.localConsentConfirmed &&
-                            !local.pendingConsentRevocation,
+                            !local.pendingConsentRevocation && !pendingOperation,
                         consentConfirmedByServer = local.localConsentConfirmed &&
                             !local.pendingConsentRevocation,
-                        consentSyncPending = local.pendingConsentRevocation,
+                        consentSyncPending = local.pendingConsentRevocation || pendingOperation,
                         trackingRequested = local.trackingRequested,
                         lastUploadAtMillis = local.lastSuccessfulUploadAtMillis,
                         // A fresh process that finds persisted intent must
@@ -149,14 +160,11 @@ class TrackingManager(
         scope.launch {
             sessions.session.collectLatest { session ->
                 if (session == null) {
+                    migrateLegacyRevocation(lastSession)
                     sessionOwner = null
+                    lastSession = null
                     queue.purgeAll()
                     queueCountJob?.cancel()
-                    // The location-consent revocation intent is tied to the
-                    // account that made it; it must never be delivered under
-                    // a different session later.
-                    store.setPendingConsentRevocation(false)
-                    store.setConsentOwner(null)
                     stopInternal(clearIntent = true, clearRecovery = true)
                     _status.update {
                         it.copy(
@@ -187,6 +195,7 @@ class TrackingManager(
                         queue.purgeAll()
                         stopInternal(clearIntent = true, clearRecovery = true)
                         store.setLocalConsentConfirmed(false)
+                        migrateLegacyRevocation(lastSession)
                         store.setPendingConsentRevocation(false)
                         store.setTrackingRequested(false)
                         store.setConsentOwner(null)
@@ -196,6 +205,7 @@ class TrackingManager(
                             // Session replacement without a null in between.
                             queue.purgeAll()
                             stopInternal(clearIntent = true, clearRecovery = true)
+                            migrateLegacyRevocation(lastSession)
                             store.setLocalConsentConfirmed(false)
                             store.setPendingConsentRevocation(false)
                             store.setTrackingRequested(false)
@@ -205,6 +215,7 @@ class TrackingManager(
                         observeQueueCount(owner)
                     }
                 }
+                lastSession = session
             }
         }
     }
@@ -250,73 +261,213 @@ class TrackingManager(
      * the sync worker cannot backfill afterwards.
      */
     override suspend fun setConsent(enabled: Boolean): ConsentResult {
-        if (!enabled) {
-            // Record which account the revocation belongs to before the
-            // durable flag; a later session must not deliver it for someone
-            // else.
-            currentOwnerId()?.let { store.setConsentOwner(it) }
-            store.setPendingConsentRevocation(true)
-            store.setLocalConsentConfirmed(false)
-            stopInternal(clearIntent = true, clearRecovery = true)
-            queue.purgeAll()
-            syncScheduler.ensureScheduled()
-            return try {
-                val user = server.setLocationSharing(false)
-                store.setPendingConsentRevocation(false)
-                currentOwnerId()?.let { store.setConsentOwner(it) }
-                ConsentResult(enabled = false, serverConfirmed = true, user = user)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: ApiException) {
-                ConsentResult(
-                    enabled = false,
-                    serverConfirmed = false,
-                    message = "Đã dừng theo dõi trên thiết bị này. Máy chủ chưa xác nhận thu hồi quyền chia sẻ; AnVề sẽ thử lại khi có kết nối.",
-                )
-            } catch (e: IOException) {
-                ConsentResult(
-                    enabled = false,
-                    serverConfirmed = false,
-                    message = "Đã dừng theo dõi trên thiết bị này. Máy chủ chưa xác nhận thu hồi quyền chia sẻ; AnVề sẽ thử lại khi có kết nối.",
-                )
+        val session = sessions.current()
+        val local = store.current()
+        val owner = session?.userId ?: local.consentOwnerUserId
+        if (session == null || owner == null) {
+            return ConsentResult(
+                enabled = false,
+                serverConfirmed = false,
+                message = "Đăng nhập lại để thay đổi quyền chia sẻ vị trí.",
+            )
+        }
+        if (session.userId != null && session.userId != owner) {
+            return ConsentResult(enabled = false, serverConfirmed = false, message = "Tài khoản đã thay đổi. Vui lòng thử lại.")
+        }
+        val persisted = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == owner }
+        val operation = consentMutations.withNextGeneration(owner, persisted?.generation ?: 0L) { generation ->
+            val current = sessions.current()
+            val signedOutDuringMutation = current == null && !enabled
+            if (current?.userId != owner && !signedOutDuringMutation) return@withNextGeneration null
+            val pending = newPendingConsentOperation(
+                ownerUserId = owner,
+                desiredEnabled = enabled,
+                // Legacy sessions predate consent versioning. Start at the
+                // known initial version and reconcile a CAS conflict later;
+                // local OFF must never wait for a network read.
+                expectedVersion = current?.locationSharingVersion ?: session.locationSharingVersion ?: 0L,
+                generation = generation,
+                nowMillis = now(),
+            ).let {
+                if (signedOutDuringMutation) {
+                    it.copy(
+                        requiresOwnerAuthentication = true,
+                        lastErrorCode = "OWNER_AUTH_REQUIRED",
+                    )
+                } else {
+                    it
+                }
             }
+            // Persist first. Every other component treats this owner as
+            // blocked until the server confirms this exact operation.
+            sessions.savePendingConsentOperation(pending)
+            store.setConsentOwner(owner)
+            if (!enabled) {
+                store.setPendingConsentRevocation(true)
+                store.setLocalConsentConfirmed(false)
+                stopInternal(clearIntent = true, clearRecovery = true)
+                queue.purgeAll()
+            }
+            pending
+        } ?: return ConsentResult(enabled = false, serverConfirmed = false, message = "Tài khoản đã thay đổi. Vui lòng thử lại.")
+        pendingConsentScheduler.ensureScheduled()
+        if (!enabled) syncScheduler.cancel()
+
+        if (operation.requiresOwnerAuthentication) {
+            return ConsentResult(
+                enabled = false,
+                serverConfirmed = false,
+                message = "Đã dừng trên thiết bị này. Đăng nhập lại đúng tài khoản để hoàn tất thu hồi chia sẻ.",
+            )
         }
 
         return try {
-            val user = server.setLocationSharing(true)
-            // A successful enable cancels an undelivered revocation: the
-            // server state the user just requested is authoritative.
-            store.setPendingConsentRevocation(false)
-            store.setLocalConsentConfirmed(user.locationSharingEnabled)
-            currentOwnerId()?.let { store.setConsentOwner(it) }
-            syncScheduler.ensureScheduled()
-            ConsentResult(enabled = user.locationSharingEnabled, serverConfirmed = true, user = user)
+            confirmConsentOperation(operation)
         } catch (e: CancellationException) {
             throw e
         } catch (e: ApiException) {
+            pendingConsentScheduler.ensureScheduled()
             ConsentResult(
-                enabled = false,
+                enabled = enabled,
                 serverConfirmed = false,
-                message = "Không bật được chia sẻ vị trí. Vui lòng thử lại khi có kết nối.",
+                message = if (enabled) {
+                    "Chưa xác nhận được thay đổi với máy chủ. Vị trí chưa được bật; AnVề sẽ thử lại khi có kết nối."
+                } else {
+                    "Đã dừng theo dõi trên thiết bị này. Máy chủ chưa xác nhận thu hồi quyền chia sẻ; AnVề sẽ thử lại khi có kết nối."
+                },
             )
         } catch (e: IOException) {
+            pendingConsentScheduler.ensureScheduled()
             ConsentResult(
-                enabled = false,
+                enabled = enabled,
                 serverConfirmed = false,
-                message = "Không bật được chia sẻ vị trí. Vui lòng thử lại khi có kết nối.",
+                message = if (enabled) {
+                    "Chưa xác nhận được thay đổi với máy chủ. Vị trí chưa được bật; AnVề sẽ thử lại khi có kết nối."
+                } else {
+                    "Đã dừng theo dõi trên thiết bị này. Máy chủ chưa xác nhận thu hồi quyền chia sẻ; AnVề sẽ thử lại khi có kết nối."
+                },
             )
         }
     }
 
+    private suspend fun confirmConsentOperation(operation: PendingConsentOperation): ConsentResult {
+        var candidate = operation
+        repeat(2) {
+            val latestPending = sessions.pendingConsentOperations()
+                .firstOrNull { it.ownerUserId == operation.ownerUserId } ?: return ConsentResult(
+                enabled = store.current().localConsentConfirmed,
+                serverConfirmed = store.current().localConsentConfirmed == operation.desiredEnabled,
+            )
+            if (latestPending.operationId != operation.operationId ||
+                sessions.current()?.userId != operation.ownerUserId
+            ) {
+                return ConsentResult(enabled = false, serverConfirmed = false)
+            }
+            val requestAuthorized = consentMutations.authorizeConsentRequest {
+                sessions.pendingConsentOperations().any {
+                    it.ownerUserId == operation.ownerUserId && it.operationId == operation.operationId
+                } && sessions.current()?.userId == operation.ownerUserId
+            }
+            if (!requestAuthorized) return ConsentResult(enabled = false, serverConfirmed = false)
+            val user = try {
+                server.setLocationSharing(
+                    candidate.desiredEnabled,
+                    candidate.expectedVersion,
+                    candidate.ownerUserId,
+                    candidate.operationId,
+                )
+            } catch (conflict: ApiException) {
+                if (conflict.code != "CONSENT_VERSION_CONFLICT") throw conflict
+                val remote = server.currentUser()
+                if (remote.id != candidate.ownerUserId) throw IOException("Consent owner changed")
+                if (remote.locationSharingEnabled == candidate.desiredEnabled) {
+                    remote
+                } else {
+                    val rebased = consentMutations.withLocalMutation {
+                        val latest = sessions.pendingConsentOperations().firstOrNull {
+                            it.ownerUserId == operation.ownerUserId
+                        }
+                        if (latest?.operationId != operation.operationId) {
+                            null
+                        } else {
+                            latest.copy(
+                                expectedVersion = remote.locationSharingVersion,
+                                requiresOwnerAuthentication = false,
+                                nextAttemptAtMillis = now(),
+                                lastErrorCode = null,
+                            ).also { sessions.savePendingConsentOperation(it) }
+                        }
+                    }
+                    if (rebased == null) {
+                        return ConsentResult(enabled = false, serverConfirmed = false)
+                    }
+                    candidate = rebased
+                    return@repeat
+                }
+            }
+            if (user.id != operation.ownerUserId) throw IOException("Consent response belongs to another account")
+            val stillCurrent = consentMutations.withLocalMutation {
+                val latest = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == operation.ownerUserId }
+                if (latest?.operationId != operation.operationId || sessions.current()?.userId != operation.ownerUserId) {
+                    false
+                } else {
+                    sessions.updateConsent(operation.ownerUserId, user.locationSharingEnabled, user.locationSharingVersion)
+                    sessions.removePendingConsentOperation(operation.operationId)
+                    store.setLocalConsentConfirmed(user.locationSharingEnabled)
+                    store.setPendingConsentRevocation(false)
+                    store.setConsentOwner(operation.ownerUserId)
+                    true
+                }
+            }
+            if (!stillCurrent) return ConsentResult(enabled = false, serverConfirmed = false)
+            if (user.locationSharingEnabled) syncScheduler.ensureScheduled()
+            return ConsentResult(user.locationSharingEnabled, serverConfirmed = true, user = user)
+        }
+        return ConsentResult(
+            enabled = false,
+            serverConfirmed = false,
+            message = "Quyền chia sẻ đang được cập nhật. AnVề sẽ thử lại với trạng thái mới nhất.",
+        )
+    }
+
+    private suspend fun migrateLegacyRevocation(session: com.anve.app.data.auth.StoredSession?) {
+        val initial = store.current()
+        if (!initial.pendingConsentRevocation) return
+        val owner = initial.consentOwnerUserId ?: session?.userId ?: return
+        val migrated = consentMutations.withNextGeneration(owner) { generation ->
+            val local = store.current()
+            if (!local.pendingConsentRevocation) return@withNextGeneration false
+            val pending = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == owner }
+            if (pending == null) {
+                sessions.savePendingConsentOperation(
+                    newPendingConsentOperation(
+                        ownerUserId = owner,
+                        desiredEnabled = false,
+                        expectedVersion = session?.takeIf { it.userId == owner }?.locationSharingVersion ?: 0L,
+                        generation = generation,
+                        nowMillis = now(),
+                    ),
+                )
+            }
+            store.setLocalConsentConfirmed(false)
+            store.setPendingConsentRevocation(false)
+            true
+        }
+        if (migrated) pendingConsentScheduler.ensureScheduled()
+    }
+
     /** Records what an authenticated read observed, unless a revocation is pending. */
     override suspend fun recordServerConsent(enabled: Boolean) {
-        val local = store.current()
-        if (local.pendingConsentRevocation) {
-            store.setLocalConsentConfirmed(false)
-            return
+        consentMutations.withLocalMutation {
+            val local = store.current()
+            val owner = currentOwnerId()
+            if (local.pendingConsentRevocation || sessions.pendingConsentOperations().any { it.ownerUserId == owner }) {
+                store.setLocalConsentConfirmed(false)
+                return@withLocalMutation
+            }
+            store.setConsentOwner(owner)
+            store.setLocalConsentConfirmed(enabled)
         }
-        store.setConsentOwner(currentOwnerId())
-        store.setLocalConsentConfirmed(enabled)
     }
 
     private suspend fun currentOwnerId(): String? =
@@ -340,7 +491,9 @@ class TrackingManager(
             return
         }
         val local = store.current()
-        if (local.pendingConsentRevocation || !local.localConsentConfirmed) {
+        val owner = session.userId ?: currentOwnerId()
+        val pendingConsent = owner != null && sessions.pendingConsentOperations().any { it.ownerUserId == owner }
+        if (pendingConsent || local.pendingConsentRevocation || !local.localConsentConfirmed) {
             failStart(TrackingProblem.CONSENT_REQUIRED)
             return
         }
@@ -398,24 +551,42 @@ class TrackingManager(
             return
         }
         clientDeviceId = deviceIdentity.registration().clientDeviceId
-        // The session collector normally sets this; do not lose the first
-        // fixes if it has not emitted yet.
-        if (session.userId != null) sessionOwner = session.userId
-        starting = true
-        _status.update {
-            it.copy(
-                trackingRequested = true,
-                recoveryRequired = false,
-                lastError = null,
-                lastErrorAtMillis = null,
-                permission = snapshot.location,
-                backgroundPermissionGranted = snapshot.backgroundLocation,
-                notificationsGranted = snapshot.notifications,
-            )
+        // Consent revocation and a start are serialized only around their
+        // durable local state changes. A stale start cannot pass this gate
+        // after OFF has been persisted.
+        val started = consentMutations.withLocalMutation {
+            val latestSession = sessions.current()
+            val latestLocal = store.current()
+            val latestOwner = latestSession?.userId ?: currentOwnerId()
+            val pending = latestOwner != null && sessions.pendingConsentOperations().any {
+                it.ownerUserId == latestOwner
+            }
+            if (starting || _status.value.running) {
+                null
+            } else if (latestSession == null || latestOwner != owner || pending || latestLocal.pendingConsentRevocation ||
+                !latestLocal.localConsentConfirmed
+            ) {
+                false
+            } else {
+                if (latestSession.userId != null) sessionOwner = latestSession.userId
+                starting = true
+                _status.update {
+                    it.copy(
+                        trackingRequested = true,
+                        recoveryRequired = false,
+                        lastError = null,
+                        lastErrorAtMillis = null,
+                        permission = snapshot.location,
+                        backgroundPermissionGranted = snapshot.backgroundLocation,
+                        notificationsGranted = snapshot.notifications,
+                    )
+                }
+                store.setTrackingRequested(true)
+                service.start()
+            }
         }
-        store.setTrackingRequested(true)
-        if (!service.start()) {
-            starting = false
+        if (started == null) return
+        if (!started) {
             failStart(TrackingProblem.SERVICE_START_FAILED)
             return
         }
@@ -498,7 +669,17 @@ class TrackingManager(
             val snapshot = permissions.snapshot()
             val owner = sessionOwner
             val count = owner?.let { runCatching { queue.count(it) }.getOrNull() }
+            val activeSession = sessions.current()
+            if (activeSession != null && connectivity.isOnline()) {
+                val remote = runCatching { server.currentUser() }.getOrNull()
+                if (remote != null && (activeSession.userId == null || remote.id == activeSession.userId)) {
+                    recordServerConsent(remote.locationSharingEnabled)
+                }
+            }
             val local = store.current()
+            val pendingOperation = owner != null && sessions.pendingConsentOperations().any {
+                it.ownerUserId == owner
+            }
             _status.update {
                 it.copy(
                     permission = snapshot.location,
@@ -508,8 +689,9 @@ class TrackingManager(
                     online = connectivity.isOnline(),
                     batterySaver = batterySaver(),
                     pendingQueueCount = count ?: it.pendingQueueCount,
-                    consentEnabled = local.localConsentConfirmed && !local.pendingConsentRevocation,
-                    consentSyncPending = local.pendingConsentRevocation,
+                    consentEnabled = local.localConsentConfirmed && !local.pendingConsentRevocation &&
+                        !pendingOperation,
+                    consentSyncPending = local.pendingConsentRevocation || pendingOperation,
                 )
             }
         }
@@ -613,9 +795,24 @@ class TrackingManager(
         val owner = sessionOwner ?: return
         val device = clientDeviceId ?: return
 
-        val enqueued = runCatching {
-            queue.enqueue(ownerUserId = owner, clientDeviceId = device, fix = fix)
-        }.getOrElse { error ->
+        val enqueued = try {
+            consentMutations.withLocalMutation {
+                val session = sessions.current()
+                val local = store.current()
+                val activeOwner = session?.userId ?: local.consentOwnerUserId
+                val pendingMutation = sessions.pendingConsentOperations().any {
+                    it.ownerUserId == owner
+                }
+                if (activeOwner != owner || pendingMutation || local.pendingConsentRevocation ||
+                    !local.localConsentConfirmed || !local.trackingRequested ||
+                    !_status.value.trackingRequested || !permissions.snapshot().canTrack
+                ) {
+                    false
+                } else {
+                    queue.enqueue(ownerUserId = owner, clientDeviceId = device, fix = fix)
+                }
+            }
+        } catch (error: Exception) {
             if (error is CancellationException) throw error
             _status.update {
                 it.copy(lastError = TrackingProblem.QUEUE_UNAVAILABLE, lastErrorAtMillis = now())
@@ -735,6 +932,7 @@ class TrackingManager(
                 running = false,
                 serviceRunning = false,
                 providerActive = false,
+                trackingRequested = if (clearIntent) false else it.trackingRequested,
                 operational = OperationalState.PAUSED,
                 motion = MotionState.IDLE,
                 recoveryRequired = if (clearRecovery) false else it.recoveryRequired,

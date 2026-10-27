@@ -17,6 +17,7 @@ type User struct {
 	DisplayName            string
 	AvatarURL              *string
 	LocationSharingEnabled bool
+	LocationSharingVersion int64
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
 }

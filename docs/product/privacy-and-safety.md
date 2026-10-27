@@ -18,12 +18,15 @@
 > **M3 đã Implemented — Automated Verified:** ingestion batch chỉ nhận dữ
 > liệu khi session còn sống, device thuộc session, consent bật và Circle
 > membership còn hiệu lực, tất cả kiểm tra trong cùng transaction; tắt
-> consent dừng acquisition, xóa điểm chưa gửi và gửi revocation trước mọi
-> upload; retention 30 ngày mặc định (`LOCATION_RETENTION_DAYS`) chạy tự
-> động; account/device deletion cascade location rows; Room queue 7 ngày
-> trên thiết bị. **Chưa** có phân phát realtime, xóa history theo khoảng
-> thời gian (M4–M5) và chưa field-validate trên thiết bị thật. Quyết định
-> và threat model: ADR 0006.
+> consent dừng acquisition, xóa điểm chưa gửi và lưu operation OFF bền vững
+> theo owner; consent dùng version/CAS để response cũ không ghi đè ý định mới.
+> Batch validation bị từ chối được cô lập có giới hạn và chỉ event sai đã
+> nhận diện riêng mới bị loại. Retention 30 ngày mặc định
+> (`LOCATION_RETENTION_DAYS`) chạy tự động; account/device deletion cascade
+> location rows; Room queue 7 ngày trên thiết bị. **Chưa** có phân phát
+> realtime, API đọc vị trí hay field validation trên thiết bị thật. Quyết định
+> về audience cho M4 nằm trong [ADR 0007](../adr/0007-location-read-audience-authorization.md);
+> threat model ingestion ở ADR 0006.
 
 ## 1. Nguyên tắc nền tảng
 
@@ -66,8 +69,17 @@ Quy tắc:
   "đã đồng ý" khỏi "đang cập nhật vị trí".
 - **Tắt consent là hành động local-first:** acquisition dừng ngay, mọi điểm
   chưa gửi bị xóa khỏi thiết bị, ý định thu hồi được lưu bền vững trước khi
-  gọi mạng và được gửi trước mọi upload khi có kết nối. App không tuyên bố
-  server đã thu hồi khi request chưa tới server (ADR 0006 §8).
+  gọi mạng và chặn upload mới cho đúng owner. App không tuyên bố server đã
+  thu hồi khi request chưa được xác nhận. Nếu sign-out xảy ra khi OFF đang
+  chờ, operation owner-scoped còn nguyên; credential chỉ được giữ mã hóa,
+  giới hạn 7 ngày và chỉ dùng cho consent OFF rồi sign-out. Hết hạn/401 để
+  operation ở trạng thái cần chủ tài khoản xác thực lại, không báo thành công.
+- Consent API dùng `expectedVersion` và CAS ở server. Response hoặc retry của
+  generation cũ không được ghi đè lựa chọn mới hơn; operation khác tài khoản
+  không được thực thi dưới session của tài khoản đang đăng nhập.
+- Request GPS đã gửi trước khi OFF có thể commit nếu lấy khóa giao dịch server
+  trước consent update. Sau khi consent OFF commit, ingestion mới bị từ chối.
+  Hủy WorkManager không được coi là bằng chứng request đã gửi bị rollback.
 
 ## 3. Mô hình ủy quyền (authorization)
 
@@ -76,6 +88,10 @@ Quy tắc:
 - **Quyền xem dữ liệu** là một trục riêng: quản trị nhóm **không** tự động được
   xem location history của mọi thành viên; quyền đọc vị trí/history bắt nguồn
   từ sự đồng ý của từng chủ thể dữ liệu.
+- Thành viên hiện tại không tự động được xem điểm cũ trước khi tham gia.
+  M4 phải kiểm tra membership interval, sharing epoch và grant rõ ràng cho
+  từng người xem theo [ADR 0007](../adr/0007-location-read-audience-authorization.md).
+  M3 chưa có location read API.
 - **Quyền nhận sự kiện** (Place Alerts, SOS, Safe Journey) được chọn cho từng
   loại sự kiện/địa điểm/hành trình, không kế thừa âm thầm từ quyền xem bản đồ.
 - Server thực thi mô hình trên cho **mọi** endpoint đọc/ghi, kể cả các endpoint
@@ -123,10 +139,14 @@ Quy tắc:
   membership đã bị xóa (kiểm tra trong transaction); điểm đã lưu xử lý theo
   retention. Client purge queue của mình khi server trả
   `LOCATION_CIRCLE_REQUIRED`.
-- **Tắt chia sẻ khi offline:** acquisition dừng, queue bị xóa, ý định thu hồi
-  được lưu bền vững; sync worker gửi revocation trước mọi location khi có
-  mạng. UI nói rõ "đã dừng trên thiết bị; chưa đồng bộ trạng thái với máy
-  chủ" thay vì tuyên bố đã thu hồi.
+- **Tắt chia sẻ khi offline:** intent OFF được lưu bền vững theo owner trước
+  network access; acquisition dừng, queue chưa gửi bị xóa, và worker chặn
+  upload location mới tới khi consent operation được reconcile. Upload đã gửi
+  có thể commit theo lock ordering của transaction phía server. UI nói rõ
+  "đã dừng trên thiết bị; máy chủ chưa xác nhận" thay vì tuyên bố đã thu hồi.
+  Nếu sign-out xảy ra đồng thời và session bị revoke trước khi OFF được xác
+  nhận, operation vẫn tồn tại nhưng cần đăng nhập lại đúng owner; trạng thái
+  không bị báo thành công.
 - **Đăng xuất / xóa tài khoản:** đăng xuất dừng tracking và purge queue local
   (không để dữ liệu của tài khoản cũ chờ upload); xóa tài khoản cascade
   devices/sessions/location_points ở server. Queue local được purge khi

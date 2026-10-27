@@ -57,7 +57,8 @@ type confirmDeleteRequest struct {
 }
 
 type locationSharingRequest struct {
-	Enabled *bool `json:"enabled"`
+	Enabled         *bool  `json:"enabled"`
+	ExpectedVersion *int64 `json:"expectedVersion"`
 }
 
 type userResponse struct {
@@ -66,6 +67,7 @@ type userResponse struct {
 	DisplayName            string  `json:"displayName"`
 	AvatarURL              *string `json:"avatarUrl,omitempty"`
 	LocationSharingEnabled bool    `json:"locationSharingEnabled"`
+	LocationSharingVersion int64   `json:"locationSharingVersion"`
 	CreatedAt              string  `json:"createdAt"`
 }
 
@@ -119,6 +121,7 @@ func toUserResponse(u auth.User) userResponse {
 		DisplayName:            u.DisplayName,
 		AvatarURL:              u.AvatarURL,
 		LocationSharingEnabled: u.LocationSharingEnabled,
+		LocationSharingVersion: u.LocationSharingVersion,
 		CreatedAt:              u.CreatedAt.UTC().Format(timeFormat),
 	}
 }
@@ -265,11 +268,11 @@ func setLocationSharingHandler(svc *auth.Service) http.HandlerFunc {
 		if !decodeAuthBody(w, r, &body) {
 			return
 		}
-		if body.Enabled == nil {
-			writeValidationError(w, r, "enabled is required.")
+		if body.Enabled == nil || body.ExpectedVersion == nil || *body.ExpectedVersion < 0 {
+			writeValidationError(w, r, "enabled and a non-negative expectedVersion are required.")
 			return
 		}
-		user, err := svc.SetLocationSharing(r.Context(), ac.User.ID, *body.Enabled)
+		user, err := svc.SetLocationSharingAtVersion(r.Context(), ac.User.ID, *body.Enabled, *body.ExpectedVersion)
 		if err != nil {
 			writeError(w, r, err)
 			return

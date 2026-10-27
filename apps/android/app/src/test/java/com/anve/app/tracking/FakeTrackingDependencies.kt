@@ -1,5 +1,6 @@
 package com.anve.app.tracking
 
+import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.DeviceRegistrationDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.auth.DeviceRegistrationProvider
@@ -148,6 +149,7 @@ class FakeDeviceIdentity : DeviceRegistrationProvider {
  */
 class FakeServerGateway(
     var consent: Boolean = true,
+    var consentVersion: Long = 0,
     var hasCircle: Boolean = true,
     private val store: FakeTrackingStore? = null,
 ) : TrackingServerGateway {
@@ -155,18 +157,33 @@ class FakeServerGateway(
     var failConsentWith: Exception? = null
     var failCurrentUserWith: Exception? = null
     var pendingAtConsentCall: Boolean? = null
+    var beforeCurrentUser: (suspend () -> Unit)? = null
     val consentCalls = mutableListOf<Boolean>()
 
     override suspend fun currentUser(): UserDto {
+        beforeCurrentUser?.also {
+            beforeCurrentUser = null
+            it()
+        }
         failCurrentUserWith?.let { throw it }
         return user(consent)
     }
 
-    override suspend fun setLocationSharing(enabled: Boolean): UserDto {
+    override suspend fun setLocationSharing(
+        enabled: Boolean,
+        expectedVersion: Long,
+        ownerUserId: String,
+        operationId: String,
+    ): UserDto {
+        if (ownerUserId != "u1") throw java.io.IOException("owner mismatch")
+        if (expectedVersion != consentVersion) {
+            throw ApiException("CONSENT_VERSION_CONFLICT", "version conflict", null)
+        }
         consentCalls += enabled
         pendingAtConsentCall = store?.current()?.pendingConsentRevocation
         failConsentWith?.let { throw it }
         consent = enabled
+        consentVersion++
         return user(consent)
     }
 
@@ -179,17 +196,14 @@ class FakeServerGateway(
         avatarUrl = null,
         locationSharingEnabled = sharing,
         createdAt = "2026-10-26T00:00:00Z",
+        locationSharingVersion = consentVersion,
     )
 }
 
 class FakeSyncGateway(
     var owner: String = "u1",
-    private val store: FakeTrackingStore? = null,
 ) : com.anve.app.data.location.LocationSyncGateway {
 
-    var failDisableWith: Exception? = null
-    var pendingAtDisable: Boolean? = null
-    var disableCalls = 0
     val uploads = mutableListOf<List<com.anve.app.data.api.LocationEventDto>>()
     var uploadHandler: suspend (List<com.anve.app.data.api.LocationEventDto>) ->
         com.anve.app.data.api.LocationBatchResponseDto = { events ->
@@ -205,11 +219,6 @@ class FakeSyncGateway(
         return uploadHandler(events)
     }
 
-    override suspend fun disableLocationSharing() {
-        disableCalls++
-        pendingAtDisable = store?.current()?.pendingConsentRevocation
-        failDisableWith?.let { throw it }
-    }
 }
 
 fun testFix(

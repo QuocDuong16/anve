@@ -1,12 +1,16 @@
 package com.anve.app.ui.tracking
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.content.ContextWrapper
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,11 +55,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.R
 import com.anve.app.tracking.LocationPermissionState
+import com.anve.app.tracking.BackgroundPermissionAction
+import com.anve.app.tracking.backgroundPermissionAction
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.OperationalState
 import com.anve.app.tracking.TrackingProblem
@@ -79,16 +89,45 @@ fun TrackingScreen(container: AppContainer) {
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var disclosureAccepted by rememberSaveable { mutableStateOf(false) }
     var showDisclosure by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf(PendingAction.NONE) }
+    var showBackgroundEducation by rememberSaveable { mutableStateOf(false) }
+    var backgroundActionAfterEducation by rememberSaveable {
+        mutableStateOf(BackgroundPermissionAction.NOT_REQUIRED)
+    }
+    var foregroundPermissionRequested by rememberSaveable { mutableStateOf(false) }
+    var foregroundPermissionPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
+    val activity = remember(context) { context.findActivity() }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { grants ->
         val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            foregroundPermissionPermanentlyDenied = false
+        } else if (foregroundPermissionRequested && activity != null) {
+            val rationale = ActivityCompat.shouldShowRequestPermissionRationale(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ) || ActivityCompat.shouldShowRequestPermissionRationale(
+                activity,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
+            foregroundPermissionPermanentlyDenied = !rationale
+        }
+        foregroundPermissionRequested = false
         viewModel.refresh()
         val action = pending
         pending = PendingAction.NONE
@@ -103,6 +142,12 @@ fun TrackingScreen(container: AppContainer) {
         ActivityResultContracts.RequestPermission(),
     ) { viewModel.refresh() }
 
+    LaunchedEffect(state.status.permission) {
+        if (state.status.permission != LocationPermissionState.DENIED) {
+            foregroundPermissionPermanentlyDenied = false
+        }
+    }
+
     // Continuing a first-time enable after the server confirmed consent.
     LaunchedEffect(state.status.consentEnabled, pending) {
         if (pending == PendingAction.ENABLE_THEN_START && state.status.consentEnabled) {
@@ -113,6 +158,7 @@ fun TrackingScreen(container: AppContainer) {
                 viewModel.start()
             } else {
                 pending = PendingAction.START
+                foregroundPermissionRequested = true
                 locationLauncher.launch(
                     arrayOf(
                         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -125,6 +171,7 @@ fun TrackingScreen(container: AppContainer) {
 
     fun requestLocationThenStart() {
         pending = PendingAction.START
+        foregroundPermissionRequested = true
         locationLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -207,6 +254,46 @@ fun TrackingScreen(container: AppContainer) {
         )
     }
 
+    if (showBackgroundEducation) {
+        val fallbackPermissionOption = stringResource(R.string.tracking_background_option_fallback)
+        val systemPermissionOption = remember(context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.packageManager.backgroundPermissionOptionLabel.toString()
+            } else {
+                null
+            }
+        }
+        val systemOption = systemPermissionOption ?: fallbackPermissionOption
+        AlertDialog(
+            onDismissRequest = { showBackgroundEducation = false },
+            title = { Text(stringResource(R.string.tracking_background_settings_title)) },
+            text = { Text(stringResource(R.string.tracking_background_settings_body, systemOption)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBackgroundEducation = false
+                        when (backgroundActionAfterEducation) {
+                            BackgroundPermissionAction.REQUEST_RUNTIME_BACKGROUND ->
+                                backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            BackgroundPermissionAction.OPEN_APP_SETTINGS -> context.startActivity(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null),
+                                ),
+                            )
+                            else -> viewModel.refresh()
+                        }
+                    },
+                ) { Text(stringResource(R.string.tracking_background_settings_open)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBackgroundEducation = false }) {
+                    Text(stringResource(R.string.tracking_disclosure_later))
+                }
+            },
+        )
+    }
+
     TrackingContent(
         state = state,
         onStartFlow = ::beginStart,
@@ -215,8 +302,35 @@ fun TrackingScreen(container: AppContainer) {
         onRetrySync = viewModel::retrySync,
         onRefresh = viewModel::refresh,
         onRequestBackground = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            val foregroundGranted = state.status.permission == LocationPermissionState.GRANTED_PRECISE ||
+                state.status.permission == LocationPermissionState.GRANTED_APPROXIMATE
+            when (
+                backgroundPermissionAction(
+                    Build.VERSION.SDK_INT,
+                    foregroundGranted,
+                    state.status.backgroundPermissionGranted,
+                )
+            ) {
+                BackgroundPermissionAction.NOT_REQUIRED -> viewModel.refresh()
+                BackgroundPermissionAction.REQUEST_FOREGROUND -> {
+                    pending = PendingAction.NONE
+                    foregroundPermissionRequested = true
+                    locationLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                        ),
+                    )
+                }
+                BackgroundPermissionAction.REQUEST_RUNTIME_BACKGROUND,
+                BackgroundPermissionAction.OPEN_APP_SETTINGS -> {
+                    backgroundActionAfterEducation = backgroundPermissionAction(
+                        Build.VERSION.SDK_INT,
+                        foregroundGranted,
+                        state.status.backgroundPermissionGranted,
+                    )
+                    showBackgroundEducation = true
+                }
             }
         },
         onRequestNotifications = {
@@ -236,6 +350,7 @@ fun TrackingScreen(container: AppContainer) {
             context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
         },
         onDismissMessage = viewModel::consumeMessage,
+        permissionPermanentlyDenied = foregroundPermissionPermanentlyDenied,
     )
 }
 
@@ -252,6 +367,7 @@ fun TrackingContent(
     onOpenAppSettings: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onDismissMessage: () -> Unit,
+    permissionPermanentlyDenied: Boolean = false,
 ) {
     val status = state.status
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -306,6 +422,7 @@ fun TrackingContent(
             item {
                 PermissionsCard(
                     status = status,
+                    permissionPermanentlyDenied = permissionPermanentlyDenied,
                     onStartFlow = onStartFlow,
                     onRequestBackground = onRequestBackground,
                     onRequestNotifications = onRequestNotifications,
@@ -467,6 +584,7 @@ private fun ProblemCard(status: TrackingStatus, onOpenSettings: () -> Unit) {
 @Composable
 private fun PermissionsCard(
     status: TrackingStatus,
+    permissionPermanentlyDenied: Boolean,
     onStartFlow: () -> Unit,
     onRequestBackground: () -> Unit,
     onRequestNotifications: () -> Unit,
@@ -494,8 +612,21 @@ private fun PermissionsCard(
                 }
             }
             if (status.permission == LocationPermissionState.DENIED) {
-                TextButton(onClick = onStartFlow) {
-                    Text(stringResource(R.string.tracking_permission_grant))
+                if (permissionPermanentlyDenied) {
+                    Text(
+                        stringResource(R.string.tracking_permission_permanently_denied),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                if (permissionPermanentlyDenied) {
+                    TextButton(onClick = onOpenAppSettings) {
+                        Text(stringResource(R.string.tracking_permission_settings))
+                    }
+                } else {
+                    TextButton(onClick = onStartFlow) {
+                        Text(stringResource(R.string.tracking_permission_grant))
+                    }
                 }
             }
             HorizontalDivider()
@@ -536,6 +667,12 @@ private fun PermissionsCard(
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable

@@ -3,6 +3,7 @@ package auth_test
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -216,6 +217,50 @@ func TestPGConsentChangeIsAtomicWithAudit(t *testing.T) {
 	stored, err := svc.Profile(ctx, user.ID)
 	require.NoError(t, err)
 	assert.True(t, stored.LocationSharingEnabled)
+}
+
+func TestPGConsentCompareAndSetAllowsOneConcurrentWinner(t *testing.T) {
+	t.Parallel()
+	svc, pool := newPGService(t)
+	ctx := context.Background()
+	user, _, err := svc.DevSignIn(ctx, "consent-cas@x.co", "", devDevice())
+	require.NoError(t, err)
+	require.EqualValues(t, 0, user.LocationSharingVersion)
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	var workers sync.WaitGroup
+	for _, enabled := range []bool{true, false} {
+		workers.Add(1)
+		go func(enabled bool) {
+			defer workers.Done()
+			<-start
+			_, writeErr := svc.SetLocationSharingAtVersion(ctx, user.ID, enabled, 0)
+			results <- writeErr
+		}(enabled)
+	}
+	close(start)
+	workers.Wait()
+	close(results)
+
+	var succeeded, conflicted int
+	for writeErr := range results {
+		switch {
+		case writeErr == nil:
+			succeeded++
+		case errors.Is(writeErr, auth.ErrConsentVersionConflict):
+			conflicted++
+		default:
+			require.NoError(t, writeErr)
+		}
+	}
+	assert.Equal(t, 1, succeeded)
+	assert.Equal(t, 1, conflicted)
+
+	stored, err := svc.Profile(ctx, user.ID)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, stored.LocationSharingVersion)
+	assert.Len(t, auditActions(t, pool), 2, "sign-in and one consent mutation are audited")
 }
 
 func TestPGDeleteAccountCascadesAndKeepsAudit(t *testing.T) {

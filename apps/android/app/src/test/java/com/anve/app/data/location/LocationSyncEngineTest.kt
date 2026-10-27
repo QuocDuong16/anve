@@ -3,6 +3,7 @@ package com.anve.app.data.location
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.LocationBatchResponseDto
 import com.anve.app.data.auth.InMemorySessionStorage
+import com.anve.app.data.auth.PendingConsentOperation
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.tracking.FakeSyncGateway
 import com.anve.app.tracking.FakeTrackingStore
@@ -18,6 +19,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.UUID
 
 class LocationSyncEngineTest {
 
@@ -39,7 +41,7 @@ class LocationSyncEngineTest {
         )
         sessions = InMemorySessionStorage()
         sessions.save(session("u1"))
-        gateway = FakeSyncGateway(owner = "u1", store = store)
+        gateway = FakeSyncGateway(owner = "u1")
         engine = LocationSyncEngine(
             gateway = gateway,
             queue = queue,
@@ -60,7 +62,7 @@ class LocationSyncEngineTest {
 
     private fun seed(owner: String = "u1", count: Int = 1, startAt: Long = now - 10_000) {
         repeat(count) { index ->
-            val eventId = "event-$owner-$index"
+            val eventId = eventId(owner, index)
             dao.rows[eventId] = QueuedLocation(
                 eventId = eventId,
                 ownerUserId = owner,
@@ -80,6 +82,19 @@ class LocationSyncEngineTest {
         }
     }
 
+    private fun eventId(owner: String, index: Int): String =
+        UUID.nameUUIDFromBytes("$owner-$index".toByteArray()).toString()
+
+    private fun pendingConsentOff(owner: String, op: String = "revoke-$owner") = PendingConsentOperation(
+        operationId = op,
+        ownerUserId = owner,
+        desiredEnabled = false,
+        expectedVersion = 0,
+        generation = 1,
+        createdAtMillis = now,
+        expiresAtMillis = now + 60_000,
+    )
+
     @Test
     fun `uploads oldest-first, deletes acknowledged rows and records success`() = runBlocking {
         seed(count = 3, startAt = now - 30_000)
@@ -93,12 +108,12 @@ class LocationSyncEngineTest {
         assertEquals(3, outcome.uploaded)
         assertTrue(dao.rows.isEmpty())
         assertEquals(
-            listOf("event-u1-0", "event-u1-1", "event-u1-2"),
+            listOf(eventId("u1", 0), eventId("u1", 1), eventId("u1", 2)),
             gateway.uploads.single().map { it.eventId },
         )
         assertEquals(now, store.current().lastSuccessfulUploadAtMillis)
         assertNull(store.current().lastSyncErrorCode)
-        assertEquals(listOf("event-u1-0", "event-u1-1", "event-u1-2"), dao.lastAttemptMarked?.first)
+        assertEquals(listOf(eventId("u1", 0), eventId("u1", 1), eventId("u1", 2)), dao.lastAttemptMarked?.first)
     }
 
     @Test
@@ -140,6 +155,27 @@ class LocationSyncEngineTest {
     }
 
     @Test
+    fun `429 preserves the queue and propagates a server retry-after delay`() = runBlocking {
+        seed(count = 2)
+        gateway.uploadHandler = {
+            throw ApiException(
+                "RATE_LIMITED",
+                "slow down",
+                null,
+                httpStatus = 429,
+                retryAfterMillis = 17_000,
+            )
+        }
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.RETRY, outcome.disposition)
+        assertEquals(17_000L, outcome.retryAfterMillis)
+        assertEquals(2, dao.rows.size)
+        assertEquals(1, gateway.uploads.size)
+    }
+
+    @Test
     fun `a partial acknowledgement keeps only the unacknowledged rows`() = runBlocking {
         seed(count = 2)
         gateway.uploadHandler = { events ->
@@ -150,48 +186,43 @@ class LocationSyncEngineTest {
 
         assertEquals(SyncDisposition.RETRY, outcome.disposition)
         assertEquals(1, outcome.uploaded)
-        assertEquals(setOf("event-u1-1"), dao.rows.keys)
+        assertEquals(setOf(eventId("u1", 1)), dao.rows.keys)
         assertEquals("PARTIAL_ACK", store.current().lastSyncErrorCode)
     }
 
     @Test
-    fun `an offline consent revocation is delivered before any upload`() = runBlocking {
+    fun `a durable consent revocation blocks uploads and purges queued points`() = runBlocking {
         store.setConsentOwner("u1")
-        store.setPendingConsentRevocation(true)
         store.setLocalConsentConfirmed(false)
+        sessions.savePendingConsentOperation(pendingConsentOff("u1"))
         seed(count = 2)
 
         val outcome = engine.sync()
 
         assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
-        assertEquals(1, gateway.disableCalls)
-        assertTrue("the revocation intent must exist before the request", gateway.pendingAtDisable == true)
         assertTrue("queued points must never be uploaded after a local revocation", gateway.uploads.isEmpty())
         assertTrue(dao.rows.isEmpty())
-        assertFalse(store.current().pendingConsentRevocation)
+        assertTrue(sessions.pendingConsentOperations().any { it.ownerUserId == "u1" })
     }
 
     @Test
-    fun `a revocation intent from another account is discarded, not applied`() = runBlocking {
-        store.setConsentOwner("u2")
-        store.setPendingConsentRevocation(true)
+    fun `another accounts pending consent does not mutate or block the active owner`() = runBlocking {
+        sessions.savePendingConsentOperation(pendingConsentOff("u2"))
         seed(owner = "u1")
 
         val outcome = engine.sync()
 
         assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
-        assertEquals(0, gateway.disableCalls)
-        assertFalse(store.current().pendingConsentRevocation)
-        assertTrue("the stale intent still purges the old queue", dao.rows.isEmpty())
-        assertTrue(gateway.uploads.isEmpty())
+        assertTrue(sessions.pendingConsentOperations().any { it.ownerUserId == "u2" })
+        assertTrue(gateway.uploads.single().isNotEmpty())
+        assertTrue(dao.rows.isEmpty())
     }
 
     @Test
-    fun `a failed consent revocation keeps the pending flag and blocks uploads`() = runBlocking {
+    fun `a legacy owner-scoped revocation flag blocks uploads until it is migrated`() = runBlocking {
         store.setConsentOwner("u1")
         store.setPendingConsentRevocation(true)
         seed()
-        gateway.failDisableWith = networkError()
 
         val outcome = engine.sync()
 
@@ -239,20 +270,204 @@ class LocationSyncEngineTest {
     }
 
     @Test
-    fun `a permanently invalid batch is dropped while the next one uploads`() = runBlocking {
-        seed(count = SYNC_BATCH_SIZE + 1)
-        var call = 0
+    fun `unknown permanent 4xx blocks the batch without deleting or resplitting it`() = runBlocking {
+        seed(count = 3)
+        gateway.uploadHandler = {
+            throw ApiException("FORBIDDEN", "not authorized", null, httpStatus = 403)
+        }
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.BLOCKED, outcome.disposition)
+        assertEquals(0, outcome.dropped)
+        assertEquals(3, dao.rows.size)
+        assertEquals(1, gateway.uploads.size)
+        assertEquals("FORBIDDEN", outcome.errorCode)
+    }
+
+    @Test
+    fun `one invalid event in an atomic batch preserves the other 99`() = runBlocking {
+        seed(count = SYNC_BATCH_SIZE)
+        val invalid = eventId("u1", 72)
         gateway.uploadHandler = { events ->
-            call++
-            if (call == 1) throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+            if (events.any { it.eventId == invalid }) throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
             LocationBatchResponseDto(accepted = events.map { it.eventId })
         }
 
         val outcome = engine.sync()
 
         assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(SYNC_BATCH_SIZE - 1, outcome.uploaded)
+        assertEquals(1, outcome.dropped)
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `server oversized batch response isolates smaller acceptable children`() = runBlocking {
+        seed(count = SYNC_BATCH_SIZE)
+        gateway.uploadHandler = { events ->
+            if (events.size > 50) throw ApiException("LOCATION_BATCH_TOO_LARGE", "large", null)
+            LocationBatchResponseDto(accepted = events.map { it.eventId })
+        }
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(SYNC_BATCH_SIZE, outcome.uploaded)
+        assertEquals(0, outcome.dropped)
+        assertTrue(dao.rows.isEmpty())
+        assertTrue(gateway.uploads.size <= LocationSyncEngine.MAX_HTTP_REQUESTS_PER_PASS)
+    }
+
+    @Test
+    fun `only expired capture times are dropped while recent queued events upload`() = runBlocking {
+        val expiryNow = now + 8L * LOCATION_QUEUE_TTL_MILLIS
+        seed(count = 2)
+        val oldId = eventId("u1", 0)
+        val freshId = eventId("u1", 1)
+        dao.rows[oldId] = dao.rows.getValue(oldId).copy(
+            recordedAtMillis = expiryNow - LOCATION_QUEUE_TTL_MILLIS - 1,
+            createdAtMillis = expiryNow,
+        )
+        dao.rows[freshId] = dao.rows.getValue(freshId).copy(
+            recordedAtMillis = expiryNow - LOCATION_QUEUE_TTL_MILLIS + 1,
+            createdAtMillis = expiryNow,
+        )
+        engine = LocationSyncEngine(gateway, queue, store, sessions, now = { expiryNow })
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
         assertEquals(1, outcome.uploaded)
-        assertEquals(SYNC_BATCH_SIZE, outcome.dropped)
+        assertEquals(1, outcome.dropped)
+        assertEquals(listOf(freshId), gateway.uploads.single().map { it.eventId })
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `invalid first and last events are isolated without losing neighbors`() = runBlocking {
+        listOf(0, SYNC_BATCH_SIZE - 1).forEach { badIndex ->
+            dao.rows.clear()
+            seed(count = SYNC_BATCH_SIZE)
+            val invalid = eventId("u1", badIndex)
+            gateway.uploads.clear()
+            gateway.uploadHandler = { events ->
+                if (events.any { it.eventId == invalid }) throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+                LocationBatchResponseDto(accepted = events.map { it.eventId })
+            }
+
+            val outcome = engine.sync()
+
+            assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+            assertEquals(SYNC_BATCH_SIZE - 1, outcome.uploaded)
+            assertEquals(1, outcome.dropped)
+            assertTrue(dao.rows.isEmpty())
+        }
+    }
+
+    @Test
+    fun `multiple invalid events are dropped individually and valid rows upload`() = runBlocking {
+        seed(count = SYNC_BATCH_SIZE)
+        val invalid = setOf(3, 41, 98).map { eventId("u1", it) }.toSet()
+        gateway.uploadHandler = { events ->
+            if (events.any { it.eventId in invalid }) throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+            LocationBatchResponseDto(accepted = events.map { it.eventId })
+        }
+
+        val outcome = engine.sync()
+
+        assertEquals(SYNC_BATCH_SIZE - invalid.size, outcome.uploaded)
+        assertEquals(invalid.size, outcome.dropped)
+        assertTrue(dao.rows.isEmpty())
+        assertTrue(gateway.uploads.size <= LocationSyncEngine.MAX_HTTP_REQUESTS_PER_PASS)
+    }
+
+    @Test
+    fun `server 500 and lost response preserve identical event ids for retry`() = runBlocking {
+        seed(count = 2)
+        gateway.uploadHandler = { throw networkError() }
+        assertEquals(SyncDisposition.RETRY, engine.sync().disposition)
+        val firstIds = gateway.uploads.single().map { it.eventId }
+
+        gateway.uploadHandler = { events ->
+            assertEquals(firstIds, events.map { it.eventId })
+            LocationBatchResponseDto(duplicates = events.map { it.eventId })
+        }
+        val retry = engine.sync()
+        assertEquals(SyncDisposition.COMPLETE, retry.disposition)
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `validation isolation request count is bounded`() = runBlocking {
+        seed(count = SYNC_BATCH_SIZE)
+        gateway.uploadHandler = { throw ApiException("LOCATION_BATCH_INVALID", "bad", null) }
+
+        val outcome = engine.sync()
+
+        assertTrue(gateway.uploads.size <= LocationSyncEngine.MAX_HTTP_REQUESTS_PER_PASS)
+        assertEquals(SyncDisposition.RETRY, outcome.disposition)
+        assertTrue("unisolated rows must remain durable", dao.rows.isNotEmpty())
+    }
+
+    @Test
+    fun `process interruption during split leaves remaining events retryable`() = runBlocking {
+        seed(count = SYNC_BATCH_SIZE)
+        val invalid = eventId("u1", 72)
+        var calls = 0
+        gateway.uploadHandler = { events ->
+            calls++
+            when {
+                calls == 1 -> throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+                calls == 2 -> LocationBatchResponseDto(accepted = events.map { it.eventId })
+                calls == 3 -> throw kotlinx.coroutines.CancellationException("process stopped")
+                events.any { it.eventId == invalid } -> throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+                else -> LocationBatchResponseDto(accepted = events.map { it.eventId })
+            }
+        }
+
+        try {
+            engine.sync()
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            // The worker process can stop after an acknowledged child batch.
+        }
+        assertEquals(SYNC_BATCH_SIZE / 2, dao.rows.size)
+
+        gateway.uploadHandler = { events ->
+            if (events.any { it.eventId == invalid }) throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+            LocationBatchResponseDto(accepted = events.map { it.eventId })
+        }
+        val resumed = LocationSyncEngine(gateway, queue, store, sessions, now = { now }).sync()
+        assertEquals(SYNC_BATCH_SIZE / 2 - 1, resumed.uploaded)
+        assertEquals(1, resumed.dropped)
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `consent off during isolation prevents child uploads`() = runBlocking {
+        seed(count = SYNC_BATCH_SIZE)
+        var calls = 0
+        gateway.uploadHandler = { _ ->
+            calls++
+            sessions.savePendingConsentOperation(
+                PendingConsentOperation(
+                    operationId = "revoke-u1",
+                    ownerUserId = "u1",
+                    desiredEnabled = false,
+                    expectedVersion = 0,
+                    generation = 1,
+                    createdAtMillis = now,
+                    expiresAtMillis = now + 60_000,
+                ),
+            )
+            throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
+        }
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(1, calls)
+        assertTrue(gateway.uploads.size <= 1)
         assertTrue(dao.rows.isEmpty())
     }
 
@@ -318,6 +533,8 @@ class LocationSyncEngineTest {
             if (calls == 1) {
                 store.setConsentOwner("u1")
                 store.setPendingConsentRevocation(true)
+                sessions.savePendingConsentOperation(pendingConsentOff("u1", "off-during-upload"))
+                queue.purgeAll()
             }
             LocationBatchResponseDto(accepted = events.map { it.eventId })
         }
@@ -326,8 +543,8 @@ class LocationSyncEngineTest {
 
         assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
         assertEquals("the second batch must not be sent", 1, calls)
-        assertEquals(1, gateway.disableCalls)
         assertTrue("everything still queued is purged", dao.rows.isEmpty())
+        assertTrue(sessions.pendingConsentOperations().any { !it.desiredEnabled })
     }
 
     @Test

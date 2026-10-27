@@ -15,13 +15,14 @@ import (
 // Error codes of the structured error envelope. Stable API surface: clients
 // switch on these, so names never change once shipped.
 const (
-	errCodeUnauthenticated = "UNAUTHENTICATED"
-	errCodeValidation      = "VALIDATION"
-	errCodeNotFound        = "NOT_FOUND"
-	errCodeRateLimited     = "RATE_LIMITED"
-	errCodeAuthConfig      = "AUTH_NOT_CONFIGURED"
-	errCodeUnavailable     = "SERVICE_UNAVAILABLE"
-	errCodeInternal        = "INTERNAL"
+	errCodeUnauthenticated        = "UNAUTHENTICATED"
+	errCodeValidation             = "VALIDATION"
+	errCodeNotFound               = "NOT_FOUND"
+	errCodeRateLimited            = "RATE_LIMITED"
+	errCodeAuthConfig             = "AUTH_NOT_CONFIGURED"
+	errCodeUnavailable            = "SERVICE_UNAVAILABLE"
+	errCodeInternal               = "INTERNAL"
+	errCodeConsentVersionConflict = "CONSENT_VERSION_CONFLICT"
 )
 
 type errorBody struct {
@@ -67,6 +68,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, auth.ErrIdentityConflict):
 		body.Code = "IDENTITY_CONFLICT"
 		body.Message = "The email already belongs to an account of another identity type."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, auth.ErrConsentVersionConflict):
+		body.Code, body.Message = errCodeConsentVersionConflict, "The consent state changed; read it again before retrying."
 		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, circles.ErrForbidden):
 		body.Code, body.Message = "FORBIDDEN", "This action requires the circle owner role."

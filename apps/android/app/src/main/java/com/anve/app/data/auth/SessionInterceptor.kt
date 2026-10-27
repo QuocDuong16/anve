@@ -5,6 +5,7 @@ import com.anve.app.data.api.RefreshRequestDto
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
+import java.io.IOException
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -27,58 +28,79 @@ class SessionInterceptor(
     private val refreshLock = ReentrantLock()
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val token = runBlocking { storage.current()?.accessToken }
-        val request = if (token == null) {
-            chain.request()
-        } else {
-            chain.request().newBuilder()
-                .header("Authorization", "Bearer $token")
-                .build()
+        val original = chain.request()
+        val expectedOwner = original.header(EXPECTED_OWNER_HEADER)
+        val current = runBlocking { storage.current() }
+        if (expectedOwner != null && current?.userId != expectedOwner) {
+            throw IOException("The active account changed before the request started")
         }
+        val token = current?.accessToken
+        val request = original.newBuilder()
+            .removeHeader(EXPECTED_OWNER_HEADER)
+            .apply { if (token != null) header("Authorization", "Bearer $token") }
+            .build()
         val response = chain.proceed(request)
         if (response.code != 401 || token == null) {
             return response
         }
-        val fresh = refreshSync(token)
+        val fresh = refreshSync(token, current.userId)
         if (fresh == null) {
             return response
         }
+        val afterRefresh = runBlocking { storage.current() }
+        if (afterRefresh == null || afterRefresh.accessToken != fresh || afterRefresh.userId != current.userId ||
+            (expectedOwner != null && afterRefresh.userId != expectedOwner)
+        ) {
+            return response
+        }
         response.close()
-        val retried = chain.request().newBuilder()
+        val retried = original.newBuilder()
+            .removeHeader(EXPECTED_OWNER_HEADER)
             .header("Authorization", "Bearer $fresh")
             .build()
         return chain.proceed(retried)
     }
 
     /** See the class doc; internal for direct testing. */
-    internal fun refreshSync(staleAccessToken: String): String? = refreshLock.withLock {
+    internal fun refreshSync(staleAccessToken: String): String? = refreshSync(staleAccessToken, null)
+
+    internal fun refreshSync(staleAccessToken: String, expectedOwner: String?): String? = refreshLock.withLock {
         val current = runBlocking { storage.current() } ?: return null
+        if (expectedOwner != null && current.userId != expectedOwner) return null
         if (current.accessToken != staleAccessToken) {
-            // Another request already rotated the pair.
-            return current.accessToken
+            // Another request rotated the same owner's pair. Unknown-owner
+            // sessions fail closed because they cannot be safely attributed.
+            return current.accessToken.takeIf { expectedOwner != null && current.userId == expectedOwner }
         }
         try {
             runBlocking {
                 val response = plainApi.refresh(RefreshRequestDto(current.refreshToken))
                 val tokens = response.body()?.session
                 if (response.isSuccessful && tokens != null) {
-                    storage.save(
-                        StoredSession(
+                    val rotated = current.copy(
                             accessToken = tokens.accessToken,
                             refreshToken = tokens.refreshToken,
                             accessExpiresAt = tokens.accessExpiresAt,
                             refreshExpiresAt = tokens.refreshExpiresAt,
-                            userId = current.userId,
-                        ),
-                    )
-                    tokens.accessToken
+                        )
+                    if (storage.rotateIfMatches(current.userId, current.accessToken, rotated)) {
+                        tokens.accessToken
+                    } else {
+                        null
+                    }
                 } else {
-                    if (response.code() == 401) storage.clear()
+                    if (response.code() == 401) {
+                        storage.clearIfMatches(current.userId, current.accessToken)
+                    }
                     null
                 }
             }
         } catch (_: Exception) {
             null
         }
+    }
+
+    companion object {
+        const val EXPECTED_OWNER_HEADER = "X-Anve-Expected-Owner"
     }
 }

@@ -152,15 +152,19 @@ providers/clocks. They do **not** prove OS behavior. Use this checklist on
 a real device/emulator and record the result as *Device Verified* only when
 observed.
 
-1. **Permission flow:** install fresh → open Vị trí → read the prominent
-   disclosure → enable consent → grant precise location → start tracking.
-   Deny once and verify the app remains usable and explains the limitation.
-   Grant approximate-only and verify the UI says "Gần đúng" and tracking
-   continues in `DEGRADED`.
-2. **Background location:** after foreground grant, request "Luôn cho
-   phép"; verify the explainer appears first. Deny and verify the UI says
-   tracking works only while the app is open (do not claim background
-   coverage).
+1. **Permission flow:** install fresh → open Vị trí → read the concise
+   disclosure → enable consent → grant foreground location. Deny once and
+   verify the app remains usable and explains the limitation. Grant
+   approximate-only and verify the UI says "Gần đúng" and tracking continues
+   with reduced accuracy.
+2. **Background location:** verify the foreground grant is requested first.
+   On API 29, verify the separate background permission request appears only
+   after that grant. On API 30+, verify the education screen explains why
+   background location is needed and opens the supported app-permission
+   Settings page with the system option label when available. Return without
+   granting and confirm the app still reports background permission missing;
+   return after granting and confirm the OS snapshot refreshes. Recomposition
+   or resume must not relaunch Settings or repeat prompts automatically.
 3. **Screen off / background:** start tracking, lock the screen for several
    minutes, confirm the persistent notification and that new points arrive
    (check queue count/last fix; server rows grow).

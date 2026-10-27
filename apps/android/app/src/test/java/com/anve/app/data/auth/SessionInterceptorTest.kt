@@ -134,7 +134,7 @@ class SessionInterceptorTest {
     }
 
     @Test
-    fun `rotation-aware refresh does not rotate twice`() {
+    fun `unknown-owner session fails closed after a concurrent rotation`() {
         val plainApi = ApiFactory.api(
             ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())),
         )
@@ -146,8 +146,22 @@ class SessionInterceptorTest {
         }
         val fresh = interceptor.refreshSync("access-token-1")
 
-        assertEquals("access-token-2", fresh)
+        assertNull("without an owner id the replacement cannot be attributed safely", fresh)
         assertEquals("no refresh round-trip was needed", 0, server.requestCount.toLong())
+    }
+
+    @Test
+    fun `rotation-aware refresh reuses only the same known owner session`() {
+        val plainApi = ApiFactory.api(
+            ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())),
+        )
+        val interceptor = SessionInterceptor(storage, plainApi)
+        runBlocking {
+            storage.save(sessionOf("access-token-2", "refresh-token-2").copy(userId = "u1"))
+        }
+
+        assertEquals("access-token-2", interceptor.refreshSync("access-token-1", "u1"))
+        assertEquals(0, server.requestCount)
     }
 
     private fun sessionOf(access: String, refresh: String) = StoredSession(

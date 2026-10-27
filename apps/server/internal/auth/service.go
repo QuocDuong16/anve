@@ -33,6 +33,8 @@ var (
 	// are not proof of the same subject, so neither side may take the
 	// account over.
 	ErrIdentityConflict = errors.New("identity conflict")
+	// ErrConsentVersionConflict means the caller's consent snapshot is stale.
+	ErrConsentVersionConflict = errors.New("location consent version conflict")
 )
 
 // SignInInput carries everything the store needs to complete one sign-in
@@ -87,10 +89,10 @@ type Store interface {
 	User(ctx context.Context, userID uuid.UUID) (User, error)
 	// UpdateProfile changes the display name.
 	UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string) (User, error)
-	// SetLocationSharing flips the consent switch and writes the audit event
-	// in the same transaction; enabledTo records the new state for the audit
-	// action name.
-	SetLocationSharing(ctx context.Context, userID uuid.UUID, enabled bool) (User, error)
+	// SetLocationSharingAtVersion uses compare-and-set so delayed requests
+	// cannot overwrite a newer consent choice. The state and audit row commit
+	// in one transaction.
+	SetLocationSharingAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error)
 	// DeleteUser removes the account (devices and sessions cascade) and
 	// writes the deletion audit row in the same transaction.
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
@@ -275,7 +277,19 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, displayNa
 // always the data subject's own account; every change is audited in the
 // same transaction that flips the flag.
 func (s *Service) SetLocationSharing(ctx context.Context, userID uuid.UUID, enabled bool) (User, error) {
-	return s.store.SetLocationSharing(ctx, userID, enabled)
+	current, err := s.store.User(ctx, userID)
+	if err != nil {
+		return User{}, err
+	}
+	return s.store.SetLocationSharingAtVersion(ctx, userID, enabled, current.LocationSharingVersion)
+}
+
+// SetLocationSharingAtVersion applies an explicit server snapshot version.
+func (s *Service) SetLocationSharingAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error) {
+	if expectedVersion < 0 {
+		return User{}, fmt.Errorf("%w: expectedVersion must be non-negative", ErrValidation)
+	}
+	return s.store.SetLocationSharingAtVersion(ctx, userID, enabled, expectedVersion)
 }
 
 // DeleteAccount removes the account and everything hanging off it.

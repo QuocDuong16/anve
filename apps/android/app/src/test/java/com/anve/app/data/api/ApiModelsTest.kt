@@ -1,6 +1,9 @@
 package com.anve.app.data.api
 
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response as OkHttpResponse
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -80,5 +83,38 @@ class ApiModelsTest {
         assertEquals("RATE_LIMITED", thrown.code)
         assertEquals("Too many requests.", thrown.message)
         assertEquals("req-9", thrown.requestId)
+    }
+
+    @Test
+    fun `Retry-After supports seconds and HTTP dates within a bounded window`() {
+        assertEquals(120_000L, parseRetryAfterMillis("120", nowMillis = 1_000))
+        assertEquals(0L, parseRetryAfterMillis("-5", nowMillis = 1_000))
+        assertNull(parseRetryAfterMillis("not-a-date", nowMillis = 1_000))
+        assertEquals(
+            2_000L,
+            parseRetryAfterMillis("Thu, 01 Jan 1970 00:00:03 GMT", nowMillis = 1_000),
+        )
+    }
+
+    @Test
+    fun `orThrow carries retry-after metadata from HTTP response`() {
+        val request = Request.Builder().url("https://anve.invalid/api/v1/locations/batch").build()
+        val raw = OkHttpResponse.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_1_1)
+            .code(429)
+            .message("Too Many Requests")
+            .header("Retry-After", "17")
+            .build()
+        val response = retrofit2.Response.error<Unit>(
+            """{"code":"RATE_LIMITED","message":"Slow down","requestId":"req-9"}"""
+                .toResponseBody("application/json".toMediaType()),
+            raw,
+        )
+
+        val thrown = runCatching { response.orThrow() }.exceptionOrNull() as ApiException
+
+        assertEquals(429, thrown.httpStatus)
+        assertEquals(17_000L, thrown.retryAfterMillis)
     }
 }

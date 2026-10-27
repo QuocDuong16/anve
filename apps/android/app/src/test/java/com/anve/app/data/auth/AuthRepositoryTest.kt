@@ -3,6 +3,7 @@ package com.anve.app.data.auth
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.DeviceRegistrationDto
+import com.anve.app.data.api.UserDto
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -67,7 +68,7 @@ class AuthRepositoryTest {
         server.shutdown()
     }
 
-    private fun repository(nowMillis: Long = System.currentTimeMillis()) = AuthRepository(
+    private fun repository(clock: () -> Long = System::currentTimeMillis) = AuthRepository(
         api = ApiFactory.api(
             ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())),
         ),
@@ -76,7 +77,7 @@ class AuthRepositoryTest {
         ),
         storage = storage,
         deviceIdentity = device,
-        now = { nowMillis },
+        now = clock,
         notices = notices,
         retryScheduler = scheduler,
     )
@@ -136,6 +137,30 @@ class AuthRepositoryTest {
         recordedAtMillis = recordedAtMillis,
         expiresAtMillis = expiresAtMillis,
     )
+
+    private fun consentOperation(
+        owner: String,
+        token: String? = null,
+        generation: Long = 1,
+        version: Long = 0,
+        signOutAfterConsent: Boolean = false,
+    ) = PendingConsentOperation(
+        operationId = "consent-$owner-$generation",
+        ownerUserId = owner,
+        desiredEnabled = false,
+        expectedVersion = version,
+        generation = generation,
+        createdAtMillis = 1_000,
+        expiresAtMillis = Long.MAX_VALUE,
+        refreshToken = token,
+        credentialExpiresAtMillis = token?.let { System.currentTimeMillis() + PENDING_CONSENT_CREDENTIAL_TTL_MILLIS },
+        signOutAfterConsent = signOutAfterConsent,
+    )
+
+    private fun userJson(owner: String, enabled: Boolean, version: Long) =
+        """{"id":"$owner","email":"$owner@example.com","displayName":"User",
+           "locationSharingEnabled":$enabled,"locationSharingVersion":$version,
+           "createdAt":"2026-10-25T00:00:00Z"}""".replace("\n", "")
 
     // ── account deletion ─────────────────────────────────────────────────────
 
@@ -307,9 +332,9 @@ class AuthRepositoryTest {
         // can navigate away from the screen that triggered the sign-out.
         val observedBeforeClear = arrayOf(false)
         val checkingStorage = object : SessionStorage by storage {
-            override suspend fun clear() {
+            override suspend fun clearIfMatches(ownerUserId: String?, accessToken: String): Boolean {
                 observedBeforeClear[0] = notices.notice.value != null
-                storage.clear()
+                return storage.clearIfMatches(ownerUserId, accessToken)
             }
         }
         val checkingRepository = AuthRepository(
@@ -342,6 +367,169 @@ class AuthRepositoryTest {
         assertEquals(SignOutOutcome.LocalOnly, repository.signOut())
         assertNull(storage.current())
         assertEquals("refresh-500", storage.pendingRevocations().single().refreshToken)
+    }
+
+    @Test
+    fun `CAS conflict rebases the latest owner intent before confirming it`() = runBlocking {
+        var now = 10_000L
+        storage.save(
+            StoredSession(
+                accessToken = "access-a",
+                refreshToken = "refresh-a",
+                accessExpiresAt = "later",
+                refreshExpiresAt = "later",
+                userId = "user-a",
+                locationSharingEnabled = true,
+                locationSharingVersion = 4,
+            ),
+        )
+        storage.savePendingConsentOperation(consentOperation("user-a", version = 4))
+        server.enqueue(MockResponse().setResponseCode(409).setBody(errorBody("CONSENT_VERSION_CONFLICT")))
+        server.enqueue(MockResponse().setBody(userJson("user-a", enabled = true, version = 5)))
+        val retrying = repository(clock = { now })
+
+        retrying.retryPendingRevocations()
+
+        val rebased = storage.pendingConsentOperations().single()
+        assertEquals("the original user intent remains authoritative", false, rebased.desiredEnabled)
+        assertEquals(5L, rebased.expectedVersion)
+        assertFalse(rebased.requiresOwnerAuthentication)
+        assertEquals(2, server.requestCount)
+
+        now += retryDelayMillis(0) + 1
+        server.enqueue(MockResponse().setBody(userJson("user-a", enabled = false, version = 6)))
+        retrying.retryPendingRevocations()
+
+        assertTrue(storage.pendingConsentOperations().isEmpty())
+        assertFalse(storage.current()!!.locationSharingEnabled!!)
+        assertEquals(6L, storage.current()!!.locationSharingVersion)
+        assertEquals(3, server.requestCount)
+    }
+
+    @Test
+    fun `offline consent off then sign out preserves owner operation and sealed credential`() = runBlocking {
+        storage.save(
+            StoredSession(
+                accessToken = "access-a",
+                refreshToken = "refresh-a",
+                accessExpiresAt = "later",
+                refreshExpiresAt = "later",
+                userId = "user-a",
+                locationSharingEnabled = true,
+                locationSharingVersion = 4,
+            ),
+        )
+        storage.savePendingConsentOperation(consentOperation("user-a", version = 4))
+
+        assertEquals(SignOutOutcome.LocalOnly, repository.signOut())
+
+        assertNull(storage.current())
+        val pending = storage.pendingConsentOperations().single()
+        assertEquals("user-a", pending.ownerUserId)
+        assertFalse(pending.desiredEnabled)
+        assertEquals(4L, pending.expectedVersion)
+        assertEquals("refresh-a", pending.refreshToken)
+        assertTrue(pending.signOutAfterConsent)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `consent off created during an in flight sign out survives for owner reauthentication`() = runBlocking {
+        storage.save(
+            StoredSession(
+                accessToken = "access-a",
+                refreshToken = "refresh-a",
+                accessExpiresAt = "later",
+                refreshExpiresAt = "later",
+                userId = "user-a",
+                locationSharingEnabled = true,
+                locationSharingVersion = 4,
+            ),
+        )
+        val signOutStarted = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val allowSignOutResponse = kotlinx.coroutines.CompletableDeferred<Unit>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.path == "/api/v1/auth/signout") {
+                    signOutStarted.complete(Unit)
+                    kotlinx.coroutines.runBlocking { allowSignOutResponse.await() }
+                    return MockResponse().setResponseCode(204)
+                }
+                return MockResponse().setResponseCode(404)
+            }
+        }
+
+        val signOut = async(kotlinx.coroutines.Dispatchers.IO) {
+            repository.signOut()
+        }
+        signOutStarted.await()
+        storage.savePendingConsentOperation(consentOperation("user-a", version = 4))
+        allowSignOutResponse.complete(Unit)
+
+        assertEquals(SignOutOutcome.ServerConfirmed, signOut.await())
+        assertNull(storage.current())
+        assertEquals("user-a", storage.pendingConsentOperations().single().ownerUserId)
+
+        repository.retryPendingRevocations()
+
+        val unresolved = storage.pendingConsentOperations().single()
+        assertTrue(unresolved.requiresOwnerAuthentication)
+        assertEquals("OWNER_AUTH_REQUIRED", unresolved.lastErrorCode)
+        assertFalse(unresolved.consentConfirmed)
+    }
+
+    @Test
+    fun `account B never becomes A pending consent session during deferred revocation`() = runBlocking {
+        storage.savePendingConsentOperation(consentOperation("user-a", token = "refresh-a", version = 4, signOutAfterConsent = true)
+            .copy(credentialExpiresAtMillis = System.currentTimeMillis() + PENDING_CONSENT_CREDENTIAL_TTL_MILLIS))
+        storage.save(
+            StoredSession(
+                accessToken = "access-b",
+                refreshToken = "refresh-b",
+                accessExpiresAt = "later",
+                refreshExpiresAt = "later",
+                userId = "user-b",
+            ),
+        )
+        server.enqueue(MockResponse().setBody(sessionJson("access-a2", "refresh-a2")))
+        server.enqueue(MockResponse().setBody(userJson("user-a", enabled = true, version = 4)))
+        server.enqueue(MockResponse().setBody(userJson("user-a", enabled = false, version = 5)))
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        repository.retryPendingRevocations()
+
+        assertEquals("user-b", storage.current()?.userId)
+        assertEquals("access-b", storage.current()?.accessToken)
+        assertTrue(storage.pendingConsentOperations().isEmpty())
+        val refresh = server.takeRequest()
+        assertTrue(refresh.body.readUtf8().contains("refresh-a"))
+        val profile = server.takeRequest()
+        assertEquals("Bearer access-a2", profile.getHeader("Authorization"))
+        val consent = server.takeRequest()
+        assertEquals("PUT", consent.method)
+        assertEquals("Bearer access-a2", consent.getHeader("Authorization"))
+        assertTrue(consent.body.readUtf8().contains("\"expectedVersion\":4"))
+        val signOut = server.takeRequest()
+        assertEquals("POST", signOut.method)
+        assertEquals("Bearer access-a2", signOut.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `rejected refresh leaves consent unresolved and never claims server confirmation`() = runBlocking {
+        storage.savePendingConsentOperation(
+            consentOperation("user-a", token = "refresh-dead", version = 2, signOutAfterConsent = true)
+                .copy(credentialExpiresAtMillis = System.currentTimeMillis() + PENDING_CONSENT_CREDENTIAL_TTL_MILLIS),
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody(errorBody("UNAUTHENTICATED")))
+
+        repository.retryPendingRevocations()
+
+        val unresolved = storage.pendingConsentOperations().single()
+        assertFalse(unresolved.consentConfirmed)
+        assertTrue(unresolved.requiresOwnerAuthentication)
+        assertEquals("UNAUTHENTICATED", unresolved.lastErrorCode)
+        assertNull(unresolved.refreshToken)
+        assertEquals(1, server.requestCount)
     }
 
     @Test
@@ -418,7 +606,7 @@ class AuthRepositoryTest {
         server.enqueue(MockResponse().setBody(sessionJson("access-new", "refresh-new")))
         server.enqueue(MockResponse().setResponseCode(500).setBody(errorBody("INTERNAL")))
 
-        repository(nowMillis = start).retryPendingRevocations()
+        repository(clock = { start }).retryPendingRevocations()
 
         val kept = storage.pendingRevocations().single()
         assertEquals("refresh-new", kept.refreshToken)
@@ -427,7 +615,7 @@ class AuthRepositoryTest {
         // The next launch happens after the first-retry backoff (30s), not
         // the second one (60s).
         val later = start + retryDelayMillis(0) + 1
-        val restarted = repository(nowMillis = later)
+        val restarted = repository(clock = { later })
         server.enqueue(MockResponse().setBody(sessionJson("access-new2", "refresh-new2")))
         server.enqueue(MockResponse().setResponseCode(204))
 
@@ -565,7 +753,7 @@ class AuthRepositoryTest {
         storage.savePendingRevocation(pending("refresh-keep", recordedAtMillis = start))
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
 
-        val remaining = repository(nowMillis = start).retryPendingRevocations()
+        val remaining = repository(clock = { start }).retryPendingRevocations()
 
         assertTrue("a failed record remains pending", remaining)
         val kept = storage.pendingRevocations().single()

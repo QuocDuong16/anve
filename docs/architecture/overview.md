@@ -91,6 +91,15 @@ permissions and foreground service type `location` are declared in the
 manifest; ingestion, retention and consent enforcement live in
 `internal/locations` on the server.
 
+Consent writes cross one app-scoped coordinator and an encrypted DataStore
+outbox keyed by owner. Local persistence is serialized, but HTTP calls do not
+hold the mutex; the server's `location_sharing_version` compare-and-set is the
+ordering boundary across devices/processes. Pending OFF blocks new collection
+and upload, survives sign-out, and cannot be consumed by a later account.
+See [ADR 0006](../adr/0006-m3-location-engine.md) for the lifecycle and
+[ADR 0007](../adr/0007-location-read-audience-authorization.md) for the
+M4-only read authorization design.
+
 Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư mục bắt buộc):
 
 | Component | Trách nhiệm | Ghi chú |
@@ -147,7 +156,9 @@ Bất biến của luồng này (đã automated-verified ở M3): điểm đã g
 không bị mất chỉ vì upload thất bại; gửi lại không sinh trùng
 (`(user_id, event_id)` unique + `ON CONFLICT DO NOTHING`); original
 timestamps được giữ nguyên — backfill không làm sai thứ tự thời gian; tắt
-chia sẻ xóa các điểm chưa gửi và gửi revocation trước mọi upload; rời
+chia sẻ lưu intent trước, xóa các điểm chưa gửi và chặn request mới trong khi
+operation chưa được reconcile; request đang bay được phân xử theo lock
+ordering của transaction phía server; rời
 Circle/device bị thu hồi làm server từ chối và client purge queue. Chi tiết:
 ADR 0006 và [`product/features.md`](../product/features.md#7-offline-sync).
 

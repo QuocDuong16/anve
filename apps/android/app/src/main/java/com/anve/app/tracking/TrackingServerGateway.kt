@@ -12,7 +12,12 @@ import com.anve.app.data.circles.CircleRepository
 interface TrackingServerGateway {
     suspend fun currentUser(): UserDto
 
-    suspend fun setLocationSharing(enabled: Boolean): UserDto
+    suspend fun setLocationSharing(
+        enabled: Boolean,
+        expectedVersion: Long,
+        ownerUserId: String,
+        operationId: String,
+    ): UserDto
 
     suspend fun hasCircle(): Boolean
 }
@@ -24,8 +29,12 @@ class AppTrackingServerGateway(
 
     override suspend fun currentUser(): UserDto = auth.me()
 
-    override suspend fun setLocationSharing(enabled: Boolean): UserDto =
-        auth.setLocationSharing(enabled)
+    override suspend fun setLocationSharing(
+        enabled: Boolean,
+        expectedVersion: Long,
+        ownerUserId: String,
+        operationId: String,
+    ): UserDto = auth.setLocationSharing(enabled, expectedVersion, ownerUserId, operationId)
 
     override suspend fun hasCircle(): Boolean = circles.myCircle().circle != null
 }

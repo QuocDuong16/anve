@@ -34,6 +34,9 @@ data class HomeUiState(
     val message: String? = null,
     val error: String? = null,
     val busy: Boolean = false,
+    val locationSharingRequested: Boolean? = null,
+    val consentSyncPending: Boolean = false,
+    val consentBusy: Boolean = false,
 )
 
 class HomeViewModel internal constructor(
@@ -51,29 +54,44 @@ class HomeViewModel internal constructor(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    /**
-     * Serializes consent writes so rapid toggles cannot interleave: each
-     * request starts after the previous one settled, and a failed request
-     * rolls the switch back to the last state the server confirmed — never
-     * leaving the UI disagreeing with the backend.
-     */
-    private val consentLock = Mutex()
+    private var consentGeneration = 0L
+    private val consentRequestOrder = Mutex()
 
     init {
         refresh()
     }
 
     fun refresh() {
+        val generationAtStart = consentGeneration
         scope.launch {
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val user = repository.me()
                 val devices = repository.devices().devices
+                val pendingConsent = repository.pendingConsentOperation(user.id)
                 // Keep the local consent mirror in step with the server so
                 // the tracking engine can start offline from confirmed state.
                 consentController.recordServerConsent(user.locationSharingEnabled)
                 _state.update {
-                    it.copy(loading = false, user = user, devices = devices)
+                    val newerIntentExists = consentGeneration != generationAtStart || it.consentBusy
+                    val displayedUser = it.user?.takeIf {
+                        it.locationSharingVersion > user.locationSharingVersion
+                    } ?: user
+                    it.copy(
+                        loading = false,
+                        user = displayedUser,
+                        devices = devices,
+                        locationSharingRequested = if (newerIntentExists) {
+                            it.locationSharingRequested
+                        } else {
+                            pendingConsent?.desiredEnabled ?: user.locationSharingEnabled
+                        },
+                        consentSyncPending = if (newerIntentExists) {
+                            it.consentSyncPending
+                        } else {
+                            pendingConsent != null
+                        },
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -93,31 +111,56 @@ class HomeViewModel internal constructor(
     /** The privacy consent switch — always the data subject's own call. */
     fun setLocationSharing(enabled: Boolean) {
         if (_state.value.user == null) return
-        // Optimistic flip; the tracking engine's local consent mirror is
-        // authoritative for what the device is actually doing.
-        _state.update { it.copy(user = it.user?.copy(locationSharingEnabled = enabled), error = null) }
+        val generation = ++consentGeneration
+        _state.update {
+            it.copy(
+                locationSharingRequested = enabled,
+                consentBusy = true,
+                consentSyncPending = true,
+                error = null,
+                message = null,
+            )
+        }
         scope.launch {
-            consentLock.withLock {
+            consentRequestOrder.withLock {
                 try {
                     val result = consentController.setConsent(enabled)
-                    _state.update {
-                        it.copy(
-                            user = result.user ?: it.user?.copy(locationSharingEnabled = result.enabled),
-                            message = result.message,
-                        )
+                    _state.update { current ->
+                        val responseVersion = result.user?.locationSharingVersion
+                        val displayedVersion = current.user?.locationSharingVersion ?: -1L
+                        val serverUser = if (responseVersion != null && responseVersion >= displayedVersion) {
+                            result.user
+                        } else {
+                            current.user
+                        }
+                        if (generation == consentGeneration) {
+                            current.copy(
+                                user = serverUser,
+                                locationSharingRequested = result.enabled,
+                                consentSyncPending = !result.serverConfirmed,
+                                consentBusy = false,
+                                message = result.message,
+                            )
+                        } else {
+                            current.copy(user = serverUser)
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _state.update {
-                        it.copy(
-                            user = it.user?.copy(locationSharingEnabled = !enabled),
-                            error = if (enabled) {
-                                "Không bật được chia sẻ vị trí. Vui lòng thử lại."
-                            } else {
-                                "Không tắt được chia sẻ vị trí. Vui lòng thử lại."
-                            },
-                        )
+                    if (generation == consentGeneration) {
+                        _state.update {
+                            it.copy(
+                                locationSharingRequested = it.user?.locationSharingEnabled,
+                                consentSyncPending = false,
+                                consentBusy = false,
+                                error = if (enabled) {
+                                    "Không bật được chia sẻ vị trí. Vui lòng thử lại."
+                                } else {
+                                    "Đã dừng theo dõi trên thiết bị này; chưa xác nhận được với máy chủ."
+                                },
+                            )
+                        }
                     }
                 }
             }

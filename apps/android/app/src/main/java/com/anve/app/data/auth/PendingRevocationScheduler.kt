@@ -79,7 +79,18 @@ class PendingRevocationWorker(
         val application = applicationContext as? AnVeApplication ?: return Result.success()
         return try {
             val remaining = application.container.authRepository.retryPendingRevocations()
-            if (remaining) Result.retry() else Result.success()
+            if (remaining) {
+                Result.retry()
+            } else {
+                val owner = application.container.sessionStore.current()?.userId
+                if (owner != null &&
+                    application.container.authRepository.pendingConsentOperation(owner) == null &&
+                    application.container.locationQueue.count(owner) > 0
+                ) {
+                    application.container.locationSyncScheduler.ensureScheduled()
+                }
+                Result.success()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {

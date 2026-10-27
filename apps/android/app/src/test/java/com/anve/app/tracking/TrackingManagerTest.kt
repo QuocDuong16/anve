@@ -1,6 +1,7 @@
 package com.anve.app.tracking
 
 import com.anve.app.data.auth.InMemorySessionStorage
+import com.anve.app.data.auth.ConsentMutationCoordinator
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.data.location.FakeLocationQueueDao
 import com.anve.app.data.location.LocationQueueRepository
@@ -8,8 +9,10 @@ import com.anve.app.ui.awaitUntil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -40,6 +43,7 @@ class TrackingManagerTest {
     private lateinit var scheduler: FakeSyncScheduler
     private lateinit var gateway: FakeServerGateway
     private lateinit var manager: TrackingManager
+    private lateinit var consentMutations: ConsentMutationCoordinator
     private var now = 2_000_000L
     private var elapsed = 1_000_000L
     private var saver = false
@@ -47,7 +51,7 @@ class TrackingManagerTest {
     @Before
     fun setUp() = runBlocking {
         scope = CoroutineScope(SupervisorJob() + dispatcher)
-        sessions = InMemorySessionStorage()
+        sessions = InMemorySessionStorage(now = { now })
         sessions.save(session("u1"))
         dao = FakeLocationQueueDao()
         queue = LocationQueueRepository(dao, now = { now })
@@ -60,6 +64,7 @@ class TrackingManagerTest {
         service = FakeServiceController()
         scheduler = FakeSyncScheduler()
         gateway = FakeServerGateway(consent = true, hasCircle = true, store = store)
+        consentMutations = ConsentMutationCoordinator()
         manager = newManager(store)
         awaitUntil { manager.status.value.sessionReady && manager.status.value.consentEnabled }
     }
@@ -89,6 +94,7 @@ class TrackingManagerTest {
         service = service,
         syncScheduler = scheduler,
         scope = scope,
+        consentMutations = consentMutations,
         now = { now },
         elapsedNow = { elapsed },
         batterySaver = { saver },
@@ -130,6 +136,17 @@ class TrackingManagerTest {
         manager.onServiceStarted()
         awaitUntil { manager.status.value.activelyTracking }
         assertTrue(manager.status.value.providerActive)
+    }
+
+    @Test
+    fun `concurrent start requests launch only one foreground service`() = runBlocking {
+        manager.startTracking()
+        manager.startTracking()
+
+        awaitUntil { service.starts == 1 }
+        assertEquals(1, service.starts)
+        assertTrue(manager.status.value.trackingRequested)
+        assertEquals(null, manager.status.value.lastError)
     }
 
     @Test
@@ -184,6 +201,38 @@ class TrackingManagerTest {
         assertTrue(result.serverConfirmed)
         assertFalse(store.current().pendingConsentRevocation)
         assertFalse(store.current().localConsentConfirmed)
+    }
+
+    @Test
+    fun `stale version conflict cannot replace a newer consent operation`() = runBlocking {
+        sessions.save(session("u1").copy(locationSharingEnabled = true, locationSharingVersion = 1))
+        gateway.consent = true
+        gateway.consentVersion = 2
+        val userReadEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val releaseUserRead = kotlinx.coroutines.CompletableDeferred<Unit>()
+        gateway.beforeCurrentUser = {
+            userReadEntered.complete(Unit)
+            releaseUserRead.await()
+        }
+
+        val staleOff = async { manager.setConsent(false) }
+        userReadEntered.await()
+
+        // This models a newer server snapshot observed by the current owner
+        // while the old operation is reconciling its CAS conflict.
+        sessions.updateConsent("u1", enabled = true, version = 2)
+        val latestOn = manager.setConsent(true)
+
+        assertTrue(latestOn.serverConfirmed)
+        assertTrue(gateway.consent)
+        assertEquals(3L, gateway.consentVersion)
+        releaseUserRead.complete(Unit)
+
+        assertFalse(staleOff.await().serverConfirmed)
+        assertTrue("the stale OFF must not be retried", gateway.consent)
+        assertEquals(3L, gateway.consentVersion)
+        assertEquals(listOf(true), gateway.consentCalls)
+        assertTrue(sessions.pendingConsentOperations().isEmpty())
     }
 
     @Test
@@ -275,6 +324,67 @@ class TrackingManagerTest {
         assertFalse(manager.status.value.running)
         assertTrue(service.stops >= 1)
         assertEquals(0, provider.activeCollectors)
+    }
+
+    @Test
+    fun `consent OFF waits for an admitted fix then purges it before completion`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        val mutationEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val releaseMutation = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val lockHolder = async {
+            consentMutations.withLocalMutation {
+                mutationEntered.complete(Unit)
+                releaseMutation.await()
+            }
+        }
+        mutationEntered.await()
+
+        val fix = async { emitFix(eventId = "fix-during-revoke") }
+        yield()
+        val revoke = async { manager.setConsent(false) }
+        yield()
+        releaseMutation.complete(Unit)
+
+        lockHolder.await()
+        fix.await()
+        val result = revoke.await()
+
+        assertTrue(result.serverConfirmed)
+        assertTrue(dao.rows.isEmpty())
+        assertFalse(manager.status.value.running)
+        assertTrue(sessions.pendingConsentOperations().isEmpty())
+    }
+
+    @Test
+    fun `consent OFF intent survives session clear while its local mutation is queued`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        val mutationEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val releaseMutation = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val lockHolder = async {
+            consentMutations.withLocalMutation {
+                mutationEntered.complete(Unit)
+                releaseMutation.await()
+            }
+        }
+        mutationEntered.await()
+
+        val revoke = async { manager.setConsent(false) }
+        yield()
+        sessions.clear()
+        releaseMutation.complete(Unit)
+        lockHolder.await()
+
+        val result = revoke.await()
+        val pending = sessions.pendingConsentOperations().single()
+        assertFalse(result.serverConfirmed)
+        assertEquals("u1", pending.ownerUserId)
+        assertFalse(pending.desiredEnabled)
+        assertTrue(pending.requiresOwnerAuthentication)
+        assertEquals("OWNER_AUTH_REQUIRED", pending.lastErrorCode)
+        assertTrue(dao.rows.isEmpty())
+        assertFalse(manager.status.value.running)
     }
 
     @Test

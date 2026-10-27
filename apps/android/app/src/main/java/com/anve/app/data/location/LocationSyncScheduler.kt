@@ -22,8 +22,14 @@ interface LocationSyncScheduler {
     /** Idempotent: keeps the single unique work item. */
     fun ensureScheduled()
 
+    /** Appends a retry after the server's Retry-After delay, when provided. */
+    fun enqueueAfter(delayMillis: Long) = ensureScheduled()
+
     /** User-initiated "retry now": replaces a waiting item with no backoff. */
     fun enqueueImmediate()
+
+    /** Best-effort cancellation; an already-sent HTTP request may still commit. */
+    fun cancel() = Unit
 }
 
 class WorkManagerLocationSyncScheduler(context: Context) : LocationSyncScheduler {
@@ -32,15 +38,23 @@ class WorkManagerLocationSyncScheduler(context: Context) : LocationSyncScheduler
 
     override fun ensureScheduled() = enqueue(ExistingWorkPolicy.KEEP)
 
+    override fun enqueueAfter(delayMillis: Long) =
+        enqueue(ExistingWorkPolicy.APPEND_OR_REPLACE, delayMillis.coerceAtLeast(0))
+
     override fun enqueueImmediate() = enqueue(ExistingWorkPolicy.REPLACE)
 
-    private fun enqueue(policy: ExistingWorkPolicy) {
+    override fun cancel() {
+        WorkManager.getInstance(appContext).cancelUniqueWork(WORK_NAME)
+    }
+
+    private fun enqueue(policy: ExistingWorkPolicy, delayMillis: Long = 0) {
         val request = OneTimeWorkRequestBuilder<LocationSyncWorker>()
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
                     .build(),
             )
+            .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .addTag(WORK_TAG)
             .build()
@@ -67,7 +81,14 @@ class LocationSyncWorker(
         val application = applicationContext as? AnVeApplication ?: return Result.success()
         return try {
             val outcome = application.container.locationSyncEngine.sync()
-            if (outcome.retry) Result.retry() else Result.success()
+            when {
+                outcome.retryAfterMillis != null -> {
+                    application.container.locationSyncScheduler.enqueueAfter(outcome.retryAfterMillis)
+                    Result.success()
+                }
+                outcome.retry -> Result.retry()
+                else -> Result.success()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {

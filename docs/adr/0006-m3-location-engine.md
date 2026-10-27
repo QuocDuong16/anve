@@ -144,7 +144,14 @@ start call was issued.
 
 Permissions are staged: prominent disclosure, foreground location,
 background location (separately, only after an explanation), notifications.
-Approximate-only permission is allowed but reported as `DEGRADED`.
+Approximate-only permission is allowed but reported as `DEGRADED`. API 29
+requests background permission only after foreground permission; API 30 and
+later explain the need, open the supported app-permission Settings page, use
+the platform's background-permission option label when available, then read
+the OS grant again on return. API 28 does not request the background runtime
+permission. Returning without granting leaves the permission missing and
+does not trigger another prompt. Permission UI state is refreshed on resume;
+Settings-flow behavior still requires device validation.
 
 ### 6. Durable, owner-scoped Room queue
 
@@ -172,13 +179,18 @@ threat model and residual risk are explicit:
 ### 7. At-least-once sync with server idempotency
 
 WorkManager runs a unique, network-constrained job. It uploads at most 100
-points per batch, five batches per pass, oldest-first. Accepted and
+points per batch, five normal batches and 64 total HTTP requests per pass,
+oldest-first. Client prevalidation checks each row before upload. If the
+server atomically rejects a validation batch, the client uses bounded binary
+isolation; only an individually isolated invalid event may be removed. A
+batch-level rejection never deletes its valid neighbors. Accepted and
 duplicate ids are deleted only after the server acknowledged them; row
 attempt metadata is recorded. A lost response is retried with the same
-event ids. Transport, 429 and 5xx keep the rows and ask WorkManager for
-exponential backoff. A permanent validation error drops only that batch; it
-never blocks the rest of the queue. Five hundred points are drained per
-pass and the worker asks for another pass if work remains.
+event ids. Transport, 429, 5xx and authorization/policy refusals never enter
+validation splitting; retryable failures keep rows and use WorkManager
+backoff, while policy refusals stop upload and apply the explicit privacy
+purge policy. If the request budget is exhausted, unprocessed rows remain
+durable for a later pass.
 
 Upload order is independent of event-time order; the server stores the
 original capture time, and history can sort by it.
@@ -189,25 +201,54 @@ The states are deliberately separate: server consent, local consent mirror,
 tracking intent, OS permission, provider state, service state, queue state
 and upload acknowledgement.
 
+Consent changes use one durable operation per owner account. Each record
+contains an operation id, owner id, desired value, expected server version,
+generation, retry state and timestamps. It has no coordinates and is
+encrypted with Android Keystore separately from the active session. An
+operation is never deleted just because its retry credential expires; it
+remains unresolved until server confirmation, explicit newer owner intent or
+account deletion. A short-lived sealed refresh credential is attached only
+when an offline sign-out must wait for consent OFF before revoking that same
+session; it is usable only for the owner-scoped consent and sign-out steps.
+
+Consent writes use compare-and-set against `location_sharing_version`. The
+server increments that version atomically with the consent update and audit
+record. A stale request receives `CONSENT_VERSION_CONFLICT`; its response
+cannot overwrite a newer local generation. Reconciliation may acknowledge
+the operation when the authoritative state already matches, or retry only
+the current generation against the latest version.
+
 When sharing is disabled:
 
-1. a durable `pending_consent_revocation` flag is written;
-2. acquisition and the foreground service stop;
-3. **all unsent points are deleted locally**;
-4. the network call is attempted; a failure keeps the flag;
-5. the sync worker refuses to upload anything while the flag is set and
-   delivers `PUT /me/location-sharing {enabled:false}` first;
-6. only a confirmed response clears the flag and the local consent mirror.
+1. persist the owner-scoped OFF operation before network access;
+2. stop acquisition and the location foreground service;
+3. **purge all unsent location points locally** and prevent new upload
+   requests for that owner;
+4. attempt the operation; UI separates local stop from server confirmation;
+5. remove the operation only after the server confirms the same owner and
+   generation, or after an explicit newer owner action.
 
-Enabling consent is reported only after the server confirms it, and a
-successful enable clears an undelivered revocation intent. A local consent
-mirror records the account it belongs to; a different account (or a
-pre-M3 mirror with unknown provenance) is not trusted for an offline start.
-A pending revocation intent is tied to the account that created it: if a
-different account signs in before it is delivered, the intent is discarded
-and never applied to the new account's consent. Offline start from the last
-confirmed consent is allowed, but the server remains authoritative: a
-refusal stops tracking and purges the queue.
+`Stop Tracking` pauses acquisition on this installation. `Disable Location
+Sharing` changes account-wide consent. `Sign Out` revokes this session and
+does not implicitly change consent. If OFF was requested first, the refresh
+credential is sealed into that owner's operation and session revocation is
+sequenced after OFF confirmation. An expired/revoked session leaves the
+operation unresolved and requires that owner to authenticate again; the UI
+must not claim server revocation. Account B never inherits A's operation or
+uses A's credential as an active session.
+
+Local persistence is the acquisition/upload stop point. An HTTP location
+batch already in flight may still commit if it acquired the account share
+lock before the consent update. If the consent OFF transaction commits
+first, the backend's transactional ingestion check refuses later batches.
+Client cancellation is not treated as proof that an already-sent request
+did not commit.
+
+A local consent mirror records its account. A different account (or a
+pre-M3 mirror with unknown provenance) is not trusted for offline start.
+Offline start from the last confirmed consent is allowed only when no
+owner-scoped consent mutation is pending; the server remains authoritative
+and a refusal stops tracking and purges the queue.
 
 Stopping tracking without revoking consent keeps the queue and sync; it is
 a pause, not a revocation.
@@ -216,8 +257,11 @@ a pause, not a revocation.
 
 - A location row is always tied to a live session, consenting account and
   active Circle at commit time.
-- A revocation that has committed is never followed by an upload; an
-  offline revocation may reach the server late, and the UI says so.
+- A server revocation that has committed is never followed by an accepted
+  upload. A local OFF immediately blocks new acquisition and requests;
+  already in-flight batches follow the server's row-lock order.
+- A pending OFF survives offline sign-out and account changes. It stays
+  tied to its owner and is not reported as server-confirmed until acknowledged.
 - Process death, reboot, OEM kills and Permission revocation produce a
   visible recovery state instead of a false "tracking" claim.
 - Stored data is bounded in time and count on both device and server; no
@@ -236,3 +280,6 @@ a pause, not a revocation.
   leaving a Circle must not leave a hidden viewing channel. The ingestion
   check above proves an active Circle existed at write time; read
   authorization is a separate, not-yet-built decision.
+- Consent mutations are owner-scoped, versioned and serialized at local
+  persistence boundaries; HTTP calls do not hold a process-wide mutex.
+  PostgreSQL CAS is the cross-device/process ordering boundary.

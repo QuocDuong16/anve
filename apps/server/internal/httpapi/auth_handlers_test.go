@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,6 +42,7 @@ type userBody struct {
 	Email                  string `json:"email"`
 	DisplayName            string `json:"displayName"`
 	LocationSharingEnabled bool   `json:"locationSharingEnabled"`
+	LocationSharingVersion int64  `json:"locationSharingVersion"`
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -157,10 +159,11 @@ func TestAuthenticatedFlowOverHTTP(t *testing.T) {
 	assert.False(t, me.LocationSharingEnabled)
 
 	// Consent on is visible in the response.
-	rec = ts.do(t, http.MethodPut, "/api/v1/me/location-sharing", map[string]any{"enabled": true}, tokens.AccessToken)
+	rec = ts.do(t, http.MethodPut, "/api/v1/me/location-sharing", map[string]any{"enabled": true, "expectedVersion": 0}, tokens.AccessToken)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &me))
 	assert.True(t, me.LocationSharingEnabled)
+	assert.EqualValues(t, 1, me.LocationSharingVersion)
 
 	// Devices list shows the signing-in device as current.
 	rec = ts.do(t, http.MethodGet, "/api/v1/devices", nil, tokens.AccessToken)
@@ -297,12 +300,47 @@ func TestConsentAuditTrailOverHTTP(t *testing.T) {
 	ts := newTestServer(t)
 	tokens := ts.signInDev(t, "audit@example.com")
 
-	rec := ts.do(t, http.MethodPut, "/api/v1/me/location-sharing", map[string]any{"enabled": true}, tokens.AccessToken)
+	rec := ts.do(t, http.MethodPut, "/api/v1/me/location-sharing", map[string]any{"enabled": true, "expectedVersion": 0}, tokens.AccessToken)
 	require.Equal(t, http.StatusOK, rec.Code)
+
+	rec = ts.do(t, http.MethodPut, "/api/v1/me/location-sharing", map[string]any{"enabled": false, "expectedVersion": 0}, tokens.AccessToken)
+	require.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "CONSENT_VERSION_CONFLICT")
 
 	actions := ts.store.RecordedActions()
 	assert.Contains(t, actions, audit.ActionLocationSharingOn)
 	assert.Contains(t, actions, audit.ActionDevSignIn)
+}
+
+func TestConcurrentConsentWritesWithSameVersionHaveOneWinner(t *testing.T) {
+	t.Parallel()
+	ts := newTestServer(t)
+	tokens := ts.signInDev(t, "consent-race@example.com")
+
+	start := make(chan struct{})
+	responses := make(chan int, 2)
+	var workers sync.WaitGroup
+	for _, enabled := range []bool{true, false} {
+		workers.Add(1)
+		go func(enabled bool) {
+			defer workers.Done()
+			<-start
+			rec := ts.do(t, http.MethodPut, "/api/v1/me/location-sharing", map[string]any{
+				"enabled": enabled, "expectedVersion": 0,
+			}, tokens.AccessToken)
+			responses <- rec.Code
+		}(enabled)
+	}
+	close(start)
+	workers.Wait()
+	close(responses)
+
+	statuses := []int{}
+	for status := range responses {
+		statuses = append(statuses, status)
+	}
+	assert.ElementsMatch(t, []int{http.StatusOK, http.StatusConflict}, statuses)
+	assert.Equal(t, 1, len(ts.store.RecordedActions())-1, "one consent audit follows sign-in")
 }
 
 func TestSignInRateLimit(t *testing.T) {

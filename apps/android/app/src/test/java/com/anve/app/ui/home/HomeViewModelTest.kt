@@ -88,13 +88,17 @@ class HomeViewModelTest {
                 refreshToken = "refresh-1",
                 accessExpiresAt = "2026-10-30T00:00:00Z",
                 refreshExpiresAt = "2026-11-25T00:00:00Z",
+                userId = "u1",
+                locationSharingEnabled = false,
+                locationSharingVersion = 0,
             ),
         )
     }
 
-    private fun userJson(sharing: Boolean, name: String = "Mai") =
+    private fun userJson(sharing: Boolean, name: String = "Mai", version: Int = 0) =
         """{"id":"u1","email":"a@b.co","displayName":"$name",
-           "locationSharingEnabled":$sharing,"createdAt":"2026-10-25T00:00:00Z"}""".replace("\n", "")
+           "locationSharingEnabled":$sharing,"createdAt":"2026-10-25T00:00:00Z",
+           "locationSharingVersion":$version}""".replace("\n", "")
 
     private fun enqueueHome(userJson: String = userJson(sharing = false)) {
         server.enqueue(MockResponse().setBody(userJson))
@@ -135,21 +139,24 @@ class HomeViewModelTest {
         enqueueHome()
         val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
+        signedIn()
 
-        server.enqueue(MockResponse().setBody(userJson(sharing = true)))
+        server.enqueue(MockResponse().setBody(userJson(sharing = true, version = 1)))
         vm.setLocationSharing(true)
-        awaitUntil { vm.state.value.user?.locationSharingEnabled == true }
+        awaitUntil { !vm.state.value.consentBusy }
         awaitUntil { server.requestCount >= 3 }
 
         assertTrue(vm.state.value.user!!.locationSharingEnabled)
         val me = server.takeRequest()
         val devices = server.takeRequest()
         val consent = server.takeRequest()
+        val body = consent.body.readUtf8()
         assertEquals("/api/v1/me", me.path)
         assertEquals("/api/v1/devices", devices.path)
         assertEquals("PUT", consent.method)
         assertEquals("/api/v1/me/location-sharing", consent.path)
-        assertTrue(consent.body.readUtf8().contains("true"))
+        assertTrue(body.contains("\"enabled\":true"))
+        assertTrue(body.contains("\"expectedVersion\":0"))
     }
 
     @Test
@@ -158,12 +165,15 @@ class HomeViewModelTest {
         val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
+        signedIn()
 
         server.enqueue(MockResponse().setResponseCode(503).setBody("""{"code":"SERVICE_UNAVAILABLE","message":"no db"}"""))
         vm.setLocationSharing(true)
         awaitUntil { vm.state.value.message != null }
 
         assertFalse(vm.state.value.user!!.locationSharingEnabled)
+        assertTrue("the pending intent is shown separately from server confirmation", vm.state.value.locationSharingRequested!!)
+        assertTrue(vm.state.value.consentSyncPending)
         assertTrue(
             "the UI must explain that the consent write was not confirmed",
             vm.state.value.message.orEmpty().contains("Không bật"),
@@ -176,13 +186,12 @@ class HomeViewModelTest {
         val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
+        signedIn()
 
-        // Three quick taps: on, off, on. Requests are serialized. The server
-        // answers true, false, false: the final UI state must be the last
-        // server-confirmed answer (false), not the optimistic last tap.
-        server.enqueue(MockResponse().setBody(userJson(sharing = true)))
-        server.enqueue(MockResponse().setBody(userJson(sharing = false)))
-        server.enqueue(MockResponse().setBody(userJson(sharing = false, name = "Settled")))
+        // The app serializes local writes and the server uses consent CAS.
+        server.enqueue(MockResponse().setBody(userJson(sharing = true, version = 1)))
+        server.enqueue(MockResponse().setBody(userJson(sharing = false, version = 2)))
+        server.enqueue(MockResponse().setBody(userJson(sharing = true, name = "Settled", version = 3)))
         vm.setLocationSharing(true)
         vm.setLocationSharing(false)
         vm.setLocationSharing(true)
@@ -191,7 +200,8 @@ class HomeViewModelTest {
         // queued response has been applied.
         awaitUntil { vm.state.value.user?.displayName == "Settled" }
 
-        assertFalse("the server's last answer wins", vm.state.value.user!!.locationSharingEnabled)
+        assertTrue("the newest intent is confirmed", vm.state.value.user!!.locationSharingEnabled)
+        assertTrue(vm.state.value.locationSharingRequested!!)
         val bodies = (1..3).map { server.takeRequest().body.readUtf8() }
         assertEquals(
             "requests reach the server in tap order",
@@ -206,17 +216,17 @@ class HomeViewModelTest {
         val vm = viewModel()
         awaitUntil { !vm.state.value.loading }
         consumeInitRequests()
+        signedIn()
 
-        server.enqueue(MockResponse().setBody(userJson(sharing = true)))
+        server.enqueue(MockResponse().setBody(userJson(sharing = true, version = 1)))
         server.enqueue(MockResponse().setResponseCode(500).setBody("""{"code":"INTERNAL","message":"x"}"""))
         vm.setLocationSharing(true)
         vm.setLocationSharing(false)
 
         awaitUntil { vm.state.value.message != null }
-        assertTrue(
-            "the server confirmed ON; the failed OFF must not stick",
-            vm.state.value.user!!.locationSharingEnabled,
-        )
+        assertTrue("the server-confirmed snapshot stays ON", vm.state.value.user!!.locationSharingEnabled)
+        assertFalse("the latest OFF remains the local requested state", vm.state.value.locationSharingRequested!!)
+        assertTrue(vm.state.value.consentSyncPending)
     }
 
     /** Consumes the two requests the ViewModel init issues. */
@@ -232,7 +242,7 @@ class HomeViewModelTest {
         private var confirmed = false
 
         override suspend fun setConsent(enabled: Boolean): ConsentResult = try {
-            val user = repository.setLocationSharing(enabled)
+            val user = repository.setLocationSharing(enabled, expectedOwnerUserId = "u1")
             confirmed = user.locationSharingEnabled
             ConsentResult(
                 enabled = user.locationSharingEnabled,
@@ -241,7 +251,7 @@ class HomeViewModelTest {
             )
         } catch (e: Exception) {
             ConsentResult(
-                enabled = confirmed,
+                enabled = enabled,
                 serverConfirmed = false,
                 message = if (enabled) "Không bật được chia sẻ vị trí." else "Chưa xác nhận với máy chủ.",
             )

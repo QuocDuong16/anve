@@ -32,6 +32,8 @@ data class StoredSession(
      * different account. Null only for sessions persisted by pre-M3 builds.
      */
     val userId: String? = null,
+    val locationSharingEnabled: Boolean? = null,
+    val locationSharingVersion: Long? = null,
 )
 
 /**
@@ -55,6 +57,27 @@ data class PendingRevocation(
     val expiresAtMillis: Long,
     val attemptCount: Int = 0,
     val nextAttemptAtMillis: Long = 0,
+    val ownerUserId: String? = null,
+)
+
+/** Durable consent intent, encrypted at rest and scoped to its owner. */
+@JsonClass(generateAdapter = false)
+data class PendingConsentOperation(
+    val operationId: String,
+    val ownerUserId: String,
+    val desiredEnabled: Boolean,
+    val expectedVersion: Long,
+    val generation: Long,
+    val createdAtMillis: Long,
+    val expiresAtMillis: Long,
+    val refreshToken: String? = null,
+    val credentialExpiresAtMillis: Long? = null,
+    val attemptCount: Int = 0,
+    val nextAttemptAtMillis: Long = 0,
+    val consentConfirmed: Boolean = false,
+    val signOutAfterConsent: Boolean = false,
+    val requiresOwnerAuthentication: Boolean = false,
+    val lastErrorCode: String? = null,
 )
 
 /** Retry window for an undelivered sign-out; older records are dropped. */
@@ -67,6 +90,8 @@ const val PENDING_REVOCATION_TTL_MILLIS: Long = 7L * 24 * 60 * 60 * 1000
  * dropped; the best-effort nature of the retry is documented.
  */
 const val MAX_PENDING_REVOCATIONS: Int = 8
+const val PENDING_CONSENT_OPERATION_TTL_MILLIS: Long = 30L * 24 * 60 * 60 * 1000
+const val PENDING_CONSENT_CREDENTIAL_TTL_MILLIS: Long = 7L * 24 * 60 * 60 * 1000
 
 /**
  * Durable session storage. Implementations must keep tokens encrypted at
@@ -86,6 +111,8 @@ interface SessionStorage {
      */
     suspend fun setUserId(userId: String)
 
+    suspend fun setUserIdIfMatches(accessToken: String, userId: String): Boolean
+
     /** Adds (or replaces, by id) an undelivered revocation, sealed at rest. */
     suspend fun savePendingRevocation(pending: PendingRevocation)
 
@@ -94,6 +121,24 @@ interface SessionStorage {
 
     /** Removes a record once the server confirmed the revocation or death. */
     suspend fun removePendingRevocation(id: String)
+
+    /** Atomically records the server's authoritative consent snapshot for the matching owner. */
+    suspend fun updateConsent(ownerUserId: String, enabled: Boolean, version: Long): Boolean
+
+    /** Adds or replaces the latest consent operation for this owner. */
+    suspend fun savePendingConsentOperation(operation: PendingConsentOperation)
+
+    /** Reads unexpired owner-scoped operations and strips expired credentials. */
+    suspend fun pendingConsentOperations(): List<PendingConsentOperation>
+
+    suspend fun removePendingConsentOperation(operationId: String)
+
+    suspend fun removePendingConsentOperations(ownerUserId: String)
+
+    /** Session mutations must not clear or rotate a different account's newer session. */
+    suspend fun clearIfMatches(ownerUserId: String?, accessToken: String): Boolean
+
+    suspend fun rotateIfMatches(ownerUserId: String?, accessToken: String, session: StoredSession): Boolean
 }
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -112,6 +157,9 @@ class DataStoreSessionStorage(
     private val adapter = moshi.adapter(StoredSession::class.java)
     private val pendingAdapter: JsonAdapter<List<PendingRevocation>> = moshi.adapter(
         Types.newParameterizedType(List::class.java, PendingRevocation::class.java),
+    )
+    private val consentAdapter: JsonAdapter<List<PendingConsentOperation>> = moshi.adapter(
+        Types.newParameterizedType(List::class.java, PendingConsentOperation::class.java),
     )
     private val legacyPendingAdapter = moshi.adapter(LegacyPendingRevocation::class.java)
 
@@ -132,6 +180,35 @@ class DataStoreSessionStorage(
         dataStore.edit { prefs -> prefs.remove(KEY_SESSION_BLOB) }
     }
 
+    override suspend fun clearIfMatches(ownerUserId: String?, accessToken: String): Boolean {
+        var cleared = false
+        dataStore.edit { prefs ->
+            val current = decode(prefs[KEY_SESSION_BLOB]) ?: return@edit
+            if (current.userId == ownerUserId && current.accessToken == accessToken) {
+                prefs.remove(KEY_SESSION_BLOB)
+                cleared = true
+            }
+        }
+        return cleared
+    }
+
+    override suspend fun rotateIfMatches(
+        ownerUserId: String?,
+        accessToken: String,
+        session: StoredSession,
+    ): Boolean {
+        var rotated = false
+        dataStore.edit { prefs ->
+            val current = decode(prefs[KEY_SESSION_BLOB]) ?: return@edit
+            if (current.userId == ownerUserId && current.accessToken == accessToken) {
+                val sealed = cipher.encrypt(adapter.toJson(session).toByteArray(Charsets.UTF_8))
+                prefs[KEY_SESSION_BLOB] = encode(sealed)
+                rotated = true
+            }
+        }
+        return rotated
+    }
+
     override suspend fun setUserId(userId: String) {
         dataStore.edit { prefs ->
             val current = prefs[KEY_SESSION_BLOB]?.let { decode(it) } ?: return@edit
@@ -140,6 +217,37 @@ class DataStoreSessionStorage(
             )
             prefs[KEY_SESSION_BLOB] = encode(sealed)
         }
+    }
+
+    override suspend fun setUserIdIfMatches(accessToken: String, userId: String): Boolean {
+        var updated = false
+        dataStore.edit { prefs ->
+            val current = decode(prefs[KEY_SESSION_BLOB]) ?: return@edit
+            if (current.accessToken != accessToken || current.userId != null) return@edit
+            val sealed = cipher.encrypt(
+                adapter.toJson(current.copy(userId = userId)).toByteArray(Charsets.UTF_8),
+            )
+            prefs[KEY_SESSION_BLOB] = encode(sealed)
+            updated = true
+        }
+        return updated
+    }
+
+    override suspend fun updateConsent(ownerUserId: String, enabled: Boolean, version: Long): Boolean {
+        var updated = false
+        dataStore.edit { prefs ->
+            val current = decode(prefs[KEY_SESSION_BLOB]) ?: return@edit
+            if (current.userId != ownerUserId || version < (current.locationSharingVersion ?: -1L)) return@edit
+            val sealed = cipher.encrypt(
+                adapter.toJson(current.copy(
+                    locationSharingEnabled = enabled,
+                    locationSharingVersion = version,
+                )).toByteArray(Charsets.UTF_8),
+            )
+            prefs[KEY_SESSION_BLOB] = encode(sealed)
+            updated = true
+        }
+        return updated
     }
 
     /**
@@ -188,6 +296,40 @@ class DataStoreSessionStorage(
         }
     }
 
+    override suspend fun savePendingConsentOperation(operation: PendingConsentOperation) {
+        dataStore.edit { prefs ->
+            val merged = mergePendingConsentOperation(readConsentQueue(prefs), operation, now())
+            writeConsentQueue(prefs, merged)
+        }
+    }
+
+    override suspend fun pendingConsentOperations(): List<PendingConsentOperation> {
+        var records = emptyList<PendingConsentOperation>()
+        dataStore.edit { prefs ->
+            records = prunePendingConsentOperations(readConsentQueue(prefs), now())
+            writeConsentQueue(prefs, records)
+        }
+        return records
+    }
+
+    override suspend fun removePendingConsentOperation(operationId: String) {
+        dataStore.edit { prefs ->
+            writeConsentQueue(
+                prefs,
+                readConsentQueue(prefs).filterNot { it.operationId == operationId },
+            )
+        }
+    }
+
+    override suspend fun removePendingConsentOperations(ownerUserId: String) {
+        dataStore.edit { prefs ->
+            writeConsentQueue(
+                prefs,
+                readConsentQueue(prefs).filterNot { it.ownerUserId == ownerUserId },
+            )
+        }
+    }
+
     /**
      * Reads the queue, falling back to the single-record format written by
      * earlier builds. The legacy id is derived from its timestamp so a
@@ -217,6 +359,21 @@ class DataStoreSessionStorage(
             pendingAdapter.toJson(records).toByteArray(Charsets.UTF_8),
         )
         prefs[KEY_PENDING_REVOCATIONS] = encode(sealed)
+    }
+
+    private fun readConsentQueue(prefs: Preferences): List<PendingConsentOperation> =
+        decryptBlob(prefs[KEY_PENDING_CONSENT_OPERATIONS])?.let { plain ->
+            runCatching { consentAdapter.fromJson(String(plain, Charsets.UTF_8)).orEmpty() }
+                .getOrDefault(emptyList())
+        }.orEmpty()
+
+    private fun writeConsentQueue(prefs: MutablePreferences, records: List<PendingConsentOperation>) {
+        if (records.isEmpty()) {
+            prefs.remove(KEY_PENDING_CONSENT_OPERATIONS)
+            return
+        }
+        val sealed = cipher.encrypt(consentAdapter.toJson(records).toByteArray(Charsets.UTF_8))
+        prefs[KEY_PENDING_CONSENT_OPERATIONS] = encode(sealed)
     }
 
     private fun decodeQueue(blob: String?): List<PendingRevocation> {
@@ -272,6 +429,7 @@ class DataStoreSessionStorage(
     private companion object {
         val KEY_SESSION_BLOB = stringPreferencesKey("session_blob")
         val KEY_PENDING_REVOCATIONS = stringPreferencesKey("pending_revocations")
+        val KEY_PENDING_CONSENT_OPERATIONS = stringPreferencesKey("pending_consent_operations")
         val KEY_LEGACY_PENDING_REVOCATION = stringPreferencesKey("pending_revocation")
         const val SEPARATOR = "."
     }
@@ -325,9 +483,63 @@ internal fun newPendingRevocation(
     refreshToken: String,
     nowMillis: Long,
     id: String = UUID.randomUUID().toString(),
+    ownerUserId: String? = null,
 ): PendingRevocation = PendingRevocation(
     id = id,
     refreshToken = refreshToken,
     recordedAtMillis = nowMillis,
     expiresAtMillis = nowMillis + PENDING_REVOCATION_TTL_MILLIS,
+    ownerUserId = ownerUserId,
+)
+
+/** Expires the credential before the operation metadata; no secret is retained past its TTL. */
+internal fun prunePendingConsentOperations(
+    operations: List<PendingConsentOperation>,
+    nowMillis: Long,
+): List<PendingConsentOperation> = operations
+    .map { operation ->
+        when {
+            nowMillis >= operation.expiresAtMillis -> operation.copy(
+                refreshToken = null,
+                credentialExpiresAtMillis = null,
+                requiresOwnerAuthentication = true,
+                lastErrorCode = "CONSENT_OPERATION_EXPIRED",
+            )
+            operation.refreshToken != null &&
+                operation.credentialExpiresAtMillis?.let { nowMillis >= it } == true -> operation.copy(
+                refreshToken = null,
+                credentialExpiresAtMillis = null,
+                requiresOwnerAuthentication = true,
+                lastErrorCode = "REVOCATION_CREDENTIAL_EXPIRED",
+            )
+            else -> operation
+        }
+    }
+    .sortedBy { it.createdAtMillis }
+
+/** One latest durable consent intent per account; cap metadata growth across accounts. */
+internal fun mergePendingConsentOperation(
+    operations: List<PendingConsentOperation>,
+    operation: PendingConsentOperation,
+    nowMillis: Long,
+): List<PendingConsentOperation> = prunePendingConsentOperations(
+    operations.filterNot { it.ownerUserId == operation.ownerUserId } + operation,
+    nowMillis,
+)
+
+internal fun newPendingConsentOperation(
+    ownerUserId: String,
+    desiredEnabled: Boolean,
+    expectedVersion: Long,
+    generation: Long,
+    nowMillis: Long,
+    operationId: String = UUID.randomUUID().toString(),
+): PendingConsentOperation = PendingConsentOperation(
+    operationId = operationId,
+    ownerUserId = ownerUserId,
+    desiredEnabled = desiredEnabled,
+    expectedVersion = expectedVersion,
+    generation = generation,
+    createdAtMillis = nowMillis,
+    expiresAtMillis = nowMillis + PENDING_CONSENT_OPERATION_TTL_MILLIS,
 )

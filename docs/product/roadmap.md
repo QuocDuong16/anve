@@ -169,7 +169,7 @@ Quyết định và threat model: [ADR 0006](../adr/0006-m3-location-engine.md).
 Bằng chứng đã xác minh (chi tiết ở
 [`../implementation/progress.md`](../implementation/progress.md)):
 
-- Contract-first: `POST /api/v1/locations/batch` (OpenAPI 0.3.0), atomic
+- Contract-first: `POST /api/v1/locations/batch` (OpenAPI 0.4.0), atomic
   batch 1–200 events, error codes ổn định (`LOCATION_BATCH_INVALID`,
   `LOCATION_EVENT_TOO_OLD`, `LOCATION_CONSENT_REQUIRED`,
   `LOCATION_CIRCLE_REQUIRED`, `DEVICE_NOT_AUTHORIZED`,
@@ -185,10 +185,11 @@ Bằng chứng đã xác minh (chi tiết ở
   order, retention.
 - Android: Fused Location Provider sau interface, policy thích ứng có
   hysteresis/accuracy/stale/out-of-order rejection, foreground service type
-  `location` + notification + stop action, permission flow theo bước, Room
-  queue owner-scoped (5.000 điểm/7 ngày), WorkManager batch sync
-  (100/batch, 5 batch/pass) với network constraint, consent revocation
-  gửi trước upload; 148 JVM tests, lint, debug APK và release compile.
+  `location` + notification + stop action, permission flow theo bước với
+  Android 10 runtime và Android 11+ Settings flow, Room queue owner-scoped
+  (5.000 điểm/7 ngày), WorkManager batch sync (100/batch, 5 batch và tối đa
+  64 request/pass) với bounded validation isolation. Consent OFF được giữ
+  trong outbox mã hóa owner-scoped; các mutation dùng expected version/CAS.
 - Runtime (2026-10-26, local binary + PostgreSQL/PostGIS): dev login →
   Circle → consent ON → batch 200 accepted → retry trả duplicates → batch
   không tăng row; foreign device claim 403; no-circle 409; consent OFF rồi
@@ -210,7 +211,9 @@ Còn thiếu (giữ milestone ở mức này, **không** gọi là hoàn thành 
 **Exit criteria:** ⏳ chia sẻ hoạt động khi màn hình tắt (field); ✅ dữ liệu
 bền vững + idempotent + event-time order (automated); ✅ tọa độ không vào
 log; ✅ server từ chối khi consent/Circle/device/session không hợp lệ.
-Field validation là điều kiện bắt buộc trước khi tuyên bố M3 hoàn thành.
+Hardening regression evidence and final command results are recorded in
+[`../implementation/progress.md`](../implementation/progress.md). Field
+validation là điều kiện bắt buộc trước khi tuyên bố M3 Device Verified.
 
 **Phụ thuộc:** M1–M2 (authorization để ai được gửi location).
 

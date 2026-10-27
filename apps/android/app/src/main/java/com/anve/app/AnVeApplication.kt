@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.anve.app.data.api.AnveApi
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.auth.AuthRepository
+import com.anve.app.data.auth.ConsentMutationCoordinator
 import com.anve.app.data.auth.DataStoreSessionStorage
 import com.anve.app.data.auth.DeviceIdentity
 import com.anve.app.data.auth.PendingRevocationScheduler
@@ -47,6 +48,9 @@ class AppContainer(application: Application) {
 
     val sessionStore: DataStoreSessionStorage = DataStoreSessionStorage(application)
 
+    /** One process-wide generation source for UI, tracking and retry paths. */
+    val consentMutationCoordinator = ConsentMutationCoordinator()
+
     /**
      * App-scoped so a sign-out notice survives the navigation caused by
      * clearing the session, and survives configuration changes.
@@ -81,6 +85,7 @@ class AppContainer(application: Application) {
         deviceIdentity = deviceIdentity,
         notices = sessionNotices,
         retryScheduler = pendingRevocationScheduler,
+        consentMutations = consentMutationCoordinator,
     )
 
     val circleRepository: CircleRepository = CircleRepository(api = authApi)
@@ -126,6 +131,8 @@ class AppContainer(application: Application) {
         scope = applicationScope,
         metrics = trackingMetrics,
         batterySaver = { powerManager?.isPowerSaveMode == true },
+        consentMutations = consentMutationCoordinator,
+        pendingConsentScheduler = pendingRevocationScheduler,
     )
 
     val locationSyncEngine: LocationSyncEngine = LocationSyncEngine(
@@ -135,6 +142,8 @@ class AppContainer(application: Application) {
         sessions = sessionStore,
         onPolicyRefusal = { code -> trackingManager.onServerPolicyRefusal(code) },
         metrics = trackingMetrics,
+        consentMutations = consentMutationCoordinator,
+        expectedClientDeviceId = { deviceIdentity.registration().clientDeviceId },
     )
 
     companion object {
@@ -170,6 +179,8 @@ class AnVeApplication : Application() {
         applicationScope.launch {
             try {
                 val local = container.trackingStore.current()
+                val consentOperations = container.sessionStore.pendingConsentOperations()
+                if (consentOperations.isNotEmpty()) container.pendingRevocationScheduler.ensureScheduled()
                 if (container.locationQueue.countAll() > 0 || local.pendingConsentRevocation) {
                     container.locationSyncScheduler.ensureScheduled()
                 }

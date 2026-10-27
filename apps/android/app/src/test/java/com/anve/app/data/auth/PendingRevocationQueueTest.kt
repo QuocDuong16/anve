@@ -63,6 +63,61 @@ class PendingRevocationQueueTest {
     }
 
     @Test
+    fun `consent outbox keeps latest generation per owner without crossing accounts`() {
+        val now = 50_000L
+        val firstA = newPendingConsentOperation("owner-a", false, 3, 1, now, "a-1")
+        val pendingB = newPendingConsentOperation("owner-b", true, 7, 1, now + 1, "b-1")
+        val latestA = firstA.copy(operationId = "a-2", generation = 2, expectedVersion = 4)
+
+        val merged = mergePendingConsentOperation(listOf(firstA, pendingB), latestA, now)
+
+        assertEquals(2, merged.size)
+        assertEquals("a-2", merged.single { it.ownerUserId == "owner-a" }.operationId)
+        assertEquals(4L, merged.single { it.ownerUserId == "owner-a" }.expectedVersion)
+        assertEquals("b-1", merged.single { it.ownerUserId == "owner-b" }.operationId)
+    }
+
+    @Test
+    fun `expired credential is removed while the owner consent intent remains`() {
+        val operation = PendingConsentOperation(
+            operationId = "off-1",
+            ownerUserId = "owner-a",
+            desiredEnabled = false,
+            expectedVersion = 4,
+            generation = 2,
+            createdAtMillis = 1_000,
+            expiresAtMillis = 100_000,
+            refreshToken = "sealed-refresh",
+            credentialExpiresAtMillis = 2_000,
+            signOutAfterConsent = true,
+        )
+
+        val kept = prunePendingConsentOperations(listOf(operation), nowMillis = 2_000).single()
+
+        assertEquals("owner-a", kept.ownerUserId)
+        assertFalse(kept.desiredEnabled)
+        assertNull(kept.refreshToken)
+        assertTrue(kept.requiresOwnerAuthentication)
+        assertEquals("REVOCATION_CREDENTIAL_EXPIRED", kept.lastErrorCode)
+    }
+
+    @Test
+    fun `expired consent operation remains explicitly unresolved without credentials`() {
+        val operation = newPendingConsentOperation("owner-a", false, 2, 3, 1_000, "off-3")
+            .copy(refreshToken = "sealed-refresh", credentialExpiresAtMillis = 5_000)
+
+        val kept = prunePendingConsentOperations(
+            listOf(operation),
+            nowMillis = operation.expiresAtMillis,
+        ).single()
+
+        assertEquals("off-3", kept.operationId)
+        assertNull(kept.refreshToken)
+        assertTrue(kept.requiresOwnerAuthentication)
+        assertEquals("CONSENT_OPERATION_EXPIRED", kept.lastErrorCode)
+    }
+
+    @Test
     fun `concurrent inserts never drop another record`() = runBlocking {
         val storage = InMemorySessionStorage()
         val now = System.currentTimeMillis()

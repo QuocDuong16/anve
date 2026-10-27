@@ -4,6 +4,9 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.time.DateTimeException
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 /** Shared Moshi instance — one reflection adapter for the whole app. */
 val apiMoshi: Moshi = Moshi.Builder()
@@ -50,6 +53,7 @@ data class UserDto(
     @Json(name = "avatarUrl") val avatarUrl: String?,
     @Json(name = "locationSharingEnabled") val locationSharingEnabled: Boolean,
     @Json(name = "createdAt") val createdAt: String,
+    @Json(name = "locationSharingVersion") val locationSharingVersion: Long = 0,
 )
 
 @JsonClass(generateAdapter = false)
@@ -104,6 +108,7 @@ data class UpdateMeRequestDto(
 @JsonClass(generateAdapter = false)
 data class LocationSharingRequestDto(
     @Json(name = "enabled") val enabled: Boolean,
+    @Json(name = "expectedVersion") val expectedVersion: Long,
 )
 
 @JsonClass(generateAdapter = false)
@@ -124,7 +129,24 @@ class ApiException(
     val code: String,
     override val message: String,
     val requestId: String?,
+    val httpStatus: Int? = null,
+    val retryAfterMillis: Long? = null,
 ) : RuntimeException("[$code] $message")
+
+internal fun parseRetryAfterMillis(value: String?, nowMillis: Long): Long? {
+    if (value.isNullOrBlank()) return null
+    val seconds = value.toLongOrNull()
+    if (seconds != null) return seconds.coerceAtLeast(0).coerceAtMost(MAX_RETRY_AFTER_SECONDS) * 1_000
+    return try {
+        val at = ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
+        (at - nowMillis).coerceAtLeast(0).coerceAtMost(MAX_RETRY_AFTER_MILLIS)
+    } catch (_: DateTimeException) {
+        null
+    }
+}
+
+private const val MAX_RETRY_AFTER_SECONDS = 7L * 24 * 60 * 60
+private const val MAX_RETRY_AFTER_MILLIS = MAX_RETRY_AFTER_SECONDS * 1_000
 
 /** Unwraps a Retrofit response or throws the parsed error envelope. */
 @Suppress("UNCHECKED_CAST")
@@ -148,6 +170,8 @@ fun <T> retrofit2.Response<T>.orThrow(): T {
         code = error?.code ?: "HTTP_${code()}",
         message = error?.message ?: "Unexpected server error.",
         requestId = error?.requestId,
+        httpStatus = code(),
+        retryAfterMillis = parseRetryAfterMillis(headers()["Retry-After"], System.currentTimeMillis()),
     )
 }
 

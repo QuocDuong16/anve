@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: AnVề API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     HTTP contract of the AnVề backend.
 
@@ -378,10 +378,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [enabled]
+              required: [enabled, expectedVersion]
               properties:
                 enabled:
                   type: boolean
+                expectedVersion:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                  description: Consent version returned by the latest user read; stale versions receive 409.
       responses:
         "200":
           description: The updated consent state.
@@ -391,6 +396,12 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Consent changed since expectedVersion (code `CONSENT_VERSION_CONFLICT`).
           content:
             application/json:
               schema:
@@ -1096,7 +1107,7 @@ components:
 
     User:
       type: object
-      required: [id, email, displayName, locationSharingEnabled, createdAt]
+      required: [id, email, displayName, locationSharingEnabled, locationSharingVersion, createdAt]
       properties:
         id:
           type: string
@@ -1112,6 +1123,11 @@ components:
         locationSharingEnabled:
           type: boolean
           description: The account's location-sharing consent. Off by default; never turned on implicitly.
+        locationSharingVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Monotonic compare-and-set version for consent mutations.
         createdAt:
           type: string
           format: date-time

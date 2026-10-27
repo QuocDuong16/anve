@@ -217,7 +217,15 @@ fun HomeContent(
                 }
             }
             item { ProfileCard(user = user, onRename = onRename) }
-            item { ConsentCard(user = user, onToggle = onToggleSharing) }
+            item {
+                ConsentCard(
+                    user = user,
+                    requestedEnabled = state.locationSharingRequested ?: user.locationSharingEnabled,
+                    syncPending = state.consentSyncPending,
+                    busy = state.consentBusy,
+                    onToggle = onToggleSharing,
+                )
+            }
             item {
                 Text(
                     text = stringResource(R.string.home_devices_title),
@@ -297,7 +305,13 @@ private fun ProfileCard(user: UserDto, onRename: () -> Unit) {
 }
 
 @Composable
-private fun ConsentCard(user: UserDto, onToggle: (Boolean) -> Unit) {
+private fun ConsentCard(
+    user: UserDto,
+    requestedEnabled: Boolean,
+    syncPending: Boolean,
+    busy: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -313,11 +327,19 @@ private fun ConsentCard(user: UserDto, onToggle: (Boolean) -> Unit) {
                     )
                 }
                 Switch(
-                    checked = user.locationSharingEnabled,
+                    checked = requestedEnabled,
+                    enabled = !busy,
                     onCheckedChange = onToggle,
                 )
             }
-            if (user.locationSharingEnabled) {
+            if (syncPending) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.home_sharing_pending_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else if (user.locationSharingEnabled) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     stringResource(R.string.home_sharing_on_notice),
