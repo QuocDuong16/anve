@@ -1,7 +1,7 @@
 # ADR 0008 — M4 conditional polling, confidence and map presentation
 
 - **Status:** Accepted for the M4 MVP
-- **Date:** 2026-10-27
+- **Date:** 2026-10-27 (amended 2026-10-28)
 - **Scope:** Latest-location distribution and Android Live Map. No history API,
   WebSocket, SSE, push notification or multi-instance event bus.
 
@@ -40,6 +40,23 @@ MVP has no deployed shared event broker or multi-replica realtime requirement.
    The key is a public application identifier, supplied outside source control
    and restricted in Google Cloud by package and signing certificate. Map
    rendering has not been device-verified without a configured key.
+6. Audience grant/revoke results have three client outcomes: `Confirmed`,
+   `Rejected`, and `UnknownOutcome`. A successful mutation response confirms
+   that request. A clear 4xx is a rejection. A timeout, transport failure, or
+   5xx is unknown because the server may have committed before the response was
+   lost. The Android client never automatically replays that mutation: it
+   reads the authoritative audience snapshot, owner-bound on every request.
+   If the snapshot shows the requested effective access, the desired state is
+   reconciled; if it conflicts, or the read fails, the UI retains an unresolved
+   state and does not claim that access changed. The user must make a fresh
+   explicit choice after the current server state is known.
+7. Audience mutations are single-flight per owner/viewer pair; mutations for
+   different viewers may proceed concurrently. Each sharing read has a
+   monotonically increasing request generation; only the newest read for the
+   active owner may replace the snapshot. A viewer remains pending until the
+   mutation outcome and a current sharing snapshot have both been reconciled.
+   Account switches invalidate outstanding generations and owner-bound
+   requests fail before using the new account's credentials.
 
 ## Consequences
 
@@ -54,6 +71,13 @@ MVP has no deployed shared event broker or multi-replica realtime requirement.
   protected coordinates immediately.
 - Google Maps rendering, key restrictions and device battery behavior require
   runtime/device validation. JVM tests and APK builds are not such evidence.
+- A lost mutation response cannot prove whether a specific grant/revoke audit
+  event was written; the client confirms only the authoritative current access
+  state. PostgreSQL serializes grant/revoke and membership changes, and every
+  latest-location read begun after a revoke commit observes the revoked state.
+- ETags represent the authorized latest-location response. Grant/revoke,
+  consent OFF and membership leave change that representation, so clients
+  revalidate and cannot keep a prior authorized snapshot as a server response.
 
 ## Revisit when
 

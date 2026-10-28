@@ -389,3 +389,33 @@ Verification levels for this pass:
 - **Runtime/device evidence:** Pending. No emulator/physical device and no
   restricted Maps API key were used to verify Google map tiles, marker render,
   screen lifecycle, or battery use.
+
+## M4 final reliability and concurrency fix (2026-10-28)
+
+- Audience grant/revoke mutations now distinguish `Confirmed`, `Rejected` and
+  `UnknownOutcome`. Transport errors, timeouts and 5xx are unknown; the client
+  never replays a mutation without an idempotency key. It reads the authoritative
+  audience state after the attempt. A failed reconciliation stays pending and
+  explicitly unresolved; an unknown revoke never claims access was removed.
+- Audience/latest reads carry the expected owner through the Android session
+  interceptor on every request. A sign-out/account switch cannot mix one
+  owner's initial `/me` response with another owner's Circle or grant list.
+  Old owner and old request-generation responses are ignored.
+- Sharing snapshots use monotonically increasing request generations. Grant
+  mutations are single-flight per viewer; different viewers remain concurrent.
+  Pending state is released only after a current authoritative snapshot is
+  applied, while stale refreshes cannot replace it. Account changes clear the
+  prior account's map and sharing state.
+- PostgreSQL integration regressions cover concurrent grant/revoke, concurrent
+  duplicate grant, grant versus viewer leave, reads begun after revoke commit,
+  and ETag changes after grant, revoke, consent OFF and Circle leave. The
+  existing temporal-membership/epoch suite continues to assert no stale-point
+  leakage.
+- **Local automated evidence (2026-10-28):** `make quality-check` PASS;
+  `make server-test-integration` PASS with Postgres/PostGIS and the race detector
+  including `internal/httpapi`; `make server-test-race` PASS across Go packages;
+  Android JVM tests and lint/debug build PASS; `make android-release` PASS
+  (minified unsigned compile). Hosted CI at the final pushed SHA is still
+  pending.
+- No device/emulator or configured Maps key was used. Map rendering, Android
+  lifecycle behavior and battery use remain **Pending Runtime/Device Validation**.

@@ -13,7 +13,7 @@ resuming work.
 
 - `apps/server` — Go module `github.com/QuocDuong16/anve/server`.
   - `cmd/api`, `cmd/migrate` — thin entrypoints only; business logic belongs in `internal/`.
-  - `internal/httpapi` — chi router. Surface: health/meta + M1 auth/me/devices routes; `RequireAuth` middleware verifies sessions per request; business routes 503 without a database.
+  - `internal/httpapi` — chi router. Surface includes health/meta, M1 auth, M2 Circle, M3 location ingestion and M4 audience/latest-location APIs; `RequireAuth` verifies sessions per request and business routes 503 without a database.
   - `internal/auth` — M1 domain: opaque sessions (SHA-256 hashes only), Google ID-token verification (`google.golang.org/api/idtoken`), PG store with transactional audit; location consent uses `location_sharing_version` compare-and-set, incremented atomically with the consent and audit transaction; `internal/auth/authtest` holds the in-memory store fake shared by tests.
   - `internal/audit` — privacy event recorder; `audit_log` has NO FK to users by design (survives account deletion).
   - `internal/circles` — M2 domain: circles/memberships/invites; authorization enforced AT THE STORE (membership checked before any read: outsider→404, member-without-owner-role→403); one-circle-per-user unique index is the MVP invariant; invite redeem is atomic (FOR UPDATE, single winner); owner leaving a populated circle requires dissolve=true (cascades).
@@ -52,7 +52,7 @@ M3 location invariants (ADR 0006):
 - Room queue is owner-scoped, eventId PK, max 5,000 / 7 days, exported schema v1, no destructive migration, not app-level encrypted (documented threat model in ADR 0006 §6). WorkManager uses unique network-constrained sync, 100 events per normal batch and a 64-request total pass budget. Client prevalidation removes only invalid rows; atomic validation failures use bounded batch isolation and only an isolated permanently invalid singleton may be dropped. Accepted/duplicate acknowledgements alone delete successful rows; transport/429/5xx retry with stable event ids; unknown permanent errors preserve the queue; consent/device/circle refusal follows the explicit privacy stop/purge policy.
 - Android backup/transfer rules exclude `sharedpref`, `database` AND `file/datastore` (Preferences DataStore lives in files/datastore, not sharedpref — this is where the sealed session blob and installation id are) in both `backup_rules.xml` (API < 31) and `data_extraction_rules.xml` (API 31+, cloud backup and device transfer). The Room database (`database` domain) stays out of both backup and device transfer; this is the per-file policy for M3. Room is not additionally encrypted at the application layer in M3 (private storage + OS FDE + backup exclusion + 7-day local retention; residual-risk decision in ADR 0006 §6).
 
-M4 read authorization is design-only in ADR 0007: explicit owner→viewer grants are bounded by Circle membership periods and owner sharing epochs. Current membership alone never grants historical points; existing M3 points receive no grants by default. Revocation must close grants and invalidate authorized caches/subscriptions before any read API or realtime feature is exposed. No M4 read endpoint, WebSocket or map is implemented.
+M4 read authorization is implemented from ADR 0007: explicit owner→viewer grants are bounded by Circle membership periods and owner sharing epochs. Current membership alone never grants historical points; existing M3 points receive no grants by default. PostgreSQL enforces grants in the latest-location read query; revocation changes the authorized ETag and subsequent reads deny access. Android uses foreground conditional HTTPS polling (not WebSocket/SSE), Maps Compose, and no persistent location cache. M4 is automated-verified but still pending runtime/device validation. Android audience mutations distinguish confirmed, rejected and unknown outcomes; unknown mutations are never replayed and trigger an owner-bound authoritative re-read. Sharing generations reject stale responses, and mutations are single-flight per owner/viewer.
 
 ## Product documentation
 
@@ -62,13 +62,12 @@ Proposed / Not in scope) and milestone plan live in `docs/product/`
 `roadmap.md`, `glossary.md`, `non-functional-requirements.md`) and
 `docs/architecture/overview.md`. These are the source of truth for product
 intent — check them before developing a feature, and update them when feature
-scope changes. Do not assume planned functionality is implemented: M0–M3 are implemented
-(automated-verified and, for M3, runtime HTTP-smoke-tested; M3 still awaits
-on-device field validation for battery/background/OEM behavior); M4 and
-beyond are planned work described in documentation only. M3 has no Live Map,
-History, realtime distribution, geofencing, SOS or FCM — do not conflate
-ingestion with those later features. AGENTS.md has a
-"Product context & source of truth" section pointing to the same documents.
+scope changes. Do not assume planned functionality is implemented: M0–M4 are implemented
+(automated-verified; M3 has runtime HTTP smoke evidence but still awaits
+on-device field validation for battery/background/OEM behavior; M4 still awaits
+map/runtime validation). M5+ History/Places, M6 SOS/FCM, and M7 Journey remain
+planned. M4 Live Map uses conditional polling rather than server push. AGENTS.md
+has a "Product context & source of truth" section pointing to the same documents.
 
 ## Other memories
 
