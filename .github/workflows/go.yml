@@ -65,10 +65,9 @@ jobs:
         run: go build ./cmd/...
 
   # The unit job above runs with the database-backed integration tests
-  # skipped (no TEST_DATABASE_URL). This job proves the migrations and the
-  # auth store against a real PostgreSQL/PostGIS server: up → up → down → up,
-  # rollback of a failed migration, the required extensions, and the M1
-  # session/consent/audit flows including cross-user isolation.
+  # skipped (no TEST_DATABASE_URL). This job proves migrations, auth/Circle
+  # stores and M3/M4 location authorization against PostgreSQL/PostGIS,
+  # including temporal grants, revocation races, and response ETag changes.
   database-integration:
     name: Migrations and store against PostgreSQL/PostGIS
     runs-on: ubuntu-latest
@@ -104,7 +103,7 @@ jobs:
       - name: Run migration and store integration tests
         env:
           TEST_DATABASE_URL: postgres://anve:anve@localhost:5432/anve?sslmode=disable
-        run: go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations
+        run: go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations ./internal/locationaccess ./internal/httpapi
 
   repository:
     name: Repository checks

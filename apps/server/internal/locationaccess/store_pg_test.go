@@ -213,6 +213,139 @@ func TestPGConsentOffRacesWithGrantFailClosed(t *testing.T) {
 	require.Empty(t, locations)
 }
 
+func TestPGConcurrentGrantAndRevokeHaveOneSerializedOutcome(t *testing.T) {
+	f := newAccessFixture(t)
+	lockOwner, err := f.pool.Begin(f.ctx)
+	require.NoError(t, err)
+	require.NoError(t, lockOwner.QueryRow(f.ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, f.owner.ID).Scan(new(uuid.UUID)))
+
+	grantDone := make(chan error, 1)
+	revokeDone := make(chan error, 1)
+	go func() {
+		_, grantErr := f.access.Grant(f.ctx, f.owner.ID, f.viewer.ID)
+		grantDone <- grantErr
+	}()
+	go func() {
+		revokeDone <- f.access.Revoke(f.ctx, f.owner.ID, f.viewer.ID)
+	}()
+	waitForAudienceLockWaits(t, f.pool, 2)
+	require.NoError(t, lockOwner.Commit(f.ctx))
+	require.NoError(t, <-grantDone)
+	require.NoError(t, <-revokeDone)
+
+	var active, createdAudit, revokedAudit int
+	require.NoError(t, f.pool.QueryRow(f.ctx,
+		`SELECT count(*) FROM location_audience_grants WHERE owner_user_id = $1 AND viewer_user_id = $2 AND revoked_at IS NULL`,
+		f.owner.ID, f.viewer.ID).Scan(&active))
+	require.NoError(t, f.pool.QueryRow(f.ctx,
+		`SELECT count(*) FROM audit_log WHERE actor_user_id = $1 AND target_user_id = $2 AND action = 'location.audience_grant.created'`,
+		f.owner.ID, f.viewer.ID).Scan(&createdAudit))
+	require.NoError(t, f.pool.QueryRow(f.ctx,
+		`SELECT count(*) FROM audit_log WHERE actor_user_id = $1 AND target_user_id = $2 AND action = 'location.audience_grant.revoked'`,
+		f.owner.ID, f.viewer.ID).Scan(&revokedAudit))
+	require.Equal(t, 1, createdAudit)
+	if active == 1 {
+		require.Zero(t, revokedAudit, "grant won the row-lock order")
+	} else {
+		require.Zero(t, active)
+		require.Equal(t, 1, revokedAudit, "revoke won after the grant committed")
+	}
+}
+
+func TestPGConcurrentGrantRequestsCreateOneGrantAndAudit(t *testing.T) {
+	f := newAccessFixture(t)
+	lockOwner, err := f.pool.Begin(f.ctx)
+	require.NoError(t, err)
+	require.NoError(t, lockOwner.QueryRow(f.ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, f.owner.ID).Scan(new(uuid.UUID)))
+
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, grantErr := f.access.Grant(f.ctx, f.owner.ID, f.viewer.ID)
+			results <- grantErr
+		}()
+	}
+	waitForAudienceLockWaits(t, f.pool, 2)
+	require.NoError(t, lockOwner.Commit(f.ctx))
+	require.NoError(t, <-results)
+	require.NoError(t, <-results)
+
+	var active, createdAudit int
+	require.NoError(t, f.pool.QueryRow(f.ctx,
+		`SELECT count(*) FROM location_audience_grants WHERE owner_user_id = $1 AND viewer_user_id = $2 AND revoked_at IS NULL`,
+		f.owner.ID, f.viewer.ID).Scan(&active))
+	require.NoError(t, f.pool.QueryRow(f.ctx,
+		`SELECT count(*) FROM audit_log WHERE actor_user_id = $1 AND target_user_id = $2 AND action = 'location.audience_grant.created'`,
+		f.owner.ID, f.viewer.ID).Scan(&createdAudit))
+	require.Equal(t, 1, active)
+	require.Equal(t, 1, createdAudit)
+}
+
+func TestPGGrantRacingViewerLeaveNeverLeavesAccessAfterLeave(t *testing.T) {
+	f := newAccessFixture(t)
+	lockViewer, err := f.pool.Begin(f.ctx)
+	require.NoError(t, err)
+	require.NoError(t, lockViewer.QueryRow(f.ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, f.viewer.ID).Scan(new(uuid.UUID)))
+
+	grantDone := make(chan error, 1)
+	leaveDone := make(chan error, 1)
+	go func() {
+		_, grantErr := f.access.Grant(f.ctx, f.owner.ID, f.viewer.ID)
+		grantDone <- grantErr
+	}()
+	go func() {
+		leaveDone <- f.circles.Leave(f.ctx, f.viewer.ID, f.circleID, false)
+	}()
+	waitForAudienceLockWaits(t, f.pool, 2)
+	require.NoError(t, lockViewer.Commit(f.ctx))
+	grantErr := <-grantDone
+	if grantErr != nil {
+		require.ErrorIs(t, grantErr, ErrNoMembership)
+	}
+	require.NoError(t, <-leaveDone)
+
+	grants, err := f.access.Audience(f.ctx, f.owner.ID)
+	require.NoError(t, err)
+	require.Empty(t, grants)
+	visible, err := f.access.Latest(f.ctx, f.viewer.ID)
+	require.NoError(t, err)
+	require.Empty(t, visible)
+}
+
+func TestPGRevokeCommitBlocksSubsequentLatestRead(t *testing.T) {
+	f := newAccessFixture(t)
+	grant, err := f.access.Grant(f.ctx, f.owner.ID, f.viewer.ID)
+	require.NoError(t, err)
+	f.access.now = func() time.Time { return grant.VisibleFrom.Add(10 * time.Second) }
+	f.record(t, grant.VisibleFrom.Add(time.Second))
+	visible, err := f.access.Latest(f.ctx, f.viewer.ID)
+	require.NoError(t, err)
+	require.Len(t, visible, 1)
+	require.NotNil(t, visible[0].Latitude)
+
+	require.NoError(t, f.access.Revoke(f.ctx, f.owner.ID, f.viewer.ID))
+	visible, err = f.access.Latest(f.ctx, f.viewer.ID)
+	require.NoError(t, err)
+	require.Empty(t, visible, "reads started after revoke commit must see current authorization")
+}
+
+func waitForAudienceLockWaits(t *testing.T, pool *pgxpool.Pool, minimum int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var waiting int
+		err := pool.QueryRow(context.Background(),
+			`SELECT count(*) FROM pg_stat_activity
+			  WHERE datname = current_database() AND wait_event_type = 'Lock'`).Scan(&waiting)
+		require.NoError(t, err)
+		if waiting >= minimum {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %d PostgreSQL lock waiters", minimum)
+}
+
 func TestPGDissolveClosesAudienceBeforeCircleCascade(t *testing.T) {
 	f := newAccessFixture(t)
 	_, err := f.access.Grant(f.ctx, f.owner.ID, f.viewer.ID)
