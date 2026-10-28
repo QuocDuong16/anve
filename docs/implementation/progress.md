@@ -414,8 +414,9 @@ Verification levels for this pass:
 - **Local automated evidence (2026-10-28):** `make quality-check` PASS;
   `make server-test-integration` PASS with Postgres/PostGIS and the race detector
   including `internal/httpapi`; `make server-test-race` PASS across Go packages;
-  Android JVM tests and lint/debug build PASS; `make android-release` PASS
-  (minified unsigned compile). Hosted CI at the final pushed SHA is still
-  pending.
+  Android JVM tests (219/219), lint/debug build PASS; `make android-release`
+  PASS (minified unsigned compile). GitHub Actions status is checked and
+  reported for the exact final pushed SHA; local results are not used as a
+  substitute.
 - No device/emulator or configured Maps key was used. Map rendering, Android
   lifecycle behavior and battery use remain **Pending Runtime/Device Validation**.
