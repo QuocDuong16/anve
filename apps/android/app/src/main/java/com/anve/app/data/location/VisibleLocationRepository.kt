@@ -35,6 +35,31 @@ data class SharingManagementSnapshot(
     val members: List<AudienceMember> = emptyList(),
 )
 
+sealed interface AudienceMutationOutcome {
+    data class Confirmed(val snapshot: SharingManagementSnapshot?) : AudienceMutationOutcome
+
+    data class UnknownOutcome(
+        val snapshot: SharingManagementSnapshot?,
+        val requestedEnabled: Boolean,
+        val currentEnabled: Boolean?,
+    ) : AudienceMutationOutcome
+
+    data class Rejected(
+        val snapshot: SharingManagementSnapshot?,
+        val message: String,
+    ) : AudienceMutationOutcome
+}
+
+interface SharingManagementDataSource {
+    suspend fun sharingManagement(expectedOwnerId: String): SharingManagementSnapshot
+
+    suspend fun setViewerGrant(
+        ownerId: String,
+        viewerId: String,
+        enabled: Boolean,
+    ): AudienceMutationOutcome
+}
+
 /**
  * Foreground-only, conditional polling for the M4 latest snapshot. Every
  * changed snapshot comes from the server's current authorization query; no
@@ -45,7 +70,7 @@ class VisibleLocationRepository(
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val elapsedMillis: () -> Long = { System.nanoTime() / 1_000_000 },
     private val pollIntervalMillis: Long = DEFAULT_POLL_INTERVAL_MILLIS,
-) {
+) : SharingManagementDataSource {
 
     fun observeLatest(ownerId: String): Flow<VisibleLocationSnapshot> = flow {
         var etag: String? = null
@@ -56,7 +81,7 @@ class VisibleLocationRepository(
         emit(VisibleLocationSnapshot(ownerId = ownerId))
         while (true) {
             try {
-                val response = api.latestVisibleLocations(etag)
+                val response = api.latestVisibleLocations(etag, ownerId)
                 when {
                     response.code() == 304 -> {
                         failures = 0
@@ -125,14 +150,15 @@ class VisibleLocationRepository(
         }
     }
 
-    suspend fun sharingManagement(): SharingManagementSnapshot {
-        val account = api.me().orThrow()
-        val current = api.myCircle().orThrow()
+    override suspend fun sharingManagement(expectedOwnerId: String): SharingManagementSnapshot {
+        val account = api.me(expectedOwnerId).orThrow()
+        if (account.id != expectedOwnerId) throw OwnerSessionChangedException()
+        val current = api.myCircle(expectedOwnerId).orThrow()
         val circle = current.circle ?: return SharingManagementSnapshot(
             consentEnabled = account.locationSharingEnabled,
         )
-        val members = api.members(circle.id).orThrow().members
-        val granted = api.locationAudience().orThrow().grants.mapTo(mutableSetOf()) { it.viewerId }
+        val members = api.members(circle.id, expectedOwnerId).orThrow().members
+        val granted = api.locationAudience(expectedOwnerId).orThrow().grants.mapTo(mutableSetOf()) { it.viewerId }
         return SharingManagementSnapshot(
             hasCircle = true,
             circleName = circle.name,
@@ -143,11 +169,54 @@ class VisibleLocationRepository(
         )
     }
 
-    suspend fun setViewerGrant(ownerId: String, viewerId: String, enabled: Boolean) {
-        if (enabled) {
-            api.grantLocationAudience(viewerId, ownerId).orThrow()
-        } else {
-            api.revokeLocationAudience(viewerId, ownerId).orThrow()
+    override suspend fun setViewerGrant(
+        ownerId: String,
+        viewerId: String,
+        enabled: Boolean,
+    ): AudienceMutationOutcome {
+        val attempt = try {
+            val response = if (enabled) {
+                api.grantLocationAudience(viewerId, ownerId)
+            } else {
+                api.revokeLocationAudience(viewerId, ownerId)
+            }
+            when {
+                response.isSuccessful -> MutationAttempt.Confirmed
+                response.code() in 400..499 -> {
+                    val rejection = runCatching { response.orThrow() }.exceptionOrNull() as? ApiException
+                    MutationAttempt.Rejected(rejection?.message ?: "Máy chủ từ chối thay đổi quyền xem.")
+                }
+                else -> MutationAttempt.Unknown
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            if (error is ApiException && error.httpStatus in 400..499) {
+                MutationAttempt.Rejected(error.message)
+            } else {
+                MutationAttempt.Unknown
+            }
+        }
+
+        val snapshot = try {
+            sharingManagement(ownerId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
+        return when (attempt) {
+            MutationAttempt.Confirmed -> AudienceMutationOutcome.Confirmed(snapshot)
+            is MutationAttempt.Rejected -> AudienceMutationOutcome.Rejected(snapshot, attempt.message)
+            MutationAttempt.Unknown -> {
+                val currentEnabled = snapshot?.members?.firstOrNull { it.userId == viewerId }?.canViewLocation ?:
+                    if (snapshot?.members?.none { it.userId == viewerId } == true) false else null
+                if (currentEnabled == enabled) {
+                    AudienceMutationOutcome.Confirmed(snapshot)
+                } else {
+                    AudienceMutationOutcome.UnknownOutcome(snapshot, enabled, currentEnabled)
+                }
+            }
         }
     }
 
@@ -182,4 +251,12 @@ class VisibleLocationRepository(
         const val MAX_BACKOFF_MILLIS = 60_000L
         val CONFIDENCE_STATES = setOf("FRESH", "DELAYED", "STALE", "OFFLINE", "UNKNOWN")
     }
+
+    private sealed interface MutationAttempt {
+        data object Confirmed : MutationAttempt
+        data object Unknown : MutationAttempt
+        data class Rejected(val message: String) : MutationAttempt
+    }
+
+    private class OwnerSessionChangedException : Exception("Active account changed during audience reconciliation.")
 }

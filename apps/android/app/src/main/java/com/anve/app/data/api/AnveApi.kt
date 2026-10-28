@@ -52,7 +52,9 @@ interface AnveApi {
     ): Response<Unit>
 
     @GET("api/v1/me")
-    suspend fun me(): Response<UserDto>
+    suspend fun me(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
+    ): Response<UserDto>
 
     @GET("api/v1/me")
     suspend fun meWithAuthorization(
@@ -97,7 +99,9 @@ interface AnveApi {
     ): Response<Unit>
 
     @GET("api/v1/circles/mine")
-    suspend fun myCircle(): Response<CircleMembershipDto>
+    suspend fun myCircle(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
+    ): Response<CircleMembershipDto>
 
     @POST("api/v1/circles")
     suspend fun createCircle(
@@ -113,6 +117,7 @@ interface AnveApi {
     @GET("api/v1/circles/{circleId}/members")
     suspend fun members(
         @Path("circleId") circleId: String,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
     ): Response<MemberListDto>
 
     @POST("api/v1/circles/{circleId}/members/{userId}/remove")
@@ -154,7 +159,9 @@ interface AnveApi {
     ): Response<LocationBatchResponseDto>
 
     @GET("api/v1/location-sharing/audience")
-    suspend fun locationAudience(): Response<LocationAudienceDto>
+    suspend fun locationAudience(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
+    ): Response<LocationAudienceDto>
 
     @PUT("api/v1/location-sharing/audience/{viewerId}")
     suspend fun grantLocationAudience(
@@ -171,5 +178,6 @@ interface AnveApi {
     @GET("api/v1/locations/visible/latest")
     suspend fun latestVisibleLocations(
         @Header("If-None-Match") etag: String? = null,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
     ): Response<LatestVisibleLocationsDto>
 }

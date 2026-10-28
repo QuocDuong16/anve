@@ -83,8 +83,11 @@ fun LiveMapScreen(container: AppContainer) {
     LaunchedEffect(ownerId, lifecycleOwner) {
         viewModel.ownerChanged(ownerId)
         if (ownerId != null) {
+            val snapshotGeneration = viewModel.beginLocationSnapshotCollection(ownerId)
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                container.visibleLocationRepository.observeLatest(ownerId).collect(viewModel::applySnapshot)
+                container.visibleLocationRepository.observeLatest(ownerId).collect { snapshot ->
+                    viewModel.applySnapshot(snapshot, snapshotGeneration)
+                }
             }
         }
     }
@@ -394,7 +397,8 @@ private fun AudienceSheet(
                             }
                             Switch(
                                 checked = member.canViewLocation,
-                                enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds &&
+                                    member.userId !in state.unresolvedViewerIds,
                                 onCheckedChange = { enabled -> onToggle(member, enabled) },
                             )
                             if (member.userId in state.pendingViewerIds) {
