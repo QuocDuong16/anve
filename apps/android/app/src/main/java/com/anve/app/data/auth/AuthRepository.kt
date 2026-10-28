@@ -355,6 +355,7 @@ class AuthRepository(
         val currentOperation = storage.pendingConsentOperations()
             .firstOrNull { it.operationId == original.operationId } ?: return
         var operation = currentOperation
+        consentMutations.restoreBlockedAdmission(operation.ownerUserId, operation.generation)
         if (operation.hasConsentConflict) return
         var explicitAccessToken: String? = null
         val active = storage.current()?.takeIf { it.userId == operation.ownerUserId }
@@ -469,9 +470,10 @@ class AuthRepository(
                 }
             }
             val requestAuthorized = consentMutations.authorizeConsentRequest {
-                storage.pendingConsentOperations().any {
-                    it.ownerUserId == operation.ownerUserId && it.operationId == operation.operationId
-                }
+                consentMutations.isCurrent(operation.ownerUserId, operation.generation) &&
+                    storage.pendingConsentOperations().any {
+                        it.ownerUserId == operation.ownerUserId && it.operationId == operation.operationId
+                    }
             }
             if (!requestAuthorized) return
             val user = try {
@@ -525,7 +527,7 @@ class AuthRepository(
                         // A worker can resume after process recreation with a
                         // fresh coordinator. Keep this device fail-closed even
                         // when the authoritative account choice conflicts.
-                        consentMutations.closeLocationAdmission()
+                        consentMutations.closeLocationAdmission(operation.ownerUserId)
                         consentMutations.withLocalMutation {
                             val current = storage.pendingConsentOperations().firstOrNull {
                                 it.ownerUserId == operation.ownerUserId
@@ -579,13 +581,17 @@ class AuthRepository(
                 val latest = storage.pendingConsentOperations().firstOrNull {
                     it.ownerUserId == operation.ownerUserId
                 }
-                if (latest?.operationId != operation.operationId) {
+                if (latest?.operationId != operation.operationId ||
+                    !consentMutations.isCurrent(operation.ownerUserId, operation.generation)
+                ) {
                     false
                 } else {
                     storage.updateConsent(user.id, user.locationSharingEnabled, user.locationSharingVersion)
                     operation = operation.copy(consentConfirmed = true)
                     storage.savePendingConsentOperation(operation)
-                    if (user.locationSharingEnabled) consentMutations.openLocationAdmission()
+                    if (user.locationSharingEnabled) {
+                        consentMutations.openLocationAdmission(operation.ownerUserId, operation.generation)
+                    }
                     true
                 }
             }
@@ -676,14 +682,12 @@ class AuthRepository(
     suspend fun updateDisplayName(displayName: String): UserDto =
         api.updateMe(UpdateMeRequestDto(displayName)).orThrow()
 
-    /** THE consent switch of the privacy foundation. */
     suspend fun setLocationSharing(
         enabled: Boolean,
         expectedVersion: Long? = null,
         expectedOwnerUserId: String? = null,
         expectedOperationId: String? = null,
     ): UserDto {
-        if (!enabled) consentMutations.closeLocationAdmission()
         val before = storage.current() ?: throw IOException("There is no active session")
         val authenticatedOwner = before.userId ?: me().id
         val owner = expectedOwnerUserId ?: authenticatedOwner
@@ -694,15 +698,29 @@ class AuthRepository(
             throw IOException("The active account changed before the consent request")
         }
         if (before.userId == null) storage.setUserIdIfMatches(before.accessToken, owner)
-        val baseVersion = expectedVersion ?: before.locationSharingVersion ?: me().locationSharingVersion
-        if (expectedOperationId != null) {
-            val requestAuthorized = consentMutations.authorizeConsentRequest {
-                storage.pendingConsentOperations().any {
-                    it.ownerUserId == owner && it.operationId == expectedOperationId
-                }
-            }
-            if (!requestAuthorized) throw IOException("Consent operation was superseded")
+
+        val operation = expectedOperationId?.let { operationId ->
+            storage.pendingConsentOperations().firstOrNull {
+                it.ownerUserId == owner && it.operationId == operationId && it.desiredEnabled == enabled
+            } ?: throw IOException("Consent operation was superseded")
         }
+        val generation = operation?.generation ?: run {
+            if (!enabled) consentMutations.closeLocationAdmission(owner)
+            consentMutations.nextGeneration(owner)
+        }
+        if (operation != null) {
+            consentMutations.restoreBlockedAdmission(owner, generation)
+        }
+
+        val baseVersion = expectedVersion ?: before.locationSharingVersion ?: me().locationSharingVersion
+        val requestAuthorized = consentMutations.authorizeConsentRequest {
+            consentMutations.isCurrent(owner, generation) &&
+                (operation == null || storage.pendingConsentOperations().any {
+                    it.ownerUserId == owner && it.operationId == operation.operationId
+                })
+        }
+        if (!requestAuthorized) throw IOException("Consent operation was superseded")
+
         val user = api.setLocationSharing(
             LocationSharingRequestDto(enabled = enabled, expectedVersion = baseVersion),
             expectedOwner = owner,
@@ -710,9 +728,12 @@ class AuthRepository(
         if (user.id != owner) throw IOException("The consent response belongs to another account")
         consentMutations.withLocalMutation {
             val pending = storage.pendingConsentOperations().any { it.ownerUserId == owner }
-            if (!pending) {
+            val currentOwner = storage.current()?.userId
+            if (!pending && currentOwner == owner && consentMutations.isCurrent(owner, generation)) {
                 storage.updateConsent(owner, user.locationSharingEnabled, user.locationSharingVersion)
-                if (user.locationSharingEnabled) consentMutations.openLocationAdmission()
+                if (user.locationSharingEnabled) {
+                    consentMutations.openLocationAdmission(owner, generation)
+                }
             }
         }
         return user
@@ -728,10 +749,16 @@ class AuthRepository(
         accessToken: String,
         operationId: String,
     ): UserDto {
+        val operation = storage.pendingConsentOperations().firstOrNull {
+            it.ownerUserId == ownerUserId && it.operationId == operationId &&
+                it.desiredEnabled == enabled
+        } ?: throw IOException("Consent operation was superseded")
+        consentMutations.restoreBlockedAdmission(ownerUserId, operation.generation)
         val requestAuthorized = consentMutations.authorizeConsentRequest {
-            storage.pendingConsentOperations().any {
-                it.ownerUserId == ownerUserId && it.operationId == operationId
-            }
+            consentMutations.isCurrent(ownerUserId, operation.generation) &&
+                storage.pendingConsentOperations().any {
+                    it.ownerUserId == ownerUserId && it.operationId == operationId
+                }
         }
         if (!requestAuthorized) throw IOException("Consent operation was superseded")
         val user = plainApi.setLocationSharingWithAuthorization(
@@ -742,7 +769,12 @@ class AuthRepository(
         if (user.id != ownerUserId) throw IOException("The consent response belongs to another account")
         consentMutations.withLocalMutation {
             val pending = storage.pendingConsentOperations().any { it.ownerUserId == ownerUserId }
-            if (!pending) storage.updateConsent(ownerUserId, user.locationSharingEnabled, user.locationSharingVersion)
+            if (!pending && consentMutations.isCurrent(ownerUserId, operation.generation)) {
+                storage.updateConsent(ownerUserId, user.locationSharingEnabled, user.locationSharingVersion)
+                if (user.locationSharingEnabled) {
+                    consentMutations.openLocationAdmission(ownerUserId, operation.generation)
+                }
+            }
         }
         return user
     }

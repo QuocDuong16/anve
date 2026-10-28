@@ -54,6 +54,13 @@ private data class ConsentOffPreparation(
     val cancellation: CancellationException?,
 )
 
+private enum class TrackingStartAdmission {
+    ALREADY_STARTING,
+    DENIED,
+    SERVICE_REFUSED,
+    ACCEPTED,
+}
+
 /**
  * The consent surface the account screen uses. Keeping it an interface
  * avoids pulling the whole tracking stack into that screen's tests.
@@ -119,6 +126,7 @@ class TrackingManager(
     private var queueCountJob: Job? = null
     private var starting = false
     private var startTimeoutJob: Job? = null
+    @Volatile private var sessionGeneration = 0L
     private var sessionOwner: String? = null
     private var lastSession: com.anve.app.data.auth.StoredSession? = null
     private var clientDeviceId: String? = null
@@ -141,27 +149,37 @@ class TrackingManager(
                 val wasInitial = !initialIntentLoaded
                 initialIntentLoaded = true
                 val owner = currentOwnerId()
+                val ownerMatches = owner != null && local.consentOwnerUserId == owner
                 val pendingConsent = owner?.let { userId ->
                     sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
                 }
-                val pendingOperation = pendingConsent != null
+                val pendingRevocation = ownerMatches && local.pendingConsentRevocation
+                if (owner != null && pendingConsent != null) {
+                    consentMutations.restoreBlockedAdmission(owner, pendingConsent.generation)
+                } else if (owner != null && pendingRevocation) {
+                    consentMutations.restoreBlockedAdmission(owner, generation = 0)
+                }
+                val admissionOpen = ownerMatches && pendingConsent == null && !pendingRevocation &&
+                    !consentMutations.isLocationAdmissionClosed(owner)
                 _status.update { current ->
                     current.copy(
-                        consentEnabled = local.localConsentConfirmed &&
-                            !local.pendingConsentRevocation && !pendingOperation &&
-                            !consentMutations.isLocationAdmissionClosed(),
-                        consentConfirmedByServer = local.localConsentConfirmed &&
-                            !local.pendingConsentRevocation && !consentMutations.isLocationAdmissionClosed(),
-                        consentSyncPending = local.pendingConsentRevocation || pendingOperation ||
-                            consentMutations.isLocationAdmissionClosed(),
+                        consentEnabled = ownerMatches && local.localConsentConfirmed &&
+                            !pendingRevocation && pendingConsent == null && admissionOpen &&
+                            current.serverConsentEnabled != false,
+                        consentConfirmedByServer = ownerMatches && local.localConsentConfirmed,
+                        serverConsentEnabled = if (ownerMatches && local.localConsentConfirmed) {
+                            current.serverConsentEnabled ?: true
+                        } else if (owner == null || !ownerMatches) {
+                            null
+                        } else {
+                            current.serverConsentEnabled
+                        },
+                        locationAdmissionOpen = admissionOpen,
+                        consentSyncPending = pendingRevocation || pendingConsent != null,
                         consentConflict = pendingConsent?.hasConsentConflict == true,
                         conflictServerConsent = pendingConsent?.conflictServerEnabled,
-                        trackingRequested = local.trackingRequested && !consentMutations.isLocationAdmissionClosed(),
+                        trackingRequested = ownerMatches && local.trackingRequested,
                         lastUploadAtMillis = local.lastSuccessfulUploadAtMillis,
-                        // A fresh process that finds persisted intent must
-                        // ask the user to resume; Android may not allow (and
-                        // the app may not truthfully claim) a background
-                        // restart.
                         recoveryRequired = if (wasInitial && local.trackingRequested && !current.running) {
                             true
                         } else {
@@ -194,6 +212,7 @@ class TrackingManager(
         scope.launch {
             sessions.session.collectLatest { session ->
                 if (session == null) {
+                    sessionGeneration++
                     migrateLegacyRevocation(lastSession)
                     sessionOwner = null
                     lastSession = null
@@ -206,6 +225,8 @@ class TrackingManager(
                             trackingRequested = false,
                             consentEnabled = false,
                             consentConfirmedByServer = false,
+                            serverConsentEnabled = null,
+                            locationAdmissionOpen = false,
                             pendingQueueCount = 0,
                         )
                     }
@@ -215,6 +236,21 @@ class TrackingManager(
                 _status.update { it.copy(sessionReady = true) }
                 val owner = session.userId
                 if (owner != null) {
+                    if (owner != sessionOwner) {
+                        sessionGeneration++
+                        _status.update {
+                            it.copy(
+                                consentEnabled = false,
+                                consentConfirmedByServer = false,
+                                serverConsentEnabled = null,
+                                locationAdmissionOpen = false,
+                                trackingRequested = false,
+                                running = false,
+                                providerActive = false,
+                                serviceRunning = false,
+                            )
+                        }
+                    }
                     val local = store.current()
                     if (local.localConsentConfirmed && local.consentOwnerUserId == null) {
                         // Consent persisted by a build that did not record
@@ -403,12 +439,14 @@ class TrackingManager(
     }
 
     private suspend fun prepareConsentOff(): ConsentOffPreparation {
-        consentMutations.closeLocationAdmission()
+        val ownerHint = sessionOwner ?: lastSession?.userId
+        consentMutations.closeLocationAdmission(ownerHint)
         val serviceStopFailure = stopInternal(clearIntent = true, clearRecovery = true, persistIntent = false)
         _status.update {
             it.copy(
                 consentEnabled = false,
                 consentConfirmedByServer = false,
+                locationAdmissionOpen = false,
                 consentSyncPending = true,
                 consentConflict = false,
                 conflictServerConsent = null,
@@ -526,7 +564,7 @@ class TrackingManager(
             val remote = server.currentUser()
             if (remote.id != operation.ownerUserId) throw IOException("Consent owner changed")
             if (remote.locationSharingEnabled != operation.desiredEnabled) {
-                consentMutations.closeLocationAdmission()
+                consentMutations.closeLocationAdmission(operation.ownerUserId)
                 val recorded = consentMutations.withLocalMutation {
                     val latest = sessions.pendingConsentOperations().firstOrNull {
                         it.ownerUserId == operation.ownerUserId
@@ -579,7 +617,10 @@ class TrackingManager(
         if (user.id != operation.ownerUserId) throw IOException("Consent response belongs to another account")
         val stillCurrent = consentMutations.withLocalMutation {
             val latest = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == operation.ownerUserId }
-            if (latest?.operationId != operation.operationId || sessions.current()?.userId != operation.ownerUserId) {
+            if (latest?.operationId != operation.operationId ||
+                sessions.current()?.userId != operation.ownerUserId ||
+                !consentMutations.isCurrent(operation.ownerUserId, operation.generation)
+            ) {
                 false
             } else {
                 sessions.updateConsent(operation.ownerUserId, user.locationSharingEnabled, user.locationSharingVersion)
@@ -587,7 +628,9 @@ class TrackingManager(
                 store.setLocalConsentConfirmed(user.locationSharingEnabled)
                 store.setPendingConsentRevocation(false)
                 store.setConsentOwner(operation.ownerUserId)
-                if (user.locationSharingEnabled) consentMutations.openLocationAdmission()
+                if (user.locationSharingEnabled) {
+                    consentMutations.openLocationAdmission(operation.ownerUserId, operation.generation)
+                }
                 true
             }
         }
@@ -602,6 +645,11 @@ class TrackingManager(
                 consentConflict = false,
                 conflictServerConsent = null,
                 consentSyncPending = false,
+                consentEnabled = user.locationSharingEnabled &&
+                    !consentMutations.isLocationAdmissionClosed(operation.ownerUserId),
+                consentConfirmedByServer = true,
+                serverConsentEnabled = user.locationSharingEnabled,
+                locationAdmissionOpen = !consentMutations.isLocationAdmissionClosed(operation.ownerUserId),
                 lastError = current.lastError.takeIf { offFailure },
                 lastErrorAtMillis = current.lastErrorAtMillis.takeIf { offFailure },
             )
@@ -636,34 +684,75 @@ class TrackingManager(
         if (migrated) pendingConsentScheduler.ensureScheduled()
     }
 
-    /** Records what an authenticated read observed, unless a revocation is pending. */
     override suspend fun recordServerConsent(enabled: Boolean) {
-        recordServerConsentSnapshot(enabled, version = null)
+        val active = sessions.current() ?: return
+        val owner = active.userId ?: sessionOwner ?: return
+        recordServerConsentSnapshot(owner, enabled, version = null)
     }
 
     override suspend fun recordServerConsent(user: UserDto) {
-        recordServerConsentSnapshot(user.locationSharingEnabled, user.locationSharingVersion)
+        recordServerConsentSnapshot(user.id, user.locationSharingEnabled, user.locationSharingVersion)
     }
 
-    private suspend fun recordServerConsentSnapshot(enabled: Boolean, version: Long?) {
+    private suspend fun recordServerConsentSnapshot(ownerUserId: String, enabled: Boolean, version: Long?) {
         consentMutations.withLocalMutation {
-            val session = sessions.current()
+            val session = sessions.current() ?: return@withLocalMutation
+            val owner = session.userId ?: sessionOwner ?: ownerUserId
+            if (owner != ownerUserId) return@withLocalMutation
+            if (version != null && session.userId == owner &&
+                version < (session.locationSharingVersion ?: -1L)
+            ) {
+                return@withLocalMutation
+            }
+
+            val pending = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == owner }
             val local = store.current()
-            val owner = currentOwnerId()
-            if (version != null && session?.userId == owner &&
-                version < (session?.locationSharingVersion ?: -1L)
-            ) {
+            val pendingRevocation = local.pendingConsentRevocation && local.consentOwnerUserId == owner
+            if (pending != null || pendingRevocation) {
+                consentMutations.restoreBlockedAdmission(owner, pending?.generation ?: 0L)
+                _status.update {
+                    it.copy(
+                        serverConsentEnabled = enabled,
+                        consentConfirmedByServer = true,
+                        consentEnabled = false,
+                        locationAdmissionOpen = false,
+                        consentSyncPending = true,
+                        consentConflict = pending?.hasConsentConflict == true,
+                        conflictServerConsent = pending?.conflictServerEnabled,
+                    )
+                }
                 return@withLocalMutation
             }
-            if (version != null && owner != null) sessions.updateConsent(owner, enabled, version)
-            if (consentMutations.isLocationAdmissionClosed() || local.pendingConsentRevocation ||
-                sessions.pendingConsentOperations().any { it.ownerUserId == owner }
-            ) {
-                store.setLocalConsentConfirmed(false)
+
+            if (version != null) sessions.updateConsent(owner, enabled, version)
+            val mayReconcile = consentMutations.reconcileLocationAdmission(owner, enabled)
+            if (enabled && !mayReconcile) {
+                // A server GET is not fresh user intent and cannot clear a
+                // process-local emergency OFF/conflict barrier.
+                _status.update {
+                    it.copy(
+                        serverConsentEnabled = true,
+                        consentConfirmedByServer = true,
+                        consentEnabled = false,
+                        locationAdmissionOpen = false,
+                    )
+                }
                 return@withLocalMutation
             }
+
             store.setConsentOwner(owner)
             store.setLocalConsentConfirmed(enabled)
+            _status.update {
+                it.copy(
+                    serverConsentEnabled = enabled,
+                    consentConfirmedByServer = true,
+                    consentEnabled = enabled,
+                    locationAdmissionOpen = enabled && !consentMutations.isLocationAdmissionClosed(owner),
+                    consentSyncPending = false,
+                    consentConflict = false,
+                    conflictServerConsent = null,
+                )
+            }
         }
     }
 
@@ -671,36 +760,103 @@ class TrackingManager(
         sessionOwner ?: sessions.current()?.userId
 
 
-    /**
-     * Starts acquisition. Must be called in response to a user action from a
-     * visible screen (Android background-start rules); permission dialogs
-     * are the UI's responsibility, this method verifies the grants.
-     */
     override fun startTracking() {
-        if (consentMutations.isLocationAdmissionClosed()) return
         if (_status.value.running || starting) return
         scope.launch { startInternal() }
     }
 
     private suspend fun startInternal() {
-        if (consentMutations.isLocationAdmissionClosed()) {
-            failStart(TrackingProblem.CONSENT_REQUIRED)
-            return
-        }
         val session = sessions.current()
         if (session == null) {
             failStart(TrackingProblem.SESSION_UNAVAILABLE)
             return
         }
-        val local = store.current()
-        val owner = session.userId ?: currentOwnerId()
-        val pendingConsent = owner != null && sessions.pendingConsentOperations().any { it.ownerUserId == owner }
-        if (pendingConsent || local.pendingConsentRevocation || !local.localConsentConfirmed) {
+        var local = store.current()
+        var owner = session.userId ?: sessionOwner
+        if (owner == null && !connectivity.isOnline()) {
+            failStart(TrackingProblem.SESSION_UNAVAILABLE)
+            return
+        }
+        var pendingConsent = owner?.let { userId ->
+            sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
+        }
+        if (owner != null && pendingConsent != null) {
+            consentMutations.restoreBlockedAdmission(owner, pendingConsent.generation)
             failStart(TrackingProblem.CONSENT_REQUIRED)
             return
         }
+        if (owner != null && local.pendingConsentRevocation && local.consentOwnerUserId == owner) {
+            consentMutations.restoreBlockedAdmission(owner, generation = 0)
+            failStart(TrackingProblem.CONSENT_REQUIRED)
+            return
+        }
+        if (owner != null && local.consentOwnerUserId == owner && !local.localConsentConfirmed) {
+            // A server snapshot cannot silently undo a local OFF choice. A
+            // fresh consent mutation must authorize tracking again.
+            consentMutations.closeLocationAdmission(owner)
+            failStart(TrackingProblem.CONSENT_REQUIRED)
+            return
+        }
+
+        // A new account begins closed until its own authoritative snapshot
+        // arrives. Offline recovery is allowed only from that same owner's
+        // last server-confirmed consent and only when no local OFF barrier
+        // has been set.
+        if (connectivity.isOnline()) {
+            try {
+                val user = server.currentUser()
+                if (owner != null && user.id != owner) {
+                    failStart(TrackingProblem.SESSION_UNAVAILABLE)
+                    return
+                }
+                owner = user.id
+                if (session.userId == null) {
+                    sessions.setUserIdIfMatches(session.accessToken, owner)
+                    sessionOwner = owner
+                }
+                recordServerConsent(user)
+                if (!user.locationSharingEnabled) {
+                    failStart(TrackingProblem.CONSENT_REQUIRED)
+                    return
+                }
+                if (!server.hasCircle()) {
+                    failStart(TrackingProblem.CIRCLE_REQUIRED)
+                    return
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // The owner's last confirmed local snapshot is the offline
+                // fallback. It cannot clear an emergency OFF or conflict.
+            }
+        }
+
+        local = store.current()
+        pendingConsent = owner?.let { userId ->
+            sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
+        }
+        val ownerMatches = owner != null && local.consentOwnerUserId == owner
+        if (ownerMatches && local.localConsentConfirmed && pendingConsent == null &&
+            !local.pendingConsentRevocation
+        ) {
+            consentMutations.reconcileLocationAdmission(owner, enabled = true)
+        }
+        if (!ownerMatches || !local.localConsentConfirmed || pendingConsent != null ||
+            (local.pendingConsentRevocation && local.consentOwnerUserId == owner) ||
+            consentMutations.isLocationAdmissionClosed(owner)
+        ) {
+            failStart(TrackingProblem.CONSENT_REQUIRED)
+            return
+        }
+
         val snapshot = permissions.snapshot()
-        _status.update { it.copy(permission = snapshot.location) }
+        _status.update {
+            it.copy(
+                permission = snapshot.location,
+                backgroundPermissionGranted = snapshot.backgroundLocation,
+                notificationsGranted = snapshot.notifications,
+            )
+        }
         if (!snapshot.canTrack) {
             failStart(TrackingProblem.PERMISSION_DENIED)
             return
@@ -713,63 +869,29 @@ class TrackingManager(
             failStart(TrackingProblem.PROVIDER_UNAVAILABLE)
             return
         }
-
-        // Verify the server-side prerequisites when online. Offline start is
-        // allowed from the last confirmed consent, but every upload still
-        // goes through server authorization and a refusal stops tracking.
-        if (connectivity.isOnline()) {
-            try {
-                val user = server.currentUser()
-                if (session.userId == null) {
-                    // Sessions created before M3 did not persist the owner
-                    // id. Fill it without rewriting tokens (a rotation may
-                    // have happened concurrently).
-                    sessions.setUserId(user.id)
-                    sessionOwner = user.id
-                }
-                recordServerConsent(user)
-                if (!user.locationSharingEnabled) {
-                    failStart(TrackingProblem.CONSENT_REQUIRED)
-                    return
-                }
-                if (!server.hasCircle()) {
-                    failStart(TrackingProblem.CIRCLE_REQUIRED)
-                    return
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Offline verification is best-effort; local confirmed
-                // consent is the fallback, and the server remains the
-                // authority for every batch.
-            }
-        }
-
         if (session.userId == null && sessionOwner == null) {
-            // Offline with a pre-M3 session: there is no way to attribute
-            // queued points to an account, so refuse rather than collect
-            // data that could never be uploaded safely.
             failStart(TrackingProblem.SESSION_UNAVAILABLE)
             return
         }
+
         clientDeviceId = deviceIdentity.registration().clientDeviceId
-        // Consent revocation and a start are serialized only around their
-        // durable local state changes. A stale start cannot pass this gate
-        // after OFF has been persisted.
-        val started = consentMutations.withLocalMutation {
+        val startAdmission = consentMutations.withLocalMutation {
             val latestSession = sessions.current()
             val latestLocal = store.current()
-            val latestOwner = latestSession?.userId ?: currentOwnerId()
-            val pending = latestOwner != null && sessions.pendingConsentOperations().any {
-                it.ownerUserId == latestOwner
+            val latestOwner = latestSession?.userId ?: sessionOwner
+            val pending = latestOwner?.let { userId ->
+                sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
             }
             if (starting || _status.value.running) {
-                null
-            } else if (consentMutations.isLocationAdmissionClosed() || latestSession == null || latestOwner != owner || pending || latestLocal.pendingConsentRevocation ||
-                !latestLocal.localConsentConfirmed
+                TrackingStartAdmission.ALREADY_STARTING
+            } else if (latestSession == null || latestOwner != owner || pending != null ||
+                latestLocal.consentOwnerUserId != owner || !latestLocal.localConsentConfirmed ||
+                (latestLocal.pendingConsentRevocation && latestLocal.consentOwnerUserId == owner) ||
+                consentMutations.isLocationAdmissionClosed(owner)
             ) {
-                false
+                TrackingStartAdmission.DENIED
             } else {
+                sessionGeneration++
                 if (latestSession.userId != null) sessionOwner = latestSession.userId
                 starting = true
                 _status.update {
@@ -784,22 +906,25 @@ class TrackingManager(
                     )
                 }
                 store.setTrackingRequested(true)
-                service.start()
+                val serviceAccepted = try {
+                    service.start(sessionGeneration)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    false
+                }
+                if (serviceAccepted) TrackingStartAdmission.ACCEPTED else TrackingStartAdmission.SERVICE_REFUSED
             }
         }
-        if (started == null) return
-        if (!started) {
-            failStart(
-                if (consentMutations.isLocationAdmissionClosed()) {
-                    TrackingProblem.CONSENT_REQUIRED
-                } else {
-                    TrackingProblem.SERVICE_START_FAILED
-                },
-            )
+        if (startAdmission == TrackingStartAdmission.ALREADY_STARTING) return
+        if (startAdmission == TrackingStartAdmission.DENIED) {
+            failStart(TrackingProblem.CONSENT_REQUIRED)
             return
         }
-        // The service reports back through onServiceStarted. If Android
-        // silently drops the start, do not leave the UI in "starting".
+        if (startAdmission == TrackingStartAdmission.SERVICE_REFUSED) {
+            failStart(TrackingProblem.SERVICE_START_FAILED)
+            return
+        }
         startTimeoutJob?.cancel()
         startTimeoutJob = scope.launch {
             delay(SERVICE_START_TIMEOUT_MILLIS)
@@ -811,10 +936,19 @@ class TrackingManager(
     }
 
     /** Called by the service once startForeground succeeded. */
-    fun onServiceStarted() {
+    fun onServiceStarted() = onServiceStarted(sessionGeneration)
+
+    fun onServiceStarted(startGeneration: Long) {
+        if (startGeneration != sessionGeneration) {
+            service.stop()
+            return
+        }
         starting = false
         startTimeoutJob?.cancel()
-        if (consentMutations.isLocationAdmissionClosed() || !_status.value.trackingRequested) {
+        val owner = sessionOwner
+        if (owner == null || consentMutations.isLocationAdmissionClosed(owner) ||
+            !_status.value.trackingRequested
+        ) {
             // A stale start (for example after the user stopped tracking)
             // must not leave an empty foreground service running.
             if (!service.stop()) {
@@ -834,10 +968,11 @@ class TrackingManager(
         }
         serviceStartedAtElapsed = elapsedNow()
         scope.launch { metrics.recordServiceStart() }
-        startAcquisition()
+        startAcquisition(owner, sessionGeneration)
     }
 
-    fun onServiceStartFailed() {
+    fun onServiceStartFailed(startGeneration: Long? = null) {
+        if (startGeneration != null && startGeneration != sessionGeneration) return
         starting = false
         startTimeoutJob?.cancel()
         failStart(TrackingProblem.SERVICE_START_FAILED)
@@ -875,23 +1010,70 @@ class TrackingManager(
         syncScheduler.enqueueImmediate()
     }
 
-    /** Re-reads OS/network state for the UI. */
     override fun refreshStatus() {
         scope.launch {
             val snapshot = permissions.snapshot()
-            val owner = sessionOwner
-            val count = owner?.let { runCatching { queue.count(it) }.getOrNull() }
             val activeSession = sessions.current()
+            var owner = activeSession?.userId ?: sessionOwner
+            var remote: UserDto? = null
             if (activeSession != null && connectivity.isOnline()) {
-                val remote = runCatching { server.currentUser() }.getOrNull()
-                if (remote != null && (activeSession.userId == null || remote.id == activeSession.userId)) {
-                    recordServerConsent(remote)
+                val refreshedUser = try {
+                    server.currentUser()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    null
+                }
+                if (refreshedUser != null &&
+                    (activeSession.userId == null || refreshedUser.id == activeSession.userId)
+                ) {
+                    remote = refreshedUser
+                    if (activeSession.userId == null) {
+                        sessions.setUserIdIfMatches(activeSession.accessToken, refreshedUser.id)
+                        sessionOwner = refreshedUser.id
+                        owner = refreshedUser.id
+                    }
+                    try {
+                        recordServerConsent(refreshedUser)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        // A storage failure must not erase the successful
+                        // server snapshot or reopen the local stop gate.
+                    }
+                } else {
+                    remote = null
                 }
             }
-            val local = store.current()
-            val pendingOperation = owner != null && sessions.pendingConsentOperations().any {
-                it.ownerUserId == owner
+
+            val local = try {
+                store.current()
+            } catch (_: Exception) {
+                if (owner != null) consentMutations.closeLocationAdmission(owner)
+                _status.update {
+                    it.copy(
+                        locationAdmissionOpen = false,
+                        consentSyncPending = true,
+                        lastError = TrackingProblem.CONSENT_STORAGE_UNAVAILABLE,
+                        lastErrorAtMillis = now(),
+                    )
+                }
+                return@launch
             }
+            val ownerMatches = owner != null && local.consentOwnerUserId == owner
+            val pendingOperation = owner?.let { userId ->
+                sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
+            }
+            if (owner != null && pendingOperation != null) {
+                consentMutations.restoreBlockedAdmission(owner, pendingOperation.generation)
+            }
+            val pendingRevocation = ownerMatches && local.pendingConsentRevocation
+            if (owner != null && pendingRevocation) {
+                consentMutations.restoreBlockedAdmission(owner, pendingOperation?.generation ?: 0L)
+            }
+            val admissionOpen = ownerMatches && pendingOperation == null && !pendingRevocation &&
+                !consentMutations.isLocationAdmissionClosed(owner)
+            val count = owner?.let { runCatching { queue.count(it) }.getOrNull() }
             _status.update {
                 it.copy(
                     permission = snapshot.location,
@@ -901,9 +1083,16 @@ class TrackingManager(
                     online = connectivity.isOnline(),
                     batterySaver = batterySaver(),
                     pendingQueueCount = count ?: it.pendingQueueCount,
-                    consentEnabled = local.localConsentConfirmed && !local.pendingConsentRevocation &&
-                        !pendingOperation,
-                    consentSyncPending = local.pendingConsentRevocation || pendingOperation,
+                    consentEnabled = ownerMatches && local.localConsentConfirmed &&
+                        !pendingRevocation && pendingOperation == null && admissionOpen &&
+                        (remote?.locationSharingEnabled ?: it.serverConsentEnabled.takeIf { ownerMatches }) != false,
+                    consentConfirmedByServer = ownerMatches && local.localConsentConfirmed,
+                    serverConsentEnabled = remote?.locationSharingEnabled ?: it.serverConsentEnabled
+                        .takeIf { ownerMatches },
+                    locationAdmissionOpen = admissionOpen,
+                    consentSyncPending = pendingRevocation || pendingOperation != null,
+                    consentConflict = pendingOperation?.hasConsentConflict == true,
+                    conflictServerConsent = pendingOperation?.conflictServerEnabled,
                 )
             }
         }
@@ -935,7 +1124,7 @@ class TrackingManager(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun startAcquisition() {
+    private fun startAcquisition(ownerUserId: String, generation: Long) {
         if (collectionJob?.isActive == true) return
         val snapshot = permissions.snapshot()
         if (!snapshot.canTrack) {
@@ -951,7 +1140,7 @@ class TrackingManager(
             try {
                 requestOptions
                     .flatMapLatest { options -> provider.updates(options) }
-                    .collect { fix -> handleFix(fix) }
+                    .collect { fix -> handleFix(fix, ownerUserId, generation) }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: SecurityException) {
@@ -977,8 +1166,10 @@ class TrackingManager(
         }
     }
 
-    private suspend fun handleFix(fix: LocationFix) {
-        if (consentMutations.isLocationAdmissionClosed()) return
+    private suspend fun handleFix(fix: LocationFix, callbackOwner: String, generation: Long) {
+        if (generation != sessionGeneration || callbackOwner != sessionOwner ||
+            consentMutations.isLocationAdmissionClosed(callbackOwner)
+        ) return
         if (fix.recordedAtMillis > now() + MAX_FUTURE_SKEW_MILLIS) {
             // The device clock is not a trusted input. Refuse the fix
             // instead of rewriting its timestamp; the server applies the
@@ -1005,7 +1196,7 @@ class TrackingManager(
         }
         if (!decision.accepted) return
 
-        val owner = sessionOwner ?: return
+        val owner = callbackOwner
         val device = clientDeviceId ?: return
 
         val enqueued = try {
@@ -1016,7 +1207,10 @@ class TrackingManager(
                 val pendingMutation = sessions.pendingConsentOperations().any {
                     it.ownerUserId == owner
                 }
-                if (consentMutations.isLocationAdmissionClosed() || activeOwner != owner || pendingMutation || local.pendingConsentRevocation ||
+                if (generation != sessionGeneration || callbackOwner != sessionOwner ||
+                    consentMutations.isLocationAdmissionClosed(owner) || activeOwner != owner ||
+                    local.consentOwnerUserId != owner || pendingMutation ||
+                    (local.pendingConsentRevocation && local.consentOwnerUserId == owner) ||
                     !local.localConsentConfirmed || !local.trackingRequested ||
                     !_status.value.trackingRequested || !permissions.snapshot().canTrack
                 ) {

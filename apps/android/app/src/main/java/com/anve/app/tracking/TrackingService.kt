@@ -39,12 +39,12 @@ class TrackingService : Service() {
         }
         return try {
             startForeground(NOTIFICATION_ID, buildNotification(this))
-            manager()?.onServiceStarted()
+            manager()?.onServiceStarted(intent?.getLongExtra(EXTRA_START_GENERATION, -1L) ?: -1L)
             START_NOT_STICKY
         } catch (e: SecurityException) {
             // Missing foreground-service/location permission: fail closed
             // and tell the coordinator instead of running invisibly.
-            manager()?.onServiceStartFailed()
+            manager()?.onServiceStartFailed(intent?.getLongExtra(EXTRA_START_GENERATION, -1L))
             stopSelf()
             START_NOT_STICKY
         }
@@ -62,6 +62,7 @@ class TrackingService : Service() {
 
     companion object {
         const val ACTION_STOP = "com.anve.app.action.STOP_TRACKING"
+        const val EXTRA_START_GENERATION = "start_generation"
         const val NOTIFICATION_CHANNEL_ID = "anve_location_tracking"
         const val NOTIFICATION_ID = 1001
 
@@ -112,7 +113,7 @@ class TrackingService : Service() {
 
 /** Starts/stops the foreground service and reports whether the OS accepted the start. */
 interface TrackingServiceController {
-    fun start(): Boolean
+    fun start(generation: Long): Boolean
     fun stop(): Boolean
 }
 
@@ -120,10 +121,11 @@ class AndroidTrackingServiceController(context: Context) : TrackingServiceContro
 
     private val appContext = context.applicationContext
 
-    override fun start(): Boolean = try {
+    override fun start(generation: Long): Boolean = try {
         ContextCompat.startForegroundService(
             appContext,
-            Intent(appContext, TrackingService::class.java),
+            Intent(appContext, TrackingService::class.java)
+                .putExtra(TrackingService.EXTRA_START_GENERATION, generation),
         )
         true
     } catch (_: RuntimeException) {

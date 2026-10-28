@@ -395,7 +395,7 @@ class AuthRepositoryTest {
         server.enqueue(MockResponse().setResponseCode(409).setBody(errorBody("CONSENT_VERSION_CONFLICT")))
         server.enqueue(MockResponse().setBody(userJson("user-a", enabled = false, version = 5)))
         val retrying = repository(clock = { now })
-        consentMutations.openLocationAdmission()
+        consentMutations.reconcileLocationAdmission("user-a", enabled = true)
 
         val hasMoreWork = retrying.retryPendingRevocations()
 
@@ -407,7 +407,7 @@ class AuthRepositoryTest {
         assertEquals("CONSENT_VERSION_CONFLICT", conflicted.lastErrorCode)
         assertEquals(2, server.requestCount)
         assertFalse("a parked conflict must not keep a worker loop scheduled", hasMoreWork)
-        assertTrue("background reconciliation must fail closed", consentMutations.isLocationAdmissionClosed())
+        assertTrue("background reconciliation must fail closed", consentMutations.isLocationAdmissionClosed("user-a"))
 
         now += retryDelayMillis(0) + 1
         val retryAfterRestart = repository(clock = { now }).retryPendingRevocations()
@@ -438,7 +438,7 @@ class AuthRepositoryTest {
         )
         server.enqueue(MockResponse().setResponseCode(409).setBody(errorBody("CONSENT_VERSION_CONFLICT")))
         server.enqueue(MockResponse().setBody(userJson("user-a", enabled = true, version = 5)))
-        consentMutations.openLocationAdmission()
+        consentMutations.reconcileLocationAdmission("user-a", enabled = true)
 
         val hasMoreWork = repository().retryPendingRevocations()
         val conflicted = storage.pendingConsentOperations().single()
@@ -448,7 +448,7 @@ class AuthRepositoryTest {
         assertEquals(true, conflicted.conflictServerEnabled)
         assertEquals(5L, conflicted.conflictServerVersion)
         assertEquals(true, storage.current()!!.locationSharingEnabled)
-        assertTrue("the local OFF remains fail-closed", consentMutations.isLocationAdmissionClosed())
+        assertTrue("the local OFF remains fail-closed", consentMutations.isLocationAdmissionClosed("user-a"))
         assertEquals(2, server.requestCount)
     }
 

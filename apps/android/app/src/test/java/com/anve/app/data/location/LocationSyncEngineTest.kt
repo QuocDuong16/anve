@@ -44,6 +44,7 @@ class LocationSyncEngineTest {
         sessions = InMemorySessionStorage()
         sessions.save(session("u1"))
         consentMutations = ConsentMutationCoordinator()
+        consentMutations.reconcileLocationAdmission("u1", enabled = true)
         gateway = FakeSyncGateway(owner = "u1")
         engine = LocationSyncEngine(
             gateway = gateway,
@@ -146,7 +147,7 @@ class LocationSyncEngineTest {
 
         val worker = async { engine.sync() }
         reachedAdmission.await()
-        consentMutations.closeLocationAdmission()
+        consentMutations.closeLocationAdmission("u1")
         continueWorker.complete(Unit)
 
         val result = worker.await()
@@ -359,7 +360,14 @@ class LocationSyncEngineTest {
             recordedAtMillis = expiryNow - LOCATION_QUEUE_TTL_MILLIS + 1,
             createdAtMillis = expiryNow,
         )
-        engine = LocationSyncEngine(gateway, queue, store, sessions, now = { expiryNow })
+        engine = LocationSyncEngine(
+            gateway,
+            queue,
+            store,
+            sessions,
+            now = { expiryNow },
+            consentMutations = consentMutations,
+        )
 
         val outcome = engine.sync()
 
@@ -463,7 +471,14 @@ class LocationSyncEngineTest {
             if (events.any { it.eventId == invalid }) throw ApiException("LOCATION_BATCH_INVALID", "bad", null)
             LocationBatchResponseDto(accepted = events.map { it.eventId })
         }
-        val resumed = LocationSyncEngine(gateway, queue, store, sessions, now = { now }).sync()
+        val resumed = LocationSyncEngine(
+            gateway,
+            queue,
+            store,
+            sessions,
+            now = { now },
+            consentMutations = consentMutations,
+        ).sync()
         assertEquals(SYNC_BATCH_SIZE / 2 - 1, resumed.uploaded)
         assertEquals(1, resumed.dropped)
         assertTrue(dao.rows.isEmpty())

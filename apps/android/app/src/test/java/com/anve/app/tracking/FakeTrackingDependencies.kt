@@ -20,6 +20,8 @@ class FakeTrackingStore(
 
     /** Ordered write log, used to prove revocation-before-upload ordering. */
     val writes = mutableListOf<String>()
+    var failConsentMirrorWrites = false
+    var failedConsentMirrorWrites = 0
 
     override suspend fun current(): LocalTrackingState = _state.value
 
@@ -35,6 +37,10 @@ class FakeTrackingStore(
 
     override suspend fun setLocalConsentConfirmed(confirmed: Boolean) {
         writes += "localConsentConfirmed=$confirmed"
+        if (failConsentMirrorWrites) {
+            failedConsentMirrorWrites++
+            throw java.io.IOException("simulated consent mirror failure")
+        }
         _state.value = _state.value.copy(localConsentConfirmed = confirmed)
     }
 
@@ -116,8 +122,10 @@ class FakeServiceController(var startResult: Boolean = true) : TrackingServiceCo
     var stops = 0
     var failStop = false
     var stopResult = true
+    var lastGeneration: Long? = null
 
-    override fun start(): Boolean {
+    override fun start(generation: Long): Boolean {
+        lastGeneration = generation
         starts++
         return startResult
     }
@@ -158,6 +166,9 @@ class FakeServerGateway(
     private val store: FakeTrackingStore? = null,
 ) : TrackingServerGateway {
 
+    var ownerUserId: String = "u1"
+    var currentUserCalls: Int = 0
+
     var failConsentWith: Exception? = null
     var failCurrentUserWith: Exception? = null
     var pendingAtConsentCall: Boolean? = null
@@ -166,7 +177,8 @@ class FakeServerGateway(
     val consentOperationIds = mutableListOf<String>()
 
     override suspend fun currentUser(): UserDto {
-        val snapshot = user(consent)
+        currentUserCalls++
+        val snapshot = user(ownerUserId, consent)
         beforeCurrentUser?.also {
             beforeCurrentUser = null
             it()
@@ -181,7 +193,7 @@ class FakeServerGateway(
         ownerUserId: String,
         operationId: String,
     ): UserDto {
-        if (ownerUserId != "u1") throw java.io.IOException("owner mismatch")
+        if (ownerUserId != this.ownerUserId) throw java.io.IOException("owner mismatch")
         if (expectedVersion != consentVersion) {
             throw ApiException("CONSENT_VERSION_CONFLICT", "version conflict", null)
         }
@@ -191,13 +203,13 @@ class FakeServerGateway(
         failConsentWith?.let { throw it }
         consent = enabled
         consentVersion++
-        return user(consent)
+        return user(this.ownerUserId, consent)
     }
 
     override suspend fun hasCircle(): Boolean = hasCircle
 
-    private fun user(sharing: Boolean) = UserDto(
-        id = "u1",
+    private fun user(owner: String, sharing: Boolean) = UserDto(
+        id = owner,
         email = "owner@example.com",
         displayName = "Owner",
         avatarUrl = null,

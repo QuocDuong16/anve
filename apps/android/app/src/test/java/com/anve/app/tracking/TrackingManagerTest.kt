@@ -314,7 +314,7 @@ class TrackingManagerTest {
         assertEquals("CONSENT_VERSION_CONFLICT", conflict.lastErrorCode)
         assertFalse(manager.status.value.consentEnabled)
         assertTrue(manager.status.value.consentConflict)
-        assertTrue(consentMutations.isLocationAdmissionClosed())
+        assertTrue(consentMutations.isLocationAdmissionClosed("u1"))
 
         val staleOperationId = conflict.operationId
         val explicitRetry = manager.setConsent(true)
@@ -392,6 +392,58 @@ class TrackingManagerTest {
     }
 
     @Test
+    fun `refresh after OFF storage failure keeps server consent separate from local admission`() = runBlocking {
+        assertTrue(manager.setConsent(true).serverConfirmed)
+        failConsentOperationWrite = true
+        store.failConsentMirrorWrites = true
+
+        val result = manager.setConsent(false)
+
+        assertFalse(result.serverConfirmed)
+        assertFalse(result.pendingOperationPersisted)
+        val previousReads = gateway.currentUserCalls
+        manager.refreshStatus()
+        awaitUntil {
+            gateway.currentUserCalls > previousReads && manager.status.value.serverConsentEnabled == true
+        }
+
+        assertFalse("the local consent control must reflect the closed privacy gate", manager.status.value.consentEnabled)
+        assertFalse(manager.status.value.locationAdmissionOpen)
+        assertFalse(manager.status.value.activelyTracking)
+        assertTrue("the server snapshot may still be ON while local admission stays closed",
+            manager.status.value.serverConsentEnabled == true)
+    }
+
+    @Test
+    fun `A offline OFF remains isolated while B reconciles its own server consent`() = runBlocking {
+        gateway.failConsentWith = networkError()
+        val off = manager.setConsent(false)
+        assertFalse(off.serverConfirmed)
+        assertTrue(sessions.pendingConsentOperations().any { it.ownerUserId == "u1" && !it.desiredEnabled })
+        assertTrue(consentMutations.isLocationAdmissionClosed("u1"))
+
+        sessions.save(session("u2"))
+        awaitUntil { dao.rows.isEmpty() && manager.status.value.sessionReady }
+        assertTrue(consentMutations.isLocationAdmissionClosed("u2"))
+        assertTrue(sessions.pendingConsentOperations().any { it.ownerUserId == "u1" && !it.desiredEnabled })
+
+        gateway.ownerUserId = "u2"
+        gateway.consent = true
+        gateway.consentVersion = 8
+        val previousReads = gateway.currentUserCalls
+        manager.refreshStatus()
+        awaitUntil {
+            gateway.currentUserCalls > previousReads && manager.status.value.serverConsentEnabled == true &&
+                manager.status.value.locationAdmissionOpen
+        }
+
+        assertFalse(consentMutations.isLocationAdmissionClosed("u2"))
+        assertTrue(consentMutations.isLocationAdmissionClosed("u1"))
+        assertTrue(sessions.pendingConsentOperations().any { it.ownerUserId == "u1" && !it.desiredEnabled })
+        assertTrue("A's points were purged at the owner transition", dao.rows.isEmpty())
+    }
+
+    @Test
     fun `queue purge failure keeps acquisition and upload admission closed`() = runBlocking {
         startAndConfirm()
         awaitUntil { provider.activeCollectors == 1 }
@@ -406,8 +458,8 @@ class TrackingManagerTest {
         assertEquals(1, dao.rows.size)
         assertEquals(0, provider.activeCollectors)
         assertTrue(service.stops >= 1)
-        assertTrue(consentMutations.isLocationAdmissionClosed())
-        assertFalse(consentMutations.authorizeLocationUpload { false })
+        assertTrue(consentMutations.isLocationAdmissionClosed("u1"))
+        assertFalse(consentMutations.authorizeLocationUpload("u1") { false })
     }
 
     @Test
@@ -424,7 +476,7 @@ class TrackingManagerTest {
         assertFalse(manager.status.value.activelyTracking)
         assertTrue(manager.status.value.serviceRunning)
         assertEquals(TrackingProblem.SERVICE_STOP_FAILED, manager.status.value.lastError)
-        assertTrue(consentMutations.isLocationAdmissionClosed())
+        assertTrue(consentMutations.isLocationAdmissionClosed("u1"))
     }
 
     @Test
@@ -449,7 +501,7 @@ class TrackingManagerTest {
         assertEquals(0, provider.activeCollectors)
         assertTrue(dao.rows.isEmpty())
         assertEquals(false, sessions.pendingConsentOperations().single().desiredEnabled)
-        assertTrue(consentMutations.isLocationAdmissionClosed())
+        assertTrue(consentMutations.isLocationAdmissionClosed("u1"))
         assertTrue(gateway.consentCalls.isEmpty())
     }
 

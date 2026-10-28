@@ -100,11 +100,27 @@ class LocationSyncEngine(
             errorCode = "SESSION_OWNER_UNKNOWN",
         )
 
+        val pendingOperation = sessions.pendingConsentOperations().firstOrNull {
+            it.ownerUserId == ownerUserId
+        }
+        if (pendingOperation != null) {
+            consentMutations.restoreBlockedAdmission(ownerUserId, pendingOperation.generation)
+        }
         queue.purgeOtherAccounts(ownerUserId)
         queue.purgeExpired()
 
         var uploaded = 0
         var dropped = 0
+        // A durable consent operation owns its own reconciliation worker.
+        // In particular, a persisted OFF must purge this owner's queue even
+        // though the in-memory admission gate was restored closed above.
+        if (pendingOperation != null) {
+            if (!pendingOperation.desiredEnabled) queue.purgeAll()
+            return SyncOutcome(
+                SyncDisposition.COMPLETE,
+                errorCode = "CONSENT_MUTATION_PENDING",
+            )
+        }
         val expectedDevice = try {
             expectedClientDeviceId?.invoke()
         } catch (e: CancellationException) {
@@ -115,24 +131,24 @@ class LocationSyncEngine(
         val budget = RequestBudget(MAX_HTTP_REQUESTS_PER_PASS)
         var batches = 0
         while (batches < MAX_BATCHES_PER_PASS && budget.remaining > 0) {
-            if (consentMutations.isLocationAdmissionClosed()) {
-                return SyncOutcome(
-                    SyncDisposition.BLOCKED,
-                    uploaded = uploaded,
-                    dropped = dropped,
-                    errorCode = "LOCAL_CONSENT_STOP",
-                )
+            val currentPending = sessions.pendingConsentOperations().firstOrNull {
+                it.ownerUserId == ownerUserId
             }
-            if (hasPendingConsentOperation(ownerUserId)) {
-                val pendingOff = sessions.pendingConsentOperations().any {
-                    it.ownerUserId == ownerUserId && !it.desiredEnabled
-                }
-                if (pendingOff) queue.purgeAll()
+            if (currentPending != null) {
+                if (!currentPending.desiredEnabled) queue.purgeAll()
                 return SyncOutcome(
                     SyncDisposition.COMPLETE,
                     uploaded = uploaded,
                     dropped = dropped,
                     errorCode = "CONSENT_MUTATION_PENDING",
+                )
+            }
+            if (consentMutations.isLocationAdmissionClosed(ownerUserId)) {
+                return SyncOutcome(
+                    SyncDisposition.BLOCKED,
+                    uploaded = uploaded,
+                    dropped = dropped,
+                    errorCode = "LOCAL_CONSENT_STOP",
                 )
             }
             val local = store.current()
@@ -174,9 +190,6 @@ class LocationSyncEngine(
         return SyncOutcome(SyncDisposition.RETRY, uploaded = uploaded, dropped = dropped)
     }
 
-    private suspend fun hasPendingConsentOperation(ownerUserId: String): Boolean =
-        sessions.pendingConsentOperations().any { it.ownerUserId == ownerUserId }
-
     private suspend fun uploadWithIsolation(
         ownerUserId: String,
         rows: List<QueuedLocation>,
@@ -185,7 +198,7 @@ class LocationSyncEngine(
         if (budget.remaining <= 0) return SyncOutcome(SyncDisposition.RETRY)
         var pendingOff = false
         var legacyOff = false
-        val uploadAuthorized = consentMutations.authorizeLocationUpload {
+        val uploadAuthorized = consentMutations.authorizeLocationUpload(ownerUserId) {
             val pending = sessions.pendingConsentOperations().filter { it.ownerUserId == ownerUserId }
             pendingOff = pending.any { !it.desiredEnabled }
             legacyOff = store.current().let {
@@ -195,7 +208,7 @@ class LocationSyncEngine(
         }
         if (!uploadAuthorized) {
             if (pendingOff || legacyOff) queue.purgeAll()
-            return if (consentMutations.isLocationAdmissionClosed()) {
+            return if (consentMutations.isLocationAdmissionClosed(ownerUserId)) {
                 SyncOutcome(SyncDisposition.BLOCKED, errorCode = "LOCAL_CONSENT_STOP")
             } else {
                 SyncOutcome(SyncDisposition.COMPLETE, errorCode = "CONSENT_MUTATION_PENDING")

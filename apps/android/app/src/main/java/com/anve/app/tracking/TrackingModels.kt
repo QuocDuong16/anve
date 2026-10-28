@@ -81,15 +81,21 @@ enum class TrackingProblem {
 }
 
 /**
- * Everything the tracking UI may show. It separates what the user agreed
- * to (`consentEnabled`) from what the device is actually doing (`running`,
- * `operational`) — the UI must never present consent as live tracking.
+ * Everything the tracking UI may show. `consentEnabled` is the effective
+ * local consent state after owner and privacy-gate checks; `serverConsentEnabled`
+ * is the separate account snapshot. Neither field proves live collection,
+ * which is reported by `running` and `operational`.
  */
 data class TrackingStatus(
     /** Whether the storage layer currently holds a session for this account. */
     val sessionReady: Boolean = false,
+    /** Effective local consent; false while this owner's emergency privacy gate is closed. */
     val consentEnabled: Boolean = false,
     val consentConfirmedByServer: Boolean = false,
+    /** Last authoritative account consent snapshot; independent of local collection admission. */
+    val serverConsentEnabled: Boolean? = null,
+    /** True only when the current owner has passed the in-process privacy gate. */
+    val locationAdmissionOpen: Boolean = false,
     val consentSyncPending: Boolean = false,
     val consentConflict: Boolean = false,
     /** Authoritative account state observed during a conflict; local tracking stays closed. */
