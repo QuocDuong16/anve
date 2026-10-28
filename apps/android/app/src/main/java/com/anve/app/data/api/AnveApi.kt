@@ -152,4 +152,24 @@ interface AnveApi {
     suspend fun uploadLocationBatch(
         @Body body: LocationBatchRequestDto,
     ): Response<LocationBatchResponseDto>
+
+    @GET("api/v1/location-sharing/audience")
+    suspend fun locationAudience(): Response<LocationAudienceDto>
+
+    @PUT("api/v1/location-sharing/audience/{viewerId}")
+    suspend fun grantLocationAudience(
+        @Path("viewerId") viewerId: String,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+    ): Response<LocationAudienceGrantDto>
+
+    @DELETE("api/v1/location-sharing/audience/{viewerId}")
+    suspend fun revokeLocationAudience(
+        @Path("viewerId") viewerId: String,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+    ): Response<Unit>
+
+    @GET("api/v1/locations/visible/latest")
+    suspend fun latestVisibleLocations(
+        @Header("If-None-Match") etag: String? = null,
+    ): Response<LatestVisibleLocationsDto>
 }

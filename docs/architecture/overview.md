@@ -3,7 +3,7 @@
 > Tài liệu này là **source of truth** cho kiến trúc logic: ranh giới component
 > Android, module Go dự kiến, các luồng dữ liệu chính, security/trust boundaries
 > và các quyết định kỹ thuật chưa chốt. Toàn bộ sơ đồ phân biệt rõ phần **đã có
-> trong source (M0)** và phần **định hướng (Planned)** — không có component,
+> trong source (M0–M4)** và phần **định hướng (Planned)** — không có component,
 > endpoint hay bảng database nào được mô tả như đã tồn tại nếu source chưa có.
 
 ## 1. Kiến trúc tổng quan
@@ -16,13 +16,13 @@ phải đổi.
 
 ```mermaid
 flowchart LR
-    subgraph androidI["apps/android — Kotlin/Compose — implemented (M0–M3)"]
-        UI["Splash · sign-in · account/circle · tracking UI"]
+    subgraph androidI["apps/android — Kotlin/Compose — implemented (M0–M4)"]
+        UI["Splash · sign-in · account/circle · tracking · Live Map"]
         LE["Location engine + foreground service"]
         SQ["Room queue + WorkManager sync"]
     end
-    subgraph serverI["apps/server — Go — implemented (M0–M3)"]
-        API["cmd/api — chi router<br/>health · auth · circles · locations"]
+    subgraph serverI["apps/server — Go — implemented (M0–M4)"]
+        API["cmd/api — chi router<br/>health · auth · circles · ingest · authorized reads"]
         MIG["cmd/migrate — custom migrator<br/>advisory lock · transaction per file"]
     end
     DB[("PostgreSQL + PostGIS<br/>extensions: postgis · uuid-ossp · pg_trgm")]
@@ -33,22 +33,22 @@ flowchart LR
     API --> DB
 ```
 
-Kiến trúc đích khi các milestone M4–M7 hiện thực (phần M1–M3 đã có):
+Kiến trúc hiện tại và các phần còn lại (M1–M4 đã có; M5–M7 planned):
 
 ```mermaid
 flowchart TB
-    subgraph androidT["Android app — M1–M3 implemented, M4+ planned"]
-        UIF["UI features<br/>Circle · Tracking (M3) · Live Map/History/Alerts/SOS/Diagnostics (planned)"]
+    subgraph androidT["Android app — M1–M4 implemented, M5+ planned"]
+        UIF["UI features<br/>Circle · Tracking · Live Map · History/Alerts/SOS/Diagnostics (planned)"]
         LE["Location Engine<br/>state machine, battery-aware (M3)"]
         SYNC["SyncManager — Room + WorkManager (M3)"]
         ROOM[("Room DB — location queue (M3)")]
         FCMC["FCM client (planned M6)"]
     end
-    subgraph serverT["Go backend — M1–M3 implemented, M4+ planned"]
+    subgraph serverT["Go backend — M1–M4 implemented, M5+ planned"]
         AUTH["auth · devices (M1)"]
         CIRC["circles · membership (M2)"]
         ING["location ingestion + retention (M3)"]
-        RT["realtime hub<br/>transport: quyết định mở (planned)"]
+        READ["locationaccess<br/>temporal audience + latest snapshot (M4)"]
         EVT["places · alerts · SOS · journeys (planned)"]
         NOTIF["notification dispatcher (planned)"]
         AUDIT["audit · privacy enforcement (M1–M3)"]
@@ -63,7 +63,7 @@ flowchart TB
     SYNC -. "HTTPS batch" .-> ING
     UIF -. "HTTPS" .-> AUTH
     UIF -. "HTTPS" .-> CIRC
-    RT -.-> UIF
+    READ -. "conditional HTTPS polling" .-> UIF
     NOTIF --> FCM
     AUTH --> PG
     CIRC --> PG
@@ -96,9 +96,10 @@ outbox keyed by owner. Local persistence is serialized, but HTTP calls do not
 hold the mutex; the server's `location_sharing_version` compare-and-set is the
 ordering boundary across devices/processes. Pending OFF blocks new collection
 and upload, survives sign-out, and cannot be consumed by a later account.
-See [ADR 0006](../adr/0006-m3-location-engine.md) for the lifecycle and
-[ADR 0007](../adr/0007-location-read-audience-authorization.md) for the
-M4-only read authorization design.
+See [ADR 0006](../adr/0006-m3-location-engine.md) for the lifecycle,
+[ADR 0007](../adr/0007-location-read-audience-authorization.md) for temporal
+read authorization and [ADR 0008](../adr/0008-m4-polling-confidence-and-map.md)
+for conditional polling, confidence and map behavior.
 
 Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư mục bắt buộc):
 
@@ -108,7 +109,7 @@ Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư m
 | **Location Engine** (`tracking/`) | Motion state `IDLE/STATIONARY/MOVING/JOURNEY` + operational `ACTIVE/DEGRADED/OFFLINE/PAUSED`; `LocationProvider` (Fused); foreground service type `location` | **Implemented (M3)**; quan sát được qua tab Vị trí; không viết trực tiếp vào network |
 | **SyncManager** (`data/location/`) | Durable queue → batch upload → retry/backoff → idempotency | **Implemented (M3)**; WorkManager unique/network-constrained; dữ liệu không đi thẳng từ Engine ra network |
 | **Room persistence** | Location Point chờ gửi, retry metadata | **Implemented (M3)**: owner-scoped, eventId PK, 5.000 điểm/7 ngày, schema export, không destructive migration; domain `database` bị backup rules loại trừ |
-| **Network client** | HTTP đến Go API; kết nối realtime | Contract theo [`../../packages/api-contracts/openapi.yaml`](../../packages/api-contracts/openapi.yaml) |
+| **Network client** | Authenticated HTTPS APIs; foreground conditional polling for Live Map | Contract theo [`../../packages/api-contracts/openapi.yaml`](../../packages/api-contracts/openapi.yaml) |
 | **FCM client** | Nhận push sự kiện; không nhận GPS | Xem [Push notification flow](#43-push-notification-flow-planned--m6) |
 
 ## 3. Module Go
@@ -117,13 +118,13 @@ Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M
 
 | Module | Trách nhiệm | Trạng thái |
 | --- | --- | --- |
-| `httpapi` + `config` | Router, middleware, error envelope, cấu hình | Implemented (M0–M2) |
+| `httpapi` + `config` | Router, middleware, error envelope, cấu hình | Implemented (M0–M4) |
 | `auth` | Đăng nhập, phiên, thiết bị, consent switch, xóa tài khoản | Implemented (M1) |
 | `circles` | Circle, membership, invite, vai trò, giải tán | Implemented (M2) |
 | `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | Implemented (M1, ownership thống nhất ở ADR 0004) |
 | `testdb` | Scratch database cho integration tests | Implemented (test infrastructure) |
 | `locations` | Ingestion Location Point (identity, idempotency, validation), retention purge; history query thuộc M5 | **Implemented (M3)** ingestion + retention |
-| `realtime` | Hub phân phát vị trí realtime | Planned (M4) |
+| `locationaccess` | Explicit audience grant/revoke; temporal authorization; latest snapshot/confidence | **Implemented (M4)**; each request queries PostgreSQL, no server location cache |
 | `places` / `alerts` | Geofence events, verification, chống nhiễu | Planned (M5) |
 | `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
 | `notify` | Dispatcher FCM, lọc người nhận theo quyền | Planned (M6) |
@@ -162,24 +163,28 @@ ordering của transaction phía server; rời
 Circle/device bị thu hồi làm server từ chối và client purge queue. Chi tiết:
 ADR 0006 và [`product/features.md`](../product/features.md#7-offline-sync).
 
-### 4.2 Realtime distribution (Planned — M4)
+### 4.2 Near-realtime latest snapshot (Implemented — M4)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant I as Ingestion API (Go)
-    participant H as Realtime hub (Go)
+    participant R as LocationAccess read API (Go)
     participant V as Viewer client (Android)
 
-    I->>H: location mới đã ghi bền vững
-    H->>H: lọc người xem còn quyền tại thời điểm này
-    H->>V: đẩy qua kết nối realtime (transport: quyết định mở)
-    Note over V: UI hiển thị kèm freshness, không bao giờ trình bày như tuyệt đối
+    I->>PG: commit point + active sharing epoch
+    V->>R: GET visible/latest + If-None-Match
+    R->>PG: authorize membership periods + grant + epoch + retention
+    PG-->>R: latest authorized rows only
+    R-->>V: 200 snapshot or 304; private/no-store
+    Note over V: poll 10s while foreground; age advances monotonically
 ```
 
-Ràng buộc: realtime không bao giờ đi qua FCM; người mất quyền (tắt chia sẻ, rời
-Circle) bị hub loại khỏi phân phát từ nguồn. Last known location là fallback
-hiển thị, không phải kênh realtime.
+Mỗi request đọc lại quyền trong PostgreSQL. Consent OFF, grant revoke, leave,
+removal hoặc Circle dissolution làm snapshot tiếp theo không còn trả tọa độ.
+Polling chỉ là convergence path; no-store memory display cache is not an
+authorization source. Tối đa 10 giây là mục tiêu phát hiện revoke khi mạng hoạt
+động, không phải guarantee khi mất mạng. Dữ liệu đã giao không thể thu hồi.
 
 ### 4.3 Push notification flow (Planned — M6)
 
@@ -232,6 +237,8 @@ Các ranh giới tin cậy và biện pháp tương ứng:
   authorization trong transaction, retention 30 ngày, adaptive policy,
   foreground-service lifecycle, Room/WorkManager offline delivery, privacy-first
   consent revocation — [ADR 0006](../adr/0006-m3-location-engine.md).
+- M4 location read audience authorization — [ADR 0007](../adr/0007-location-read-audience-authorization.md);
+  conditional polling, freshness and map key behavior — [ADR 0008](../adr/0008-m4-polling-confidence-and-map.md).
 - Custom migrator (không golang-migrate), advisory lock, transaction per file,
   bookkeeping table `schema_migrations` do migrator sở hữu — Implemented, có
   integration test trong CI.
@@ -243,8 +250,8 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 Những quyết định này **cần được chốt trước khi hiện thực milestone tương ứng**
 và nên có ADR riêng khi quyết:
 
-1. **Realtime transport** — WebSocket là định hướng; cân nhắc SSE/polling trước
-   khi chốt (chi phí vận hành, reconnect, môi trường mạng của người dùng Việt Nam).
+1. **Location history authorization API** — M5 must define retention and
+   pagination while reusing the current membership/epoch/grant authorization.
 2. ~~**Phương thức authentication**~~ — đã chốt: Google Sign-In + opaque
    session ([ADR 0002](../adr/0002-authentication-google-signin-opaque-sessions.md)).
 3. **FCM data message làm tín hiệu fetch** — dùng hay không, và cơ chế debounce.

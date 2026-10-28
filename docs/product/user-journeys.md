@@ -89,10 +89,11 @@ giải thích và hướng dẫn.
 **Phía người xem:**
 
 1. Mở tab bản đồ → thấy marker của những người **đang** chia sẻ.
-2. Mỗi marker kèm: tên, thời điểm ghi nhận, trạng thái dữ liệu (Fresh/Delayed/
-   Stale/Offline/Unknown — xem [Confidence Engine](features.md#5-location-confidence-engine)
-   trong `features.md`).
-3. Chạm vào một người → camera bám theo; kết nối realtime cập nhật vị trí mới.
+2. Mỗi marker kèm tên, thời điểm ghi nhận, accuracy và Fresh/Delayed/Stale/
+   Unknown. AnVề chưa kết luận thiết bị nguồn offline nếu chưa có presence
+   signal (xem [Confidence Engine](features.md#5-location-confidence-engine)).
+3. Chạm vào một người → camera tập trung theo yêu cầu; conditional polling
+   cập nhật snapshot khi màn hình bản đồ ở foreground.
 4. Người mất mạng hiển thị last known location **có nhãn tuổi dữ liệu** —
    không được nhìn như live location.
 

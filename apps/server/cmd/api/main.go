@@ -18,6 +18,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
+	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
@@ -55,6 +56,7 @@ func run() error {
 	var authService *auth.Service
 	var circlesService *circles.Service
 	var locationsService *locations.Service
+	var locationAccessService *locationaccess.Service
 	var locationStore *locations.PGStore
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
@@ -97,6 +99,10 @@ func run() error {
 		circlesService = circles.NewService(circles.NewPGStore(pool))
 		locationStore = locations.NewPGStore(pool)
 		locationsService = locations.NewService(locationStore)
+		locationAccessService = locationaccess.NewService(
+			locationaccess.NewPGStore(pool),
+			time.Duration(cfg.LocationRetentionDays)*24*time.Hour,
+		)
 	} else {
 		logger.Warn("DATABASE_URL is empty: business endpoints answer 503")
 	}
@@ -110,6 +116,7 @@ func run() error {
 			Auth:                    authService,
 			Circles:                 circlesService,
 			Locations:               locationsService,
+			LocationAccess:          locationAccessService,
 			DB:                      pool,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
 		}),

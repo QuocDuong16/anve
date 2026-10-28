@@ -379,6 +379,15 @@ func (s *PGStore) SetLocationSharingAtVersion(ctx context.Context, userID uuid.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	var previousEnabled bool
+	var previousVersion int64
+	previousErr := tx.QueryRow(ctx,
+		`SELECT location_sharing_enabled, location_sharing_version FROM users WHERE id = $1`, userID,
+	).Scan(&previousEnabled, &previousVersion)
+	if previousErr != nil && !errors.Is(previousErr, pgx.ErrNoRows) {
+		return User{}, fmt.Errorf("read consent state before update: %w", previousErr)
+	}
+
 	u, err := scanUser(tx.QueryRow(ctx,
 		`UPDATE users SET location_sharing_enabled = $2,
 		                  location_sharing_version = location_sharing_version + 1,
@@ -400,6 +409,16 @@ func (s *PGStore) SetLocationSharingAtVersion(ctx context.Context, userID uuid.U
 		return User{}, fmt.Errorf("set location sharing: %w", err)
 	}
 
+	if previousErr == nil && previousVersion == expectedVersion && previousEnabled != enabled {
+		if enabled {
+			if err := openSharingEpochs(ctx, tx, userID, u.LocationSharingVersion); err != nil {
+				return User{}, err
+			}
+		} else if err := closeSharingEpochs(ctx, tx, userID); err != nil {
+			return User{}, err
+		}
+	}
+
 	action := audit.ActionLocationSharingOff
 	if enabled {
 		action = audit.ActionLocationSharingOn
@@ -412,6 +431,115 @@ func (s *PGStore) SetLocationSharingAtVersion(ctx context.Context, userID uuid.U
 		return User{}, fmt.Errorf("commit consent change: %w", err)
 	}
 	return u, nil
+}
+
+func closeSharingEpochs(ctx context.Context, tx pgx.Tx, ownerID uuid.UUID) error {
+	rows, err := tx.Query(ctx,
+		`UPDATE location_audience_grants g
+		    SET revoked_at = clock_timestamp(),
+		        visible_until = GREATEST(g.visible_from, LEAST(COALESCE(g.visible_until, clock_timestamp()), clock_timestamp()))
+		  WHERE g.owner_user_id = $1 AND g.revoked_at IS NULL
+		  RETURNING g.id, g.viewer_user_id, g.circle_id`, ownerID)
+	if err != nil {
+		return fmt.Errorf("revoke audience grants on consent OFF: %w", err)
+	}
+	type revokedGrant struct{ id, viewerID, circleID uuid.UUID }
+	var revoked []revokedGrant
+	for rows.Next() {
+		var grant revokedGrant
+		if err := rows.Scan(&grant.id, &grant.viewerID, &grant.circleID); err != nil {
+			return fmt.Errorf("scan revoked audience grant: %w", err)
+		}
+		revoked = append(revoked, grant)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("iterate revoked audience grants: %w", err)
+	}
+	rows.Close()
+	for _, grant := range revoked {
+		if err := audit.InTx(ctx, tx, audit.Event{
+			ActorUserID:  ownerID,
+			TargetUserID: &grant.viewerID,
+			Action:       audit.ActionLocationAudienceGrantClosedConsent,
+			Detail:       map[string]any{"grant_id": grant.id.String(), "circle_id": grant.circleID.String()},
+		}); err != nil {
+			return err
+		}
+	}
+
+	epochRows, err := tx.Query(ctx,
+		`UPDATE location_sharing_epochs
+		    SET ended_at = GREATEST(started_at, clock_timestamp())
+		  WHERE owner_user_id = $1 AND ended_at IS NULL
+		  RETURNING id, circle_id`, ownerID)
+	if err != nil {
+		return fmt.Errorf("close sharing epochs: %w", err)
+	}
+	type closedEpoch struct{ id, circleID uuid.UUID }
+	var closed []closedEpoch
+	for epochRows.Next() {
+		var epoch closedEpoch
+		if err := epochRows.Scan(&epoch.id, &epoch.circleID); err != nil {
+			return fmt.Errorf("scan closed sharing epoch: %w", err)
+		}
+		closed = append(closed, epoch)
+	}
+	if err := epochRows.Err(); err != nil {
+		epochRows.Close()
+		return fmt.Errorf("iterate closed sharing epochs: %w", err)
+	}
+	epochRows.Close()
+	for _, epoch := range closed {
+		if err := audit.InTx(ctx, tx, audit.Event{
+			ActorUserID: ownerID,
+			Action:      audit.ActionLocationSharingEpochClosed,
+			Detail:      map[string]any{"epoch_id": epoch.id.String(), "circle_id": epoch.circleID.String()},
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func openSharingEpochs(ctx context.Context, tx pgx.Tx, ownerID uuid.UUID, version int64) error {
+	rows, err := tx.Query(ctx,
+		`INSERT INTO location_sharing_epochs (
+		     owner_user_id, circle_id, owner_membership_period_id, consent_version, started_at
+		 )
+		 SELECT $1, m.circle_id, p.id, $2, clock_timestamp()
+		   FROM memberships m
+		   JOIN circle_membership_periods p ON p.membership_id = m.id AND p.ended_at IS NULL
+		  WHERE m.user_id = $1
+		 ON CONFLICT (owner_user_id, circle_id) WHERE ended_at IS NULL DO NOTHING
+		 RETURNING id, circle_id`, ownerID, version)
+	if err != nil {
+		return fmt.Errorf("open sharing epochs: %w", err)
+	}
+	type openedEpoch struct{ id, circleID uuid.UUID }
+	var opened []openedEpoch
+	for rows.Next() {
+		var epoch openedEpoch
+		if err := rows.Scan(&epoch.id, &epoch.circleID); err != nil {
+			return fmt.Errorf("scan opened sharing epoch: %w", err)
+		}
+		opened = append(opened, epoch)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("iterate opened sharing epochs: %w", err)
+	}
+	rows.Close()
+	for _, epoch := range opened {
+		if err := audit.InTx(ctx, tx, audit.Event{
+			ActorUserID: ownerID,
+			Action:      audit.ActionLocationSharingEpochOpened,
+			Detail:      map[string]any{"epoch_id": epoch.id.String(), "circle_id": epoch.circleID.String()},
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DeleteUser removes the account; devices and sessions cascade, and the

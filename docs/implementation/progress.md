@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-10-27 (M3 correctness, privacy and reliability hardening).
+Last updated: 2026-10-28 (M4 authorized Live Map implementation).
 
 ## Current milestone
 
@@ -15,7 +15,9 @@ Verified (backend + client logic, no on-device field validation).**
 **M2 — Family Circle: Implemented — Verified (backend + client logic).**
 **M3 — Location Engine, consented ingestion, offline sync: Implemented —
 Automated Verified; Pending Field Validation.**
-M4 (Live Map / realtime / confidence) is next, not started.
+**M4 — Live Map, temporal audience authorization and confidence: Implemented —
+Automated Verified; Pending Runtime/Device Validation.** Conditional polling is
+near-real-time snapshot convergence, not server push.
 
 ## Milestones
 
@@ -25,7 +27,7 @@ M4 (Live Map / realtime / confidence) is next, not started.
 | M1 Auth & privacy | Implemented — Verified (server, JVM-level) | See evidence below; Google path needs real OAuth client (external), on-device run pending. |
 | M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
 | M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
-| M4 Live Map | Not started | |
+| M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
 | M5 History & Places | Not started | |
 | M6 SOS & FCM | Not started | |
 | M7 Journey & diagnostics | Not started | |
@@ -333,22 +335,57 @@ Verification levels for this pass:
 - **Ingestion requires one active Circle membership** (MVP invariant); a
   consenting account with no Circle is refused rather than collecting data
   with no audience.
-- **Points are not tagged with a Circle.** M3 has no read path; M4/M5 must
-  define audience/history authorization (current membership must not grant
-  retroactive access, and leaving a Circle must not leave a hidden viewing
-  channel) before exposing locations.
+- **M3 points remain unassociated with a sharing epoch.** They are intentionally
+  excluded from M4 latest reads; only points ingested into an active M4 sharing
+  epoch can become eligible for an explicit viewer grant.
 - **WorkManager scheduling is OS-bounded.** A force-stopped app or an OEM
   that blocks background work may delay revocation/sync until the next
   launch. Nothing is claimed beyond WorkManager's guarantees.
 - **No wakeup measurement** via public Android APIs; metrics cover
   callbacks, accuracy distribution, state time, queue and uploads.
 
-## Next engineering tasks (M4 — Live Map, not started)
+## M4 implementation (2026-10-27)
 
-1. Implement the accepted design in [ADR 0007](../adr/0007-location-read-audience-authorization.md):
-   contract + authorization for latest/visible locations; per-viewer grant,
-   membership interval and sharing epoch checked on every read.
-2. Realtime transport decision (WebSocket vs SSE/polling) and hub.
-3. Confidence states Fresh/Delayed/Stale/Offline/Unknown.
-4. Live Map UI, last-known location labels, no realtime guarantees.
-5. Later: invite deep link (currently manual code entry).
+- Additive migration `0006_location_audience`: conservative active membership
+  period backfill, sharing epochs, explicit owner/viewer grants, point-to-epoch
+  association for new ingestion only. Existing M3 points remain NULL and
+  unreadable. Membership delete and Circle dissolution close grants/epochs and
+  audit before cascades.
+- Consent CAS opens a fresh epoch on ON and transactionally closes epochs and
+  active grants on OFF. Circle enter opens an epoch only when the owner has
+  server-confirmed consent ON; leaving/removal/rejoin does not resurrect a grant.
+- `locationaccess` implements owner-only grant/list/revoke and latest-location
+  reads. PostgreSQL enforces active owner/viewer membership periods, explicit
+  grant, epoch, capture-time grant boundary and retention in the read query.
+  API paths are `/api/v1/location-sharing/audience[/{viewerId}]` and
+  `/api/v1/locations/visible/latest`; mutation requests carry an expected-owner
+  header to reject account-switch races.
+- Confidence uses server time and sample capture time: Fresh ≤2m, Delayed ≤15m,
+  then Stale; no sample or future time is Unknown. Offline is not inferred.
+  Android advances age from a monotonic clock and only downgrades confidence.
+- ADR 0008 selects foreground HTTPS conditional polling every 10 seconds with
+  ETag, bounded retry backoff and no persistent location cache. This is not
+  WebSocket/SSE push and makes no multi-replica realtime claim.
+- Android adds Maps Compose map tab, authorized markers, accuracy circles,
+  member selection/recenter, connection/freshness card and per-viewer grant
+  controls. Missing Maps key shows an actionable unavailable state; no key is
+  committed. Expected-owner headers protect late grant/revoke calls across
+  account switches.
+- M3 P2 fixes: the tracking UI's effective local consent requires an open
+  owner-scoped privacy gate, while `serverConsentEnabled` remains a separate
+  authoritative snapshot. OFF closes acquisition/upload admission before
+  persistence; refresh after mirror/outbox failure cannot show local consent
+  as active. Owner transitions do not reopen a gate or inherit queue/operations.
+  Regression tests cover A OFF → B sign-in, storage-failure refresh and stale
+  callbacks/admission.
+- **Automated evidence (2026-10-28):** `make quality-check` PASS (Go format,
+  vet, lint, vulnerability scan, unit tests/build; Android lint, JVM tests,
+  debug APK; API contract/dependency/repository checks); `make server-test-race`
+  PASS across all Go packages; `make server-test-integration` PASS against
+  PostgreSQL/PostGIS including migrations and temporal authorization races;
+  `make android-release` PASS (minified unsigned release compile).
+- `govulncheck` found no reachable vulnerabilities; it reports 3 advisories in
+  required modules that are not called by this code. Review on dependency updates.
+- **Runtime/device evidence:** Pending. No emulator/physical device and no
+  restricted Maps API key were used to verify Google map tiles, marker render,
+  screen lifecycle, or battery use.

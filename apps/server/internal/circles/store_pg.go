@@ -85,6 +85,9 @@ func (s *PGStore) CreateCircle(ctx context.Context, userID uuid.UUID, name strin
 		return Circle{}, Membership{}, fmt.Errorf("begin create circle: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockUser(ctx, tx, userID); err != nil {
+		return Circle{}, Membership{}, err
+	}
 
 	var circle Circle
 	err = tx.QueryRow(ctx,
@@ -223,6 +226,12 @@ func (s *PGStore) RemoveMember(ctx context.Context, ownerID, circleID, targetID 
 	if targetID == ownerID {
 		return fmt.Errorf("%w: owners leave via the leave endpoint", auth.ErrValidation)
 	}
+	if err := lockUser(ctx, tx, targetID); err != nil {
+		return err
+	}
+	if err := setAuditActor(ctx, tx, ownerID); err != nil {
+		return err
+	}
 
 	ct, err := tx.Exec(ctx,
 		`DELETE FROM memberships WHERE circle_id = $1 AND user_id = $2 AND role = 'member'`,
@@ -262,6 +271,12 @@ func (s *PGStore) leaveCircle(ctx context.Context, userID, circleID uuid.UUID, d
 		return fmt.Errorf("begin leave: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockUser(ctx, tx, userID); err != nil {
+		return err
+	}
+	if err := setAuditActor(ctx, tx, userID); err != nil {
+		return err
+	}
 
 	m, err := callerMembership(ctx, tx, userID, circleID, true)
 	if err != nil {
@@ -471,6 +486,9 @@ func (s *PGStore) redeemInvite(ctx context.Context, userID uuid.UUID, code strin
 	if err != nil {
 		return Circle{}, Membership{}, fmt.Errorf("lookup invite: %w", err)
 	}
+	if err := lockUser(ctx, tx, userID); err != nil {
+		return Circle{}, Membership{}, err
+	}
 
 	// One active circle per user (MVP): the unique index is the backstop,
 	// but checking first yields the precise error instead of a 23505.
@@ -520,4 +538,23 @@ func (s *PGStore) redeemInvite(ctx context.Context, userID uuid.UUID, code strin
 		return Circle{}, Membership{}, fmt.Errorf("commit redeem: %w", err)
 	}
 	return circle, membership, nil
+}
+
+func lockUser(ctx context.Context, tx pgx.Tx, userID uuid.UUID) error {
+	var locked uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&locked); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: user %s", auth.ErrNotFound, userID)
+		}
+		return fmt.Errorf("lock user for Circle membership change: %w", err)
+	}
+	return nil
+}
+
+func setAuditActor(ctx context.Context, tx pgx.Tx, userID uuid.UUID) error {
+	var configured string
+	if err := tx.QueryRow(ctx, `SELECT set_config('app.actor_user_id', $1, true)`, userID.String()).Scan(&configured); err != nil {
+		return fmt.Errorf("set Circle audit actor: %w", err)
+	}
+	return nil
 }

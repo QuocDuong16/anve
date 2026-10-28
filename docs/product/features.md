@@ -140,7 +140,10 @@ hiệu lực; rời nhóm không để lại quyền truy cập nào; danh sách
 
 ## 3. Live Map
 
-> Trạng thái: **Planned — M4**.
+> Trạng thái: **Implemented — Automated Verified (M4); Pending Runtime/Device
+> Validation.** Backend dùng membership periods, sharing epochs và grant tường
+> minh; bản đồ Android dùng conditional polling. Cần Maps API key và emulator/
+> thiết bị để xác minh render marker thực tế.
 
 **Mục đích.** Hiển thị vị trí thành viên trên bản đồ gần thời gian thực, kèm
 bối cảnh để người xem hiểu dữ liệu đang “tươi” đến đâu.
@@ -151,27 +154,32 @@ biết có cần liên hệ hay hỗ trợ không.*
 
 **Yêu cầu chức năng.**
 
-- Bản đồ Google Maps; marker cho từng thành viên đang chia sẻ.
-- Marker hiển thị avatar/tên, kèm thời điểm vị trí được ghi nhận.
-- Trạng thái online/offline của thiết bị, độ chính xác GPS nếu provider báo cáo,
-  trạng thái chia sẻ vị trí của từng thành viên.
-- Camera focus vào một thành viên khi chọn marker.
-- Theo dõi cập nhật realtime bằng kết nối phù hợp (định hướng WebSocket — xem
-  quyết định mở trong [`../architecture/overview.md`](../architecture/overview.md#7-các-quyết-định-kỹ-thuật-chưa-chốt)).
-- Hiển thị last known location kèm nhãn tuổi dữ liệu khi thiết bị mất kết nối.
+- Google Maps Compose hiển thị marker của các thành viên được cấp quyền.
+- Chọn thành viên từ marker hoặc danh sách; xem thời điểm, accuracy và
+  freshness; có nút focus tường minh để không giành camera khi người dùng pan.
+- Snapshot cập nhật khi màn hình ở foreground qua HTTPS polling 10 giây với
+  ETag và backoff tối đa 60 giây khi lỗi (ADR 0008). Đây là near-real-time
+  convergence, không phải server push hay cam kết latency.
+- Khi mạng gián đoạn, giữ last-known snapshot trong memory của màn hình, báo
+  mất kết nối và hạ freshness theo monotonic clock. Auth 401/403 và đổi account
+  xóa tọa độ đang cache.
+- Không suy ra trạng thái offline từ việc GPS không cập nhật; trạng thái đó
+  cần presence signal có thẩm quyền.
 
-**Luồng tương tác.** Mở tab bản đồ → thấy toàn bộ thành viên đang chia sẻ →
-chọn một người để camera bám theo → nhận cập nhật vị trí mới qua kết nối
-realtime → với người offline, thấy last known location được gắn nhãn thời gian.
+**Luồng tương tác.** Mở tab bản đồ → chỉ thấy thành viên đã cấp quyền tường
+minh → chọn một người để xem chi tiết/focus bản đồ → nhận snapshot cập nhật khi
+tab đang mở. Viewer mất mạng thấy kết nối bị gián đoạn và last-known data già
+đi; app không tuyên bố thiết bị nguồn offline.
 
 **Dữ liệu.** Location Point mới nhất theo thành viên (tọa độ, timestamp ghi nhận
-trên thiết bị, timestamp server nhận, accuracy, trạng thái thiết bị). Hiện thực
-bằng PostGIS ở tầng database.
+trên thiết bị, timestamp server nhận và accuracy). M4 chưa có presence signal
+để kết luận trạng thái online/offline của thiết bị nguồn. Hiện thực bằng
+PostGIS ở tầng database.
 
 **Business rules.**
 
-- **Last known location không được đồng nhất với live location** — UI phải phân
-  biệt rõ hai trạng thái này.
+- **Last known location không được đồng nhất với thiết bị đang online** — UI
+  phải phân biệt freshness và trạng thái kết nối của người xem.
 - Không cam kết realtime tuyệt đối; hiển thị phải luôn kèm thời điểm dữ liệu.
 - Chỉ hiển thị thành viên mà người xem hiện được cấp quyền xem.
 
@@ -181,10 +189,10 @@ backend đảm bảo (không gửi dữ liệu cho người không còn quyền)
 
 **Edge cases.** Mất kết nối giữa chừng (fallback last known); GPS jitter làm
 marker nhảy; nhiều thiết bị cùng tài khoản; dữ liệu quá cũ (chuyển sang trạng
-thái Stale/Offline theo Confidence Engine).
+thái Stale/Unknown; không suy diễn Offline khi chưa có presence signal).
 
-**Phụ thuộc.** Family Circle (M2), Smart Tracking + ingestion (M3), Location
-Confidence (M4), realtime transport.
+**Phụ thuộc.** Family Circle (M2), Smart Tracking + ingestion (M3), temporal
+audience authorization (ADR 0007), confidence/polling policy (ADR 0008).
 
 **Acceptance criteria.** Người xem luôn nhìn thấy tuổi của dữ liệu vị trí;
 người dừng chia sẻ không còn hiển thị ở phía người xem trong thời gian ngắn;
@@ -262,37 +270,35 @@ engine quay lại đúng trạng thái được phép; pin tiêu thụ ở mức
 
 ## 5. Location Confidence Engine
 
-> Trạng thái: **Planned — M4** (các trạng thái độ mới dữ liệu). Confidence score
-> định lượng là **Proposed** — xem cuối mục. Đây là product differentiator cốt lõi.
+> Trạng thái: **Implemented — Automated Verified (M4)** cho freshness
+> `FRESH/DELAYED/STALE/UNKNOWN`. `OFFLINE` chưa được phát ra vì chưa có
+> authoritative presence signal. Confidence score định lượng vẫn **Proposed**.
 
 **Mục đích.** Giúp người xem đánh giá độ tin cậy của dữ liệu vị trí thay vì chỉ
 nhìn một marker không ngữ cảnh.
 
-**User story.** *Là người xem bản đồ, tôi muốn biết vị trí của mẹ tôi là mới
-đây hay đã cũ, thiết bị có đang mất mạng không, để tôi không nhầm “dữ liệu cũ”
-với “chuyện gì đó đã xảy ra”.*
+**User story.** *Là người xem bản đồ, tôi muốn biết dữ liệu vị trí của mẹ tôi
+mới đây hay đã cũ, để tôi không nhầm “dữ liệu cũ” với “chuyện gì đó đã xảy ra”.*
 
-**Yêu cầu chức năng.** Engine tổng hợp các yếu tố tham khảo sau thành một trạng
-thái hiển thị:
+**Yêu cầu chức năng.** M4 phân loại độ mới theo `recorded_at` và server time;
+độ chính xác hiển thị riêng để người xem không nhầm vị trí mới với vị trí
+chính xác:
 
-- Tuổi của tọa độ (location age) — tính từ lúc thiết bị ghi nhận.
-- Độ chính xác do location provider báo cáo.
-- Thời điểm thiết bị ghi nhận và thời điểm server nhận (hai mốc phải phân biệt).
-- Trạng thái kết nối của thiết bị nguồn.
-- Trạng thái location permission trên thiết bị nguồn.
-- Tình trạng đồng bộ (queue backlog, sync thành công lần cuối).
-- Nguồn vị trí nếu có (GPS/network/fused).
-- Dấu hiệu dữ liệu bất thường (nhảy tọa độ bất hợp lý, timestamp lệch).
+- Tuổi mẫu từ `recorded_at`; `received_at` phân biệt dữ liệu upload bù, không
+  làm một điểm cũ trở nên mới.
+- Độ chính xác do provider báo cáo được truyền và hiển thị riêng.
+- M4 chưa có presence, permission hoặc queue telemetry của thiết bị nguồn.
+- Provider và phát hiện dữ liệu bất thường chưa tác động đến nhãn freshness M4.
 
 **Trạng thái hiển thị (tham khảo).**
 
 | Trạng thái | Ý nghĩa |
 | --- | --- |
-| Fresh | Vị trí mới ghi nhận, độ chính xác ổn. |
-| Delayed | Còn nhận dữ liệu nhưng chậm hơn thường lệ. |
-| Stale | Dữ liệu đã cũ; không còn tin là vị trí hiện tại. |
-| Offline | Thiết bị nguồn mất kết nối; hiển thị last known. |
-| Unknown | Không đủ dữ liệu để đánh giá. |
+| Fresh | `recorded_at` không quá 2 phút theo server time. |
+| Delayed | Tuổi mẫu trên 2 và tối đa 15 phút. |
+| Stale | Tuổi mẫu trên 15 phút; không trình bày như vị trí hiện tại. |
+| Offline | Chỉ dùng khi có authoritative presence signal; hiện M4 không suy diễn trạng thái này từ GPS. |
+| Unknown | Chưa có mẫu hợp lệ, hoặc timestamp tương lai không đủ tin cậy. |
 
 **Business rules — ranh giới ngôn ngữ.**
 
@@ -301,21 +307,25 @@ thái hiển thị:
   khác đi.
 - Không tự gán confidence score tùy tiện rồi trình bày như số liệu được khoa
   học xác nhận.
+- M4 classifies only temporal freshness from `recorded_at` and server time;
+  `received_at` is separate and accuracy is displayed separately. Android advances age from a monotonic
+  clock and cannot promote a server state. Permission, queue and device
+  presence signals are not included in the M4 classification.
 
 **Privacy/security.** Trạng thái confidence lộ ít thông tin hơn tọa độ, nhưng
 cần cẩn thận: một thành viên không có quyền xem vị trí cũng không được suy ra
 trạng thái chi tiết của người đó.
 
 **Edge cases.** Đồng hồ thiết bị lệch so với server; dữ liệu đồng bộ bù arrives
-out-of-order; accuracy rất xấu trong nhà; timestamp tương lai.
+out-of-order; accuracy rất xấu trong nhà; timestamp tương lai. Nhãn Offline chỉ
+được thêm khi có presence signal có thẩm quyền.
 
 **Phụ thuộc.** Smart Tracking + ingestion (M3) — cần metadata đầy đủ trên từng
 Location Point; Live Map (M4) là bề mặt hiển thị chính.
 
-**Acceptance criteria.** Mỗi marker trên bản đồ có trạng thái confidence nhất
-quán và giải thích được khi người dùng chạm vào; trạng thái biến đổi đúng khi
-thiết bị nguồn offline/stale; không có văn bản nào trong app gợi ý đây là đánh
-giá độ an toàn của con người.
+**Acceptance criteria.** Mỗi marker trên bản đồ có freshness nhất quán và thời
+điểm ghi nhận; trạng thái giảm từ Fresh sang Delayed/ Stale theo tuổi mẫu.
+Không có văn bản nào trong app gợi ý đây là đánh giá độ an toàn của con người.
 
 **Proposed (chưa chốt): confidence score định lượng.** Nếu muốn nâng từ trạng
 thái sang điểm số, phải định nghĩa rõ: giả thuyết, inputs, trọng số, giới hạn,
@@ -437,7 +447,8 @@ Chưa có field validation trên thiết bị thật.
 
 > Trạng thái: **Consent + audit + backend authorization Implemented (M1);
 > consent enforcement tại location ingestion và privacy-first revocation
-> Implemented (M3); realtime distribution/History theo quyền thuộc M4–M5.**
+> Implemented (M3); explicit per-viewer audience grants và latest-location
+> read authorization Implemented — Automated Verified (M4); History thuộc M5.**
 > Đặc tả chính sách đầy đủ nằm ở
 > [`privacy-and-safety.md`](privacy-and-safety.md) — mục này chỉ tóm tắt
 > mặt chức năng. Bằng chứng M1: audit record cho thay đổi consent (đã
@@ -641,12 +652,12 @@ cho các sự kiện hợp lệ:
 - Safe Journey events (bắt đầu, hoàn tất, cảnh báo).
 - Những sự kiện an toàn hợp lệ khác.
 
-**Ràng buộc kiến trúc.** **Không sử dụng FCM để truyền GPS liên tục.** Location
-ingestion và realtime distribution do Go backend xử lý qua HTTPS/WebSocket hoặc
-phương án phù hợp (xem [`../architecture/overview.md`](../architecture/overview.md)).
-FCM data message có thể dùng như *tín hiệu* (“có dữ liệu mới, hãy fetch”) — đây
-là mẫu phổ biến và không vi phạm ràng buộc trên, nhưng quyết định cụ thể để mở
-ở quyết định kỹ thuật chưa chốt.
+**Ràng buộc kiến trúc.** **Không sử dụng FCM để truyền GPS liên tục.** M3
+ingestion và M4 authorized latest-location snapshots đi qua HTTPS. M4 dùng
+conditional polling; server-push qua SSE/WebSocket chưa được triển khai. FCM
+data message có thể dùng trong tương lai như *tín hiệu* (“có dữ liệu mới, hãy
+fetch”), nhưng không mang tọa độ (xem
+[`../architecture/overview.md`](../architecture/overview.md)).
 
 **Acceptance criteria.** Mỗi loại sự kiện có template thông báo rõ ràng; không
 có đường nào gửi tọa độ qua FCM payload; thông báo tôn trọng trạng thái quyền

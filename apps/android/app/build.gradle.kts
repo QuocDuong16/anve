@@ -11,6 +11,11 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val mapsApiKey = providers.gradleProperty("ANVE_MAPS_API_KEY")
+    .orElse(providers.environmentVariable("ANVE_MAPS_API_KEY"))
+    .getOrElse("")
+val escapedMapsApiKey = mapsApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
 ksp {
     // Exported schemas make every Room version reviewable in the diff and
     // are the input for future migration tests. A destructive migration is
@@ -44,6 +49,8 @@ android {
             "API_BASE_URL",
             "\"${project.findProperty("ANVE_API_URL") ?: "http://10.0.2.2:8080"}\"",
         )
+        buildConfigField("String", "MAPS_API_KEY", "\"$escapedMapsApiKey\"")
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
@@ -117,6 +124,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime)
     implementation(libs.play.services.location)
+    implementation(libs.maps.compose)
 
     // Network: Retrofit + Moshi reflection (ADR 0003 — no compiler plugins,
     // compatible with AGP 9's built-in Kotlin).

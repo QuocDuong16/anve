@@ -29,13 +29,14 @@ chuyên nghiệp.
 ## Trạng thái phát triển
 
 Dự án đã hoàn thành **M0 (foundation)**, **M1 (authentication, thiết bị,
-privacy foundation)**, **M2 (Family Circle)** và **M3 (Location Engine,
-consented ingestion, offline sync)** ở mức code + automated verification:
+privacy foundation)**, **M2 (Family Circle)**, **M3 (Location Engine,
+consented ingestion, offline sync)** và **M4 (authorized Live Map)** ở mức
+code + automated verification:
 PostgreSQL/PostGIS integration test, Android JVM test, lint/APK trong CI, cùng
 smoke test HTTP trên stack thật. M3 **chưa được field-validate trên điện thoại
 thật** — pin, hành vi nền, reboot và các giới hạn OEM vẫn là *Pending Field
-Validation*, không phải PASS. **Live Map (M4) chưa có**; phạm vi từ M4 trở đi
-vẫn là Planned. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
+Validation*, không phải PASS. M4 chưa được runtime/device-validate: chưa có
+emulator hoặc Maps API key để xác minh map rendering. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
 [`docs/product/roadmap.md`](docs/product/roadmap.md) và
 [`docs/implementation/progress.md`](docs/implementation/progress.md).
 
@@ -51,12 +52,12 @@ Tổng quan các nhóm tính năng hướng tới. Đặc tả đầy đủ và 
 | Nền tảng M0 | Splash screen, health/meta API, migrations, CI, toolchain | **Implemented — Verified** |
 | Xác thực & phiên | Google/dev login, session opaque có rotation, thiết bị, xóa tài khoản | **Implemented — Verified** (M1) |
 | Family Circle | Nhóm gia đình, invite, ủy quyền theo chủ thể dữ liệu | **Implemented — Verified** (M2) |
-| Live Map | Bản đồ thành viên gần thời gian thực, last known location | Planned (M4) |
+| Live Map | Bản đồ thành viên được cấp quyền, cập nhật qua polling có điều kiện | **Implemented — Automated Verified** (M4); Pending Runtime/Device Validation |
 | Smart Tracking | Location Engine thích ứng, tiết kiệm pin, chạy nền đúng quy trình | **Implemented — Automated Verified** (M3); Pending Field Validation |
-| Location Confidence | Trạng thái độ mới/độ tin cậy của dữ liệu vị trí | Planned (M4) |
+| Location Confidence | Trạng thái Fresh/Delayed/Stale/Unknown theo thời điểm ghi nhận và độ chính xác | **Implemented — Automated Verified** (M4); Pending Runtime/Device Validation |
 | Location History | Hành trình theo ngày, phân biệt dữ liệu bù, retention, xóa | Planned (M5); server retention 30 ngày đã có ở M3 |
 | Offline Sync | Room durable queue, batch, idempotency, preserve timestamps | **Implemented — Automated Verified** (M3); Pending Field Validation |
-| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Consent + audit + xóa tài khoản (M1) và **consent/revocation tại ingestion + queue purge** (M3) **Implemented**; phân phát realtime/History theo quyền thuộc M4–M5 |
+| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Consent + audit (M1), consent/revocation tại ingestion (M3), explicit per-viewer grants và latest-read authorization (M4) **Implemented — Automated Verified**; History thuộc M5 |
 | Place Alerts | Geofence cho địa điểm quan trọng, chống nhiễu, event time | Planned (M5) |
 | SOS & Emergency | Sự kiện cấp cứu, lifecycle, acknowledge qua FCM | Planned (M6) |
 | Safe Journey | Hành trình chủ động về đích, cảnh báo ngừng cập nhật | Planned (M7) |
@@ -68,9 +69,10 @@ Quy ước trạng thái (Implemented / Verified / Planned / Proposed / Not in s
 
 ## Kiến trúc
 
-Android client (Kotlin + Jetpack Compose) giao tiếp qua HTTPS với backend Go
-(modular monolith, chi router), dữ liệu vị trí lưu trong PostgreSQL/PostGIS.
-Realtime distribution và push notification qua FCM là các phần planned — xem
+Android client (Kotlin + Jetpack Compose + Maps Compose) giao tiếp qua HTTPS
+với backend Go (modular monolith, chi router), dữ liệu vị trí lưu trong
+PostgreSQL/PostGIS. Live Map lấy snapshot được phân quyền bằng conditional
+polling; server-push và thông báo FCM vẫn planned — xem
 [`docs/architecture/overview.md`](docs/architecture/overview.md) để có ranh giới
 component, data flows và các quyết định kỹ thuật chưa chốt.
 
@@ -83,14 +85,14 @@ flowchart LR
     end
     subgraph server["Go backend — modular monolith"]
         API["HTTP API — chi router"]
-        RT["Realtime hub (planned)"]
+        MAP["Authorized latest-location polling (M4)"]
     end
     DB[("PostgreSQL + PostGIS")]
     FCM["Firebase Cloud Messaging (planned)"]
     LE --> SQ
     SQ -. "HTTPS ingest" .-> API
     UI --> API
-    RT -. "realtime (planned)" .-> UI
+    MAP -. "HTTPS snapshot + ETag" .-> UI
     FCM -. "sự kiện, không GPS (planned)" .-> UI
     API --> DB
 ```
@@ -99,13 +101,14 @@ flowchart LR
 
 | Tầng | Công nghệ |
 | --- | --- |
-| Android | Kotlin, Jetpack Compose, Fused Location Provider (M3), Room (M3), WorkManager (M3), Google Maps SDK*, FCM*, Geofencing API* |
+| Android | Kotlin, Jetpack Compose, Maps Compose (M4), Fused Location Provider (M3), Room (M3), WorkManager (M3), FCM*, Geofencing API* |
 | Backend | Go 1.27, chi router, pgx, PostgreSQL + PostGIS (location ingestion + retention from M3) |
 | Contracts | OpenAPI (`packages/api-contracts/openapi.yaml`) — đổi contract trước handler |
 | Hạ tầng dev | Docker Compose (postgres/postgis + migrate + api), GitHub Actions, mise |
 
-\* *Các dependency Android đánh dấu sao chưa được thêm vào project — chúng thuộc
-các milestone tương ứng (M4/M5/M6) và sẽ được bổ sung khi hiện thực.*
+\* *Các dependency Android đánh dấu sao chưa được thêm vào project; chúng thuộc
+các milestone M5/M6.* Maps Compose đã có trong M4, nhưng render bản đồ cần Maps
+API key do nhà phát triển cấu hình theo `docs/implementation/setup-android.md`.
 
 ### Local stack & development login
 
@@ -126,7 +129,7 @@ Compose bị publish ra ngoài loopback.
 | M1 | Authentication, device identity, privacy foundation | **Implemented — Verified** (automated; chờ field validation) |
 | M2 | Family Circle & membership authorization | **Implemented — Verified** (automated; chờ field validation) |
 | M3 | Location Engine, Smart Tracking, offline queue, consented ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
-| M4 | Live Map, realtime, confidence engine | Planned |
+| M4 | Live Map, authorized latest locations, confidence engine | **Implemented — Automated Verified**; Pending Runtime/Device Validation |
 | M5 | Location History & Place Alerts | Planned |
 | M6 | SOS, Firebase push, event acknowledgement | Planned |
 | M7 | Safe Journey, diagnostics, field validation | Planned |

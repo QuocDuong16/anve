@@ -3,11 +3,11 @@
 Monorepo for AnVề: an Android (Jetpack Compose) client backed by a Go HTTP
 API and PostgreSQL/PostGIS. Modular monorepo per ADR 0001 (`docs/adr/`):
 one repo, one pinned toolchain, but each app keeps its own build system and
-its own CI workflow. Phase: M0–M3 implemented (auth/device/consent + Family
-Circle + location engine/ingestion/offline sync); M4+ planned. M3 is
-automated-verified and runtime-smoke-tested, but NOT field-validated on a
-device (battery/background/OEM). Engineering session state lives in `docs/implementation/progress.md`
-— read it first when resuming work.
+its own CI workflow. Phase: M0–M4 implemented. M4 is automated-verified but
+pending runtime/device validation; M3 has a runtime HTTP smoke test but is NOT
+field-validated on a device (battery/background/OEM); M5+ planned. Engineering
+session state lives in `docs/implementation/progress.md` — read it first when
+resuming work.
 
 ## Source map
 
@@ -22,6 +22,7 @@ device (battery/background/OEM). Engineering session state lives in `docs/implem
   - `internal/locations` — M3 domain: batch validation (ranges/NaN/timestamp/bounds), transactional authorization (user FOR SHARE → session/device FOR SHARE → membership FOR SHARE), idempotent insert with unique (user_id,event_id), atomic batch semantics, retention purge. Contract codes: LOCATION_BATCH_INVALID/TOO_LARGE, LOCATION_EVENT_TOO_OLD, LOCATION_CONSENT_REQUIRED, LOCATION_CIRCLE_REQUIRED, DEVICE_NOT_AUTHORIZED, LOCATION_TEMPORARILY_UNAVAILABLE.
 - `apps/android` — app `com.anve.app`; `data/` (api Retrofit+Moshi, auth token storage, `data/location` Room queue + WorkManager sync) + `tracking/` (provider, adaptive policy, coordinator, foreground service, metrics) + `ui/` grouped by feature (`splash`, `signin`, `home`, `circle`, `tracking`, `theme`); `AppContainer` is the manual DI root.
 - `packages/api-contracts/openapi.yaml` — the HTTP contract; single source of truth for the API surface.
+- M4 reads use `internal/locationaccess`: temporal Circle membership periods, fresh sharing epochs and explicit owner-to-viewer grants. M3 points without an epoch stay unreadable. Latest reads enforce authorization in PostgreSQL; Android uses foreground HTTPS conditional polling with ETags, no persistent location cache, and no inferred source-device offline status.
 - `infra/docker/docker-compose.yml` — local stack (postgres/postgis, one-shot `migrate`, `api`); always runs with the repo root as project directory so `.env` and relative paths work the same locally and in CI. EVERY published port is loopback-only: postgres `127.0.0.1:$POSTGRES_PORT` and API `127.0.0.1:$API_PORT`. The API container sets `LISTEN_ADDR=0.0.0.0:8080` (it must accept the port mapping) and the `edge` bridge is pinned to `172.28.0.0/24` so the dev-login source allowlist can name it. Postgres uses a dedicated, otherwise-empty `db-host` bridge network: Docker does not forward published ports for containers whose only network is `internal: true`, so without it `localhost:5432` silently refuses connections.
 - `infra/migrations` — ordered SQL migrations applied by the custom migrator in `apps/server/cmd/migrate` (not golang-migrate). The migrator owns `schema_migrations` (created in `ensureBookkeepingTable`) and serializes runs with a `pg_advisory_lock`; business migrations must never create or drop the bookkeeping table — `0001_extensions.down.sql` is a deliberate no-op for that reason. `0004_locations` adds `location_points` (PostGIS geography, unique (user_id,event_id), user/device/capture-time/GIST indexes, FK cascade to users/devices). Integration tests for the migrator live in `apps/server/cmd/migrate` (skipped without `TEST_DATABASE_URL`; need a PostGIS-capable server).
 - `docs/adr` — accepted architecture decisions.

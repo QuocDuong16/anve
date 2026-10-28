@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: AnVề API
-  version: 0.4.0
+  version: 0.5.0
   description: |
     HTTP contract of the AnVề backend.
 
@@ -28,7 +28,9 @@ tags:
   - name: devices
     description: Devices and sessions of the authenticated account
   - name: locations
-    description: Consented location ingestion
+    description: Consent-controlled location ingestion and audience-authorized reads
+  - name: location-sharing
+    description: Explicit per-member location audience grants
   - name: circles
     description: Family Circle, membership and invites
 
@@ -571,6 +573,170 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           description: The database is temporarily unavailable (`LOCATION_TEMPORARILY_UNAVAILABLE`); retry with backoff.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/location-sharing/audience:
+    get:
+      operationId: getLocationAudience
+      summary: List the authenticated owner's active location viewers
+      description: |
+        Returns only active grants created by the authenticated location
+        owner. Circle membership and Circle owner/admin roles do not grant
+        visibility. A grant is active only in its current sharing epoch and
+        membership periods. Responses are private and are not cacheable.
+      tags: [location-sharing]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Active explicit viewers of the caller's current location epoch.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationAudience"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/location-sharing/audience/{viewerId}:
+    put:
+      operationId: grantLocationAudience
+      summary: Grant the selected current Circle member access to new location points
+      description: |
+        Only the authenticated location owner may grant visibility. Both
+        accounts must have current membership periods in the same Circle,
+        the owner must have server-confirmed consent ON and an active sharing
+        epoch, and the grant begins at server time. This never grants points
+        captured before the grant time. The operation is idempotent while an
+        equivalent grant remains active.
+      tags: [location-sharing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: viewerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Anve-Expected-Owner
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Prevents a request started under a previous signed-in account from mutating the current account.
+      responses:
+        "200":
+          description: The active explicit grant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationAudienceGrant"
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The target is not a current member of the same Circle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The owner's location-sharing consent is off.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: revokeLocationAudience
+      summary: Revoke the selected member's location access
+      description: |
+        The authenticated owner revokes all active grants for the selected
+        viewer. Future reads are denied by PostgreSQL authorization queries;
+        polling clients remove the marker on their next authorized snapshot.
+        Data already delivered to a device cannot be recalled.
+      tags: [location-sharing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: viewerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Anve-Expected-Owner
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Must match the authenticated owner to prevent account-switch races.
+      responses:
+        "204":
+          description: The viewer has no remaining active grant; repeated revocation is safe.
+        "401":
+          description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/locations/visible/latest:
+    get:
+      operationId: getLatestVisibleLocations
+      summary: Read latest locations the authenticated viewer is allowed to see
+      description: |
+        PostgreSQL enforces current owner and viewer membership, explicit
+        grant, active sharing epoch, server consent, grant time and retention
+        in the query. Both capture time and server receive time must be at or
+        after the grant boundary. Existing M3 points without an epoch are never returned.
+        `FRESH`, `DELAYED`, `STALE` and `UNKNOWN` describe capture-time
+        evidence; the server does not infer `OFFLINE` from missing GPS fixes.
+        Conditional polling uses ETag while the map screen is foregrounded.
+      tags: [locations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+          description: ETag from the previous authorized snapshot.
+      responses:
+        "200":
+          description: One latest authorized row per active explicit grant, including UNKNOWN when no retained point exists.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store, private
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestVisibleLocations"
+        "304":
+          description: The authorized snapshot is unchanged.
+          headers:
+            ETag:
+              schema:
+                type: string
+        "401":
+          description: No valid session token was presented.
           content:
             application/json:
               schema:
@@ -1329,6 +1495,92 @@ components:
           type: string
           format: date-time
           description: Server write time of this batch. Never a replacement for the device capture time.
+
+    LocationAudienceGrant:
+      type: object
+      required: [id, viewerId, displayName, circleId, generation, visibleFrom, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        viewerId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        circleId:
+          type: string
+          format: uuid
+        generation:
+          type: integer
+          format: int64
+          minimum: 1
+        visibleFrom:
+          type: string
+          format: date-time
+          description: Server-authoritative earliest capture time this grant may expose.
+        createdAt:
+          type: string
+          format: date-time
+
+    LocationAudience:
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocationAudienceGrant"
+
+    LatestVisibleLocations:
+      type: object
+      required: [locations]
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibleLocation"
+
+    VisibleLocation:
+      type: object
+      required: [ownerId, displayName, ageMillis, confidence]
+      properties:
+        ownerId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        horizontalAccuracyMeters:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+        recordedAt:
+          type: string
+          format: date-time
+          nullable: true
+        receivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        ageMillis:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 0
+          description: Server-computed age at snapshot generation; null when no eligible sample exists.
+        confidence:
+          type: string
+          enum: [FRESH, DELAYED, STALE, OFFLINE, UNKNOWN]
+          description: Offline is reserved for a future authoritative presence signal and is not inferred from missing GPS data.
 
     Circle:
       type: object

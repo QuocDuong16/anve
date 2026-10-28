@@ -205,6 +205,40 @@ data class LocationBatchResponseDto(
     @Json(name = "receivedAt") val receivedAt: String? = null,
 )
 
+@JsonClass(generateAdapter = false)
+data class LocationAudienceGrantDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "viewerId") val viewerId: String,
+    @Json(name = "displayName") val displayName: String,
+    @Json(name = "circleId") val circleId: String,
+    @Json(name = "generation") val generation: Long,
+    @Json(name = "visibleFrom") val visibleFrom: String,
+    @Json(name = "createdAt") val createdAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class LocationAudienceDto(
+    @Json(name = "grants") val grants: List<LocationAudienceGrantDto> = emptyList(),
+)
+
+@JsonClass(generateAdapter = false)
+data class LatestVisibleLocationsDto(
+    @Json(name = "locations") val locations: List<VisibleLocationDto> = emptyList(),
+)
+
+@JsonClass(generateAdapter = false)
+data class VisibleLocationDto(
+    @Json(name = "ownerId") val ownerId: String,
+    @Json(name = "displayName") val displayName: String,
+    @Json(name = "latitude") val latitude: Double?,
+    @Json(name = "longitude") val longitude: Double?,
+    @Json(name = "horizontalAccuracyMeters") val horizontalAccuracyMeters: Double?,
+    @Json(name = "recordedAt") val recordedAt: String?,
+    @Json(name = "receivedAt") val receivedAt: String?,
+    @Json(name = "ageMillis") val ageMillis: Long? = null,
+    @Json(name = "confidence") val confidence: String,
+)
+
 // ── Circles (M2) ─────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = false)

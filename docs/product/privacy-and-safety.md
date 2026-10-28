@@ -23,10 +23,16 @@
 > Batch validation bị từ chối được cô lập có giới hạn và chỉ event sai đã
 > nhận diện riêng mới bị loại. Retention 30 ngày mặc định
 > (`LOCATION_RETENTION_DAYS`) chạy tự động; account/device deletion cascade
-> location rows; Room queue 7 ngày trên thiết bị. **Chưa** có phân phát
-> realtime, API đọc vị trí hay field validation trên thiết bị thật. Quyết định
-> về audience cho M4 nằm trong [ADR 0007](../adr/0007-location-read-audience-authorization.md);
-> threat model ingestion ở ADR 0006.
+> location rows; Room queue 7 ngày trên thiết bị. M4 read authorization được
+> Implemented — Automated Verified theo [ADR 0007](../adr/0007-location-read-audience-authorization.md):
+> membership periods + sharing epochs + explicit per-viewer grants; existing
+> M3 points không được backfill vào epoch. Latest API áp authorization trong
+> PostgreSQL. Android không lưu tọa độ thành viên trên đĩa; marker cache chỉ ở
+> memory và bị xóa khi auth hết hạn/đổi account. Polling 10 giây kiểm tra lại
+> quyền ở request kế tiếp khi mạng hoạt động; dữ liệu đã được gửi/nhìn thấy
+> không thể thu hồi khỏi thiết bị người xem. Transport và freshness: [ADR
+> 0008](../adr/0008-m4-polling-confidence-and-map.md). Map runtime/device
+> validation vẫn pending. Threat model ingestion ở ADR 0006.
 
 ## 1. Nguyên tắc nền tảng
 
@@ -101,9 +107,9 @@ Quy tắc:
   xem location history của mọi thành viên; quyền đọc vị trí/history bắt nguồn
   từ sự đồng ý của từng chủ thể dữ liệu.
 - Thành viên hiện tại không tự động được xem điểm cũ trước khi tham gia.
-  M4 phải kiểm tra membership interval, sharing epoch và grant rõ ràng cho
-  từng người xem theo [ADR 0007](../adr/0007-location-read-audience-authorization.md).
-  M3 chưa có location read API.
+  M4 kiểm tra membership interval, sharing epoch và grant rõ ràng cho từng
+  người xem theo [ADR 0007](../adr/0007-location-read-audience-authorization.md).
+  Latest read API không trả lịch sử M5.
 - **Quyền nhận sự kiện** (Place Alerts, SOS, Safe Journey) được chọn cho từng
   loại sự kiện/địa điểm/hành trình, không kế thừa âm thầm từ quyền xem bản đồ.
 - Server thực thi mô hình trên cho **mọi** endpoint đọc/ghi, kể cả các endpoint
@@ -220,9 +226,9 @@ accepted/duplicate/rejected và thời gian xử lý — không tọa độ.
 
 | Tính năng | Giới hạn bắt buộc phải công bố |
 | --- | --- |
-| Consent switch (M1) | Là **ghi nhận đồng ý**, không phải GPS đang chạy. Bật switch không có nghĩa là vị trí đang được thu thập hay chia sẻ; các trạng thái đó là quyền OS, Location Engine, upload và realtime — tách biệt và chỉ tồn tại khi milestone tương ứng được hiện thực. |
+| Consent switch (M1) | Là **ghi nhận đồng ý**, không phải GPS đang chạy. Bật switch không có nghĩa GPS đã thu thập được vị trí hay ai đó đã được cấp quyền xem; OS permission, Location Engine và explicit audience grant là các điều kiện riêng. |
 | Location Confidence | Là trạng thái **độ mới/độ tin cậy của dữ liệu**, không phải đánh giá độ an toàn của con người. Không hiển thị dạng xác suất nếu chưa qua calibration. |
-| Live Map | Không cam kết realtime tuyệt đối; luôn kèm thời điểm dữ liệu; last known location không được trình bày như vị trí hiện tại. |
+| Live Map | Snapshot polling 10 giây khi foreground, không phải server push; không cam kết latency tuyệt đối. Luôn kèm thời điểm/freshness; last known location không được trình bày như vị trí hiện tại; dữ liệu đã giao không thể thu hồi khỏi thiết bị người xem. |
 | Place Alerts | Geofence có thể được OS delivered chậm; không cam kết phát hiện tức thời. |
 | SOS | Không thay thế dịch vụ cấp cứu 113/115/114; ba mốc "đã gửi / push đã chấp nhận / người nhận đã xác nhận" không được gộp thành "đã cứu". |
 | Safe Journey | Không suy diễn mất GPS/ngừng di chuyển là tai nạn; cảnh báo dùng ngôn ngữ "hãy liên hệ". |

@@ -132,6 +132,34 @@ available to your users (any normal Android device).
 - `google-services.json` does not exist; it becomes relevant with FCM (M6),
   not with sign-in.
 
+## Google Maps for M4
+
+Map rendering is optional at build time. Without `ANVE_MAPS_API_KEY`, the app
+builds normally and the Live Map screen shows a setup message while sharing
+management and the rest of the app remain usable.
+
+1. In Google Cloud, enable **Maps SDK for Android** and create an API key.
+2. Restrict it to Android apps. Add the release package `com.anve.app` and
+   debug package `com.anve.app.debug`, each with the SHA-1 certificate for its
+   signing key. Debug and release keys/certificates may differ. Restrict API
+   access to Maps SDK for Android.
+3. Supply it locally without committing it:
+
+   ```bash
+   export ANVE_MAPS_API_KEY='your-restricted-key'
+   make android-build
+   ```
+
+   Gradle also accepts `-PANVE_MAPS_API_KEY=...`; avoid storing a real key in
+   tracked `gradle.properties`. The key is embedded in the APK and is an
+   identifiable, restricted client key rather than a server secret.
+4. The Android emulator needs a system image with Google Play services and
+   network access to render tiles. API/build tests do not prove map rendering.
+
+See [ADR 0008](../adr/0008-m4-polling-confidence-and-map.md). A build with no
+key is valid for CI; do not call the Google Maps surface runtime-verified until
+tiles and markers have been observed on an emulator or device.
+
 ## Testing
 
 - `make android-test` — JVM unit tests (DTO parsing, session
@@ -197,3 +225,30 @@ observed.
 12. **ADB reverse (physical device):** `adb reverse tcp:8080 tcp:8080`,
     build with `-PANVE_API_URL=http://127.0.0.1:8080`; never widen the
     development-login allowlist for a LAN address.
+
+## M4 Live Map validation (manual, pending runtime/device validation)
+
+Use two test accounts in one test Circle. Keep real user coordinates out of
+logs, screenshots and shared test artifacts.
+
+1. Sign in as owner A, enable server consent, then explicitly grant viewer B.
+   Sign in as B and verify A appears only after the grant; without a grant the
+   API must not return A's coordinates.
+2. Capture a new point for A. Confirm B sees its recorded time, accuracy and
+   freshness. Polling runs every 10 seconds while the map screen is foreground.
+3. Revoke B or turn A's consent OFF. With active network, confirm the next
+   authorized snapshot removes A's coordinates. Do not expect already viewed
+   data or screenshots to be recalled.
+4. Leave and rejoin the Circle. Verify a fresh grant is required and pre-grant
+   points do not become visible after rejoin or consent ON.
+5. Disconnect B's network. Verify the screen reports disconnected and a
+   retained in-memory sample ages from Fresh to Delayed/Stale. Confirm it does
+   not say A's device is Offline; no presence signal exists in M4.
+6. Switch from B to another account on the same installation. Verify B's
+   location markers clear and delayed grant mutations are rejected when the
+   expected owner does not match the current session.
+7. Test a missing/restricted Maps key. The app must not crash and the user
+   must still be able to open sharing management.
+
+JVM tests and APK builds do not verify Google tile rendering, device battery,
+or platform lifecycle behavior. Record those separately when observed.

@@ -115,26 +115,41 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 	if err != nil {
 		return BatchResult{}, fmt.Errorf("lock circle membership: %w", err)
 	}
+	var sharingEpochID uuid.UUID
+	var sharingEpochStartedAt time.Time
+	epochErr := tx.QueryRow(ctx,
+		`SELECT id, started_at FROM location_sharing_epochs
+		  WHERE owner_user_id = $1 AND circle_id = $2 AND ended_at IS NULL
+		  FOR SHARE`,
+		in.Principal.UserID, circleID,
+	).Scan(&sharingEpochID, &sharingEpochStartedAt)
+	if epochErr != nil && !errors.Is(epochErr, pgx.ErrNoRows) {
+		return BatchResult{}, fmt.Errorf("read active sharing epoch: %w", epochErr)
+	}
 
 	result := BatchResult{ReceivedAt: in.ReceivedAt}
 	for i := range in.Events {
 		e := in.Events[i]
 		var eventID uuid.UUID
+		var pointEpochID *uuid.UUID
+		if epochErr == nil && !e.RecordedAt.UTC().Before(sharingEpochStartedAt) {
+			pointEpochID = &sharingEpochID
+		}
 		err := tx.QueryRow(ctx,
 			`INSERT INTO location_points (
 			     event_id, user_id, device_id, recorded_at, received_at,
 			     latitude, longitude, geom,
 			     horizontal_accuracy_m, altitude_m, speed_mps, bearing_deg,
-			     provider, is_mock, schema_version)
+			     provider, is_mock, schema_version, sharing_epoch_id)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7,
 			         ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography,
-			         $8, $9, $10, $11, $12, $13, $14)
+			         $8, $9, $10, $11, $12, $13, $14, $15)
 			 ON CONFLICT (user_id, event_id) DO NOTHING
 			 RETURNING event_id`,
 			e.EventID, in.Principal.UserID, deviceID, e.RecordedAt.UTC(), in.ReceivedAt,
 			e.Latitude, e.Longitude,
 			e.HorizontalAccuracyMeters, e.AltitudeMeters, e.SpeedMetersPerSecond, e.BearingDegrees,
-			e.Provider, e.IsMock, e.SchemaVersion,
+			e.Provider, e.IsMock, e.SchemaVersion, pointEpochID,
 		).Scan(&eventID)
 		switch {
 		case err == nil:

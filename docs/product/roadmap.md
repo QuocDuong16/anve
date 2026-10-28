@@ -24,7 +24,7 @@
 | [M1 — Auth & Privacy foundation](#m1--authentication-device-identity-privacy-foundation) | Authentication, device identity, privacy foundation | **Implemented — Verified** (backend + client logic; chờ field validation) |
 | [M2 — Family Circle](#m2--family-circle--membership-authorization) | Circle, membership, authorization | **Implemented — Verified** (backend + client logic; chờ field validation) |
 | [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
-| [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, realtime, confidence engine | Planned |
+| [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Planned |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Planned |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | Planned |
@@ -219,13 +219,16 @@ validation là điều kiện bắt buộc trước khi tuyên bố M3 Device Ve
 
 ## M4 — Live Map, realtime location, confidence engine
 
-**Scope:** Google Maps, marker thành viên, realtime distribution (transport là
-quyết định mở), last known location, trạng thái Fresh/Delayed/Stale/Offline/Unknown.
+**Status: Implemented — Automated Verified; Pending Runtime/Device Validation.**
+M4 có explicit per-viewer audience grants gắn với membership periods và
+sharing epochs (ADR 0007), latest-location authorization trực tiếp trong
+PostgreSQL, confidence freshness theo server time, Google Maps Compose UI,
+sharing management và authenticated conditional polling (ADR 0008).
 
-**Exit criteria đề xuất:** người xem thấy tuổi dữ liệu; dừng chia sẻ làm người
-xem mất hiển thị trong thời gian ngắn, được server đảm bảo.
-
-**Phụ thuộc:** M3.
+Evidence is tracked in [`../implementation/progress.md`](../implementation/progress.md).
+CI and local builds do not verify Google Maps rendering; runtime validation
+needs a restricted Maps API key and emulator/device. No history API, stream,
+M5, M6 or M7 features are included.
 
 ## M5 — Location History & Place Alerts
 
@@ -277,6 +280,6 @@ tuyên bố kết quả duyệt — kết quả thuộc về quá trình review 
   calibration/validation trên dữ liệu thực địa trước khi hiển thị số liệu cho
   người dùng (xem [features.md](features.md#5-location-confidence-engine)).
 - **Nhiều Circle cho một người dùng** — mở rộng sau MVP; MVP giữ một-Circle.
-- **Kênh realtime thay thế** (SSE, polling) — chỉ xem xét khi WebSocket chưa chốt
-  vì ràng buộc thực tế; quyết định ở
-  [`../architecture/overview.md`](../architecture/overview.md#7-các-quyết-định-kỹ-thuật-chưa-chốt).
+- **Server-push realtime** (SSE/WebSocket) — M4 MVP dùng conditional polling;
+  chỉ xem xét push nếu request volume hoặc latency đo được cần transport khác
+  theo [ADR 0008](../adr/0008-m4-polling-confidence-and-map.md).

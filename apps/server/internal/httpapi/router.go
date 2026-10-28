@@ -12,6 +12,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
@@ -37,11 +38,12 @@ type Pinger interface {
 // the process can still serve health and version probes (ADR: the API
 // server starts without a database until the first DB-backed feature).
 type Deps struct {
-	Version   string
-	Auth      *auth.Service
-	Circles   *circles.Service
-	Locations *locations.Service
-	DB        Pinger
+	Version        string
+	Auth           *auth.Service
+	Circles        *circles.Service
+	Locations      *locations.Service
+	LocationAccess *locationaccess.Service
+	DB             Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
 	// development login. An empty list denies every request: the fixture
 	// fails closed rather than trusting the listener configuration alone.
@@ -141,6 +143,14 @@ func NewRouter(deps Deps) chi.Router {
 				locationLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
 				private.With(RateLimit(locationLimiter)).
 					Post("/locations/batch", ingestLocationBatchHandler(locationSvc))
+			}
+
+			if deps.LocationAccess != nil {
+				access := deps.LocationAccess
+				private.Get("/location-sharing/audience", audienceHandler(access))
+				private.Put("/location-sharing/audience/{viewerId}", grantAudienceHandler(access))
+				private.Delete("/location-sharing/audience/{viewerId}", revokeAudienceHandler(access))
+				private.Get("/locations/visible/latest", latestVisibleLocationsHandler(access))
 			}
 
 			if deps.Circles != nil {

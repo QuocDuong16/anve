@@ -9,6 +9,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
@@ -75,6 +76,15 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, circles.ErrForbidden):
 		body.Code, body.Message = "FORBIDDEN", "This action requires the circle owner role."
 		writeJSON(w, http.StatusForbidden, body)
+	case errors.Is(err, locationaccess.ErrNotFound), errors.Is(err, locationaccess.ErrNoMembership):
+		body.Code, body.Message = errCodeNotFound, "Resource not found."
+		writeJSON(w, http.StatusNotFound, body)
+	case errors.Is(err, locationaccess.ErrForbidden):
+		body.Code, body.Message = "FORBIDDEN", "This location sharing action is not available."
+		writeJSON(w, http.StatusForbidden, body)
+	case errors.Is(err, locationaccess.ErrConsentOff):
+		body.Code, body.Message = "LOCATION_CONSENT_REQUIRED", "Enable location sharing before choosing an audience."
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, circles.ErrActiveCircleExists):
 		body.Code, body.Message = "ACTIVE_CIRCLE_EXISTS", "The account already belongs to a circle."
 		writeJSON(w, http.StatusConflict, body)

@@ -1,0 +1,14 @@
+DROP TRIGGER IF EXISTS memberships_location_period_before_delete ON memberships;
+DROP TRIGGER IF EXISTS memberships_location_period_after_insert ON memberships;
+DROP TRIGGER IF EXISTS circles_location_audience_before_delete ON circles;
+DROP TRIGGER IF EXISTS location_audience_grants_validate_window ON location_audience_grants;
+DROP TRIGGER IF EXISTS location_points_validate_sharing_epoch ON location_points;
+DROP FUNCTION IF EXISTS validate_location_audience_grant_window();
+DROP FUNCTION IF EXISTS validate_location_point_sharing_epoch();
+DROP FUNCTION IF EXISTS maintain_location_membership_period();
+DROP FUNCTION IF EXISTS close_location_circle_audience();
+DROP INDEX IF EXISTS idx_location_points_epoch_recorded;
+ALTER TABLE location_points DROP COLUMN IF EXISTS sharing_epoch_id;
+DROP TABLE IF EXISTS location_audience_grants;
+DROP TABLE IF EXISTS location_sharing_epochs;
+DROP TABLE IF EXISTS circle_membership_periods;

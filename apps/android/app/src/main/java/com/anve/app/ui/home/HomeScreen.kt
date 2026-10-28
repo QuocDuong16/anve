@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -61,6 +62,7 @@ import com.anve.app.data.api.DeviceSessionDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.tracking.TrackingScreen
+import com.anve.app.ui.map.LiveMapScreen
 
 /**
  * M1 home: the account, the privacy consent switch and the device list.
@@ -69,6 +71,7 @@ import com.anve.app.ui.tracking.TrackingScreen
  */
 private enum class HomeTab(val labelRes: Int) {
     CIRCLE(R.string.tab_circle),
+    MAP(R.string.tab_map),
     LOCATION(R.string.tab_location),
     ACCOUNT(R.string.tab_account),
 }
@@ -91,6 +94,7 @@ fun HomeScreen(container: AppContainer) {
                             Icon(
                                 imageVector = when (entry) {
                                     HomeTab.CIRCLE -> Icons.Default.Groups
+                                    HomeTab.MAP -> Icons.Default.Map
                                     HomeTab.LOCATION -> Icons.Default.LocationOn
                                     HomeTab.ACCOUNT -> Icons.Default.Person
                                 },
@@ -106,6 +110,7 @@ fun HomeScreen(container: AppContainer) {
         Box(Modifier.padding(padding)) {
             when (tab) {
                 HomeTab.CIRCLE -> CircleScreen(container = container)
+                HomeTab.MAP -> LiveMapScreen(container = container)
                 HomeTab.LOCATION -> TrackingScreen(container = container)
                 HomeTab.ACCOUNT -> AccountContent(container = container)
             }

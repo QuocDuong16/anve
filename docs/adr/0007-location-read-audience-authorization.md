@@ -1,6 +1,6 @@
 # ADR 0007 — Temporal audience grants for location reads
 
-- **Status:** Accepted for M4 design; implementation not started
+- **Status:** Accepted and implemented for the M4 latest-location read path
 - **Date:** 2026-10-27
 - **Scope:** M4/M5 location read authorization. This ADR adds no read API,
   WebSocket, map or location-confidence implementation.
@@ -43,10 +43,15 @@ inferred from Circle role or current membership.
    receives no access until the owner grants it. The grant's `visible_from`
    is no earlier than both the new membership start and the explicit grant
    time.
-4. **Each new point is linked to the active sharing epoch/audience grant in
-   the ingestion transaction.** A point without a valid active epoch is not
-   eligible for Circle reads. Existing M3 points receive no audience grant
-   during migration and are therefore not readable through M4 by default.
+4. **Each new point is linked to the active sharing epoch in the ingestion
+   transaction.** Reads join that epoch to the current explicit audience grant
+   and both active membership periods; the point's capture timestamp and
+   server-received timestamp must both be at or after the grant boundary. This
+   avoids exposing an event already received before a later grant, even if a
+   client timestamp is skewed forward. Client capture time still cannot be
+   cryptographically attested. This compact epoch association
+   avoids one row per point per viewer. Existing M3 points receive no epoch
+   association during migration and are not readable through M4.
 5. **Every read checks the intersection of time windows:** point capture
    time must be at or after the epoch start, viewer grant start and current
    membership-period start, and before the earliest epoch end, grant end,
@@ -56,16 +61,17 @@ inferred from Circle role or current membership.
    all active sharing epochs and their grants in the same transaction. A
    member leaving, being removed or a Circle dissolving closes the matching
    viewer grants. Rejoining requires a new period and fresh explicit grant.
-7. **Last-known caches preserve authorization metadata.** Cached values carry
-   the source point/epoch/grant version and are served only after the same
-   current authorization check. Revoke, leave, removal, dissolution and
-   retention invalidate the relevant cache entries. A cache never extends
-   access beyond the source grant.
-8. **Future WebSocket delivery uses the same policy.** Subscriptions are
-   scoped to owner/viewer/Circle/grant generation; every event is checked
-   against the active grant before delivery. Revocation terminates the
-   subscription and prevents queued events from escaping afterward. Realtime
-   delivery cannot authorize more than an HTTP read.
+7. **M4 uses no persistent location cache.** The Android display snapshot is
+   held in memory only for the visible screen. Each conditional poll executes
+   the authoritative PostgreSQL authorization query. A changed authorization
+   result changes the ETag and replaces the marker set; 401/403 and account
+   changes clear protected coordinates. A future cache must include viewer,
+   owner, Circle and grant generation and must not bypass the same read check.
+8. **Future push delivery uses the same policy.** M4 uses conditional HTTPS
+   polling rather than WebSocket/SSE. If a future stream is added, it must be
+   scoped to owner/viewer/Circle/grant generation, recheck active grants, and
+   stop future delivery after revocation. Stream delivery cannot authorize
+   more than an HTTP read.
 
 For MVP there is one active Circle per user, but the owner/viewer/Circle keys
 are explicit so a later multi-Circle product does not rely on a single
@@ -73,23 +79,24 @@ membership shortcut.
 
 ## M4 migration proposal
 
-Ship an additive migration before any read endpoint:
+Migration `0006_location_audience` is additive and implements:
 
 - add `membership_periods` and backfill only the currently active membership
   from its existing creation time; future joins/leaves write interval rows;
 - add `location_sharing_epochs` and explicit owner-to-viewer
   `location_audience_grants` with start/end timestamps and a generation;
-- add a nullable epoch reference and point-to-audience association for new
-  ingested data;
+- add a nullable epoch reference to new ingested data; the read query joins
+  current grants at request time rather than duplicating a point per viewer;
 - do **not** backfill epochs or grants for existing M3 points, so no new
   member receives pre-join history by migration;
 - index owner/Circle/capture time, viewer/Circle/grant interval and point
   audience keys; validate all read paths with cross-owner and temporal
   authorization tests before exposing them.
 
-The exact API response and whether a product action grants to all current
-members or selected members remain M4 contract/product work. The default is
-deny until the owner makes that choice.
+The M4 API lets the owner explicitly grant or revoke one current Circle
+member. The default is deny. The latest read endpoint returns only an
+authorized current sample or an authorized member row with no sample; it does
+not expose history.
 
 ## Consequences
 

@@ -19,6 +19,7 @@ import com.anve.app.data.location.LocationDatabase
 import com.anve.app.data.location.LocationQueueRepository
 import com.anve.app.data.location.LocationSyncEngine
 import com.anve.app.data.location.LocationSyncScheduler
+import com.anve.app.data.location.VisibleLocationRepository
 import com.anve.app.data.location.WorkManagerLocationSyncScheduler
 import com.anve.app.tracking.AndroidConnectivityMonitor
 import com.anve.app.tracking.AndroidLocationPermissions
@@ -89,6 +90,9 @@ class AppContainer(application: Application) {
     )
 
     val circleRepository: CircleRepository = CircleRepository(api = authApi)
+
+    /** Location read API calls are screen-scoped; this repository stores no coordinates. */
+    val visibleLocationRepository: VisibleLocationRepository = VisibleLocationRepository(api = authApi)
 
     // ── M3 location engine ───────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ chung chung:
 | **GPS accuracy** | Sai số (mét) provider báo cáo cho một Location Point | Thiết bị nguồn | Vị trí (trong nhà/xe), chip, chế độ location |
 | **Location freshness** | Tuổi dữ liệu tại lúc xem: từ lúc thiết bị ghi nhận đến lúc hiển thị | Client người xem | Chu kỳ thu thập, mạng, sync queue, transport |
 | **Server ingestion latency** | Thời gian từ request đến lúc Location Point được ghi bền vững và có thể truy vấn | Go backend | DB write, index, batch |
-| **Realtime distribution latency** | Thời gian từ lúc server ghi xong đến lúc người xem nhận qua kết nối realtime | Go backend → client người xem | Transport (WebSocket/polling), số kết nối |
+| **Live Map snapshot convergence** | Thời gian từ server commit đến poll thành công tiếp theo khi map foreground | Go backend → Android viewer | Policy poll 10 giây; không phải latency đo được hoặc bảo đảm |
 | **Notification delivery** | Thời gian từ lúc sự kiện (SOS/Place Alert) được ghi đến lúc thông báo đến thiết bị nhận | Backend + FCM + thiết bị nhận | FCM, trạng thái thiết bị nhận |
 | **Battery overhead** | Mức tiêu thụ pin thêm do AnVề, so sánh với thiết bị không chạy AnVề | Thiết bị nguồn (field) | Location Engine, tần suất wake, network |
 
@@ -100,6 +100,11 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
 - **Proposed target:** trong trạng thái MOVING và có kết nối — dữ liệu hiển thị
   không cũ hơn mức cần để hỗ trợ trường hợp gia đình (số cụ thể proposed, chốt
   sau khi đo ingestion + distribution thật).
+- **M4 implementation policy:** viewer fetches an authorized snapshot every
+  10 seconds while the map is foreground, with ETag and bounded backoff. This
+  is a polling interval, not measured event-to-render latency or a delivery
+  guarantee. M4 confidence thresholds are documented in `features.md` and ADR
+  0008; tune only from field evidence.
 
 ### 2.8 Offline resilience
 

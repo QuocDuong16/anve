@@ -23,14 +23,20 @@ import (
 // Action names. They are part of the stable surface consumed by operators,
 // so they are declared here rather than scattered as string literals.
 const (
-	ActionSignIn             = "auth.signin"
-	ActionDevSignIn          = "auth.dev_signin"
-	ActionSignOut            = "auth.signout"
-	ActionSessionRevoked     = "auth.session_revoked"
-	ActionDeviceRevoked      = "auth.device_revoked"
-	ActionAccountDeleted     = "auth.account_deleted"
-	ActionLocationSharingOn  = "consent.location_sharing.enabled"
-	ActionLocationSharingOff = "consent.location_sharing.disabled"
+	ActionSignIn                                = "auth.signin"
+	ActionDevSignIn                             = "auth.dev_signin"
+	ActionSignOut                               = "auth.signout"
+	ActionSessionRevoked                        = "auth.session_revoked"
+	ActionDeviceRevoked                         = "auth.device_revoked"
+	ActionAccountDeleted                        = "auth.account_deleted"
+	ActionLocationSharingOn                     = "consent.location_sharing.enabled"
+	ActionLocationSharingOff                    = "consent.location_sharing.disabled"
+	ActionLocationAudienceGrantCreated          = "location.audience_grant.created"
+	ActionLocationAudienceGrantRevoked          = "location.audience_grant.revoked"
+	ActionLocationAudienceGrantClosedConsent    = "location.audience_grant.closed_consent"
+	ActionLocationAudienceGrantClosedMembership = "location.audience_grant.closed_membership"
+	ActionLocationSharingEpochOpened            = "location.sharing_epoch.opened"
+	ActionLocationSharingEpochClosed            = "location.sharing_epoch.closed"
 
 	ActionCircleCreated   = "circle.created"
 	ActionCircleRenamed   = "circle.renamed"
