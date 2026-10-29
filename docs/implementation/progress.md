@@ -442,6 +442,8 @@ PostgreSQL/PostGIS. Android JVM tests reported 237 passing tests, and the
 minified release and instrumentation APK compiled with the cache disabled.
 OpenAPI was also checked with `openapi-spec-validator`. These are local results,
 not hosted CI, emulator execution, or physical-device evidence.
+The retention cleanup locks candidate owners before point rows; a deterministic
+PostgreSQL test verifies concurrent deletion does not invert that lock order.
 
 The API and client changes are not shipped. Full final quality/CI and emulator
 results are pending. The agreed privacy-first checkpoint rejects unverified

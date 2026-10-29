@@ -24,7 +24,9 @@ retention change the old and new policies are compared and the stricter cutoff
 is persisted before removing points; increasing retention cannot restore
 already-expired time ranges. Periodic cleanup uses the owner policy and
 advances a monotonic global cutoff in the same bounded transaction as
-deletion, recording removed event IDs. Ingestion share-locks that watermark, and reads enforce it immediately, so increasing the server-wide
+deletion, recording removed event IDs. Cleanup locks candidate owners in UUID
+order before the watermark and point rows, matching deletion and ingestion and
+avoiding a point-lock/owner-foreign-key deadlock. Ingestion share-locks that watermark, and reads enforce it immediately, so increasing the server-wide
 limit cannot admit previously expired data.
 
 Deletion records half-open owner-scoped intervals and IDs of deleted rows in

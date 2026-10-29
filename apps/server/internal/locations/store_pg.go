@@ -209,19 +209,47 @@ func (s *PGStore) PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, 
 		return 0, fmt.Errorf("begin retention purge: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// Lock candidate owners before the watermark and point rows, matching
+	// ingestion and deletion. The event-ID fence has a user foreign key;
+	// taking point locks first can deadlock with an account/history deletion.
+	rows, err := tx.Query(ctx, `SELECT id FROM users WHERE id IN (
+        SELECT user_id FROM (
+          SELECT lp.user_id FROM location_points lp JOIN users u ON u.id=lp.user_id
+          WHERE lp.recorded_at < GREATEST($1, COALESCE((SELECT cutoff FROM location_retention_watermark WHERE singleton), $1))
+             OR lp.recorded_at < now() - u.location_retention_days * interval '1 day'
+          ORDER BY lp.recorded_at, lp.id LIMIT $2
+        ) candidates
+    ) ORDER BY id FOR SHARE`, cutoff.UTC(), RetentionBatchSize)
+	if err != nil {
+		return 0, fmt.Errorf("lock retention owners: %w", err)
+	}
+	var owners []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("scan retention owner: %w", err)
+		}
+		owners = append(owners, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, fmt.Errorf("iterate retention owners: %w", err)
+	}
+	rows.Close()
 	var effective time.Time
 	if err := tx.QueryRow(ctx, `UPDATE location_retention_watermark SET cutoff = GREATEST(cutoff, $1) WHERE singleton RETURNING cutoff`, cutoff.UTC()).Scan(&effective); err != nil {
 		return 0, fmt.Errorf("advance retention watermark: %w", err)
 	}
 	ct, err := tx.Exec(ctx, `WITH expired AS MATERIALIZED (
         SELECT lp.id, lp.user_id, lp.event_id FROM location_points lp JOIN users u ON u.id=lp.user_id
-        WHERE lp.recorded_at < $1 OR lp.recorded_at < now() - u.location_retention_days * interval '1 day'
+        WHERE lp.user_id = ANY($3::uuid[]) AND (lp.recorded_at < $1 OR lp.recorded_at < now() - u.location_retention_days * interval '1 day')
         ORDER BY lp.recorded_at, lp.id LIMIT $2 FOR UPDATE OF lp SKIP LOCKED
     ), fenced AS (
         INSERT INTO location_deleted_events (owner_user_id, event_id)
         SELECT user_id, event_id FROM expired ON CONFLICT DO NOTHING RETURNING event_id
     )
-    DELETE FROM location_points WHERE id IN (SELECT id FROM expired)`, effective, RetentionBatchSize)
+    DELETE FROM location_points WHERE id IN (SELECT id FROM expired)`, effective, RetentionBatchSize, owners)
 	if err != nil {
 		return 0, fmt.Errorf("purge expired locations: %w", err)
 	}

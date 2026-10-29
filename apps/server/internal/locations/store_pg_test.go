@@ -677,6 +677,32 @@ func TestPGRetentionReductionSerializesWithInFlightIngestion(t *testing.T) {
 	require.ErrorIs(t, err, locations.ErrEventTooOld)
 }
 
+func TestPGRetentionLocksOwnerBeforePointRows(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{f.event(time.Now().UTC().Add(-2 * time.Hour))})
+	require.NoError(t, err)
+	tx, err := f.pool.Begin(f.ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(f.ctx) }()
+	require.NoError(t, tx.QueryRow(f.ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, f.user.ID).Scan(new(uuid.UUID)))
+	purgeDone := make(chan error, 1)
+	go func() { _, err := f.store.PurgeOlderThan(f.ctx, time.Now().UTC().Add(-time.Hour)); purgeDone <- err }()
+	waitForLockWait(t, f.pool)
+	deleted := make(chan error, 1)
+	go func() {
+		_, err := tx.Exec(f.ctx, `DELETE FROM location_points WHERE user_id=$1`, f.user.ID)
+		deleted <- err
+	}()
+	select {
+	case err := <-deleted:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("retention locked a point while waiting for its owner")
+	}
+	require.NoError(t, tx.Commit(f.ctx))
+	require.NoError(t, <-purgeDone)
+}
+
 func TestPGIngestSeesConcurrentGlobalRetentionWatermark(t *testing.T) {
 	f := newAuthorizedFixture(t)
 	now := time.Now().UTC()
