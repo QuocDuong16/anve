@@ -28,7 +28,7 @@ near-real-time snapshot convergence, not server push.
 | M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
 | M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
-| M5 History & Places | Planned — implementation in progress | M5-A passed automated CI/emulator on `f747863`; M5-B is being verified. |
+| M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Not started | |
 | M7 Journey & diagnostics | Not started | |
 | M8 Release hardening | Not started | |
@@ -469,4 +469,9 @@ PostgreSQL/PostGIS, including migration lifecycle, event authorization,
 retention, worker retries and concurrent revocation. Android JVM tests reported
 244 passing tests, with lint and debug APK build passing. OpenAPI validation passed.
 The instrumentation APK and minified unsigned release also compiled locally.
-Final-head CI and physical-device validation remain pending. See ADR 0010.
+Go CI and Android CI (including the headless emulator and minified release)
+passed on `f127d48b85e24cc128f20ae91fbb4ca1982cff07`:
+[Go](https://github.com/QuocDuong16/anve/actions/runs/40910107090),
+[Android](https://github.com/QuocDuong16/anve/actions/runs/40910107294).
+Physical-device, real-GPS, Maps-key and battery validation remain pending.
+See ADR 0010.

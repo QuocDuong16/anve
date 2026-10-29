@@ -5,7 +5,7 @@ API and PostgreSQL/PostGIS. Modular monorepo per ADR 0001 (`docs/adr/`):
 one repo, one pinned toolchain, but each app keeps its own build system and
 its own CI workflow. Phase: M0–M4 implemented. M4 is automated-verified but
 pending runtime/device validation; M3 has a runtime HTTP smoke test but is NOT
-field-validated on a device (battery/background/OEM); M5-A is automated-verified and M5-B is undergoing verification. Engineering
+field-validated on a device (battery/background/OEM); M5 is automated-verified; physical-device validation is pending. Engineering
 session state lives in `docs/implementation/progress.md` — read it first when
 resuming work.
 
@@ -54,7 +54,7 @@ M3 location invariants (ADR 0006):
 
 M4 read authorization is implemented from ADR 0007: explicit owner→viewer grants are bounded by Circle membership periods and owner sharing epochs. Current membership alone never grants historical points; existing M3 points receive no grants by default. PostgreSQL enforces grants in the latest-location read query; revocation changes the authorized ETag and subsequent reads deny access. Android uses foreground conditional HTTPS polling (not WebSocket/SSE), Maps Compose, and no persistent location cache. M4 is automated-verified but still pending runtime/device validation. Android audience mutations distinguish confirmed, rejected and unknown outcomes; unknown mutations are never replayed and trigger an owner-bound authoritative re-read. Sharing generations reject stale responses, and mutations are single-flight per owner/viewer.
 
-M5-A History is implemented and automated-verified; M5-B Places is implemented and undergoing validation. ADR 0009 describes bounded per-page current-audience authorization, a capture-time-ordered keyset snapshot, owner retention and transactional interval/event-ID deletion fences. A privacy checkpoint increments on history deletion, retention changes and new grants under the owner lock. Ingestion rejects unverified/stale checkpoints and grants filter points by checkpoint; Android assigns a process-local checkpoint only to fixes captured after its receipt according to the device monotonic clock. Offline or old-client points may be dropped, including genuinely new ones; client-supplied data cannot prove physical presence. Batch requests require an expected-owner header. History data is ephemeral, and access is rechecked only while visible. M5-B Places separates explicit Place access from subject-controlled monitoring and binds each recipient to both an active location grant and specific Place-access grant. A bounded durable worker evaluates existing M3 samples with accuracy, hysteresis, dwell and gap protections; point evidence references cause event removal on history deletion. Late points behind the watermark are ignored, and feed reads recheck current authorization and retention. Android only rechecks while the screen is visible. See progress.md and ADRs 0009–0010 for evidence and limits.
+M5 History and Places are implemented and automated-verified; physical-device validation is pending. ADR 0009 describes bounded per-page current-audience authorization, a capture-time-ordered keyset snapshot, owner retention and transactional interval/event-ID deletion fences. A privacy checkpoint increments on history deletion, retention changes and new grants under the owner lock. Ingestion rejects unverified/stale checkpoints and grants filter points by checkpoint; Android assigns a process-local checkpoint only to fixes captured after its receipt according to the device monotonic clock. Offline or old-client points may be dropped, including genuinely new ones; client-supplied data cannot prove physical presence. Batch requests require an expected-owner header. History data is ephemeral, and access is rechecked only while visible. M5-B Places separates explicit Place access from subject-controlled monitoring and binds each recipient to both an active location grant and specific Place-access grant. A bounded durable worker evaluates existing M3 samples with accuracy, hysteresis, dwell and gap protections; point evidence references cause event removal on history deletion. Late points behind the watermark are ignored, and feed reads recheck current authorization and retention. Android only rechecks while the screen is visible. See progress.md and ADRs 0009–0010 for evidence and limits.
 
 ## Product documentation
 
@@ -67,7 +67,7 @@ intent — check them before developing a feature, and update them when feature
 scope changes. Do not assume planned functionality is implemented: M0–M4 are implemented
 (automated-verified; M3 has runtime HTTP smoke evidence but still awaits
 on-device field validation for battery/background/OEM behavior; M4 still awaits
-map/runtime validation). M5-A History is automated-verified; M5-B Places is undergoing verification. M6 SOS/FCM and M7 Journey remain planned. M4 Live Map uses conditional polling rather than server push. AGENTS.md
+map/runtime validation). M5 History and Places are automated-verified; physical-device validation is pending. M6 SOS/FCM and M7 Journey remain planned. M4 Live Map uses conditional polling rather than server push. AGENTS.md
 has a "Product context & source of truth" section pointing to the same documents.
 
 ## Other memories

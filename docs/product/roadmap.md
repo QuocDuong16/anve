@@ -25,7 +25,7 @@
 | [M2 — Family Circle](#m2--family-circle--membership-authorization) | Circle, membership, authorization | **Implemented — Verified** (backend + client logic; chờ field validation) |
 | [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
-| [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Planned |
+| [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Planned |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | Planned |
 | [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
@@ -227,14 +227,13 @@ sharing management và authenticated conditional polling (ADR 0008).
 
 Evidence is tracked in [`../implementation/progress.md`](../implementation/progress.md).
 CI and local builds do not verify Google Maps rendering; runtime validation
-needs a restricted Maps API key and emulator/device. No history API, stream,
-M5, M6 or M7 features are included.
+needs a restricted Maps API key and emulator/device. M4 itself does not include
+history or server-push streams; History and Places are delivered by M5.
 
 ## M5 — Location History & Place Alerts
 
-**Tiến độ:** M5-A History đã qua Go/Android CI và emulator trên `f747863`;
-M5-B Places/geofence đã triển khai và đang kiểm thử. Toàn bộ M5 chưa được xác
-minh CI tại HEAD cuối, chưa có bằng chứng GPS hay pin trên thiết bị thực.
+**Tiến độ:** M5-A và M5-B đã qua Go/Android CI và emulator trên `f127d48`.
+Chưa có bằng chứng GPS hay pin trên thiết bị thực; xem progress cho giới hạn.
 
 **Scope:** lịch sử theo ngày, polyline, phân biệt live/backfill, retention,
 xóa history, geofence + hysteresis, thông báo đến/rời.

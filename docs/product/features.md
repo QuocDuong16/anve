@@ -69,7 +69,7 @@ Chưa xác minh: chạy thực tế trên thiết bị (field validation) và lu
 với OAuth client thật (đang chờ cấu hình bên ngoài — xem
 [`../implementation/setup-android.md`](../implementation/setup-android.md)).
 
-Từ mục 2 trở đi, **toàn bộ là Planned hoặc Proposed** cho đến khi có code tương ứng.
+Trạng thái của từng chức năng được ghi tại đầu mục tương ứng.
 
 ## 2. Family Circle
 
@@ -484,7 +484,7 @@ kể cả khi dùng lại token cũ; các sự kiện consent/revocation xuất 
 
 ## 9. Place Alerts
 
-> Trạng thái: **Implemented — M5-B đang kiểm thử; chưa xác minh CI.**
+> Trạng thái: **Implemented — Automated Verified và Emulator Verified** trên `f127d48`; chưa kiểm thử thiết bị thực.
 
 **Mục đích.** Cho phép định nghĩa địa điểm quan trọng (nhà, trường học, công ty,
 địa điểm tùy chỉnh) và nhận thông báo khi thành viên đến/rời địa điểm đó.
@@ -670,8 +670,6 @@ tại thời điểm gửi.
 
 ---
 
-*Các mục 2–4 và 7–8 đã có implementation tương ứng M2/M3 (xem trạng thái ở
-đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
-[`../implementation/progress.md`](../implementation/progress.md)). Các mục
-5–6, 9–13 vẫn là Planned/Proposed cho M4–M7 — không có dòng code nghiệp vụ
-nào tồn tại cho chúng tại thời điểm viết tài liệu.*
+*Xem trạng thái ở đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
+[`../implementation/progress.md`](../implementation/progress.md). M6–M7
+vẫn là Planned; bằng chứng tự động không thay thế field validation.*

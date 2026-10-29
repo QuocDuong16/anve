@@ -1,6 +1,6 @@
 # ADR 0010 — Place monitoring and event processing
 
-- **Status:** Accepted; final-head CI and field validation pending.
+- **Status:** Accepted; automated and emulator checks passed on `f127d48`; field validation pending.
 - **Date:** 2026-10-29
 
 A Place belongs to its creator and their current Circle membership period.

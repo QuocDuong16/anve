@@ -33,18 +33,18 @@ flowchart LR
     API --> DB
 ```
 
-Kiến trúc hiện tại và các phần còn lại (M5-B đang kiểm thử; M6–M7 planned):
+Kiến trúc hiện tại và các phần còn lại (M5 đã kiểm thử tự động; M6–M7 planned):
 
 ```mermaid
 flowchart TB
-    subgraph androidT["Android app — M5-B in verification"]
+    subgraph androidT["Android app — M5 automated verified"]
         UIF["UI features<br/>Circle · Tracking · Live Map · History · Places; SOS/Diagnostics planned"]
         LE["Location Engine<br/>state machine, battery-aware (M3)"]
         SYNC["SyncManager — Room + WorkManager (M3)"]
         ROOM[("Room DB — location queue (M3)")]
         FCMC["FCM client (planned M6)"]
     end
-    subgraph serverT["Go backend — M5-B in verification"]
+    subgraph serverT["Go backend — M5 automated verified"]
         AUTH["auth · devices (M1)"]
         CIRC["circles · membership (M2)"]
         ING["location ingestion + retention (M3)"]
@@ -123,9 +123,9 @@ Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M
 | `circles` | Circle, membership, invite, vai trò, giải tán | Implemented (M2) |
 | `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | Implemented (M1, ownership thống nhất ở ADR 0004) |
 | `testdb` | Scratch database cho integration tests | Implemented (test infrastructure) |
-| `locations` | Ingestion, idempotency, retention, deletion fences và durable place queue | **Implemented (M3/M5-A)**; M5-B integration đang kiểm thử |
+| `locations` | Ingestion, idempotency, retention, deletion fences và durable place queue | **Implemented — Automated Verified (M3/M5)** |
 | `locationaccess` | Explicit audience, temporal authorization, latest snapshot và history | **Implemented (M4/M5-A)**; PostgreSQL enforces each read |
-| `places` / `alerts` | Place access riêng, opt-in của chủ thể, worker xử lý mẫu M3 và feed sự kiện | Implemented — M5-B đang kiểm thử; không có push |
+| `places` / `alerts` | Place access riêng, opt-in của chủ thể, worker xử lý mẫu M3 và feed sự kiện | Implemented — Automated Verified; không có push |
 | `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
 | `notify` | Dispatcher FCM, lọc người nhận theo quyền | Planned (M6) |
 
