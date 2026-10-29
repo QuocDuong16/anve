@@ -112,6 +112,9 @@ Quy tắc:
   Latest read API không trả lịch sử M5.
 - **Quyền nhận sự kiện** (Place Alerts, SOS, Safe Journey) được chọn cho từng
   loại sự kiện/địa điểm/hành trình, không kế thừa âm thầm từ quyền xem bản đồ.
+  Với M5-B, chủ thể tự bật theo dõi và chọn người nhận; người nhận còn phải có
+  grant vị trí hiện tại và quyền xem Place tương ứng. Mất rồi cấp lại một trong
+  các quyền không tự phục hồi cấu hình nhận sự kiện trước đó.
 - Server thực thi mô hình trên cho **mọi** endpoint đọc/ghi, kể cả các endpoint
   tiện ích (diagnostics, danh sách thành viên).
 
@@ -233,7 +236,7 @@ accepted/duplicate/rejected và thời gian xử lý — không tọa độ.
 | Consent switch (M1) | Là **ghi nhận đồng ý**, không phải GPS đang chạy. Bật switch không có nghĩa GPS đã thu thập được vị trí hay ai đó đã được cấp quyền xem; OS permission, Location Engine và explicit audience grant là các điều kiện riêng. |
 | Location Confidence | Là trạng thái **độ mới/độ tin cậy của dữ liệu**, không phải đánh giá độ an toàn của con người. Không hiển thị dạng xác suất nếu chưa qua calibration. |
 | Live Map | Snapshot polling 10 giây khi foreground, không phải server push; không cam kết latency tuyệt đối. Luôn kèm thời điểm/freshness; last known location không được trình bày như vị trí hiện tại; dữ liệu đã giao không thể thu hồi khỏi thiết bị người xem. |
-| Place Alerts | Geofence có thể được OS delivered chậm; không cam kết phát hiện tức thời. |
+| Place Alerts | Máy chủ đánh giá các mẫu M3 sau khi đồng bộ; không có OS geofence wakeup và sự kiện có thể trễ hoặc bị bỏ lỡ. |
 | SOS | Không thay thế dịch vụ cấp cứu 113/115/114; ba mốc "đã gửi / push đã chấp nhận / người nhận đã xác nhận" không được gộp thành "đã cứu". |
 | Safe Journey | Không suy diễn mất GPS/ngừng di chuyển là tai nạn; cảnh báo dùng ngôn ngữ "hãy liên hệ". |
 | GPS nói chung | Không cam kết GPS hoạt động 24/7 trong mọi điều kiện (trong nhà, Battery Saver, OEM restrictions). |

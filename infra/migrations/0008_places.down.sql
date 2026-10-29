@@ -1,0 +1,10 @@
+DROP TRIGGER close_place_access_on_membership_end ON circle_membership_periods;
+DROP FUNCTION close_place_access_for_membership();
+DROP TRIGGER close_place_monitors_on_epoch_end ON location_sharing_epochs;
+DROP FUNCTION close_place_monitors_for_epoch();
+DROP TABLE place_events;
+DROP TABLE place_event_queue;
+DROP TABLE place_monitor_recipients;
+DROP TABLE place_monitors;
+DROP TABLE place_access;
+DROP TABLE places;

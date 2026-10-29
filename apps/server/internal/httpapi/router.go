@@ -14,6 +14,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
+	"github.com/QuocDuong16/anve/server/internal/places"
 )
 
 // HealthResponse is the payload returned by the health endpoints.
@@ -43,6 +44,7 @@ type Deps struct {
 	Circles        *circles.Service
 	Locations      *locations.Service
 	LocationAccess *locationaccess.Service
+	Places         *places.Store
 	DB             Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
 	// development login. An empty list denies every request: the fixture
@@ -158,6 +160,22 @@ func NewRouter(deps Deps) chi.Router {
 				private.Get("/locations/visible/latest", latestVisibleLocationsHandler(access))
 				historyReadLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
 				private.With(RateLimit(historyReadLimiter)).Get("/locations/history", historyHandler(access))
+			}
+
+			if deps.Places != nil {
+				placeLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				private.With(RateLimit(placeLimiter)).Get("/places", listPlacesHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Post("/places", createPlaceHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Get("/places/events", placeEventsHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Patch("/places/{placeId}", updatePlaceHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Delete("/places/{placeId}", deletePlaceHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/access", listPlaceAccessHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Put("/places/{placeId}/access/{memberId}", placeAccessHandler(deps.Places, true))
+				private.With(RateLimit(placeLimiter)).Delete("/places/{placeId}/access/{memberId}", placeAccessHandler(deps.Places, false))
+				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/monitor", getPlaceMonitorHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/eligible-recipients", eligiblePlaceRecipientsHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Put("/places/{placeId}/monitor", setPlaceMonitorHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Delete("/places/{placeId}/monitor", stopPlaceMonitorHandler(deps.Places))
 			}
 
 			if deps.Circles != nil {

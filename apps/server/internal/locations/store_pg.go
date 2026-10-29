@@ -161,6 +161,7 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 			return BatchResult{}, ErrCaptureGeneration
 		}
 		var eventID uuid.UUID
+		var pointID int64
 		var pointEpochID *uuid.UUID
 		if epochErr == nil && !e.RecordedAt.UTC().Before(sharingEpochStartedAt) {
 			pointEpochID = &sharingEpochID
@@ -175,14 +176,20 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 			         ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography,
 			         $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 			 ON CONFLICT (user_id, event_id) DO NOTHING
-			 RETURNING event_id`,
+			 RETURNING event_id, id`,
 			e.EventID, in.Principal.UserID, deviceID, e.RecordedAt.UTC(), in.ReceivedAt,
 			e.Latitude, e.Longitude,
 			e.HorizontalAccuracyMeters, e.AltitudeMeters, e.SpeedMetersPerSecond, e.BearingDegrees,
 			e.Provider, e.IsMock, e.SchemaVersion, pointEpochID, historyGeneration, captureGeneration,
-		).Scan(&eventID)
+		).Scan(&eventID, &pointID)
 		switch {
 		case err == nil:
+			if _, err := tx.Exec(ctx, `INSERT INTO place_event_queue(point_id,owner_user_id,recorded_at)
+				SELECT $1,$2,$6 WHERE EXISTS (SELECT 1 FROM place_monitors pm
+                  WHERE pm.owner_user_id=$2 AND pm.revoked_at IS NULL AND pm.sharing_epoch_id=$3
+					AND pm.capture_generation <= $4 AND pm.started_at <= $5)`, pointID, in.Principal.UserID, pointEpochID, captureGeneration, in.ReceivedAt, e.RecordedAt.UTC()); err != nil {
+				return BatchResult{}, fmt.Errorf("queue place evaluation: %w", err)
+			}
 			result.Accepted = append(result.Accepted, eventID)
 		case errors.Is(err, pgx.ErrNoRows):
 			// Conflict: this owner already stored the event. Idempotent

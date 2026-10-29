@@ -33,23 +33,23 @@ flowchart LR
     API --> DB
 ```
 
-Kiến trúc hiện tại và các phần còn lại (M1–M4 đã có; M5–M7 planned):
+Kiến trúc hiện tại và các phần còn lại (M5-B đang kiểm thử; M6–M7 planned):
 
 ```mermaid
 flowchart TB
-    subgraph androidT["Android app — M1–M4 implemented, M5+ planned"]
-        UIF["UI features<br/>Circle · Tracking · Live Map · History/Alerts/SOS/Diagnostics (planned)"]
+    subgraph androidT["Android app — M5-B in verification"]
+        UIF["UI features<br/>Circle · Tracking · Live Map · History · Places; SOS/Diagnostics planned"]
         LE["Location Engine<br/>state machine, battery-aware (M3)"]
         SYNC["SyncManager — Room + WorkManager (M3)"]
         ROOM[("Room DB — location queue (M3)")]
         FCMC["FCM client (planned M6)"]
     end
-    subgraph serverT["Go backend — M1–M4 implemented, M5+ planned"]
+    subgraph serverT["Go backend — M5-B in verification"]
         AUTH["auth · devices (M1)"]
         CIRC["circles · membership (M2)"]
         ING["location ingestion + retention (M3)"]
-        READ["locationaccess<br/>temporal audience + latest snapshot (M4)"]
-        EVT["places · alerts · SOS · journeys (planned)"]
+        READ["locationaccess<br/>temporal audience + latest + history"]
+        EVT["places worker + in-app events; SOS/journeys planned"]
         NOTIF["notification dispatcher (planned)"]
         AUDIT["audit · privacy enforcement (M1–M3)"]
     end
@@ -123,9 +123,9 @@ Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M
 | `circles` | Circle, membership, invite, vai trò, giải tán | Implemented (M2) |
 | `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | Implemented (M1, ownership thống nhất ở ADR 0004) |
 | `testdb` | Scratch database cho integration tests | Implemented (test infrastructure) |
-| `locations` | Ingestion Location Point (identity, idempotency, validation), retention purge; history query thuộc M5 | **Implemented (M3)** ingestion + retention |
-| `locationaccess` | Explicit audience grant/revoke; temporal authorization; latest snapshot/confidence | **Implemented (M4)**; each request queries PostgreSQL, no server location cache |
-| `places` / `alerts` | Geofence events, verification, chống nhiễu | Planned (M5) |
+| `locations` | Ingestion, idempotency, retention, deletion fences và durable place queue | **Implemented (M3/M5-A)**; M5-B integration đang kiểm thử |
+| `locationaccess` | Explicit audience, temporal authorization, latest snapshot và history | **Implemented (M4/M5-A)**; PostgreSQL enforces each read |
+| `places` / `alerts` | Place access riêng, opt-in của chủ thể, worker xử lý mẫu M3 và feed sự kiện | Implemented — M5-B đang kiểm thử; không có push |
 | `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
 | `notify` | Dispatcher FCM, lọc người nhận theo quyền | Planned (M6) |
 
@@ -250,7 +250,7 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 Những quyết định này **cần được chốt trước khi hiện thực milestone tương ứng**
 và nên có ADR riêng khi quyết:
 
-1. **Location history authorization API** — M5-A đang triển khai retention và
+1. **Location history authorization API** — M5-A đã triển khai retention và
    phân trang dựa trên membership/epoch/grant hiện tại; thiết kế và giới hạn
    checkpoint được ghi trong [ADR 0009](../adr/0009-history-authorization-and-deletion.md).
 2. ~~**Phương thức authentication**~~ — đã chốt: Google Sign-In + opaque
@@ -258,8 +258,9 @@ và nên có ADR riêng khi quyết:
 3. **FCM data message làm tín hiệu fetch** — dùng hay không, và cơ chế debounce.
 4. ~~**Idempotency key của Location Point**~~ — đã chốt `(user_id, event_id)`
    với client UUID, server trả `duplicates`; ADR 0006 §1.
-5. **Retention mặc định** — M3 đặt tạm 30 ngày (`LOCATION_RETENTION_DAYS`);
-   con số cho history UI (M5) và event data vẫn mở.
+5. **Retention mặc định** — history chọn 1–30 ngày và còn chịu giới hạn
+   `LOCATION_RETENTION_DAYS`; event phụ thuộc các mẫu chứng cứ. Chính sách riêng
+   cho các loại sự kiện khác vẫn mở.
 6. **Confidence calibration** — phương pháp nếu tiến tới confidence score.
 7. **Production deployment** — target (VPS, cloud, managed Postgres…) chưa quyết;
    ảnh hưởng observability và SLO đo được.

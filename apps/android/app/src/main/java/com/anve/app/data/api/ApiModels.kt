@@ -198,6 +198,61 @@ data class LocationEventDto(
 data class CaptureGenerationDto(@Json(name = "generation") val generation: Long)
 
 @JsonClass(generateAdapter = false)
+data class PlaceInputDto(
+    @Json(name = "name") val name: String,
+    @Json(name = "latitude") val latitude: Double,
+    @Json(name = "longitude") val longitude: Double,
+    @Json(name = "radiusMeters") val radiusMeters: Double,
+)
+
+@JsonClass(generateAdapter = false)
+data class PlaceDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "ownerId") val ownerId: String,
+    @Json(name = "circleId") val circleId: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "latitude") val latitude: Double,
+    @Json(name = "longitude") val longitude: Double,
+    @Json(name = "radiusMeters") val radiusMeters: Double,
+    @Json(name = "createdAt") val createdAt: String,
+    @Json(name = "updatedAt") val updatedAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class PlaceListDto(@Json(name = "places") val places: List<PlaceDto>)
+
+@JsonClass(generateAdapter = false)
+data class PlaceAccessDto(@Json(name = "memberIds") val memberIds: List<String>)
+
+@JsonClass(generateAdapter = false)
+data class PlaceMonitorRequestDto(@Json(name = "recipientIds") val recipientIds: List<String>)
+
+@JsonClass(generateAdapter = false)
+data class PlaceMonitorDto(
+    @Json(name = "placeId") val placeId: String,
+    @Json(name = "ownerId") val ownerId: String,
+    @Json(name = "recipientIds") val recipientIds: List<String>,
+    @Json(name = "active") val active: Boolean,
+)
+
+@JsonClass(generateAdapter = false)
+data class PlaceEventDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "placeId") val placeId: String,
+    @Json(name = "placeName") val placeName: String,
+    @Json(name = "ownerId") val ownerId: String,
+    @Json(name = "ownerName") val ownerName: String,
+    @Json(name = "type") val type: String,
+    @Json(name = "recordedAt") val recordedAt: String,
+    @Json(name = "processedAt") val processedAt: String,
+    @Json(name = "delayed") val delayed: Boolean,
+    @Json(name = "confidence") val confidence: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class PlaceEventListDto(@Json(name = "events") val events: List<PlaceEventDto>)
+
+@JsonClass(generateAdapter = false)
 data class LocationBatchRequestDto(
     @Json(name = "events") val events: List<LocationEventDto>,
 )

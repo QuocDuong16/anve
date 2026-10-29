@@ -97,6 +97,8 @@ class AppContainer(application: Application) {
     /** Location read API calls are screen-scoped; this repository stores no coordinates. */
     val visibleLocationRepository: VisibleLocationRepository = VisibleLocationRepository(api = authApi)
 
+    val placesRepository = com.anve.app.data.location.PlacesRepository(authApi, visibleLocationRepository)
+
     // ── M3 location engine ───────────────────────────────────────────────
 
     /** Durable offline queue. No destructive migration: captured points survive updates. */

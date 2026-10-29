@@ -154,6 +154,42 @@ interface AnveApi {
         @Body body: RedeemInviteRequestDto,
     ): Response<CircleMembershipDto>
 
+    @GET("api/v1/places")
+    suspend fun places(@Header("X-Anve-Expected-Owner") owner: String): Response<PlaceListDto>
+
+    @POST("api/v1/places")
+    suspend fun createPlace(@Header("X-Anve-Expected-Owner") owner: String, @Body body: PlaceInputDto): Response<PlaceDto>
+
+    @PATCH("api/v1/places/{placeId}")
+    suspend fun updatePlace(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String, @Body body: PlaceInputDto): Response<PlaceDto>
+
+    @DELETE("api/v1/places/{placeId}")
+    suspend fun deletePlace(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<Unit>
+
+    @GET("api/v1/places/{placeId}/access")
+    suspend fun placeAccess(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<PlaceAccessDto>
+
+    @PUT("api/v1/places/{placeId}/access/{memberId}")
+    suspend fun sharePlace(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String, @Path("memberId") member: String): Response<Unit>
+
+    @DELETE("api/v1/places/{placeId}/access/{memberId}")
+    suspend fun unsharePlace(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String, @Path("memberId") member: String): Response<Unit>
+
+    @GET("api/v1/places/{placeId}/monitor")
+    suspend fun placeMonitor(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<PlaceMonitorDto>
+
+    @GET("api/v1/places/{placeId}/eligible-recipients")
+    suspend fun eligiblePlaceRecipients(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<PlaceAccessDto>
+
+    @PUT("api/v1/places/{placeId}/monitor")
+    suspend fun setPlaceMonitor(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String, @Body body: PlaceMonitorRequestDto): Response<PlaceMonitorDto>
+
+    @DELETE("api/v1/places/{placeId}/monitor")
+    suspend fun stopPlaceMonitor(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<Unit>
+
+    @GET("api/v1/places/events")
+    suspend fun placeEvents(@Header("X-Anve-Expected-Owner") owner: String, @Query("limit") limit: Int = 50): Response<PlaceEventListDto>
+
     @GET("api/v1/me/location-capture-generation")
     suspend fun captureGeneration(@Header("X-Anve-Expected-Owner") owner: String): Response<CaptureGenerationDto>
 

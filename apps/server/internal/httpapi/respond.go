@@ -11,6 +11,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
+	"github.com/QuocDuong16/anve/server/internal/places"
 )
 
 // Error codes of the structured error envelope. Stable API surface: clients
@@ -94,6 +95,15 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, circles.ErrOwnerMustDissolve):
 		body.Code, body.Message = "CIRCLE_HAS_MEMBERS", "The owner must confirm dissolution with dissolve=true."
 		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, places.ErrInvalid):
+		body.Code, body.Message = "PLACE_INVALID", "Invalid place or monitoring configuration."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, places.ErrNoCircle):
+		body.Code, body.Message = "CIRCLE_REQUIRED", "An active Circle is required."
+		writeJSON(w, http.StatusForbidden, body)
+	case errors.Is(err, places.ErrNotFound):
+		body.Code, body.Message = "PLACE_UNAVAILABLE", "The place is unavailable."
+		writeJSON(w, http.StatusNotFound, body)
 	case errors.Is(err, locations.ErrHistoryRangeInvalid):
 		body.Code, body.Message = "LOCATION_HISTORY_INVALID", "Invalid history deletion interval."
 		writeJSON(w, http.StatusBadRequest, body)

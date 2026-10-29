@@ -28,7 +28,7 @@ near-real-time snapshot convergence, not server push.
 | M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
 | M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
-| M5 History & Places | Planned — history work in progress | Not shipped or verified; Places has not started. |
+| M5 History & Places | Planned — implementation in progress | M5-A passed automated CI/emulator on `f747863`; M5-B is being verified. |
 | M6 SOS & FCM | Not started | |
 | M7 Journey & diagnostics | Not started | |
 | M8 Release hardening | Not started | |
@@ -425,9 +425,9 @@ Verification levels for this pass:
 
 - An authoritative audience read that differs from an unknown mutation now shows the server state and permits a fresh explicit action. Failed reads remain unresolved; no mutation is automatically replayed. Automated verification for this follow-up is recorded by its final CI runs. Map runtime and device validation remain pending.
 
-## M5 history work in progress (2026-10-29)
+## M5 history implementation (2026-10-29)
 
-M5 remains **Planned**; the vertical slice is not complete. Local work adds
+M5-A is automated-verified; physical-device validation remains pending. It adds
 owner-bound deletion and retention, interval and event-ID fences, an
 owner-serialized history snapshot, and a shared current-audience database
 view. History pages are limited to 48 hours and ordered by capture time,
@@ -445,11 +445,28 @@ not hosted CI, emulator execution, or physical-device evidence.
 The retention cleanup locks candidate owners before point rows; a deterministic
 PostgreSQL test verifies concurrent deletion does not invert that lock order.
 
-The API and client changes are not shipped. Full final quality/CI and emulator
-results are pending. The agreed privacy-first checkpoint rejects unverified
+M5-A Go CI and Android CI, including the headless emulator, passed on
+`f747863db3aa765c5439a54674994e5ae636a30a`. Physical-device validation is
+pending. The agreed privacy-first checkpoint rejects unverified
 offline points from before deletion, retention changes or a new grant, even if
 some were genuinely captured afterward. Local race tests cover the checkpoint;
 a malicious reauthorized client can
 fabricate capture data. Deleted event-ID fences remain until account deletion and their growth
-needs operational review. Places and geofencing have not started. No emulator
-or physical-device validation is claimed. See ADR 0009 for the design limits.
+needs operational review. See ADR 0009 for the design limits.
+
+## M5 Places and geofencing implementation (2026-10-29)
+
+M5-B adds explicitly shared Place definitions, subject-controlled monitoring
+and individually chosen event recipients. An event recipient must also hold
+the subject's current location grant and access to the Place; revoked grants or
+place access cannot be restored silently. A bounded, durable server worker uses
+existing M3 samples with accuracy limits, hysteresis, dwell and gap handling;
+no Android geofence wakeup or push is implied. The in-app feed rechecks current
+authorization and retention, and deleting an evidence point deletes dependent
+events. Places UI and regression tests are implemented. Local
+`make quality-check`, `make server-test-race` and `make server-test-integration` passed; the latter used
+PostgreSQL/PostGIS, including migration lifecycle, event authorization,
+retention, worker retries and concurrent revocation. Android JVM tests reported
+244 passing tests, with lint and debug APK build passing. OpenAPI validation passed.
+The instrumentation APK and minified unsigned release also compiled locally.
+Final-head CI and physical-device validation remain pending. See ADR 0010.

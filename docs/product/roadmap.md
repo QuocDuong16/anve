@@ -232,8 +232,9 @@ M5, M6 or M7 features are included.
 
 ## M5 — Location History & Place Alerts
 
-**Tiến độ:** History đang được triển khai và kiểm thử; Places/geofence chưa bắt
-đầu. M5 chưa hoàn tất và chưa có bằng chứng emulator hoặc thiết bị thực.
+**Tiến độ:** M5-A History đã qua Go/Android CI và emulator trên `f747863`;
+M5-B Places/geofence đã triển khai và đang kiểm thử. Toàn bộ M5 chưa được xác
+minh CI tại HEAD cuối, chưa có bằng chứng GPS hay pin trên thiết bị thực.
 
 **Scope:** lịch sử theo ngày, polyline, phân biệt live/backfill, retention,
 xóa history, geofence + hysteresis, thông báo đến/rời.

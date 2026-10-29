@@ -61,13 +61,15 @@
     <string name="circle_role_owner">Chủ nhóm</string>
     <string name="circle_role_member">Thành viên</string>
     <string name="circle_leave_button">Rời nhóm</string>
+    <string name="circle_leave_title">Rời nhóm?</string>
+    <string name="circle_leave_body">Các địa điểm bạn tạo trong nhóm và sự kiện liên quan sẽ bị xóa; quyền theo dõi trong nhóm sẽ dừng. Hành động này không thể hoàn tác.</string>
     <string name="circle_dissolve_button">Giải tán nhóm</string>
     <string name="circle_remove_short">Xóa</string>
     <string name="circle_remove_title">Xóa %1$s khỏi nhóm?</string>
-    <string name="circle_remove_body">Thành viên này sẽ mất quyền truy cập mọi dữ liệu của nhóm. Họ có thể tham gia lại nếu được mời.</string>
+    <string name="circle_remove_body">Thành viên này sẽ mất quyền truy cập nhóm; địa điểm họ tạo trong nhóm và sự kiện liên quan sẽ bị xóa. Họ có thể tham gia lại nếu được mời.</string>
     <string name="circle_remove_confirm">Xóa thành viên</string>
     <string name="circle_dissolve_title">Giải tán nhóm?</string>
-    <string name="circle_dissolve_body">Toàn bộ nhóm, thành viên và mã mời sẽ bị xóa vĩnh viễn với mọi người. Hành động này không thể hoàn tác.</string>
+    <string name="circle_dissolve_body">Nhóm, mã mời, địa điểm và sự kiện liên quan sẽ bị xóa vĩnh viễn với mọi người. Hành động này không thể hoàn tác.</string>
     <string name="circle_dissolve_confirm">Giải tán</string>
 
     <!-- Tracking (M3) -->
@@ -178,6 +180,7 @@
     <!-- Home tabs -->
     <string name="tab_circle">Nhóm</string>
     <string name="tab_history">Lịch sử</string>
+    <string name="tab_places">Địa điểm</string>
     <string name="tab_map">Bản đồ</string>
     <string name="tab_location">Vị trí</string>
     <string name="tab_account">Tài khoản</string>

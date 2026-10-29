@@ -58,6 +58,7 @@ fun CircleScreen(container: AppContainer) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     var showDissolveDialog by remember { mutableStateOf(false) }
+    var showLeaveDialog by remember { mutableStateOf(false) }
     var removeTarget by remember { mutableStateOf<MemberDto?>(null) }
 
     CircleContent(
@@ -68,11 +69,20 @@ fun CircleScreen(container: AppContainer) {
         onRevokeInvite = viewModel::revokeInvite,
         onRemoveMember = { removeTarget = it },
         onLeave = {
-            if (state.isOwner && state.members.size > 1) showDissolveDialog = true else viewModel.leave(false)
+            if (state.isOwner) showDissolveDialog = true else showLeaveDialog = true
         },
         onRetry = viewModel::refresh,
     )
 
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            title = { Text(stringResource(R.string.circle_leave_title)) },
+            text = { Text(stringResource(R.string.circle_leave_body)) },
+            confirmButton = { TextButton(onClick = { viewModel.leave(false); showLeaveDialog = false }) { Text(stringResource(R.string.circle_leave_button)) } },
+            dismissButton = { TextButton(onClick = { showLeaveDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
     if (showDissolveDialog) {
         AlertDialog(
             onDismissRequest = { showDissolveDialog = false },

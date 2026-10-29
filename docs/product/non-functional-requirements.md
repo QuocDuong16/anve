@@ -77,6 +77,8 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
 - **M5-A đang triển khai:** kiểm thử checkpoint với đồng bộ trễ, xóa/cấp quyền
   đồng thời và đổi tài khoản; không suy ra thời điểm hiện diện vật lý chỉ từ
   dữ liệu do thiết bị khai báo.
+- **M5-B đang kiểm thử:** worker có giới hạn mỗi lượt và backoff bền vững;
+  không tăng tần suất lấy GPS và không coi event là bằng chứng an toàn.
 - **Proposed target:** 100% sự kiện privacy quan trọng có audit record; thu hồi
   quyền có hiệu lực phía server dưới thời gian ngắn (proposed: phút — đo được
   bằng test).

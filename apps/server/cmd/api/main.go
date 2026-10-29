@@ -20,6 +20,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
+	"github.com/QuocDuong16/anve/server/internal/places"
 )
 
 // version is the build version, injected at link time with
@@ -58,6 +59,7 @@ func run() error {
 	var locationsService *locations.Service
 	var locationAccessService *locationaccess.Service
 	var locationStore *locations.PGStore
+	var placeStore *places.Store
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
 		// The pool outlives the HTTP server; the context only bounds the
@@ -98,6 +100,7 @@ func run() error {
 		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled)
 		circlesService = circles.NewService(circles.NewPGStore(pool))
 		locationStore = locations.NewPGStore(pool)
+		placeStore = places.NewStore(pool, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		locationsService = locations.NewServiceWithRetention(locationStore, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		locationAccessService = locationaccess.NewService(
 			locationaccess.NewPGStore(pool),
@@ -117,6 +120,7 @@ func run() error {
 			Circles:                 circlesService,
 			Locations:               locationsService,
 			LocationAccess:          locationAccessService,
+			Places:                  placeStore,
 			DB:                      pool,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
 		}),
@@ -141,6 +145,9 @@ func run() error {
 			time.Hour,
 			logger.With("component", "location-retention"),
 		)
+	}
+	if placeStore != nil {
+		go places.RunWorker(ctx, placeStore, logger.With("component", "place-evaluation"))
 	}
 
 	serverErr := make(chan error, 1)

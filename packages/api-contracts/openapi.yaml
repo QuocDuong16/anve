@@ -469,6 +469,220 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/places:
+    get:
+      operationId: listPlaces
+      summary: List places owned by or explicitly shared with the caller
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Available places.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [places]
+                properties:
+                  places: {type: array, items: {$ref: "#/components/schemas/Place"}}
+        "401": {description: Invalid session or active-account mismatch.}
+    post:
+      operationId: createPlace
+      summary: Create a place without automatically sharing it
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PlaceInput"}
+      responses:
+        "201":
+          description: Created place.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Place"}
+        "400": {description: Invalid place definition.}
+        "401": {description: Invalid session or account mismatch.}
+        "403": {description: No active Circle.}
+
+  /api/v1/places/{placeId}:
+    parameters:
+      - {in: path, name: placeId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    patch:
+      operationId: updatePlace
+      summary: Update an owned place and invalidate its monitoring authorizations
+      tags: [places]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PlaceInput"}
+      responses:
+        "200":
+          description: Updated place.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Place"}
+        "400": {description: Invalid place definition.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable or not owned.}
+    delete:
+      operationId: deletePlace
+      summary: Delete an owned place and its monitoring and event records
+      tags: [places]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Deleted.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable or not owned.}
+
+  /api/v1/places/{placeId}/access:
+    get:
+      operationId: listPlaceAccess
+      summary: List current members explicitly granted access to an owned place
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: path, name: placeId, required: true, schema: {type: string, format: uuid}}
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current place access.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [memberIds]
+                properties:
+                  memberIds: {type: array, items: {type: string, format: uuid}}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable or not owned.}
+
+  /api/v1/places/{placeId}/access/{memberId}:
+    parameters:
+      - {in: path, name: placeId, required: true, schema: {type: string, format: uuid}}
+      - {in: path, name: memberId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    put:
+      operationId: sharePlaceWithMember
+      summary: Let a Circle member see a place and choose whether to monitor themselves
+      tags: [places]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Place access granted; monitoring is not enabled.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place or member unavailable.}
+    delete:
+      operationId: revokePlaceAccess
+      summary: Revoke access to a place
+      tags: [places]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Access revoked.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place or member unavailable.}
+
+  /api/v1/places/{placeId}/monitor:
+    parameters:
+      - {in: path, name: placeId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getMyPlaceMonitor
+      summary: Read the caller's own monitoring configuration
+      tags: [places]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Current monitoring configuration.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PlaceMonitor"}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place or monitor unavailable.}
+    put:
+      operationId: configureMyPlaceMonitor
+      summary: Explicitly authorize monitoring of the caller and selected recipients
+      description: Each recipient must also have a current explicit location grant and access to this place. Place access alone authorizes no event recipient. Enabling monitoring advances the capture checkpoint, so unverified offline points may be discarded.
+      tags: [places]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipientIds]
+              properties:
+                recipientIds: {type: array, maxItems: 30, uniqueItems: true, items: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Monitoring configuration committed.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PlaceMonitor"}
+        "400": {description: Invalid or unauthorized recipients.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable.}
+    delete:
+      operationId: stopMyPlaceMonitor
+      summary: Revoke the caller's own place monitoring authorization
+      tags: [places]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Monitoring revoked.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable.}
+
+  /api/v1/places/{placeId}/eligible-recipients:
+    get:
+      operationId: listEligiblePlaceRecipients
+      summary: List recipients who have both place access and the caller's current location grant
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: path, name: placeId, required: true, schema: {type: string, format: uuid}}
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Eligible recipients for a fresh monitoring decision.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [memberIds]
+                properties:
+                  memberIds: {type: array, items: {type: string, format: uuid}}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable.}
+
+  /api/v1/places/events:
+    get:
+      operationId: listPlaceEvents
+      summary: Read a bounded in-app feed with current authorization checks
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        "200":
+          description: Authorized recent events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events: {type: array, items: {$ref: "#/components/schemas/PlaceEvent"}}
+        "401": {description: Invalid session or account mismatch.}
+
   /api/v1/me/location-capture-generation:
     get:
       operationId: getLocationCaptureGeneration
@@ -1650,6 +1864,47 @@ components:
           format: date-time
           description: Server write time of this batch. Never a replacement for the device capture time.
 
+    PlaceInput:
+      type: object
+      required: [name, latitude, longitude, radiusMeters]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        latitude: {type: number, format: double, minimum: -90, maximum: 90}
+        longitude: {type: number, format: double, minimum: -180, maximum: 180}
+        radiusMeters: {type: number, format: double, minimum: 50, maximum: 5000}
+    Place:
+      allOf:
+        - {$ref: "#/components/schemas/PlaceInput"}
+        - type: object
+          required: [id, ownerId, circleId, createdAt, updatedAt]
+          properties:
+            id: {type: string, format: uuid}
+            ownerId: {type: string, format: uuid}
+            circleId: {type: string, format: uuid}
+            createdAt: {type: string, format: date-time}
+            updatedAt: {type: string, format: date-time}
+    PlaceMonitor:
+      type: object
+      required: [placeId, ownerId, recipientIds, active]
+      properties:
+        placeId: {type: string, format: uuid}
+        ownerId: {type: string, format: uuid}
+        recipientIds: {type: array, items: {type: string, format: uuid}}
+        active: {type: boolean}
+    PlaceEvent:
+      type: object
+      required: [id, placeId, placeName, ownerId, ownerName, type, recordedAt, processedAt, delayed, confidence]
+      properties:
+        id: {type: string, format: uuid}
+        placeId: {type: string, format: uuid}
+        placeName: {type: string}
+        ownerId: {type: string, format: uuid}
+        ownerName: {type: string}
+        type: {type: string, enum: [ENTER, EXIT]}
+        recordedAt: {type: string, format: date-time}
+        processedAt: {type: string, format: date-time}
+        delayed: {type: boolean}
+        confidence: {type: string, enum: [OBSERVED], description: Multiple eligible GPS observations; not proof of presence.}
     HistoryRetention:
       type: object
       required: [days, effectiveDays]

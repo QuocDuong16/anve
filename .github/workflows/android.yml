@@ -106,7 +106,7 @@ jobs:
           retention-days: 14
 
   emulator:
-    name: Emulator lifecycle and history UI
+    name: Emulator lifecycle, history and places UI
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

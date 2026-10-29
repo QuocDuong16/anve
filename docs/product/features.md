@@ -334,7 +334,7 @@ bất kỳ con số nào cho người dùng. Cho đến khi đó, chỉ dùng tr
 
 ## 6. Location History
 
-> Trạng thái: **Planned — M5; History đang được triển khai, chưa xác minh CI.**
+> Trạng thái: **Implemented — Automated Verified (M5-A); Pending Device Validation.**
 
 **Mục đích.** Lưu và xem lại lịch sử vị trí **được chia sẻ hợp lệ**, phân biệt
 rõ dữ liệu gốc và dữ liệu đồng bộ bù.
@@ -484,7 +484,7 @@ kể cả khi dùng lại token cũ; các sự kiện consent/revocation xuất 
 
 ## 9. Place Alerts
 
-> Trạng thái: **Planned — M5**.
+> Trạng thái: **Implemented — M5-B đang kiểm thử; chưa xác minh CI.**
 
 **Mục đích.** Cho phép định nghĩa địa điểm quan trọng (nhà, trường học, công ty,
 địa điểm tùy chỉnh) và nhận thông báo khi thành viên đến/rời địa điểm đó.
@@ -500,16 +500,17 @@ toàn, để tôi không phải liên tục dõi bản đồ.*
 - Chống thông báo lặp; chống GPS jitter và dao động gần ranh giới (hysteresis/dwell time).
 - Phân biệt **event time** (lúc sự kiện xảy ra) và **notification delivery time**.
 
-**Luồng tương tác.** Người tạo địa điểm định nghĩa + chọn người nhận → khi
-thành viên đến/rời vùng → hệ thống xác nhận sự kiện (kết hợp Android Geofencing
-API và server-side verification khi cần) → thông báo đi kèm thời điểm sự kiện.
+**Luồng tương tác.** Chủ địa điểm chia sẻ địa điểm cho từng thành viên; mỗi
+thành viên tự bật theo dõi cho mình và chọn người nhận vừa có grant vị trí vừa
+có quyền xem địa điểm. Server đánh giá các mẫu M3 và hiển thị sự kiện trong app.
+Không có push M6 hay OS geofence wakeup trong M5.
 
 **Dữ liệu.** Place (tên, tọa độ, bán kính, chủ sở hữu, phạm vi áp dụng),
 Geofence Event (thành viên, place, loại enter/exit, event time, độ tin cậy).
 
 **Business rules.** Chỉ tạo geofence cho hành vi của người **đang chia sẻ vị
-trí** và nhận thông báo cho người **được cấp quyền**; không cam kết geofence
-luôn được phát hiện ngay tức khắc — OS batch geofence delivery.
+trí** và nhận sự kiện cho người **được cấp quyền rõ ràng**; mẫu thưa, mất mạng
+hoặc nhiễu có thể làm sự kiện đến trễ hoặc không được phát hiện.
 
 **Privacy/security.** Việc một người “đã đến nhà” là thông tin nhạy cảm: người
 nhận phải được chủ thể dữ liệu đồng ý; sự kiện vẫn tuân authorization backend.
@@ -520,9 +521,10 @@ ranh giới; thiết bị offline lúc qua vùng (event time vẫn giữ nguyên
 **Phụ thuộc.** Family Circle (M2), Location Engine (M3), Notifications/FCM (M6 —
 kênh push; MVP có thể nhận in-app trước).
 
-**Acceptance criteria.** Không spam lặp khi người ở sát ranh giới; event time
-đúng dù thông báo đến muộn; người không có quyền không nhận được thông báo;
-geofence hoạt động sau reboot.
+**Acceptance criteria.** Không spam lặp khi người ở sát ranh giới; giữ thời
+điểm mẫu xác nhận và thời điểm xử lý riêng; người không có quyền không đọc được
+sự kiện. Worker phục hồi queue sau restart server; M5 không hứa Android tự
+khởi động thu thập GPS sau reboot.
 
 ## 10. SOS & Emergency Events
 

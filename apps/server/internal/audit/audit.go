@@ -39,6 +39,11 @@ const (
 	ActionLocationAudienceGrantClosedMembership = "location.audience_grant.closed_membership"
 	ActionLocationSharingEpochOpened            = "location.sharing_epoch.opened"
 	ActionLocationSharingEpochClosed            = "location.sharing_epoch.closed"
+	ActionPlaceCreated                          = "place.created"
+	ActionPlaceUpdated                          = "place.updated"
+	ActionPlaceDeleted                          = "place.deleted"
+	ActionPlaceAccessChanged                    = "place.access.changed"
+	ActionPlaceMonitorChanged                   = "place.monitor.changed"
 
 	ActionCircleCreated   = "circle.created"
 	ActionCircleRenamed   = "circle.renamed"
