@@ -129,7 +129,7 @@ class LocationSyncEngineTest {
         val checkpoints = mutableListOf<Pair<String, Long>>()
         gateway.generationHandler = { requested.complete(Unit); reply.await() }
         engine = LocationSyncEngine(gateway, queue, store, sessions, now = { now },
-            consentMutations = consentMutations, onCaptureGeneration = { owner, value -> checkpoints += owner to value })
+            consentMutations = consentMutations, onCaptureGeneration = { owner, value, _ -> checkpoints += owner to value })
         val worker = async { engine.sync() }
         requested.await()
         sessions.save(session("u2"))

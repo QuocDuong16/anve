@@ -725,7 +725,7 @@ private fun StatusCard(
                 ),
             )
             if (status.privacyDiscardedPoints) {
-                Text("Một số điểm offline không được đồng bộ vì quyền riêng tư đã thay đổi. Các điểm mới sẽ tiếp tục được ghi sau khi thiết bị kết nối.")
+                Text("Một số điểm không được đồng bộ vì không xác minh được quyền riêng tư. Hãy kiểm tra kết nối và thử lại.")
             }
             InfoRow(
                 label = stringResource(R.string.tracking_connection),
@@ -857,6 +857,7 @@ private fun problemText(problem: TrackingProblem?): String? = when (problem) {
     TrackingProblem.CONSENT_QUEUE_PURGE_FAILED -> stringResource(R.string.tracking_problem_consent_queue)
     TrackingProblem.CIRCLE_REQUIRED -> stringResource(R.string.tracking_problem_circle)
     TrackingProblem.SESSION_UNAVAILABLE -> stringResource(R.string.tracking_problem_session)
+    TrackingProblem.CHECKPOINT_UNAVAILABLE -> stringResource(R.string.tracking_problem_checkpoint)
     TrackingProblem.SERVICE_START_FAILED -> stringResource(R.string.tracking_problem_service)
     TrackingProblem.SERVICE_STOP_FAILED -> stringResource(R.string.tracking_problem_service_stop)
     TrackingProblem.PROVIDER_ERROR -> stringResource(R.string.tracking_problem_provider)

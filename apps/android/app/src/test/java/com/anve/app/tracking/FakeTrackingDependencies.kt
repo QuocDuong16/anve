@@ -53,7 +53,7 @@ class FakeTrackingStore(
     override suspend fun setLastSuccessfulUpload(atMillis: Long) {
         _state.value = _state.value.copy(
             lastSuccessfulUploadAtMillis = atMillis,
-            lastSyncErrorCode = _state.value.lastSyncErrorCode.takeIf { it in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED") },
+            lastSyncErrorCode = _state.value.lastSyncErrorCode.takeIf { it in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED", "LOCATION_CAPTURE_CHECKPOINT_MISSING") },
         )
     }
 

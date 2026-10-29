@@ -14,11 +14,19 @@ import org.junit.Test
 
 class LocationQueueRepositoryTest {
 
+    @Test
+    fun `unknown capture provenance never enters the durable queue`() = runBlocking {
+        val dao = FakeLocationQueueDao()
+        val repo = LocationQueueRepository(dao, now = { now })
+        assertFalse(repo.enqueue("user-1", "device-1", testFix()))
+        assertTrue(dao.rows.isEmpty())
+    }
+
     private val now = 10_000_000L
 
     private fun repository(
         dao: FakeLocationQueueDao = FakeLocationQueueDao(),
-    ) = LocationQueueRepository(dao, now = { now }) to dao
+    ) = LocationQueueRepository(dao, now = { now }, captureGeneration = { _, _ -> 1 }) to dao
 
     @Test
     fun `a valid fix is stored with its owner and original event identity`() = runBlocking {
@@ -147,7 +155,7 @@ class LocationQueueRepositoryTest {
     @Test
     fun `the queue survives a process restart because it lives in durable storage`() = runBlocking {
         val dao = FakeLocationQueueDao()
-        val first = LocationQueueRepository(dao, now = { now })
+        val first = LocationQueueRepository(dao, now = { now }, captureGeneration = { _, _ -> 1 })
         first.enqueue("user-1", "device-1", testFix(eventId = "persisted"))
 
         val restarted = LocationQueueRepository(dao, now = { now })

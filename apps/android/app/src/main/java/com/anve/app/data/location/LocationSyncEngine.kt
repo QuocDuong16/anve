@@ -84,7 +84,8 @@ class LocationSyncEngine(
     private val metrics: TrackingMetricsStore = NoOpTrackingMetricsStore,
     private val consentMutations: ConsentMutationCoordinator = ConsentMutationCoordinator(),
     private val expectedClientDeviceId: (suspend () -> String)? = null,
-    private val onCaptureGeneration: (String, Long) -> Unit = { _, _ -> },
+    private val captureCheckpointRevision: () -> Long = { 0 },
+    private val onCaptureGeneration: (String, Long, Long) -> Unit = { _, _, _ -> },
 ) {
 
     // One pass at a time: the unique WorkManager job is normally the only
@@ -164,9 +165,17 @@ class LocationSyncEngine(
             }
             if (!generationChecked) {
                 try {
+                    val revision = captureCheckpointRevision()
                     val generation = gateway.captureGeneration(ownerUserId)
-                    if (generation > 0 && sessions.current()?.userId == ownerUserId) {
-                        onCaptureGeneration(ownerUserId, generation)
+                    consentMutations.withLocalMutation {
+                        val current = sessions.current()
+                        val localState = store.current()
+                        val pending = sessions.pendingConsentOperations().any { it.ownerUserId == ownerUserId }
+                        if (generation > 0 && current?.userId == ownerUserId && !pending &&
+                            !consentMutations.isLocationAdmissionClosed(ownerUserId) &&
+                            localState.consentOwnerUserId == ownerUserId && localState.localConsentConfirmed &&
+                            !localState.pendingConsentRevocation
+                        ) onCaptureGeneration(ownerUserId, generation, revision)
                     }
                 } catch (e: CancellationException) {
                     throw e

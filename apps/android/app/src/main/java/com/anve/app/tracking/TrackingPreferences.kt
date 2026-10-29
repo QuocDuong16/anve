@@ -112,7 +112,7 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
     override suspend fun setLastSuccessfulUpload(atMillis: Long) {
         dataStore.edit {
             it[KEY_LAST_UPLOAD_AT] = atMillis
-            if (it[KEY_LAST_SYNC_ERROR] !in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED")) it.remove(KEY_LAST_SYNC_ERROR)
+            if (it[KEY_LAST_SYNC_ERROR] !in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED", "LOCATION_CAPTURE_CHECKPOINT_MISSING")) it.remove(KEY_LAST_SYNC_ERROR)
         }
     }
 

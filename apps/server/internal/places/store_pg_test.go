@@ -108,6 +108,27 @@ func TestPGPlacesRequireExplicitSharingAndMonitorConsent(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalid)
 }
 
+func TestPGMonitorActivationRejectsPreviousCaptureGeneration(t *testing.T) {
+	f := newPlaceFixture(t)
+	p := f.create(t)
+	old, err := f.locations.CaptureGeneration(f.ctx, f.owner.ID)
+	require.NoError(t, err)
+	_, err = f.places.ConfigureMonitor(f.ctx, f.owner.ID, p.ID, nil)
+	require.NoError(t, err)
+	current, err := f.locations.CaptureGeneration(f.ctx, f.owner.ID)
+	require.NoError(t, err)
+	require.Greater(t, current, old)
+	principal := locations.Principal{UserID: f.owner.ID, SessionID: f.session.ID, DeviceID: f.session.DeviceID}
+	event := locations.Event{EventID: uuid.New(), ClientDeviceID: "place-owner-device", CaptureGeneration: old,
+		RecordedAt: time.Now().UTC(), Latitude: 10, Longitude: 106, HorizontalAccuracyMeters: 5, Provider: "fused", SchemaVersion: 1}
+	_, err = f.locations.Ingest(f.ctx, principal, []locations.Event{event})
+	require.ErrorIs(t, err, locations.ErrCaptureGeneration)
+	event.EventID = uuid.New()
+	event.CaptureGeneration = current
+	_, err = f.locations.Ingest(f.ctx, principal, []locations.Event{event})
+	require.NoError(t, err)
+}
+
 func TestPGPlaceTransitionsBackfillAuthorizationAndDeletion(t *testing.T) {
 	f := newPlaceFixture(t)
 	p := f.create(t)

@@ -7,6 +7,7 @@ import com.anve.app.data.auth.SessionStorage
 import com.anve.app.data.auth.StoredSession
 import com.anve.app.data.location.FakeLocationQueueDao
 import com.anve.app.data.location.LocationQueueRepository
+import com.anve.app.data.location.CaptureGenerationStore
 import com.anve.app.ui.awaitUntil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +17,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,6 +41,8 @@ class TrackingManagerTest {
     private lateinit var managerSessions: SessionStorage
     private lateinit var dao: FakeLocationQueueDao
     private lateinit var queue: LocationQueueRepository
+    private lateinit var checkpoints: CaptureGenerationStore
+    private var fetchCheckpoint: suspend (String) -> Long = { 1L }
     private lateinit var store: FakeTrackingStore
     private lateinit var permissions: FakePermissions
     private lateinit var provider: FakeLocationProvider
@@ -71,7 +76,9 @@ class TrackingManagerTest {
             }
         }
         dao = FakeLocationQueueDao()
-        queue = LocationQueueRepository(dao, now = { now })
+        checkpoints = CaptureGenerationStore { (elapsed - 2_000) * 1_000_000 }
+        fetchCheckpoint = { 1L }
+        queue = LocationQueueRepository(dao, now = { now }, captureGeneration = checkpoints::current)
         store = FakeTrackingStore(
             LocalTrackingState(localConsentConfirmed = true, consentOwnerUserId = "u1"),
         )
@@ -111,6 +118,8 @@ class TrackingManagerTest {
         service = service,
         syncScheduler = scheduler,
         scope = scope,
+        captureGenerations = checkpoints,
+        fetchCaptureGeneration = { fetchCheckpoint(it) },
         consentMutations = consentMutations,
         now = { now },
         elapsedNow = { elapsed },
@@ -191,6 +200,132 @@ class TrackingManagerTest {
         assertFalse(manager.status.value.consentEnabled)
         assertEquals(0, service.starts)
         assertEquals(0, provider.activeCollectors)
+    }
+
+    @Test
+    fun `fresh tracking start queues the first fix with a verified checkpoint`() = runBlocking {
+        startAndConfirm()
+        emitFix()
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(1L, dao.rows.getValue("event-1").captureGeneration)
+    }
+
+    @Test
+    fun `fresh offline process cannot start without a checkpoint`() = runBlocking {
+        connectivity.updateOnline(false)
+        manager.startTracking()
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_UNAVAILABLE }
+        assertEquals(0, service.starts)
+        assertFalse(manager.status.value.activelyTracking)
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `stop cancels a start before its coroutine runs`() = runTest {
+        scope.cancel()
+        scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        manager = newManager(store)
+        testScheduler.runCurrent()
+        var calls = 0
+        fetchCheckpoint = { calls++; 1L }
+        manager.startTracking()
+        manager.stopTracking()
+        testScheduler.runCurrent()
+        assertEquals(0, calls)
+        assertEquals(0, service.starts)
+    }
+
+    @Test
+    fun `disconnect after verified start retains offline checkpoint`() = runBlocking {
+        startAndConfirm()
+        connectivity.updateOnline(false)
+        emitFix()
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(1L, dao.rows.getValue("event-1").captureGeneration)
+        assertTrue(manager.status.value.activelyTracking)
+    }
+
+    @Test
+    fun `delayed checkpoint is single flight and old callback is not relabeled`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Long>()
+        var calls = 0
+        fetchCheckpoint = { calls++; entered.complete(Unit); release.await() }
+        manager.startTracking()
+        entered.await()
+        manager.startTracking()
+        assertEquals(0, service.starts)
+        release.complete(1)
+        awaitUntil { service.starts == 1 }
+        assertEquals(1, calls)
+        manager.onServiceStarted()
+        awaitUntil { provider.activeCollectors == 1 }
+        provider.emit(testFix(eventId = "old", recordedAtMillis = now - 2_000,
+            elapsedRealtimeNanos = (elapsed - 3_000) * 1_000_000))
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_UNAVAILABLE }
+        assertTrue(dao.rows.isEmpty())
+        emitFix()
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(1L, dao.rows.getValue("event-1").captureGeneration)
+    }
+
+    @Test
+    fun `consent off during checkpoint fetch prevents service start`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Long>()
+        fetchCheckpoint = { entered.complete(Unit); release.await() }
+        manager.startTracking()
+        entered.await()
+        manager.setConsent(false)
+        release.complete(1)
+        yield()
+        assertEquals(0, service.starts)
+        assertFalse(checkpoints.has("u1"))
+    }
+
+    @Test
+    fun `account switch during checkpoint fetch ignores old response`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Long>()
+        fetchCheckpoint = { entered.complete(Unit); release.await() }
+        manager.startTracking()
+        entered.await()
+        sessions.save(session("u2"))
+        awaitUntil { !manager.status.value.consentEnabled }
+        release.complete(1)
+        yield()
+        assertEquals(0, service.starts)
+        assertFalse(checkpoints.has("u1"))
+        assertFalse(checkpoints.has("u2"))
+    }
+
+    @Test
+    fun `session replacement during checkpoint fetch cannot start tracking`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Long>()
+        fetchCheckpoint = { entered.complete(Unit); release.await() }
+        manager.startTracking()
+        entered.await()
+        sessions.save(session("u1").copy(accessToken = "replacement"))
+        release.complete(1)
+        awaitUntil { manager.status.value.lastError == TrackingProblem.SESSION_UNAVAILABLE }
+        assertEquals(0, service.starts)
+        assertFalse(checkpoints.has("u1"))
+    }
+
+    @Test
+    fun `advanced checkpoint never relabels an older callback`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        elapsed += 10_000
+        checkpoints.advance("u1", 2)
+        provider.emit(testFix(eventId = "old", recordedAtMillis = now - 2_000,
+            elapsedRealtimeNanos = (elapsed - 3_000) * 1_000_000))
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_UNAVAILABLE }
+        assertTrue(dao.rows.isEmpty())
+        emitFix()
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(2L, dao.rows.getValue("event-1").captureGeneration)
     }
 
     @Test
@@ -787,6 +922,7 @@ class TrackingManagerTest {
 
     @Test
     fun `switching accounts purges the previous account's queue and intent`() = runBlocking {
+        checkpoints.advance("u1", 1)
         queue.enqueue("u1", "device-owner-0001", testFix(eventId = "old"))
         awaitUntil { dao.rows.size == 1 }
 
@@ -820,6 +956,7 @@ class TrackingManagerTest {
 
     @Test
     fun `an offline start uses the last confirmed consent`() = runBlocking {
+        checkpoints.advance("u1", 1)
         connectivity.updateOnline(false)
         gateway.failCurrentUserWith = networkError()
 

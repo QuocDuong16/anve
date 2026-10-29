@@ -475,3 +475,13 @@ passed on `f127d48b85e24cc128f20ae91fbb4ca1982cff07`:
 [Android](https://github.com/QuocDuong16/anve/actions/runs/40910107294).
 Physical-device, real-GPS, Maps-key and battery validation remain pending.
 See ADR 0010.
+
+## Capture checkpoint startup hardening
+
+Tracking now obtains an owner-bound capture checkpoint before starting its
+foreground service. Without one, a fresh offline process fails closed with an
+actionable message; an existing process may use its established checkpoint
+offline. Unknown or pre-receipt fixes are not persisted, and a stable diagnostic
+records missing provenance. Consent OFF and account changes invalidate the
+checkpoint and delayed responses; queued events are never relabeled. Server
+rejection of stale generations and its privacy-loss diagnostic remain in force.

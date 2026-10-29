@@ -166,6 +166,7 @@
     <string name="tracking_problem_consent">Bạn cần bật chia sẻ vị trí trước khi theo dõi.</string>
     <string name="tracking_problem_circle">Bạn cần tham gia hoặc tạo nhóm gia đình trước khi chia sẻ vị trí.</string>
     <string name="tracking_problem_session">Phiên đăng nhập không còn hiệu lực. Đăng nhập lại để tiếp tục.</string>
+    <string name="tracking_problem_checkpoint">Chưa thể xác minh quyền ghi vị trí. Hãy kết nối mạng rồi thử lại.</string>
     <string name="tracking_problem_service">Android chưa cho phép dịch vụ theo dõi khởi động. Mở ứng dụng và thử lại.</string>
     <string name="tracking_problem_provider">Không nhận được vị trí từ thiết bị. Thử lại sau.</string>
     <string name="tracking_problem_queue">Không lưu được vị trí trên thiết bị. Kiểm tra dung lượng bộ nhớ.</string>

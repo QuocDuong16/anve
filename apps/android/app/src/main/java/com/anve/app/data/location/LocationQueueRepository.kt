@@ -27,6 +27,9 @@ class LocationQueueRepository(
     private val captureGeneration: (String, Long) -> Long = { _, _ -> 0 },
 ) {
 
+    fun hasCaptureProvenance(ownerUserId: String, fix: LocationFix): Boolean =
+        captureGeneration(ownerUserId, fix.elapsedRealtimeNanos) > 0
+
     /**
      * Persists one accepted fix before it is considered captured. Returns
      * false when the fix is invalid or the row already exists (same event
@@ -38,9 +41,11 @@ class LocationQueueRepository(
         fix: LocationFix,
     ): Boolean {
         if (!fix.isStorable()) return false
+        val generation = captureGeneration(ownerUserId, fix.elapsedRealtimeNanos)
+        if (generation <= 0) return false
         purgeExpired()
         val inserted = dao.insert(
-            fix.toQueuedLocation(ownerUserId, clientDeviceId, now(), captureGeneration(ownerUserId, fix.elapsedRealtimeNanos)),
+            fix.toQueuedLocation(ownerUserId, clientDeviceId, now(), generation),
         ) != -1L
         val count = dao.count(ownerUserId)
         if (count > MAX_QUEUED_LOCATIONS) {

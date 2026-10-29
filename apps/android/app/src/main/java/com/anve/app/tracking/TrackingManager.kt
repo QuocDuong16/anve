@@ -11,6 +11,7 @@ import com.anve.app.data.auth.StoredSession
 import com.anve.app.data.auth.hasConsentConflict
 import com.anve.app.data.auth.newPendingConsentOperation
 import com.anve.app.data.location.LocationQueueRepository
+import com.anve.app.data.location.CaptureGenerationStore
 import com.anve.app.data.location.LocationSyncScheduler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
 import java.io.IOException
 
 /** Outcome of a consent switch, separating local effect from server confirmation. */
@@ -56,6 +58,7 @@ private data class ConsentOffPreparation(
 
 private enum class TrackingStartAdmission {
     ALREADY_STARTING,
+    SESSION_CHANGED,
     DENIED,
     SERVICE_REFUSED,
     ACCEPTED,
@@ -106,6 +109,8 @@ class TrackingManager(
     private val service: TrackingServiceController,
     private val syncScheduler: LocationSyncScheduler,
     private val scope: CoroutineScope,
+    private val captureGenerations: CaptureGenerationStore,
+    private val fetchCaptureGeneration: suspend (String) -> Long,
     private val metrics: TrackingMetricsStore = NoOpTrackingMetricsStore,
     private val now: () -> Long = System::currentTimeMillis,
     private val elapsedNow: () -> Long = { SystemClock.elapsedRealtime() },
@@ -125,6 +130,8 @@ class TrackingManager(
     private var tickerJob: Job? = null
     private var queueCountJob: Job? = null
     private var starting = false
+    private val startLock = Mutex()
+    @Volatile private var startEpoch = 0L
     private var startTimeoutJob: Job? = null
     @Volatile private var sessionGeneration = 0L
     private var sessionOwner: String? = null
@@ -180,7 +187,7 @@ class TrackingManager(
                         conflictServerConsent = pendingConsent?.conflictServerEnabled,
                         trackingRequested = ownerMatches && local.trackingRequested,
                         lastUploadAtMillis = local.lastSuccessfulUploadAtMillis,
-                        privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED"),
+                        privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED", "LOCATION_CAPTURE_CHECKPOINT_MISSING"),
                         recoveryRequired = if (wasInitial && local.trackingRequested && !current.running) {
                             true
                         } else {
@@ -213,6 +220,7 @@ class TrackingManager(
         scope.launch {
             sessions.session.collectLatest { session ->
                 if (session == null) {
+                    captureGenerations.clear()
                     sessionGeneration++
                     migrateLegacyRevocation(lastSession)
                     sessionOwner = null
@@ -238,6 +246,7 @@ class TrackingManager(
                 val owner = session.userId
                 if (owner != null) {
                     if (owner != sessionOwner) {
+                        captureGenerations.clear()
                         sessionGeneration++
                         _status.update {
                             it.copy(
@@ -442,6 +451,7 @@ class TrackingManager(
     private suspend fun prepareConsentOff(): ConsentOffPreparation {
         val ownerHint = sessionOwner ?: lastSession?.userId
         consentMutations.closeLocationAdmission(ownerHint)
+        captureGenerations.clear()
         val serviceStopFailure = stopInternal(clearIntent = true, clearRecovery = true, persistIntent = false)
         _status.update {
             it.copy(
@@ -763,10 +773,15 @@ class TrackingManager(
 
     override fun startTracking() {
         if (_status.value.running || starting) return
-        scope.launch { startInternal() }
+        val attempt = startEpoch
+        scope.launch {
+            if (!startLock.tryLock()) return@launch
+            try { startInternal(attempt) } finally { startLock.unlock() }
+        }
     }
 
-    private suspend fun startInternal() {
+    private suspend fun startInternal(attempt: Long) {
+        if (attempt != startEpoch) return
         val session = sessions.current()
         if (session == null) {
             failStart(TrackingProblem.SESSION_UNAVAILABLE)
@@ -875,6 +890,24 @@ class TrackingManager(
             return
         }
 
+        val verifiedOwner = owner
+        val generationAtRequest = sessionGeneration
+        val checkpoint = try {
+            if (connectivity.isOnline()) fetchCaptureGeneration(verifiedOwner) else null
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: IOException) {
+            null
+        } catch (_: Exception) {
+            if (attempt == startEpoch && generationAtRequest == sessionGeneration) failStart(TrackingProblem.CHECKPOINT_UNAVAILABLE)
+            return
+        }
+        if (attempt != startEpoch || generationAtRequest != sessionGeneration) return
+        if ((checkpoint != null && checkpoint <= 0) || (checkpoint == null && !captureGenerations.has(verifiedOwner))) {
+            failStart(TrackingProblem.CHECKPOINT_UNAVAILABLE)
+            return
+        }
+
         clientDeviceId = deviceIdentity.registration().clientDeviceId
         val startAdmission = consentMutations.withLocalMutation {
             val latestSession = sessions.current()
@@ -885,13 +918,17 @@ class TrackingManager(
             }
             if (starting || _status.value.running) {
                 TrackingStartAdmission.ALREADY_STARTING
-            } else if (latestSession == null || latestOwner != owner || pending != null ||
+            } else if (latestSession == null || latestSession.accessToken != session.accessToken) {
+                TrackingStartAdmission.SESSION_CHANGED
+            } else if (attempt != startEpoch || generationAtRequest != sessionGeneration ||
+                latestOwner != owner || pending != null ||
                 latestLocal.consentOwnerUserId != owner || !latestLocal.localConsentConfirmed ||
                 (latestLocal.pendingConsentRevocation && latestLocal.consentOwnerUserId == owner) ||
                 consentMutations.isLocationAdmissionClosed(owner)
             ) {
                 TrackingStartAdmission.DENIED
             } else {
+                if (checkpoint != null && checkpoint > 0) captureGenerations.advance(verifiedOwner, checkpoint)
                 sessionGeneration++
                 if (latestSession.userId != null) sessionOwner = latestSession.userId
                 starting = true
@@ -918,8 +955,14 @@ class TrackingManager(
             }
         }
         if (startAdmission == TrackingStartAdmission.ALREADY_STARTING) return
+        if (startAdmission == TrackingStartAdmission.SESSION_CHANGED) {
+            if (attempt == startEpoch && generationAtRequest == sessionGeneration) failStart(TrackingProblem.SESSION_UNAVAILABLE)
+            return
+        }
         if (startAdmission == TrackingStartAdmission.DENIED) {
-            failStart(TrackingProblem.CONSENT_REQUIRED)
+            if (attempt == startEpoch && generationAtRequest == sessionGeneration) {
+                failStart(TrackingProblem.CONSENT_REQUIRED)
+            }
             return
         }
         if (startAdmission == TrackingStartAdmission.SERVICE_REFUSED) {
@@ -1183,6 +1226,13 @@ class TrackingManager(
             }
             return
         }
+        val owner = callbackOwner
+        val device = clientDeviceId ?: return
+        if (!queue.hasCaptureProvenance(owner, fix)) {
+            store.setLastSyncError("LOCATION_CAPTURE_CHECKPOINT_MISSING")
+            _status.update { it.copy(lastError = TrackingProblem.CHECKPOINT_UNAVAILABLE, lastErrorAtMillis = now()) }
+            return
+        }
         val decision = policy.onFix(
             fix = fix,
             nowElapsedMillis = elapsedNow(),
@@ -1196,9 +1246,6 @@ class TrackingManager(
             )
         }
         if (!decision.accepted) return
-
-        val owner = callbackOwner
-        val device = clientDeviceId ?: return
 
         val enqueued = try {
             consentMutations.withLocalMutation {
@@ -1330,6 +1377,7 @@ class TrackingManager(
         clearRecovery: Boolean,
         persistIntent: Boolean = true,
     ): Exception? {
+        startEpoch++
         val serviceMayBeRunning = starting || _status.value.serviceRunning
         starting = false
         startTimeoutJob?.cancel()

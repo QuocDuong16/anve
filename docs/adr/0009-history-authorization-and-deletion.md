@@ -1,6 +1,6 @@
 # ADR 0009 — History authorization and durable deletion
 
-- **Status:** Work in progress; M5 is not yet verified.
+- **Status:** Accepted; M5 automated and emulator verification passed on `a08ef10`; device validation pending.
 - **Date:** 2026-10-29
 
 History reads are bounded to 48 hours and use a keyset ordered by capture
@@ -51,7 +51,12 @@ or obsolete checkpoints, including on unseen event IDs, and grant reads filter
 stored points by the checkpoint associated with that grant. Android attaches a
 checkpoint only to fixes captured after it received that checkpoint, using the
 device's monotonic clock. The checkpoint is process-local, so after restart it
-must be fetched again. Offline captures from an old checkpoint may be dropped,
+must be fetched again before tracking starts. A fresh offline process cannot
+start capture without a verified checkpoint. An established process may keep
+using its owner-bound checkpoint offline, subject to server rejection if it
+becomes stale. Account changes and consent OFF invalidate it; delayed responses
+cannot restore an invalidated checkpoint. Fixes without post-receipt provenance
+are not queued, and no existing fix is relabeled. Offline captures from an old checkpoint may be dropped,
 including captures made after the privacy change; the user is informed.
 This protects against compliant stale clients, not a client that deliberately
 fabricates a fresh event after reauthorizing. Deleted intervals

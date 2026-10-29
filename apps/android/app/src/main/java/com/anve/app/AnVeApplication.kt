@@ -19,6 +19,7 @@ import com.anve.app.data.location.CaptureGenerationStore
 import com.anve.app.data.location.LocationDatabase
 import com.anve.app.data.location.LocationQueueRepository
 import com.anve.app.data.location.LocationSyncEngine
+import com.anve.app.data.location.LocationSyncGateway
 import com.anve.app.data.location.LocationSyncScheduler
 import com.anve.app.data.location.VisibleLocationRepository
 import com.anve.app.data.location.WorkManagerLocationSyncScheduler
@@ -34,7 +35,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Interceptor
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Hand-wired dependency container. The app is small enough that a DI
@@ -109,6 +113,12 @@ class AppContainer(application: Application) {
     ).addMigrations(LocationDatabase.MIGRATION_1_2).build()
 
     private val captureGenerations = CaptureGenerationStore()
+    private val captureRequestLocks = ConcurrentHashMap<String, Mutex>()
+    private val locationGateway: LocationSyncGateway = object : LocationSyncGateway by ApiLocationSyncGateway(authApi) {
+        private val apiGateway = ApiLocationSyncGateway(authApi)
+        override suspend fun captureGeneration(owner: String): Long =
+            captureRequestLocks.computeIfAbsent(owner) { Mutex() }.withLock { apiGateway.captureGeneration(owner) }
+    }
 
     val locationQueue: LocationQueueRepository = LocationQueueRepository(
         dao = locationDatabase.locationQueueDao(),
@@ -141,6 +151,8 @@ class AppContainer(application: Application) {
         service = AndroidTrackingServiceController(application),
         syncScheduler = locationSyncScheduler,
         scope = applicationScope,
+        captureGenerations = captureGenerations,
+        fetchCaptureGeneration = locationGateway::captureGeneration,
         metrics = trackingMetrics,
         batterySaver = { powerManager?.isPowerSaveMode == true },
         consentMutations = consentMutationCoordinator,
@@ -148,7 +160,7 @@ class AppContainer(application: Application) {
     )
 
     val locationSyncEngine: LocationSyncEngine = LocationSyncEngine(
-        gateway = ApiLocationSyncGateway(authApi),
+        gateway = locationGateway,
         queue = locationQueue,
         store = trackingStore,
         sessions = sessionStore,
@@ -156,7 +168,8 @@ class AppContainer(application: Application) {
         metrics = trackingMetrics,
         consentMutations = consentMutationCoordinator,
         expectedClientDeviceId = { deviceIdentity.registration().clientDeviceId },
-        onCaptureGeneration = captureGenerations::advance,
+        captureCheckpointRevision = captureGenerations::revision,
+        onCaptureGeneration = captureGenerations::advanceIfCurrent,
     )
 
     companion object {
