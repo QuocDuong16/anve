@@ -420,3 +420,7 @@ Verification levels for this pass:
   substitute.
 - No device/emulator or configured Maps key was used. Map rendering, Android
   lifecycle behavior and battery use remain **Pending Runtime/Device Validation**.
+
+## M4 audience recovery follow-up (2026-10-29)
+
+- An authoritative audience read that differs from an unknown mutation now shows the server state and permits a fresh explicit action. Failed reads remain unresolved; no mutation is automatically replayed. Automated verification for this follow-up is recorded by its final CI runs. Map runtime and device validation remain pending.

@@ -370,7 +370,7 @@ private fun AudienceSheet(
             }
             state.sharingError?.let { error ->
                 Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = onRetry) { Text("Thử lại") }
+                TextButton(onClick = onRetry) { Text("Kiểm tra lại") }
             }
             val sharing = state.sharing
             when {
@@ -395,12 +395,15 @@ private fun AudienceSheet(
                                 Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
                                 Text(member.role, style = MaterialTheme.typography.bodySmall)
                             }
-                            Switch(
-                                checked = member.canViewLocation,
-                                enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds &&
-                                    member.userId !in state.unresolvedViewerIds,
-                                onCheckedChange = { enabled -> onToggle(member, enabled) },
-                            )
+                            if (member.userId in state.unresolvedViewerIds) {
+                                Text("Chưa xác định", style = MaterialTheme.typography.bodySmall)
+                            } else {
+                                Switch(
+                                    checked = member.canViewLocation,
+                                    enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                    onCheckedChange = { enabled -> onToggle(member, enabled) },
+                                )
+                            }
                             if (member.userId in state.pendingViewerIds) {
                                 CircularProgressIndicator(Modifier.size(18.dp))
                             }

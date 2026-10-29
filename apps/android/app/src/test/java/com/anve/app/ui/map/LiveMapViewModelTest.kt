@@ -80,9 +80,17 @@ class LiveMapViewModelTest {
         viewModel.toggleViewer("owner-a", member("viewer-a", granted = true), false)
 
         assertTrue(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
-        assertTrue("viewer-a" in viewModel.state.value.unresolvedViewerIds)
+        assertFalse("viewer-a" in viewModel.state.value.unresolvedViewerIds)
         assertFalse("viewer-a" in viewModel.state.value.pendingViewerIds)
         assertTrue(viewModel.state.value.sharingError.orEmpty().contains("vẫn cho biết"))
+        assertEquals(1, repository.mutationCalls)
+        repository.mutation = { _, _, _ ->
+            repository.current = sharing(grants = emptySet())
+            AudienceMutationOutcome.Confirmed(null)
+        }
+        viewModel.toggleViewer("owner-a", member("viewer-a", granted = true), false)
+        assertEquals(2, repository.mutationCalls)
+        assertFalse(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
     }
 
     @Test
@@ -102,13 +110,40 @@ class LiveMapViewModelTest {
         assertTrue("viewer-a" in viewModel.state.value.pendingViewerIds)
         assertTrue("viewer-a" in viewModel.state.value.unresolvedViewerIds)
         assertTrue(viewModel.state.value.sharingError.orEmpty().contains("chờ đối chiếu"))
+        assertEquals(1, repository.mutationCalls)
+        viewModel.toggleViewer("owner-a", member("viewer-a"), true)
+        assertEquals(1, repository.mutationCalls)
 
         repository.management = { _, _ -> sharing(grants = emptySet()) }
         viewModel.refreshSharing("owner-a")
 
         assertFalse("viewer-a" in viewModel.state.value.pendingViewerIds)
-        assertTrue("viewer-a" in viewModel.state.value.unresolvedViewerIds)
+        assertFalse("viewer-a" in viewModel.state.value.unresolvedViewerIds)
         assertTrue(viewModel.state.value.sharingError.orEmpty().contains("chưa hiển thị"))
+        assertEquals(1, repository.mutationCalls)
+        repository.mutation = { _, _, _ ->
+            repository.current = sharing(grants = setOf("viewer-a"))
+            AudienceMutationOutcome.Confirmed(null)
+        }
+        repository.management = { _, _ -> repository.current }
+        viewModel.toggleViewer("owner-a", member("viewer-a"), true)
+        assertEquals(2, repository.mutationCalls)
+        assertTrue(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
+    }
+
+    @Test
+    fun `unknown revoke reconciles when server already revoked without replay`() {
+        repository.current = sharing(grants = setOf("viewer-a"))
+        viewModel.ownerChanged("owner-a")
+        repository.mutation = { _, _, _ ->
+            repository.current = sharing(grants = emptySet())
+            AudienceMutationOutcome.UnknownOutcome(null, requestedEnabled = false, currentEnabled = null)
+        }
+        viewModel.toggleViewer("owner-a", member("viewer-a", granted = true), false)
+        assertEquals(1, repository.mutationCalls)
+        assertFalse(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
+        assertTrue(viewModel.state.value.unresolvedViewerIds.isEmpty())
+        assertTrue(viewModel.state.value.pendingViewerIds.isEmpty())
     }
 
     @Test
@@ -197,6 +232,25 @@ class LiveMapViewModelTest {
         mutationGate.complete(AudienceMutationOutcome.Confirmed(sharing(grants = setOf("viewer-a"))))
 
         assertEquals("owner-b", viewModel.state.value.ownerId)
+        assertTrue(viewModel.state.value.pendingViewerIds.isEmpty())
+        assertFalse(viewModel.state.value.sharing!!.members.any { it.canViewLocation })
+    }
+
+    @Test
+    fun `account switch ignores reconciliation response from old owner`() {
+        repository.current = sharing(grants = setOf("viewer-a"))
+        viewModel.ownerChanged("owner-a")
+        val oldRead = CompletableDeferred<SharingManagementSnapshot>()
+        repository.management = { _, owner ->
+            if (owner == "owner-a") withContext(NonCancellable) { oldRead.await() }
+            else sharing(ownerId = owner, grants = emptySet())
+        }
+        repository.mutation = { _, _, _ -> AudienceMutationOutcome.UnknownOutcome(null, false, null) }
+        viewModel.toggleViewer("owner-a", member("viewer-a", granted = true), false)
+        viewModel.ownerChanged("owner-b")
+        oldRead.complete(sharing(grants = setOf("viewer-a")))
+        assertEquals("owner-b", viewModel.state.value.ownerId)
+        assertTrue(viewModel.state.value.unresolvedViewerIds.isEmpty())
         assertTrue(viewModel.state.value.pendingViewerIds.isEmpty())
         assertFalse(viewModel.state.value.sharing!!.members.any { it.canViewLocation })
     }

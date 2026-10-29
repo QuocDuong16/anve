@@ -201,14 +201,16 @@ class LiveMapViewModel internal constructor(
                 val snapshot = repository.sharingManagement(ownerId)
                 if (isRequestCurrent(ownerId, ownerToken, requestToken)) {
                     val readyToRelease = reconciliationWaiters.toSet()
-                    val unresolved = unresolvedDesired.toMap()
-                    val stillUnresolved = unresolved.filter { (viewerId, desired) ->
+                    val reconciled = unresolvedDesired.filterKeys { it in readyToRelease }
+                    reconciled.forEach { (viewerId, desired) ->
                         val actual = snapshot.viewerAccess(viewerId)
-                        actual != desired
+                        if (actual == desired) {
+                            outcomeMessages.remove(viewerId)
+                        } else {
+                            outcomeMessages[viewerId] = unknownOutcomeMessage(desired, actual)
+                        }
                     }
-                    val resolvedViewerIds = unresolved.keys - stillUnresolved.keys
-                    unresolvedDesired.keys.removeAll(resolvedViewerIds)
-                    outcomeMessages.keys.removeAll(resolvedViewerIds)
+                    unresolvedDesired.keys.removeAll(reconciled.keys)
                     reconciliationWaiters.removeAll(readyToRelease)
                     val activeViewerIds = synchronized(mutationLock) {
                         activeMutations.filter { it.ownerId == ownerId }.mapTo(mutableSetOf()) { it.viewerId }
@@ -218,8 +220,8 @@ class LiveMapViewModel internal constructor(
                             sharing = snapshot,
                             sharingLoading = false,
                             pendingViewerIds = it.pendingViewerIds - (readyToRelease - activeViewerIds),
-                            unresolvedViewerIds = stillUnresolved.keys,
-                            sharingError = sharingOutcomeMessage(stillUnresolved, outcomeMessages, snapshot),
+                            unresolvedViewerIds = unresolvedDesired.keys.toSet(),
+                            sharingError = outcomeMessages.values.firstOrNull(),
                         )
                     }
                 }
@@ -254,22 +256,10 @@ class LiveMapViewModel internal constructor(
 
     private fun unknownOutcomeMessage(desired: Boolean, current: Boolean?): String = when {
         current == true && !desired ->
-            "Chưa xác nhận việc thu hồi; máy chủ hiện vẫn cho biết người này có quyền xem."
+            "Yêu cầu thu hồi trước chưa đạt: máy chủ vẫn cho biết người này có quyền xem."
         current == false && desired ->
-            "Chưa xác nhận việc cấp quyền; máy chủ hiện chưa hiển thị quyền này."
+            "Yêu cầu cấp quyền trước chưa đạt: máy chủ hiện chưa hiển thị quyền này."
         else -> "Chưa xác định kết quả thay đổi quyền xem. Đang giữ trạng thái chờ đối chiếu."
-    }
-
-    private fun sharingOutcomeMessage(
-        unresolved: Map<String, Boolean>,
-        messages: Map<String, String>,
-        snapshot: SharingManagementSnapshot,
-    ): String? {
-        val unresolvedMessage = unresolved.entries.firstNotNullOfOrNull { (viewerId, desired) ->
-            val actual = snapshot.viewerAccess(viewerId)
-            if (actual == desired) null else unknownOutcomeMessage(desired, actual)
-        }
-        return unresolvedMessage ?: messages.values.firstOrNull()
     }
 
     private fun sharingLoadFailureMessage(pendingViewerIds: Set<String>): String = when {

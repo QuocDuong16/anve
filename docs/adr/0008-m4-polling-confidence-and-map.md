@@ -47,9 +47,9 @@ MVP has no deployed shared event broker or multi-replica realtime requirement.
    lost. The Android client never automatically replays that mutation: it
    reads the authoritative audience snapshot, owner-bound on every request.
    If the snapshot shows the requested effective access, the desired state is
-   reconciled; if it conflicts, or the read fails, the UI retains an unresolved
-   state and does not claim that access changed. The user must make a fresh
-   explicit choice after the current server state is known.
+   reconciled; if it differs, the UI shows the current access and allows a fresh explicit
+   choice without replaying the old request. If the read fails, the UI retains
+   an unresolved state and does not present the stale switch as authoritative.
 7. Audience mutations are single-flight per owner/viewer pair; mutations for
    different viewers may proceed concurrently. Each sharing read has a
    monotonically increasing request generation; only the newest read for the
