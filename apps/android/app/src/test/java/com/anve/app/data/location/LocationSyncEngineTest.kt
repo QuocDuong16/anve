@@ -122,6 +122,35 @@ class LocationSyncEngineTest {
     }
 
     @Test
+    fun `account switch while reading checkpoint cannot update new account or upload`() = runBlocking {
+        seed()
+        val requested = CompletableDeferred<Unit>()
+        val reply = CompletableDeferred<Long>()
+        val checkpoints = mutableListOf<Pair<String, Long>>()
+        gateway.generationHandler = { requested.complete(Unit); reply.await() }
+        engine = LocationSyncEngine(gateway, queue, store, sessions, now = { now },
+            consentMutations = consentMutations, onCaptureGeneration = { owner, value -> checkpoints += owner to value })
+        val worker = async { engine.sync() }
+        requested.await()
+        sessions.save(session("u2"))
+        reply.complete(5)
+        assertEquals(SyncDisposition.BLOCKED, worker.await().disposition)
+        assertTrue(checkpoints.isEmpty())
+        assertTrue(gateway.uploads.isEmpty())
+    }
+
+    @Test
+    fun `offline checkpoint cannot prevent local consent off from purging queue`() = runBlocking {
+        seed()
+        store.setConsentOwner("u1")
+        store.setPendingConsentRevocation(true)
+        gateway.generationHandler = { throw networkError() }
+        val outcome = engine.sync()
+        assertEquals("CONSENT_REVOCATION_PENDING", outcome.errorCode)
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
     fun `server-reported duplicates are acknowledged and deleted`() = runBlocking {
         seed(count = 2)
         gateway.uploadHandler = { events ->
@@ -327,6 +356,37 @@ class LocationSyncEngineTest {
         assertEquals(SYNC_BATCH_SIZE - 1, outcome.uploaded)
         assertEquals(1, outcome.dropped)
         assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `deleted history is isolated without dropping unrelated queued points`() = runBlocking {
+        seed(count = 3)
+        val deleted = eventId("u1", 1)
+        gateway.uploadHandler = { events ->
+            if (events.any { it.eventId == deleted }) throw ApiException("LOCATION_HISTORY_DELETED", "deleted", null)
+            LocationBatchResponseDto(accepted = events.map { it.eventId })
+        }
+
+        val outcome = engine.sync()
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(2, outcome.uploaded)
+        assertEquals(1, outcome.dropped)
+        assertTrue(dao.rows.isEmpty())
+    }
+
+    @Test
+    fun `expired checkpoint is isolated while newer points upload`() = runBlocking {
+        seed(count = 3)
+        val stale = eventId("u1", 1)
+        gateway.uploadHandler = { events ->
+            if (events.any { it.eventId == stale }) throw ApiException("LOCATION_CAPTURE_GENERATION_EXPIRED", "expired", null)
+            LocationBatchResponseDto(accepted = events.map { it.eventId })
+        }
+        val outcome = engine.sync()
+        assertEquals(2, outcome.uploaded)
+        assertEquals(1, outcome.dropped)
+        assertTrue(dao.rows.isEmpty())
+        assertEquals("LOCATION_CAPTURE_GENERATION_EXPIRED", store.current().lastSyncErrorCode)
     }
 
     @Test

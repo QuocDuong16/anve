@@ -191,7 +191,11 @@ data class LocationEventDto(
     @Json(name = "provider") val provider: String,
     @Json(name = "isMock") val isMock: Boolean = false,
     @Json(name = "schemaVersion") val schemaVersion: Int = 1,
+    @Json(name = "captureGeneration") val captureGeneration: Long = 0,
 )
+
+@JsonClass(generateAdapter = false)
+data class CaptureGenerationDto(@Json(name = "generation") val generation: Long)
 
 @JsonClass(generateAdapter = false)
 data class LocationBatchRequestDto(
@@ -309,4 +313,27 @@ data class RedeemInviteRequestDto(
 @JsonClass(generateAdapter = false)
 data class LeaveCircleRequestDto(
     @Json(name = "dissolve") val dissolve: Boolean,
+)
+
+@JsonClass(generateAdapter = false)
+data class HistoryRetentionDto(val days: Int, val effectiveDays: Int? = null)
+
+@JsonClass(generateAdapter = false)
+data class HistoryRetentionUpdateDto(val days: Int)
+
+@JsonClass(generateAdapter = false)
+data class HistoryPageDto(val points: List<HistoryPointDto>, val nextCursor: String? = null)
+
+@JsonClass(generateAdapter = false)
+data class HistoryPointDto(
+    val eventId: String,
+    val latitude: Double,
+    val longitude: Double,
+    val horizontalAccuracyMeters: Double,
+    val recordedAt: String,
+    val receivedAt: String,
+    val provider: String,
+    val isMock: Boolean,
+    val backfill: Boolean,
+    val segmentId: String,
 )

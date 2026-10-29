@@ -6,13 +6,17 @@ import (
 	"time"
 )
 
+// RetentionBatchSize bounds one cleanup transaction and its ingestion lock.
+const RetentionBatchSize = 5000
+
+const maxRetentionBatchesPerPass = 20
+
 // RunRetention purges points older than retention immediately and then on
 // every interval until ctx is cancelled. It is started as a goroutine by the
 // API process; the caller owns shutdown.
 //
 // Retention is a product obligation, not an optimisation: location data is
-// sensitive and M3 must not accumulate it indefinitely while M5 history is
-// unimplemented. The purge is deliberately based on capture time and logs
+// sensitive and must not accumulate indefinitely. The purge is deliberately based on capture time and logs
 // only row counts — never coordinates.
 func RunRetention(
 	ctx context.Context,
@@ -26,17 +30,22 @@ func RunRetention(
 	}
 	purge := func() {
 		cutoff := time.Now().UTC().Add(-retention)
-		deleted, err := store.PurgeOlderThan(ctx, cutoff)
-		if err != nil {
-			if ctx.Err() == nil {
-				logger.Error("location retention pass failed", "error", err)
+		var total int64
+		for batch := 0; batch < maxRetentionBatchesPerPass; batch++ {
+			deleted, err := store.PurgeOlderThan(ctx, cutoff)
+			if err != nil {
+				if ctx.Err() == nil {
+					logger.Error("location retention pass failed", "error", err)
+				}
+				return
 			}
-			return
+			total += deleted
+			if deleted < RetentionBatchSize {
+				break
+			}
 		}
-		if deleted > 0 {
-			logger.Info("location retention pass removed expired points",
-				"deleted", deleted,
-				"retention_days", int(retention.Hours()/24))
+		if total > 0 {
+			logger.Info("location retention pass removed expired points", "deleted", total, "retention_days", int(retention.Hours()/24))
 		}
 	}
 

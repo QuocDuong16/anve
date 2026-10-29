@@ -180,6 +180,7 @@ class TrackingManager(
                         conflictServerConsent = pendingConsent?.conflictServerEnabled,
                         trackingRequested = ownerMatches && local.trackingRequested,
                         lastUploadAtMillis = local.lastSuccessfulUploadAtMillis,
+                        privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED"),
                         recoveryRequired = if (wasInitial && local.trackingRequested && !current.running) {
                             true
                         } else {

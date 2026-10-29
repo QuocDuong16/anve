@@ -116,6 +116,7 @@ data class TrackingStatus(
     val lastAccuracyMeters: Double? = null,
     val lastUploadAtMillis: Long? = null,
     val pendingQueueCount: Int = 0,
+    val privacyDiscardedPoints: Boolean = false,
     val lastError: TrackingProblem? = null,
     val lastErrorAtMillis: Long? = null,
     val recoveryRequired: Boolean = false,

@@ -140,6 +140,11 @@ func NewRouter(deps Deps) chi.Router {
 
 			if deps.Locations != nil {
 				locationSvc := deps.Locations
+				private.Get("/me/location-history/retention", historyRetentionHandler(locationSvc))
+				historyLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				private.With(RateLimit(historyLimiter)).Get("/me/location-capture-generation", captureGenerationHandler(locationSvc))
+				private.With(RateLimit(historyLimiter)).Put("/me/location-history/retention", historyRetentionHandler(locationSvc))
+				private.With(RateLimit(historyLimiter)).Delete("/me/location-history", deleteLocationHistoryHandler(locationSvc))
 				locationLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
 				private.With(RateLimit(locationLimiter)).
 					Post("/locations/batch", ingestLocationBatchHandler(locationSvc))
@@ -151,6 +156,8 @@ func NewRouter(deps Deps) chi.Router {
 				private.Put("/location-sharing/audience/{viewerId}", grantAudienceHandler(access))
 				private.Delete("/location-sharing/audience/{viewerId}", revokeAudienceHandler(access))
 				private.Get("/locations/visible/latest", latestVisibleLocationsHandler(access))
+				historyReadLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				private.With(RateLimit(historyReadLimiter)).Get("/locations/history", historyHandler(access))
 			}
 
 			if deps.Circles != nil {

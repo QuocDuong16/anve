@@ -334,7 +334,7 @@ bất kỳ con số nào cho người dùng. Cho đến khi đó, chỉ dùng tr
 
 ## 6. Location History
 
-> Trạng thái: **Planned — M5**.
+> Trạng thái: **Planned — M5; History đang được triển khai, chưa xác minh CI.**
 
 **Mục đích.** Lưu và xem lại lịch sử vị trí **được chia sẻ hợp lệ**, phân biệt
 rõ dữ liệu gốc và dữ liệu đồng bộ bù.
@@ -367,6 +367,9 @@ giảm (không tăng vô hạn).
 **Privacy/security.** Đây là dữ liệu nhạy cảm nhất của sản phẩm: authorization
 per-request từ backend, retention tối thiểu, xóa là hành động thực sự (xem
 [`privacy-and-safety.md`](privacy-and-safety.md)); không log tọa độ.
+Thiết kế M5-A dùng checkpoint quyền riêng tư để loại điểm offline chưa xác
+thực sau xóa hoặc cấp quyền mới; điều này có thể loại cả điểm thực sự mới
+trên thiết bị chưa đồng bộ. Đây không phải bằng chứng vị trí thực tế.
 
 **Edge cases.** Điểm trùng timestamp; hành trình đứt quãng do offline; dữ liệu
 backfill làm xáo trộn thứ tự thời gian (bắt buộc preserve original timestamps);

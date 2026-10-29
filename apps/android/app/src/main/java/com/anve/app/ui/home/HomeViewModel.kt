@@ -241,9 +241,12 @@ class HomeViewModel internal constructor(
     }
 
     fun deleteAccount() {
-        if (_state.value.busy) return
+        while (true) {
+            val current = _state.value
+            if (current.busy || current.user == null) return
+            if (_state.compareAndSet(current, current.copy(busy = true, error = null))) break
+        }
         scope.launch {
-            _state.update { it.copy(busy = true, error = null) }
             try {
                 repository.deleteAccount()
                 // Confirmed: storage is cleared and AnVeApp reroutes.

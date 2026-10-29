@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -144,5 +146,60 @@ func latestVisibleLocationsHandler(svc *locationaccess.Service) http.HandlerFunc
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(payload)
+	}
+}
+
+func historyHandler(svc *locationaccess.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, ok := AuthFromContext(r.Context())
+		if !ok {
+			writeError(w, r, auth.ErrUnauthenticated)
+			return
+		}
+		if !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
+		values := r.URL.Query()
+		for _, key := range []string{"ownerId", "from", "to"} {
+			if len(values[key]) != 1 {
+				writeError(w, r, auth.ErrValidation)
+				return
+			}
+		}
+		if len(values["limit"]) > 1 || len(values["cursor"]) > 1 {
+			writeError(w, r, auth.ErrValidation)
+			return
+		}
+		owner, err := uuid.Parse(values.Get("ownerId"))
+		if err != nil {
+			writeError(w, r, auth.ErrValidation)
+			return
+		}
+		from, err := time.Parse(time.RFC3339Nano, values.Get("from"))
+		if err != nil {
+			writeError(w, r, auth.ErrValidation)
+			return
+		}
+		to, err := time.Parse(time.RFC3339Nano, values.Get("to"))
+		if err != nil {
+			writeError(w, r, auth.ErrValidation)
+			return
+		}
+		limit := 100
+		if values.Has("limit") {
+			limit, err = strconv.Atoi(values.Get("limit"))
+			if err != nil {
+				writeError(w, r, auth.ErrValidation)
+				return
+			}
+		}
+		page, err := svc.History(r.Context(), ac.User.ID, owner, from, to, limit, values.Get("cursor"))
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		w.Header().Set("Vary", "Authorization")
+		writeJSON(w, http.StatusOK, page)
 	}
 }

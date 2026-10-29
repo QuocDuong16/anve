@@ -31,6 +31,8 @@ const (
 	ActionAccountDeleted                        = "auth.account_deleted"
 	ActionLocationSharingOn                     = "consent.location_sharing.enabled"
 	ActionLocationSharingOff                    = "consent.location_sharing.disabled"
+	ActionLocationHistoryDeleted                = "location.history.deleted"
+	ActionLocationRetentionChanged              = "location.retention.changed"
 	ActionLocationAudienceGrantCreated          = "location.audience_grant.created"
 	ActionLocationAudienceGrantRevoked          = "location.audience_grant.revoked"
 	ActionLocationAudienceGrantClosedConsent    = "location.audience_grant.closed_consent"

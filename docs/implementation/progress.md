@@ -28,7 +28,7 @@ near-real-time snapshot convergence, not server push.
 | M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
 | M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
-| M5 History & Places | Not started | |
+| M5 History & Places | Planned — history work in progress | Not shipped or verified; Places has not started. |
 | M6 SOS & FCM | Not started | |
 | M7 Journey & diagnostics | Not started | |
 | M8 Release hardening | Not started | |
@@ -424,3 +424,30 @@ Verification levels for this pass:
 ## M4 audience recovery follow-up (2026-10-29)
 
 - An authoritative audience read that differs from an unknown mutation now shows the server state and permits a fresh explicit action. Failed reads remain unresolved; no mutation is automatically replayed. Automated verification for this follow-up is recorded by its final CI runs. Map runtime and device validation remain pending.
+
+## M5 history work in progress (2026-10-29)
+
+M5 remains **Planned**; the vertical slice is not complete. Local work adds
+owner-bound deletion and retention, interval and event-ID fences, an
+owner-serialized history snapshot, and a shared current-audience database
+view. History pages are limited to 48 hours and ordered by capture time,
+receipt time and event ID. An Android History screen provides bounded pages,
+route segmentation, date selection and owner controls. Foreground access is
+rechecked and sensitive state clears when the screen stops or the account
+changes. PostGIS tests cover authorization, concurrent ingestion, backfill,
+retention and deletion; JVM and APK checks have been run during development.
+Local M5-A work passed `make quality-check` with Gradle build cache disabled,
+`make server-test-race`, and `make server-test-integration` against
+PostgreSQL/PostGIS. Android JVM tests reported 237 passing tests, and the
+minified release and instrumentation APK compiled with the cache disabled.
+OpenAPI was also checked with `openapi-spec-validator`. These are local results,
+not hosted CI, emulator execution, or physical-device evidence.
+
+The API and client changes are not shipped. Full final quality/CI and emulator
+results are pending. The agreed privacy-first checkpoint rejects unverified
+offline points from before deletion, retention changes or a new grant, even if
+some were genuinely captured afterward. Local race tests cover the checkpoint;
+a malicious reauthorized client can
+fabricate capture data. Deleted event-ID fences remain until account deletion and their growth
+needs operational review. Places and geofencing have not started. No emulator
+or physical-device validation is claimed. See ADR 0009 for the design limits.

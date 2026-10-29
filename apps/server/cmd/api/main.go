@@ -98,7 +98,7 @@ func run() error {
 		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled)
 		circlesService = circles.NewService(circles.NewPGStore(pool))
 		locationStore = locations.NewPGStore(pool)
-		locationsService = locations.NewService(locationStore)
+		locationsService = locations.NewServiceWithRetention(locationStore, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		locationAccessService = locationaccess.NewService(
 			locationaccess.NewPGStore(pool),
 			time.Duration(cfg.LocationRetentionDays)*24*time.Hour,

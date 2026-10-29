@@ -27,6 +27,13 @@ func (s confidenceStore) Latest(context.Context, uuid.UUID, time.Time, time.Time
 	return s.locations, nil
 }
 
+func (s confidenceStore) BeginHistory(context.Context, uuid.UUID, uuid.UUID) (int64, error) {
+	return 0, nil
+}
+func (s confidenceStore) History(context.Context, HistoryQuery) ([]HistoryPoint, error) {
+	return nil, nil
+}
+
 func TestLatestClassifiesLocationConfidenceFromCaptureTime(t *testing.T) {
 	now := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
 	tests := []struct {

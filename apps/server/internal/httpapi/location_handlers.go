@@ -25,6 +25,7 @@ type batchRequest struct {
 
 type eventRequest struct {
 	EventID                  string   `json:"eventId"`
+	CaptureGeneration        int64    `json:"captureGeneration"`
 	ClientDeviceID           string   `json:"clientDeviceId"`
 	RecordedAt               string   `json:"recordedAt"`
 	Latitude                 *float64 `json:"latitude"`
@@ -53,6 +54,9 @@ func ingestLocationBatchHandler(svc *locations.Service) http.HandlerFunc {
 		ac, ok := AuthFromContext(r.Context())
 		if !ok {
 			writeError(w, r, auth.ErrUnauthenticated)
+			return
+		}
+		if !matchesExpectedOwner(w, r, ac.User.ID) {
 			return
 		}
 
@@ -128,6 +132,10 @@ func locationErrorCode(err error) string {
 	switch {
 	case errors.Is(err, locations.ErrBatchTooLarge):
 		return "LOCATION_BATCH_TOO_LARGE"
+	case errors.Is(err, locations.ErrHistoryDeleted):
+		return "LOCATION_HISTORY_DELETED"
+	case errors.Is(err, locations.ErrCaptureGeneration):
+		return "LOCATION_CAPTURE_GENERATION_EXPIRED"
 	case errors.Is(err, locations.ErrEventTooOld):
 		return "LOCATION_EVENT_TOO_OLD"
 	case errors.Is(err, locations.ErrBatchInvalid):
@@ -195,6 +203,7 @@ func (r eventRequest) toEvent() (locations.Event, error) {
 	}
 	return locations.Event{
 		EventID:                  eventID,
+		CaptureGeneration:        r.CaptureGeneration,
 		ClientDeviceID:           r.ClientDeviceID,
 		RecordedAt:               recordedAt.UTC(),
 		Latitude:                 *r.Latitude,
@@ -207,4 +216,107 @@ func (r eventRequest) toEvent() (locations.Event, error) {
 		IsMock:                   r.IsMock,
 		SchemaVersion:            schemaVersion,
 	}, nil
+}
+
+func deleteLocationHistoryHandler(svc *locations.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, ok := AuthFromContext(r.Context())
+		if !ok {
+			writeError(w, r, auth.ErrUnauthenticated)
+			return
+		}
+		if !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
+		values := r.URL.Query()
+		if len(values["to"]) != 1 || len(values["from"]) > 1 {
+			writeError(w, r, auth.ErrValidation)
+			return
+		}
+		to, err := time.Parse(time.RFC3339Nano, values.Get("to"))
+		if err != nil {
+			writeError(w, r, auth.ErrValidation)
+			return
+		}
+		var from *time.Time
+		if values.Has("from") {
+			parsed, err := time.Parse(time.RFC3339Nano, values.Get("from"))
+			if err != nil {
+				writeError(w, r, auth.ErrValidation)
+				return
+			}
+			from = &parsed
+		}
+		if err := svc.DeleteHistory(r.Context(), ac.User.ID, from, to); err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func captureGenerationHandler(svc *locations.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, ok := AuthFromContext(r.Context())
+		if !ok {
+			writeError(w, r, auth.ErrUnauthenticated)
+			return
+		}
+		if !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
+		generation, err := svc.CaptureGeneration(r.Context(), ac.User.ID)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		writeJSON(w, http.StatusOK, struct {
+			Generation int64 `json:"generation"`
+		}{generation})
+	}
+}
+
+func historyRetentionHandler(svc *locations.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, ok := AuthFromContext(r.Context())
+		if !ok {
+			writeError(w, r, auth.ErrUnauthenticated)
+			return
+		}
+		if !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
+		if r.Method == http.MethodPut {
+			r.Body = http.MaxBytesReader(w, r.Body, 1024)
+			var body struct {
+				Days int `json:"days"`
+			}
+			decoder := json.NewDecoder(r.Body)
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&body); err != nil {
+				writeError(w, r, auth.ErrValidation)
+				return
+			}
+			if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+				writeError(w, r, auth.ErrValidation)
+				return
+			}
+			if err := svc.SetRetentionDays(r.Context(), ac.User.ID, body.Days); err != nil {
+				writeError(w, r, err)
+				return
+			}
+		}
+		days, err := svc.RetentionDays(r.Context(), ac.User.ID)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		writeJSON(w, http.StatusOK, struct {
+			Days          int `json:"days"`
+			EffectiveDays int `json:"effectiveDays"`
+		}{days, svc.EffectiveRetentionDays(days)})
+	}
 }

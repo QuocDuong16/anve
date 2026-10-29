@@ -150,13 +150,17 @@ func (s *PGStore) Grant(ctx context.Context, ownerID, viewerID uuid.UUID) (Grant
 	).Scan(&generation); err != nil {
 		return Grant{}, fmt.Errorf("allocate audience generation: %w", err)
 	}
+	var captureGeneration int64
+	if err := tx.QueryRow(ctx, `UPDATE users SET location_capture_generation=location_capture_generation+1 WHERE id=$1 RETURNING location_capture_generation`, ownerID).Scan(&captureGeneration); err != nil {
+		return Grant{}, fmt.Errorf("advance capture generation: %w", err)
+	}
 	err = tx.QueryRow(ctx,
 		`INSERT INTO location_audience_grants (
 		     owner_user_id, viewer_user_id, circle_id, owner_membership_period_id,
-		     viewer_membership_period_id, sharing_epoch_id, generation, visible_from
-		 ) VALUES ($1, $2, $3, $4, $5, $6, $7, clock_timestamp())
+		     viewer_membership_period_id, sharing_epoch_id, generation, visible_from, capture_generation
+		 ) VALUES ($1, $2, $3, $4, $5, $6, $7, clock_timestamp(), $8)
 		 RETURNING id, viewer_user_id, circle_id, generation, visible_from, created_at`,
-		ownerID, viewerID, circleID, ownerPeriodID, viewerPeriodID, epochID, generation,
+		ownerID, viewerID, circleID, ownerPeriodID, viewerPeriodID, epochID, generation, captureGeneration,
 	).Scan(&grant.ID, &grant.ViewerID, &grant.CircleID, &grant.Generation, &grant.VisibleFrom, &grant.CreatedAt)
 	if err != nil {
 		return Grant{}, fmt.Errorf("insert audience grant: %w", err)
@@ -236,30 +240,23 @@ func (s *PGStore) Revoke(ctx context.Context, ownerID, viewerID uuid.UUID) error
 func (s *PGStore) Latest(ctx context.Context, viewerID uuid.UUID, now, retentionCutoff time.Time) ([]VisibleLocation, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT DISTINCT ON (g.owner_user_id)
-		        o.id, o.display_name, p.latitude, p.longitude,
+		        g.owner_user_id, g.display_name, p.latitude, p.longitude,
 		        p.horizontal_accuracy_m, p.recorded_at, p.received_at
-		   FROM location_audience_grants g
-		   JOIN users o ON o.id = g.owner_user_id AND o.location_sharing_enabled
-		   JOIN location_sharing_epochs e ON e.id = g.sharing_epoch_id AND e.ended_at IS NULL
-		   JOIN memberships om ON om.user_id = g.owner_user_id AND om.circle_id = g.circle_id
-		   JOIN circle_membership_periods op ON op.id = g.owner_membership_period_id
-		                                AND op.membership_id = om.id AND op.ended_at IS NULL
-		   JOIN memberships vm ON vm.user_id = g.viewer_user_id AND vm.circle_id = g.circle_id
-		   JOIN circle_membership_periods vp ON vp.id = g.viewer_membership_period_id
-		                                AND vp.membership_id = vm.id AND vp.ended_at IS NULL
+		   FROM active_location_audience g
 		   LEFT JOIN LATERAL (
 		       SELECT lp.latitude, lp.longitude, lp.horizontal_accuracy_m, lp.recorded_at, lp.received_at
 		         FROM location_points lp
-		        WHERE lp.user_id = g.owner_user_id AND lp.sharing_epoch_id = e.id
+		        WHERE lp.user_id = g.owner_user_id AND lp.sharing_epoch_id = g.sharing_epoch_id
 		          AND lp.recorded_at >= g.visible_from
+		          AND lp.capture_generation >= g.capture_generation
 		          AND lp.received_at >= g.visible_from
 		          AND (g.visible_until IS NULL OR lp.recorded_at <= g.visible_until)
-		          AND lp.recorded_at >= $3 AND lp.recorded_at <= $2
+		          AND lp.recorded_at >= $3 AND lp.recorded_at >= COALESCE((SELECT cutoff FROM location_retention_watermark WHERE singleton), '-infinity'::timestamptz) AND lp.recorded_at >= $2::timestamptz - g.location_retention_days * interval '1 day' AND lp.recorded_at <= $2
 		        ORDER BY lp.recorded_at DESC, lp.received_at DESC
 		        LIMIT 1
 		   ) p ON TRUE
-		  WHERE g.viewer_user_id = $1 AND g.revoked_at IS NULL
-		    AND g.visible_from <= $2
+		  WHERE g.viewer_user_id = $1
+		    AND g.visible_from <= $2 AND (g.visible_until IS NULL OR g.visible_until > $2)
 		    AND EXISTS (SELECT 1 FROM users v WHERE v.id = $1)
 		  ORDER BY g.owner_user_id, p.recorded_at DESC NULLS LAST`, viewerID, now, retentionCutoff)
 	if err != nil {

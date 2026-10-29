@@ -724,6 +724,9 @@ private fun StatusCard(
                     status.pendingQueueCount,
                 ),
             )
+            if (status.privacyDiscardedPoints) {
+                Text("Một số điểm offline không được đồng bộ vì quyền riêng tư đã thay đổi. Các điểm mới sẽ tiếp tục được ghi sau khi thiết bị kết nối.")
+            }
             InfoRow(
                 label = stringResource(R.string.tracking_connection),
                 value = if (status.online) {

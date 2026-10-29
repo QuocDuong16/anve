@@ -10,8 +10,8 @@
 	docker-up docker-down docker-logs docker-clean docker-config compose-lint \
 	up down logs \
 	migrate-up migrate-down \
-	server-run server-build server-test server-test-race server-test-integration server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-release android-clean \
+	server-run server-build server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
+	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-clean \
 	contracts-lint deps-lint \
 	quality-check
 
@@ -93,6 +93,9 @@ server-test-race: ## Run the Go server tests with the race detector
 server-test-integration: ## Run the DB integration tests against the running local stack (make docker-up first)
 	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations ./internal/locationaccess ./internal/httpapi
 
+server-history-plan: ## Inspect an isolated synthetic PostgreSQL history query plan
+	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -count=1 -run '^TestPGHistoryIndexPlan$$' -v ./internal/locationaccess
+
 server-fix: ## Tidy Go modules and format Go sources
 	cd apps/server && go mod tidy && go fmt ./...
 
@@ -138,6 +141,12 @@ android-build: android-sdk-check ## Build the Android debug APK
 
 android-test: android-sdk-check ## Run the Android unit tests
 	cd $(ANDROID_DIR) && ./gradlew :app:testDebugUnitTest
+
+android-test-build: android-sdk-check ## Compile the Android instrumentation test APK
+	cd $(ANDROID_DIR) && ./gradlew :app:assembleDebugAndroidTest
+
+android-instrumentation: android-sdk-check ## Run instrumentation on a connected emulator or device
+	cd $(ANDROID_DIR) && ./gradlew :app:connectedDebugAndroidTest
 
 android-lint: android-sdk-check ## Run the Android lint checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug

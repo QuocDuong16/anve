@@ -177,6 +177,7 @@
 
     <!-- Home tabs -->
     <string name="tab_circle">Nhóm</string>
+    <string name="tab_history">Lịch sử</string>
     <string name="tab_map">Bản đồ</string>
     <string name="tab_location">Vị trí</string>
     <string name="tab_account">Tài khoản</string>

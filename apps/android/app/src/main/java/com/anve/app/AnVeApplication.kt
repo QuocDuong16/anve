@@ -15,6 +15,7 @@ import com.anve.app.data.auth.SessionNoticeStore
 import com.anve.app.data.auth.WorkManagerPendingRevocationScheduler
 import com.anve.app.data.circles.CircleRepository
 import com.anve.app.data.location.ApiLocationSyncGateway
+import com.anve.app.data.location.CaptureGenerationStore
 import com.anve.app.data.location.LocationDatabase
 import com.anve.app.data.location.LocationQueueRepository
 import com.anve.app.data.location.LocationSyncEngine
@@ -91,6 +92,8 @@ class AppContainer(application: Application) {
 
     val circleRepository: CircleRepository = CircleRepository(api = authApi)
 
+    val historyRepository = com.anve.app.data.location.HistoryRepository(authApi)
+
     /** Location read API calls are screen-scoped; this repository stores no coordinates. */
     val visibleLocationRepository: VisibleLocationRepository = VisibleLocationRepository(api = authApi)
 
@@ -101,10 +104,13 @@ class AppContainer(application: Application) {
         application,
         LocationDatabase::class.java,
         "anve_locations.db",
-    ).build()
+    ).addMigrations(LocationDatabase.MIGRATION_1_2).build()
+
+    private val captureGenerations = CaptureGenerationStore()
 
     val locationQueue: LocationQueueRepository = LocationQueueRepository(
         dao = locationDatabase.locationQueueDao(),
+        captureGeneration = captureGenerations::current,
     )
 
     val trackingStore: DataStoreTrackingStore = DataStoreTrackingStore(application)
@@ -148,6 +154,7 @@ class AppContainer(application: Application) {
         metrics = trackingMetrics,
         consentMutations = consentMutationCoordinator,
         expectedClientDeviceId = { deviceIdentity.registration().clientDeviceId },
+        onCaptureGeneration = captureGenerations::advance,
     )
 
     companion object {

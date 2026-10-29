@@ -469,10 +469,156 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/me/location-capture-generation:
+    get:
+      operationId: getLocationCaptureGeneration
+      summary: Get the current capture generation for this account
+      description: |
+        The authenticated device records this generation with each location
+        at capture time. A deletion, retention change or new audience grant
+        invalidates prior generations. Offline points from an invalidated
+        generation are rejected even when their reported time is later.
+      tags: [locations]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current capture generation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generation]
+                properties:
+                  generation: {type: integer, format: int64, minimum: 1}
+        "401": {description: Invalid session or account mismatch.}
+        "429": {description: Too many requests.}
+        "503": {description: Storage unavailable.}
+
+  /api/v1/locations/history:
+    get:
+      operationId: getLocationHistory
+      summary: Read a bounded, authorized page of location history
+      description: |
+        Returns points in capture-time order. The half-open range is at most 48 hours;
+        from cannot be in the future and to cannot exceed 48 hours from now.
+        Current consent, membership, epoch and the explicit audience grant
+        are checked for each page. Unavailable owners and unauthorized
+        viewers both return 404. A refreshed first page is needed to see
+        uploads committed after the first page.
+      tags: [locations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: query, name: ownerId, required: true, schema: {type: string, format: uuid}}
+        - {in: query, name: from, required: true, schema: {type: string, format: date-time}}
+        - {in: query, name: to, required: true, schema: {type: string, format: date-time}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1, maximum: 200, default: 100}}
+        - {in: query, name: cursor, schema: {type: string, maxLength: 2048}}
+      responses:
+        "200":
+          description: Authorized page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [points]
+                properties:
+                  points:
+                    type: array
+                    items: {$ref: "#/components/schemas/HistoryPoint"}
+                  nextCursor: {type: string, nullable: true}
+        "400": {description: Invalid parameters (VALIDATION or LOCATION_HISTORY_INVALID).}
+        "401": {description: Invalid session or active-account mismatch.}
+        "404": {description: History owner unavailable or access denied.}
+        "429": {description: Too many history requests.}
+        "500": {description: History unavailable.}
+
+  /api/v1/me/location-history/retention:
+    get:
+      operationId: getHistoryRetention
+      summary: Get the owner's retention period in days
+      tags: [locations]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current setting; the server-wide limit may be shorter.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HistoryRetention"}
+        "401": {description: Invalid session or account mismatch.}
+    put:
+      operationId: setHistoryRetention
+      summary: Change the owner's retention period
+      tags: [locations]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HistoryRetention"}
+      responses:
+        "200":
+          description: Retention update and cleanup committed.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HistoryRetention"}
+        "400": {description: Malformed body or invalid retention (VALIDATION or LOCATION_RETENTION_INVALID).}
+        "401": {description: Invalid session or account mismatch.}
+        "429": {description: Too many requests.}
+        "503": {description: Storage unavailable.}
+
+  /api/v1/me/location-history:
+    delete:
+      operationId: deleteLocationHistory
+      summary: Delete the authenticated owner's location history
+      description: |
+        Deletes points in the half-open interval [from, to), excludes delayed
+        uploads whose reported capture time falls in the interval, and rejects
+        IDs of deleted stored events even if their timestamps change. Client
+        timestamps are not proof of actual capture time. Both timestamps must
+        be RFC 3339;
+        to must not be in the future. An omitted from selects all earlier
+        history. The caller must supply X-Anve-Expected-Owner.
+      tags: [locations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: header
+          name: X-Anve-Expected-Owner
+          required: true
+          schema: {type: string, format: uuid}
+        - in: query
+          name: from
+          schema: {type: string, format: date-time}
+        - in: query
+          name: to
+          required: true
+          schema: {type: string, format: date-time}
+      responses:
+        "204":
+          description: Deletion and exclusion were committed.
+        "400":
+          description: Malformed parameters or invalid interval (VALIDATION or LOCATION_HISTORY_INVALID).
+        "401":
+          description: Invalid session or account mismatch.
+        "429":
+          description: Too many requests.
+        "503":
+          description: Storage unavailable.
+
   /api/v1/locations/batch:
     post:
       operationId: ingestLocationBatch
       summary: Upload a batch of location events
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
       description: |
         Ingests location points captured by the authenticated device. The
         caller is identified by its session; a `userId` in the body is never
@@ -529,8 +675,10 @@ paths:
             The body is malformed, a field is outside its range, an event id
             repeats inside the batch, the batch is empty or too large
             (`LOCATION_BATCH_INVALID` / `LOCATION_BATCH_TOO_LARGE`), or a
-            capture time is older than the retention window
-            (`LOCATION_EVENT_TOO_OLD`).
+            capture time is older than the retention window (`LOCATION_EVENT_TOO_OLD`)
+            or falls within a deleted interval (`LOCATION_HISTORY_DELETED`),
+            or the event's capture checkpoint is missing or no longer current
+            (`LOCATION_CAPTURE_GENERATION_EXPIRED`).
           content:
             application/json:
               schema:
@@ -1393,6 +1541,7 @@ components:
       type: object
       required:
         - eventId
+        - captureGeneration
         - clientDeviceId
         - recordedAt
         - latitude
@@ -1400,6 +1549,11 @@ components:
         - horizontalAccuracyMeters
         - provider
       properties:
+        captureGeneration:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Generation known to the device when the point was captured. Missing or stale generations are rejected.
         eventId:
           type: string
           format: uuid
@@ -1495,6 +1649,28 @@ components:
           type: string
           format: date-time
           description: Server write time of this batch. Never a replacement for the device capture time.
+
+    HistoryRetention:
+      type: object
+      required: [days, effectiveDays]
+      properties:
+        days: {type: integer, minimum: 1, maximum: 30}
+        effectiveDays: {type: integer, minimum: 1, maximum: 30, readOnly: true}
+
+    HistoryPoint:
+      type: object
+      required: [eventId, latitude, longitude, horizontalAccuracyMeters, recordedAt, receivedAt, provider, isMock, backfill, segmentId]
+      properties:
+        eventId: {type: string, format: uuid}
+        latitude: {type: number, format: double}
+        longitude: {type: number, format: double}
+        horizontalAccuracyMeters: {type: number, format: double}
+        recordedAt: {type: string, format: date-time}
+        receivedAt: {type: string, format: date-time}
+        provider: {type: string}
+        isMock: {type: boolean}
+        backfill: {type: boolean}
+        segmentId: {type: string, description: Opaque epoch and deletion-boundary segment identity.}
 
     LocationAudienceGrant:
       type: object

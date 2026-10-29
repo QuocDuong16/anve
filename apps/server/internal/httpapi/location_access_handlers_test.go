@@ -38,6 +38,13 @@ func (s *accessHandlerStore) Latest(_ context.Context, _ uuid.UUID, _, _ time.Ti
 	return s.locations, nil
 }
 
+func (s *accessHandlerStore) BeginHistory(context.Context, uuid.UUID, uuid.UUID) (int64, error) {
+	return 0, nil
+}
+func (s *accessHandlerStore) History(context.Context, locationaccess.HistoryQuery) ([]locationaccess.HistoryPoint, error) {
+	return nil, nil
+}
+
 func TestLatestVisibleLocationsUsesPrivateConditionalSnapshot(t *testing.T) {
 	recordedAt := time.Now().UTC().Add(-time.Minute)
 	latitude, longitude, accuracy := 10.7, 106.6, 12.0
@@ -102,4 +109,46 @@ func TestAudienceMutationRejectsStaleAccountOwner(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, response.Code)
 	require.Equal(t, "UNAUTHENTICATED", decodeErrorCode(t, response.Body.Bytes()))
 	require.Zero(t, store.grantCalls)
+}
+
+type historyHandlerStore struct {
+	accessHandlerStore
+	query locationaccess.HistoryQuery
+}
+
+func (s *historyHandlerStore) BeginHistory(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	return 0, nil
+}
+func (s *historyHandlerStore) History(_ context.Context, query locationaccess.HistoryQuery) ([]locationaccess.HistoryPoint, error) {
+	s.query = query
+	return nil, nil
+}
+
+func TestHistoryHandlerEnforcesAccountAndBounds(t *testing.T) {
+	viewer, owner := uuid.New(), uuid.New()
+	store := &historyHandlerStore{}
+	handler := historyHandler(locationaccess.NewService(store, 30*24*time.Hour))
+	now := time.Now().UTC()
+	build := func(from time.Time, expected string) *http.Request {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/locations/history", nil)
+		values := req.URL.Query()
+		values.Set("ownerId", owner.String())
+		values.Set("from", from.Format(time.RFC3339Nano))
+		values.Set("to", now.Format(time.RFC3339Nano))
+		req.URL.RawQuery = values.Encode()
+		req.Header.Set("X-Anve-Expected-Owner", expected)
+		return req.WithContext(WithAuthContext(req.Context(), AuthContext{User: auth.User{ID: viewer}}))
+	}
+	rec := httptest.NewRecorder()
+	handler(rec, build(now.Add(-time.Hour), uuid.NewString()))
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = httptest.NewRecorder()
+	handler(rec, build(now.Add(-72*time.Hour), viewer.String()))
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	rec = httptest.NewRecorder()
+	handler(rec, build(now.Add(-time.Hour), viewer.String()))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, viewer, store.query.Viewer)
+	require.Equal(t, owner, store.query.Owner)
+	require.Equal(t, "no-store, private", rec.Header().Get("Cache-Control"))
 }

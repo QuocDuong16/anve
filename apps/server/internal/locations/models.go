@@ -19,6 +19,7 @@ import (
 // there. ReceivedAt is assigned by the server at write time.
 type Event struct {
 	EventID                  uuid.UUID
+	CaptureGeneration        int64
 	ClientDeviceID           string
 	RecordedAt               time.Time
 	Latitude                 float64

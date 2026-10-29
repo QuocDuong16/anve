@@ -42,14 +42,17 @@ data class SyncOutcome(
 /** The HTTP surface the sync engine needs, so tests can fake it. */
 interface LocationSyncGateway {
     suspend fun currentUserId(): String
-    suspend fun upload(events: List<LocationEventDto>): LocationBatchResponseDto
+    suspend fun upload(owner: String, events: List<LocationEventDto>): LocationBatchResponseDto
+    suspend fun captureGeneration(owner: String): Long = 0
 }
 
 class ApiLocationSyncGateway(private val api: AnveApi) : LocationSyncGateway {
     override suspend fun currentUserId(): String = api.me().orThrow().id
 
-    override suspend fun upload(events: List<LocationEventDto>): LocationBatchResponseDto =
-        api.uploadLocationBatch(LocationBatchRequestDto(events)).orThrow()
+    override suspend fun upload(owner: String, events: List<LocationEventDto>): LocationBatchResponseDto =
+        api.uploadLocationBatch(owner, LocationBatchRequestDto(events)).orThrow()
+
+    override suspend fun captureGeneration(owner: String): Long = api.captureGeneration(owner).orThrow().generation
 
 }
 
@@ -81,6 +84,7 @@ class LocationSyncEngine(
     private val metrics: TrackingMetricsStore = NoOpTrackingMetricsStore,
     private val consentMutations: ConsentMutationCoordinator = ConsentMutationCoordinator(),
     private val expectedClientDeviceId: (suspend () -> String)? = null,
+    private val onCaptureGeneration: (String, Long) -> Unit = { _, _ -> },
 ) {
 
     // One pass at a time: the unique WorkManager job is normally the only
@@ -130,6 +134,7 @@ class LocationSyncEngine(
         }
         val budget = RequestBudget(MAX_HTTP_REQUESTS_PER_PASS)
         var batches = 0
+        var generationChecked = false
         while (batches < MAX_BATCHES_PER_PASS && budget.remaining > 0) {
             val currentPending = sessions.pendingConsentOperations().firstOrNull {
                 it.ownerUserId == ownerUserId
@@ -156,6 +161,22 @@ class LocationSyncEngine(
                 queue.purgeAll()
                 return SyncOutcome(SyncDisposition.RETRY, uploaded = uploaded, dropped = dropped,
                     errorCode = "CONSENT_REVOCATION_PENDING")
+            }
+            if (!generationChecked) {
+                try {
+                    val generation = gateway.captureGeneration(ownerUserId)
+                    if (generation > 0 && sessions.current()?.userId == ownerUserId) {
+                        onCaptureGeneration(ownerUserId, generation)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    return SyncOutcome(SyncDisposition.RETRY, errorCode = "CAPTURE_GENERATION_UNAVAILABLE")
+                }
+                if (sessions.current()?.userId != ownerUserId) {
+                    return SyncOutcome(SyncDisposition.BLOCKED, errorCode = "ACCOUNT_CHANGED")
+                }
+                generationChecked = true
             }
             val rows = queue.pending(ownerUserId, SYNC_BATCH_SIZE)
             if (rows.isEmpty()) {
@@ -216,7 +237,7 @@ class LocationSyncEngine(
         }
         budget.remaining--
         val response = try {
-            gateway.upload(rows.map { it.toDto() })
+            gateway.upload(ownerUserId, rows.map { it.toDto() })
         } catch (e: CancellationException) {
             throw e
         } catch (e: ApiException) {
@@ -352,6 +373,8 @@ class LocationSyncEngine(
         val VALIDATION_REJECTIONS = setOf(
             "LOCATION_BATCH_INVALID",
             "LOCATION_EVENT_TOO_OLD",
+            "LOCATION_HISTORY_DELETED",
+            "LOCATION_CAPTURE_GENERATION_EXPIRED",
             "LOCATION_BATCH_TOO_LARGE",
         )
     }
@@ -394,4 +417,5 @@ internal fun QueuedLocation.toDto(): LocationEventDto = LocationEventDto(
     provider = provider,
     isMock = isMock,
     schemaVersion = schemaVersion,
+    captureGeneration = captureGeneration,
 )

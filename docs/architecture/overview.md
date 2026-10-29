@@ -250,8 +250,9 @@ Các ranh giới tin cậy và biện pháp tương ứng:
 Những quyết định này **cần được chốt trước khi hiện thực milestone tương ứng**
 và nên có ADR riêng khi quyết:
 
-1. **Location history authorization API** — M5 must define retention and
-   pagination while reusing the current membership/epoch/grant authorization.
+1. **Location history authorization API** — M5-A đang triển khai retention và
+   phân trang dựa trên membership/epoch/grant hiện tại; thiết kế và giới hạn
+   checkpoint được ghi trong [ADR 0009](../adr/0009-history-authorization-and-deletion.md).
 2. ~~**Phương thức authentication**~~ — đã chốt: Google Sign-In + opaque
    session ([ADR 0002](../adr/0002-authentication-google-signin-opaque-sessions.md)).
 3. **FCM data message làm tín hiệu fetch** — dùng hay không, và cơ chế debounce.

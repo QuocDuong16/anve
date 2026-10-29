@@ -120,7 +120,8 @@ Quy tắc:
 - Location history có **thời hạn lưu tối đa** do sản phẩm đặt. M3 đặt mặc
   định **30 ngày kể từ thời điểm thiết bị ghi nhận**, cấu hình bằng
   `LOCATION_RETENTION_DAYS` (1–365); đây là chính sách tạm thời trong khi
-  History (M5) chưa có UI chọn thời hạn. Cùng cửa sổ này là giới hạn upload
+  History (M5) đang triển khai UI chọn thời hạn từ 1–30 ngày, giới hạn bởi
+  cấu hình server. Cùng cửa sổ này là giới hạn upload
   bù: điểm cũ hơn bị từ chối thay vì lưu rồi xóa ngay.
 - Dữ liệu chờ đồng bộ (offline queue) trên thiết bị bị loại sau **7 ngày**
   hoặc khi vượt 5.000 điểm; điểm chưa gửi không được gửi bù sau khi người
@@ -135,6 +136,9 @@ Quy tắc:
 
 - **Xóa location history**: chủ thể dữ liệu xóa được toàn bộ hoặc theo khoảng
   thời gian; việc xóa phản ánh ở **mọi người xem** (server chặn nguồn).
+  Thiết kế M5-A dùng hàng rào xóa và checkpoint theo tài khoản để từ chối
+  điểm offline chưa xác thực; thiết bị chưa đồng bộ có thể mất cả điểm mới.
+  Dữ liệu đã tải xuống hoặc một response đang truyền không thể thu hồi.
 - **Xóa tài khoản**: xóa tài khoản và dữ liệu liên quan theo chính sách được
   định nghĩa khi hiện thực M1; danh sách chính xác những gì bị xóa/nguyên bản
   giữ lại (ví dụ nghĩa vụ sổ sách nếu sau này có thanh toán) phải được công bố

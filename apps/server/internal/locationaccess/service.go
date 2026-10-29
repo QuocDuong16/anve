@@ -51,6 +51,8 @@ type Store interface {
 	Grant(context.Context, uuid.UUID, uuid.UUID) (Grant, error)
 	Revoke(context.Context, uuid.UUID, uuid.UUID) error
 	Latest(context.Context, uuid.UUID, time.Time, time.Time) ([]VisibleLocation, error)
+	BeginHistory(context.Context, uuid.UUID, uuid.UUID) (int64, error)
+	History(context.Context, HistoryQuery) ([]HistoryPoint, error)
 }
 
 // Service applies location-access policy over its persistence store.

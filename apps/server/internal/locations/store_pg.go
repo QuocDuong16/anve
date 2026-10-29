@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/QuocDuong16/anve/server/internal/audit"
 )
 
 // PGStore is the PostgreSQL/PostGIS implementation of Store.
@@ -53,9 +55,13 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var sharingEnabled bool
+	var retentionDays int
+	var historyGeneration int64
+	var captureGeneration int64
+	var policyNow time.Time
 	err = tx.QueryRow(ctx,
-		`SELECT location_sharing_enabled FROM users WHERE id = $1 FOR SHARE`,
-		in.Principal.UserID).Scan(&sharingEnabled)
+		`SELECT location_sharing_enabled, location_retention_days, location_history_generation, location_capture_generation FROM users WHERE id = $1 FOR SHARE`,
+		in.Principal.UserID).Scan(&sharingEnabled, &retentionDays, &historyGeneration, &captureGeneration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Deleted between authentication and ingestion: the session no
 		// longer authorizes anything.
@@ -69,6 +75,11 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 	}
 	if s.testAfterConsentLock != nil {
 		s.testAfterConsentLock()
+	}
+
+	var globalCutoff *time.Time
+	if err := tx.QueryRow(ctx, `SELECT cutoff FROM location_retention_watermark WHERE singleton FOR SHARE`).Scan(&globalCutoff); err != nil {
+		return BatchResult{}, fmt.Errorf("lock retention watermark: %w", err)
 	}
 
 	var deviceID uuid.UUID
@@ -127,9 +138,28 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 		return BatchResult{}, fmt.Errorf("read active sharing epoch: %w", epochErr)
 	}
 
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&policyNow); err != nil {
+		return BatchResult{}, fmt.Errorf("read ingestion policy time: %w", err)
+	}
+
 	result := BatchResult{ReceivedAt: in.ReceivedAt}
 	for i := range in.Events {
 		e := in.Events[i]
+		if e.RecordedAt.Before(policyNow.Add(-time.Duration(retentionDays)*24*time.Hour)) || (globalCutoff != nil && e.RecordedAt.Before(*globalCutoff)) {
+			return BatchResult{}, ErrEventTooOld
+		}
+		var deleted bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM location_history_deletions
+            WHERE owner_user_id = $1 AND deleted_range @> $2::timestamptz)
+                OR EXISTS (SELECT 1 FROM location_deleted_events WHERE owner_user_id = $1 AND event_id = $3)`, in.Principal.UserID, e.RecordedAt.UTC(), e.EventID).Scan(&deleted); err != nil {
+			return BatchResult{}, fmt.Errorf("check deleted history: %w", err)
+		}
+		if deleted {
+			return BatchResult{}, ErrHistoryDeleted
+		}
+		if e.CaptureGeneration != captureGeneration {
+			return BatchResult{}, ErrCaptureGeneration
+		}
 		var eventID uuid.UUID
 		var pointEpochID *uuid.UUID
 		if epochErr == nil && !e.RecordedAt.UTC().Before(sharingEpochStartedAt) {
@@ -140,16 +170,16 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 			     event_id, user_id, device_id, recorded_at, received_at,
 			     latitude, longitude, geom,
 			     horizontal_accuracy_m, altitude_m, speed_mps, bearing_deg,
-			     provider, is_mock, schema_version, sharing_epoch_id)
+			     provider, is_mock, schema_version, sharing_epoch_id, history_generation, capture_generation)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7,
 			         ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography,
-			         $8, $9, $10, $11, $12, $13, $14, $15)
+			         $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 			 ON CONFLICT (user_id, event_id) DO NOTHING
 			 RETURNING event_id`,
 			e.EventID, in.Principal.UserID, deviceID, e.RecordedAt.UTC(), in.ReceivedAt,
 			e.Latitude, e.Longitude,
 			e.HorizontalAccuracyMeters, e.AltitudeMeters, e.SpeedMetersPerSecond, e.BearingDegrees,
-			e.Provider, e.IsMock, e.SchemaVersion, pointEpochID,
+			e.Provider, e.IsMock, e.SchemaVersion, pointEpochID, historyGeneration, captureGeneration,
 		).Scan(&eventID)
 		switch {
 		case err == nil:
@@ -174,10 +204,151 @@ func (s *PGStore) Ingest(ctx context.Context, in IngestInput) (BatchResult, erro
 // is refused by validation, and one that ages out is removed even if it was
 // uploaded recently.
 func (s *PGStore) PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
-	ct, err := s.pool.Exec(ctx,
-		`DELETE FROM location_points WHERE recorded_at < $1`, cutoff.UTC())
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("begin retention purge: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var effective time.Time
+	if err := tx.QueryRow(ctx, `UPDATE location_retention_watermark SET cutoff = GREATEST(cutoff, $1) WHERE singleton RETURNING cutoff`, cutoff.UTC()).Scan(&effective); err != nil {
+		return 0, fmt.Errorf("advance retention watermark: %w", err)
+	}
+	ct, err := tx.Exec(ctx, `WITH expired AS MATERIALIZED (
+        SELECT lp.id, lp.user_id, lp.event_id FROM location_points lp JOIN users u ON u.id=lp.user_id
+        WHERE lp.recorded_at < $1 OR lp.recorded_at < now() - u.location_retention_days * interval '1 day'
+        ORDER BY lp.recorded_at, lp.id LIMIT $2 FOR UPDATE OF lp SKIP LOCKED
+    ), fenced AS (
+        INSERT INTO location_deleted_events (owner_user_id, event_id)
+        SELECT user_id, event_id FROM expired ON CONFLICT DO NOTHING RETURNING event_id
+    )
+    DELETE FROM location_points WHERE id IN (SELECT id FROM expired)`, effective, RetentionBatchSize)
 	if err != nil {
 		return 0, fmt.Errorf("purge expired locations: %w", err)
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit retention purge: %w", err)
+	}
 	return ct.RowsAffected(), nil
+}
+
+// DeleteHistory serializes with ingestion on the owner row and atomically
+// excludes delayed uploads before deleting stored points.
+func (s *PGStore) DeleteHistory(ctx context.Context, owner uuid.UUID, from *time.Time, to time.Time) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin history deletion: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var locked uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, owner).Scan(&locked); err != nil {
+		return fmt.Errorf("lock history owner: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE users SET location_capture_generation = location_capture_generation + 1 WHERE id = $1`, owner); err != nil {
+		return fmt.Errorf("advance capture generation: %w", err)
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO location_history_deletions (owner_user_id, deleted_range) VALUES ($1, tstzrange($2, $3, '[)'))`, owner, from, to.UTC())
+	if err != nil {
+		return fmt.Errorf("record history deletion: %w", err)
+	}
+	if err := compactHistoryDeletions(ctx, tx, owner); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO location_deleted_events (owner_user_id, event_id)
+        SELECT user_id, event_id FROM location_points
+        WHERE user_id = $1 AND ($2::timestamptz IS NULL OR recorded_at >= $2) AND recorded_at < $3
+        ON CONFLICT DO NOTHING`, owner, from, to.UTC())
+	if err != nil {
+		return fmt.Errorf("record deleted event identities: %w", err)
+	}
+	result, err := tx.Exec(ctx, `DELETE FROM location_points WHERE user_id = $1 AND ($2::timestamptz IS NULL OR recorded_at >= $2) AND recorded_at < $3`, owner, from, to.UTC())
+	if err != nil {
+		return fmt.Errorf("delete history: %w", err)
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{ActorUserID: owner, TargetUserID: &owner, Action: audit.ActionLocationHistoryDeleted, Detail: map[string]any{"from": from, "to": to.UTC(), "deleted_count": result.RowsAffected()}}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit history deletion: %w", err)
+	}
+	return nil
+}
+
+// RetentionDays returns the owner setting, independently of sharing consent.
+func (s *PGStore) RetentionDays(ctx context.Context, owner uuid.UUID) (int, error) {
+	var days int
+	if err := s.pool.QueryRow(ctx, `SELECT location_retention_days FROM users WHERE id = $1`, owner).Scan(&days); err != nil {
+		return 0, fmt.Errorf("read history retention: %w", err)
+	}
+	return days, nil
+}
+
+// CaptureGeneration returns the account checkpoint without exposing location data.
+func (s *PGStore) CaptureGeneration(ctx context.Context, owner uuid.UUID) (int64, error) {
+	var generation int64
+	if err := s.pool.QueryRow(ctx, `SELECT location_capture_generation FROM users WHERE id = $1`, owner).Scan(&generation); err != nil {
+		return 0, fmt.Errorf("read capture generation: %w", err)
+	}
+	return generation, nil
+}
+
+// SetRetentionDays records a permanent cutoff when changing retention. The
+// owner lock orders this with uploads and avoids restoring expired history.
+func (s *PGStore) SetRetentionDays(ctx context.Context, owner uuid.UUID, days int) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin retention update: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var old int
+	var now time.Time
+	if err := tx.QueryRow(ctx, `SELECT location_retention_days FROM users WHERE id=$1 FOR UPDATE`, owner).Scan(&old); err != nil {
+		return fmt.Errorf("lock retention owner: %w", err)
+	}
+	if old == days {
+		return tx.Commit(ctx)
+	}
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
+		return fmt.Errorf("read retention policy time: %w", err)
+	}
+	cutoffDays := min(old, days)
+	cutoff := now.Add(-time.Duration(cutoffDays) * 24 * time.Hour)
+	if _, err := tx.Exec(ctx, `INSERT INTO location_history_deletions (owner_user_id, deleted_range) VALUES ($1, tstzrange(NULL, $2, '[)'))`, owner, cutoff); err != nil {
+		return fmt.Errorf("record retention cutoff: %w", err)
+	}
+	if err := compactHistoryDeletions(ctx, tx, owner); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO location_deleted_events (owner_user_id,event_id) SELECT user_id,event_id FROM location_points WHERE user_id=$1 AND recorded_at < $2 ON CONFLICT DO NOTHING`, owner, cutoff); err != nil {
+		return fmt.Errorf("record expired identities: %w", err)
+	}
+	deleted, err := tx.Exec(ctx, `DELETE FROM location_points WHERE user_id=$1 AND recorded_at < $2`, owner, cutoff)
+	if err != nil {
+		return fmt.Errorf("purge shortened history: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE users SET location_retention_days=$2, location_capture_generation=location_capture_generation+1 WHERE id=$1`, owner, days); err != nil {
+		return fmt.Errorf("update retention: %w", err)
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{ActorUserID: owner, TargetUserID: &owner, Action: audit.ActionLocationRetentionChanged, Detail: map[string]any{"old_days": old, "days": days, "cutoff": cutoff, "deleted_count": deleted.RowsAffected()}}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit retention update: %w", err)
+	}
+	return nil
+}
+
+// compactHistoryDeletions merges overlapping and adjacent fences while the
+// caller holds the owner lock, so repeated requests do not accumulate ranges.
+func compactHistoryDeletions(ctx context.Context, tx pgx.Tx, owner uuid.UUID) error {
+	_, err := tx.Exec(ctx, `WITH merged AS MATERIALIZED (
+      SELECT range_agg(deleted_range) AS ranges FROM location_history_deletions WHERE owner_user_id=$1
+    ), removed AS (
+      DELETE FROM location_history_deletions WHERE owner_user_id=$1 RETURNING id
+    )
+    INSERT INTO location_history_deletions (owner_user_id, deleted_range)
+      SELECT $1, r FROM merged CROSS JOIN LATERAL unnest(merged.ranges) AS r`, owner)
+	if err != nil {
+		return fmt.Errorf("compact history deletion fences: %w", err)
+	}
+	return nil
 }

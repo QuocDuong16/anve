@@ -18,6 +18,8 @@ type fakeStore struct {
 	lastInput IngestInput
 }
 
+func (*fakeStore) CaptureGeneration(context.Context, uuid.UUID) (int64, error) { return 1, nil }
+
 func (f *fakeStore) Ingest(_ context.Context, in IngestInput) (BatchResult, error) {
 	f.calls++
 	f.lastInput = in
@@ -27,6 +29,12 @@ func (f *fakeStore) Ingest(_ context.Context, in IngestInput) (BatchResult, erro
 func (f *fakeStore) PurgeOlderThan(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }
+
+func (f *fakeStore) DeleteHistory(context.Context, uuid.UUID, *time.Time, time.Time) error {
+	return nil
+}
+func (f *fakeStore) RetentionDays(context.Context, uuid.UUID) (int, error)  { return 30, nil }
+func (f *fakeStore) SetRetentionDays(context.Context, uuid.UUID, int) error { return nil }
 
 func TestServiceUsesOneServerTimestampAndReportsCounts(t *testing.T) {
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
@@ -92,4 +100,10 @@ func TestPermanentAndPolicyClassification(t *testing.T) {
 	assert.True(t, IsPolicyRefusal(ErrCircleRequired))
 	assert.True(t, IsPolicyRefusal(ErrDeviceNotAuthorized))
 	assert.False(t, IsPolicyRefusal(ErrBatchInvalid))
+}
+
+func TestEffectiveRetentionUsesServerMaximum(t *testing.T) {
+	service := NewServiceWithRetention(&fakeStore{}, 7*24*time.Hour)
+	require.Equal(t, 7, service.EffectiveRetentionDays(30))
+	require.Equal(t, 1, service.EffectiveRetentionDays(1))
 }

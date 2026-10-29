@@ -2,6 +2,7 @@ package locations_test
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -83,7 +84,11 @@ func (f *locationFixture) principal() locations.Principal {
 }
 
 func (f *locationFixture) event(recordedAt time.Time) locations.Event {
-	return eventWithDevice(uuid.Must(uuid.NewV7()), f.clientID, recordedAt)
+	event := eventWithDevice(uuid.Must(uuid.NewV7()), f.clientID, recordedAt)
+	var generation int64
+	require.NoError(f.t, f.pool.QueryRow(f.ctx, `SELECT location_capture_generation FROM users WHERE id=$1`, f.user.ID).Scan(&generation))
+	event.CaptureGeneration = generation
+	return event
 }
 
 func eventWithDevice(id uuid.UUID, clientID string, recordedAt time.Time) locations.Event {
@@ -92,6 +97,7 @@ func eventWithDevice(id uuid.UUID, clientID string, recordedAt time.Time) locati
 	bearing := 90.0
 	return locations.Event{
 		EventID:                  id,
+		CaptureGeneration:        1,
 		ClientDeviceID:           clientID,
 		RecordedAt:               recordedAt,
 		Latitude:                 10.7769,
@@ -269,12 +275,11 @@ func TestPGRetentionPurgesOnlyExpiredPoints(t *testing.T) {
 	recent := f.event(now.Add(-time.Hour))
 	expired := f.event(now.Add(-31 * 24 * time.Hour))
 
-	// Bypass the service for the expired point: the service would (correctly)
-	// refuse it as too old, but retention must also clean rows that age out
-	// after they were accepted.
-	_, err := f.store.Ingest(f.ctx, locations.IngestInput{
-		Principal: f.principal(), Events: []locations.Event{expired}, ReceivedAt: now,
-	})
+	// Insert a previously accepted point that has since aged out.
+	_, err := f.pool.Exec(f.ctx, `INSERT INTO location_points
+        (event_id,user_id,device_id,recorded_at,received_at,latitude,longitude,geom,horizontal_accuracy_m,provider,schema_version)
+        VALUES ($1,$2,$3,$4,$4,10,106,ST_SetSRID(ST_MakePoint(106,10),4326)::geography,10,'fused',1)`,
+		expired.EventID, f.user.ID, f.session.DeviceID, expired.RecordedAt)
 	require.NoError(t, err)
 	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{recent})
 	require.NoError(t, err)
@@ -468,4 +473,223 @@ func waitForLockWait(t *testing.T, pool *pgxpool.Pool) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("no connection ever waited on a lock")
+}
+
+func TestPGDeletedHistoryCannotReturnViaOfflineUpload(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	old := f.event(now.Add(-time.Minute))
+	result, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.NoError(t, err)
+	require.Len(t, result.Accepted, 1)
+	from := now.Add(-2 * time.Minute)
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, &from, now))
+	assert.Equal(t, 0, countPoints(t, f.pool))
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+	assert.Equal(t, 0, countPoints(t, f.pool))
+	delayed := f.event(now.Add(-30 * time.Second))
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{delayed})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+	old.RecordedAt = now.Add(time.Second)
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+	assert.Zero(t, countPoints(t, f.pool))
+	fresh := f.event(now.Add(time.Second))
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{fresh})
+	require.NoError(t, err)
+	assert.Equal(t, 1, countPoints(t, f.pool))
+	var auditCount int
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT count(*) FROM audit_log WHERE action = 'location.history.deleted' AND actor_user_id = $1`, f.user.ID).Scan(&auditCount))
+	assert.Equal(t, 1, auditCount)
+}
+
+func TestPGDeletionRejectsUnseenStaleGenerationOutsideDeletedRange(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	stale := f.event(now)
+	end := now.Add(-time.Second)
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, nil, end))
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{stale})
+	require.ErrorIs(t, err, locations.ErrCaptureGeneration)
+	fresh := f.event(now)
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{fresh})
+	require.NoError(t, err)
+	require.Equal(t, 1, countPoints(t, f.pool))
+}
+
+func TestPGHistoryDeletionWaitsForInFlightIngest(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	event := f.event(now.Add(-time.Second))
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	f.store.SetTestAfterConsentLock(func() { close(locked); <-release })
+	ingestDone := make(chan error, 1)
+	go func() { _, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{event}); ingestDone <- err }()
+	select {
+	case <-locked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("ingest did not lock owner")
+	}
+	deleteDone := make(chan error, 1)
+	go func() { deleteDone <- f.service.DeleteHistory(f.ctx, f.user.ID, nil, now) }()
+	waitForLockWait(t, f.pool)
+	close(release)
+	require.NoError(t, <-ingestDone)
+	require.NoError(t, <-deleteDone)
+	f.store.SetTestAfterConsentLock(nil)
+	assert.Zero(t, countPoints(t, f.pool))
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{event})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+}
+
+func TestPGRetentionReductionAndIncreaseCannotRestoreOldBackfill(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	old := f.event(time.Now().UTC().Add(-48 * time.Hour))
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.NoError(t, err)
+	require.NoError(t, f.service.SetRetentionDays(f.ctx, f.user.ID, 1))
+	assert.Zero(t, countPoints(t, f.pool))
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.ErrorIs(t, err, locations.ErrEventTooOld)
+	require.NoError(t, f.service.SetRetentionDays(f.ctx, f.user.ID, 30))
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+	assert.Zero(t, countPoints(t, f.pool))
+	days, err := f.service.RetentionDays(f.ctx, f.user.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 30, days)
+}
+
+func TestPGAccountDeletionCascadesHistoryFences(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{f.event(now.Add(-time.Second))})
+	require.NoError(t, err)
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, nil, now))
+	require.NoError(t, f.authSvc.DeleteAccount(f.ctx, f.user.ID))
+	var intervals, events int
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM location_history_deletions), (SELECT count(*) FROM location_deleted_events)`).Scan(&intervals, &events))
+	assert.Zero(t, intervals)
+	assert.Zero(t, events)
+}
+
+func TestPGHistoryDeletionMergesOverlappingFences(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	first := now.Add(-2 * time.Hour)
+	second := now.Add(-time.Hour)
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, &first, now.Add(-30*time.Minute)))
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, &second, now))
+	var count int
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT count(*) FROM location_history_deletions WHERE owner_user_id=$1`, f.user.ID).Scan(&count))
+	assert.Equal(t, 1, count)
+}
+
+func TestPGHistoryMigrationRefusesUnsafeRollback(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, nil, time.Now().UTC()))
+	migration, err := os.ReadFile("../../../../infra/migrations/0007_history_deletions.down.sql")
+	require.NoError(t, err)
+	_, err = f.pool.Exec(f.ctx, string(migration))
+	require.Error(t, err, "rollback must retain deletion fences")
+	var count int
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT count(*) FROM location_history_deletions WHERE owner_user_id=$1`, f.user.ID).Scan(&count))
+	assert.Equal(t, 1, count)
+}
+
+func TestPGDeletedHistoryRejectsDelayedUploadsFromAnotherDevice(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	_, tokens, err := f.authSvc.DevSignIn(f.ctx, "owner@example.com", "Owner", auth.DeviceRegistration{ClientDeviceID: "device-owner-0002"})
+	require.NoError(t, err)
+	session, _, err := f.authSvc.Authenticate(f.ctx, tokens.AccessToken)
+	require.NoError(t, err)
+	now := time.Now().UTC()
+	from := now.Add(-time.Hour)
+	require.NoError(t, f.service.DeleteHistory(f.ctx, f.user.ID, &from, now))
+	event := eventWithDevice(uuid.New(), "device-owner-0002", now.Add(-time.Minute))
+	_, err = f.service.Ingest(f.ctx, locations.Principal{UserID: f.user.ID, SessionID: session.ID, DeviceID: session.DeviceID}, []locations.Event{event})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+	stale := eventWithDevice(uuid.New(), "device-owner-0002", now.Add(time.Second))
+	_, err = f.service.Ingest(f.ctx, locations.Principal{UserID: f.user.ID, SessionID: session.ID, DeviceID: session.DeviceID}, []locations.Event{stale})
+	require.ErrorIs(t, err, locations.ErrCaptureGeneration)
+	assert.Zero(t, countPoints(t, f.pool))
+}
+
+func TestPGHistoryDeletionRollsBackWhenAuditFails(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{f.event(now.Add(-time.Second))})
+	require.NoError(t, err)
+	_, err = f.pool.Exec(f.ctx, `CREATE FUNCTION fail_history_audit() RETURNS trigger LANGUAGE plpgsql AS $$
+ BEGIN IF NEW.action = 'location.history.deleted' THEN RAISE EXCEPTION 'audit failure'; END IF; RETURN NEW; END $$;
+ CREATE TRIGGER fail_history_audit BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION fail_history_audit()`)
+	require.NoError(t, err)
+	require.Error(t, f.service.DeleteHistory(f.ctx, f.user.ID, nil, now))
+	assert.Equal(t, 1, countPoints(t, f.pool))
+	var fences int
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT count(*) FROM location_history_deletions WHERE owner_user_id=$1`, f.user.ID).Scan(&fences))
+	assert.Zero(t, fences)
+}
+
+func TestPGGlobalRetentionWatermarkPreventsResurrectionAfterIncrease(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	old := f.event(now.Add(-48 * time.Hour))
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.NoError(t, err)
+	_, err = f.store.PurgeOlderThan(f.ctx, now.Add(-24*time.Hour))
+	require.NoError(t, err)
+	assert.Zero(t, countPoints(t, f.pool))
+	_, err = f.store.PurgeOlderThan(f.ctx, now.Add(-30*24*time.Hour))
+	require.NoError(t, err)
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.ErrorIs(t, err, locations.ErrEventTooOld)
+	old.RecordedAt = time.Now().UTC()
+	_, err = f.service.Ingest(f.ctx, f.principal(), []locations.Event{old})
+	require.ErrorIs(t, err, locations.ErrHistoryDeleted)
+	assert.Zero(t, countPoints(t, f.pool))
+}
+
+func TestPGRetentionReductionSerializesWithInFlightIngestion(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	event := f.event(time.Now().UTC().Add(-48 * time.Hour))
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	f.store.SetTestAfterConsentLock(func() { close(locked); <-release })
+	ingestDone := make(chan error, 1)
+	go func() { _, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{event}); ingestDone <- err }()
+	select {
+	case <-locked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("ingestion did not lock owner")
+	}
+	changed := make(chan error, 1)
+	go func() { changed <- f.service.SetRetentionDays(f.ctx, f.user.ID, 1) }()
+	waitForLockWait(t, f.pool)
+	close(release)
+	require.NoError(t, <-ingestDone)
+	require.NoError(t, <-changed)
+	f.store.SetTestAfterConsentLock(nil)
+	assert.Zero(t, countPoints(t, f.pool))
+	_, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{event})
+	require.ErrorIs(t, err, locations.ErrEventTooOld)
+}
+
+func TestPGIngestSeesConcurrentGlobalRetentionWatermark(t *testing.T) {
+	f := newAuthorizedFixture(t)
+	now := time.Now().UTC()
+	event := f.event(now.Add(-48 * time.Hour))
+	tx, err := f.pool.Begin(f.ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(f.ctx) }()
+	_, err = tx.Exec(f.ctx, `UPDATE location_retention_watermark SET cutoff=$1 WHERE singleton`, now.Add(-24*time.Hour))
+	require.NoError(t, err)
+	done := make(chan error, 1)
+	go func() { _, err := f.service.Ingest(f.ctx, f.principal(), []locations.Event{event}); done <- err }()
+	waitForLockWait(t, f.pool)
+	require.NoError(t, tx.Commit(f.ctx))
+	require.ErrorIs(t, <-done, locations.ErrEventTooOld)
+	assert.Zero(t, countPoints(t, f.pool))
 }

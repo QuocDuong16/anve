@@ -74,6 +74,9 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
   [`privacy-and-safety.md`](privacy-and-safety.md).
 - **Cách đo:** audit event coverage test; kiểm tra retention job; review rằng
   mọi đường đọc dữ liệu đều qua authorization.
+- **M5-A đang triển khai:** kiểm thử checkpoint với đồng bộ trễ, xóa/cấp quyền
+  đồng thời và đổi tài khoản; không suy ra thời điểm hiện diện vật lý chỉ từ
+  dữ liệu do thiết bị khai báo.
 - **Proposed target:** 100% sự kiện privacy quan trọng có audit record; thu hồi
   quyền có hiệu lực phía server dưới thời gian ngắn (proposed: phút — đo được
   bằng test).

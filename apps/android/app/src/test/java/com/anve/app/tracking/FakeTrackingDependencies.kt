@@ -46,13 +46,14 @@ class FakeTrackingStore(
 
     override suspend fun setConsentOwner(ownerUserId: String?) {
         writes += "consentOwner=$ownerUserId"
-        _state.value = _state.value.copy(consentOwnerUserId = ownerUserId)
+        _state.value = _state.value.copy(consentOwnerUserId = ownerUserId,
+            lastSyncErrorCode = if (_state.value.consentOwnerUserId == ownerUserId) _state.value.lastSyncErrorCode else null)
     }
 
     override suspend fun setLastSuccessfulUpload(atMillis: Long) {
         _state.value = _state.value.copy(
             lastSuccessfulUploadAtMillis = atMillis,
-            lastSyncErrorCode = null,
+            lastSyncErrorCode = _state.value.lastSyncErrorCode.takeIf { it in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED") },
         )
     }
 
@@ -224,6 +225,7 @@ class FakeSyncGateway(
 ) : com.anve.app.data.location.LocationSyncGateway {
 
     val uploads = mutableListOf<List<com.anve.app.data.api.LocationEventDto>>()
+    var generationHandler: suspend (String) -> Long = { 0 }
     var uploadHandler: suspend (List<com.anve.app.data.api.LocationEventDto>) ->
         com.anve.app.data.api.LocationBatchResponseDto = { events ->
         com.anve.app.data.api.LocationBatchResponseDto(accepted = events.map { it.eventId })
@@ -231,7 +233,10 @@ class FakeSyncGateway(
 
     override suspend fun currentUserId(): String = owner
 
+    override suspend fun captureGeneration(owner: String): Long = generationHandler(owner)
+
     override suspend fun upload(
+        owner: String,
         events: List<com.anve.app.data.api.LocationEventDto>,
     ): com.anve.app.data.api.LocationBatchResponseDto {
         uploads += events

@@ -22,6 +22,14 @@ var (
 	// ErrEventTooOld: at least one capture time is beyond the retention
 	// window. Accepting it would store data the product promises to purge.
 	ErrEventTooOld = errors.New("location event too old")
+	// ErrHistoryDeleted marks an event in an owner-deleted time interval.
+	ErrHistoryDeleted = errors.New("location history deleted")
+	// ErrCaptureGeneration rejects points captured under an obsolete checkpoint.
+	ErrCaptureGeneration = errors.New("location capture generation expired")
+	// ErrHistoryRangeInvalid indicates an invalid deletion interval.
+	ErrHistoryRangeInvalid = errors.New("history deletion interval invalid")
+	// ErrRetentionInvalid indicates an invalid owner retention setting.
+	ErrRetentionInvalid = errors.New("history retention invalid")
 	// ErrConsentRequired: server-confirmed location sharing is off.
 	ErrConsentRequired = errors.New("location consent required")
 	// ErrDeviceNotAuthorized: the session, its device or the claimed client
@@ -63,6 +71,15 @@ type Store interface {
 	// PurgeOlderThan deletes points captured before cutoff and returns how
 	// many rows were removed.
 	PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
+	DeleteHistory(ctx context.Context, owner uuid.UUID, from *time.Time, to time.Time) error
+	RetentionDays(ctx context.Context, owner uuid.UUID) (int, error)
+	SetRetentionDays(ctx context.Context, owner uuid.UUID, days int) error
+	CaptureGeneration(ctx context.Context, owner uuid.UUID) (int64, error)
+}
+
+// CaptureGeneration returns the current account-scoped capture checkpoint.
+func (s *Service) CaptureGeneration(ctx context.Context, owner uuid.UUID) (int64, error) {
+	return s.store.CaptureGeneration(ctx, owner)
 }
 
 // Metrics are in-process counters. They are logged with each batch and are
@@ -110,6 +127,16 @@ func NewService(store Store) *Service {
 // NewServiceWithClock is the test seam for deterministic timestamp rules.
 func NewServiceWithClock(store Store, now func() time.Time, maxEventAge time.Duration) *Service {
 	return &Service{store: store, now: now, maxEventAge: maxEventAge}
+}
+
+// NewServiceWithRetention applies the server-wide maximum retention window.
+func NewServiceWithRetention(store Store, retention time.Duration) *Service {
+	return &Service{store: store, now: time.Now, maxEventAge: retention}
+}
+
+// EffectiveRetentionDays reports the stricter server or account limit.
+func (s *Service) EffectiveRetentionDays(days int) int {
+	return min(days, int(s.maxEventAge.Hours()/24))
 }
 
 // Metrics exposes the aggregate counters for operational logging.
@@ -241,7 +268,8 @@ func finite(v float64) bool {
 func IsPermanentIngestionError(err error) bool {
 	return errors.Is(err, ErrBatchInvalid) ||
 		errors.Is(err, ErrBatchTooLarge) ||
-		errors.Is(err, ErrEventTooOld)
+		errors.Is(err, ErrEventTooOld) ||
+		errors.Is(err, ErrHistoryDeleted)
 }
 
 // IsPolicyRefusal reports whether the server refused the batch because the
@@ -251,4 +279,36 @@ func IsPolicyRefusal(err error) bool {
 	return errors.Is(err, ErrConsentRequired) ||
 		errors.Is(err, ErrDeviceNotAuthorized) ||
 		errors.Is(err, ErrCircleRequired)
+}
+
+// DeleteHistory deletes an owner's history within a half-open time range.
+func (s *Service) DeleteHistory(ctx context.Context, owner uuid.UUID, from *time.Time, to time.Time) error {
+	now := s.now().UTC()
+	if owner == uuid.Nil || to.IsZero() || to.After(now) || (from != nil && (from.IsZero() || !from.Before(to))) {
+		return ErrHistoryRangeInvalid
+	}
+	if err := s.store.DeleteHistory(ctx, owner, from, to); err != nil {
+		return fmt.Errorf("%w: %w", ErrTemporarilyUnavailable, err)
+	}
+	return nil
+}
+
+// RetentionDays returns the account's history retention setting.
+func (s *Service) RetentionDays(ctx context.Context, owner uuid.UUID) (int, error) {
+	days, err := s.store.RetentionDays(ctx, owner)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %w", ErrTemporarilyUnavailable, err)
+	}
+	return days, nil
+}
+
+// SetRetentionDays applies a bounded retention policy.
+func (s *Service) SetRetentionDays(ctx context.Context, owner uuid.UUID, days int) error {
+	if days < 1 || days > 30 || owner == uuid.Nil {
+		return ErrRetentionInvalid
+	}
+	if err := s.store.SetRetentionDays(ctx, owner, days); err != nil {
+		return fmt.Errorf("%w: %w", ErrTemporarilyUnavailable, err)
+	}
+	return nil
 }

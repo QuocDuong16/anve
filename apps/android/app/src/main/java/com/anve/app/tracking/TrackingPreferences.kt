@@ -100,6 +100,7 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
 
     override suspend fun setConsentOwner(ownerUserId: String?) {
         dataStore.edit { prefs ->
+            if (prefs[KEY_CONSENT_OWNER] != ownerUserId) prefs.remove(KEY_LAST_SYNC_ERROR)
             if (ownerUserId == null) {
                 prefs.remove(KEY_CONSENT_OWNER)
             } else {
@@ -111,7 +112,7 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
     override suspend fun setLastSuccessfulUpload(atMillis: Long) {
         dataStore.edit {
             it[KEY_LAST_UPLOAD_AT] = atMillis
-            it.remove(KEY_LAST_SYNC_ERROR)
+            if (it[KEY_LAST_SYNC_ERROR] !in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED")) it.remove(KEY_LAST_SYNC_ERROR)
         }
     }
 

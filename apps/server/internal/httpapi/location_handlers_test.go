@@ -25,6 +25,8 @@ type fakeLocationStore struct {
 	calls  int
 }
 
+func (*fakeLocationStore) CaptureGeneration(context.Context, uuid.UUID) (int64, error) { return 1, nil }
+
 func (f *fakeLocationStore) Ingest(_ context.Context, in locations.IngestInput) (locations.BatchResult, error) {
 	f.calls++
 	result := f.result
@@ -40,6 +42,12 @@ func (f *fakeLocationStore) Ingest(_ context.Context, in locations.IngestInput) 
 func (f *fakeLocationStore) PurgeOlderThan(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }
+
+func (f *fakeLocationStore) DeleteHistory(context.Context, uuid.UUID, *time.Time, time.Time) error {
+	return nil
+}
+func (f *fakeLocationStore) RetentionDays(context.Context, uuid.UUID) (int, error)  { return 30, nil }
+func (f *fakeLocationStore) SetRetentionDays(context.Context, uuid.UUID, int) error { return nil }
 
 var handlerNow = time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 
@@ -70,9 +78,11 @@ func locationRequest(t *testing.T, body string, authenticated bool) *http.Reques
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "127.0.0.1:54321"
 	if authenticated {
+		owner := uuid.New()
+		req.Header.Set("X-Anve-Expected-Owner", owner.String())
 		req = req.WithContext(WithAuthContext(req.Context(), AuthContext{
 			Session: auth.Session{ID: uuid.New(), DeviceID: uuid.New()},
-			User:    auth.User{ID: uuid.New()},
+			User:    auth.User{ID: owner},
 		}))
 	}
 	return req
@@ -83,6 +93,30 @@ func decodeErrorCode(t *testing.T, body []byte) string {
 	var envelope errorBody
 	require.NoError(t, json.Unmarshal(body, &envelope))
 	return envelope.Code
+}
+
+func TestLocationBatchRejectsChangedAccount(t *testing.T) {
+	store := &fakeLocationStore{}
+	req := locationRequest(t, locationRequestBody(uuid.New(), handlerNow), true)
+	req.Header.Set("X-Anve-Expected-Owner", uuid.NewString())
+	w := httptest.NewRecorder()
+	locationHandlerFor(store).ServeHTTP(w, req)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+	require.Zero(t, store.calls)
+}
+
+func TestCaptureGenerationRequiresMatchingAccount(t *testing.T) {
+	store := &fakeLocationStore{}
+	req := locationRequest(t, "", true)
+	req.Method = http.MethodGet
+	w := httptest.NewRecorder()
+	captureGenerationHandler(locations.NewService(store)).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.JSONEq(t, `{"generation":1}`, w.Body.String())
+	req.Header.Set("X-Anve-Expected-Owner", uuid.NewString())
+	w = httptest.NewRecorder()
+	captureGenerationHandler(locations.NewService(store)).ServeHTTP(w, req)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestIngestLocationBatchStoresAndConfirmsEvents(t *testing.T) {
@@ -267,6 +301,82 @@ func TestIngestLocationBatchMapsPolicyAndStorageErrors(t *testing.T) {
 			locationHandlerFor(store)(rec, req)
 			assert.Equal(t, tc.wantStatus, rec.Code, rec.Body.String())
 			assert.Equal(t, tc.wantCode, decodeErrorCode(t, rec.Body.Bytes()))
+		})
+	}
+}
+
+type historyDeleteStore struct {
+	fakeLocationStore
+	owner uuid.UUID
+	calls int
+	days  int
+}
+
+func (f *historyDeleteStore) DeleteHistory(_ context.Context, owner uuid.UUID, _ *time.Time, _ time.Time) error {
+	f.owner = owner
+	f.calls++
+	return nil
+}
+
+func TestHistoryDeletionRequiresMatchingAccountAndValidRange(t *testing.T) {
+	owner := uuid.New()
+	store := &historyDeleteStore{}
+	handler := deleteLocationHistoryHandler(locations.NewServiceWithClock(store, func() time.Time { return handlerNow }, locations.MaxEventAge))
+	for _, tc := range []struct {
+		name, query, header string
+		status              int
+		calls               int
+	}{
+		{"wrong account", "to=2026-10-26T11:00:00Z", uuid.NewString(), http.StatusUnauthorized, 0},
+		{"invalid interval", "from=2026-10-26T11:00:00Z&to=2026-10-26T10:00:00Z", owner.String(), http.StatusBadRequest, 0},
+		{"future end", "to=2026-10-27T00:00:00Z", owner.String(), http.StatusBadRequest, 0},
+		{"valid", "to=2026-10-26T11:00:00Z", owner.String(), http.StatusNoContent, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store.calls = 0
+			req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/location-history?"+tc.query, nil)
+			req.Header.Set("X-Anve-Expected-Owner", tc.header)
+			req = req.WithContext(WithAuthContext(req.Context(), AuthContext{User: auth.User{ID: owner}}))
+			rec := httptest.NewRecorder()
+			handler(rec, req)
+			assert.Equal(t, tc.status, rec.Code)
+			assert.Equal(t, tc.calls, store.calls)
+			if tc.calls > 0 {
+				assert.Equal(t, owner, store.owner)
+			}
+		})
+	}
+}
+
+func (f *historyDeleteStore) RetentionDays(_ context.Context, _ uuid.UUID) (int, error) {
+	return f.days, nil
+}
+func (f *historyDeleteStore) SetRetentionDays(_ context.Context, _ uuid.UUID, days int) error {
+	f.days = days
+	return nil
+}
+
+func TestHistoryRetentionChecksOwnerAndBounds(t *testing.T) {
+	owner := uuid.New()
+	store := &historyDeleteStore{days: 30}
+	svc := locations.NewServiceWithClock(store, func() time.Time { return handlerNow }, locations.MaxEventAge)
+	handler := historyRetentionHandler(svc)
+	for _, tc := range []struct {
+		name, body, header string
+		status, want       int
+	}{
+		{"wrong account", `{"days":1}`, uuid.NewString(), http.StatusUnauthorized, 30},
+		{"out of bounds", `{"days":31}`, owner.String(), http.StatusBadRequest, 30},
+		{"valid", `{"days":7}`, owner.String(), http.StatusOK, 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPut, "/api/v1/me/location-history/retention", strings.NewReader(tc.body))
+			req.Header.Set("X-Anve-Expected-Owner", tc.header)
+			req = req.WithContext(WithAuthContext(req.Context(), AuthContext{User: auth.User{ID: owner}}))
+			rec := httptest.NewRecorder()
+			handler(rec, req)
+			assert.Equal(t, tc.status, rec.Code)
+			assert.Equal(t, tc.want, store.days)
 		})
 	}
 }

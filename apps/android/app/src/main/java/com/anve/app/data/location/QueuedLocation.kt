@@ -1,6 +1,7 @@
 package com.anve.app.data.location
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.anve.app.tracking.LocationFix
@@ -44,6 +45,7 @@ data class QueuedLocation(
     val isMock: Boolean,
     val schemaVersion: Int,
     val createdAtMillis: Long,
+    @ColumnInfo(defaultValue = "0") val captureGeneration: Long = 0,
     val attemptCount: Int = 0,
     val lastAttemptAtMillis: Long? = null,
 )
@@ -53,6 +55,7 @@ fun LocationFix.toQueuedLocation(
     ownerUserId: String,
     clientDeviceId: String,
     createdAtMillis: Long,
+    captureGeneration: Long = 0,
 ): QueuedLocation = QueuedLocation(
     eventId = eventId,
     ownerUserId = ownerUserId,
@@ -68,6 +71,7 @@ fun LocationFix.toQueuedLocation(
     isMock = isMock,
     schemaVersion = LOCATION_SCHEMA_VERSION,
     createdAtMillis = createdAtMillis,
+    captureGeneration = captureGeneration,
 )
 
 const val LOCATION_SCHEMA_VERSION = 1

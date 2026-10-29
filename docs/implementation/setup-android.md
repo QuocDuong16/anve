@@ -252,3 +252,17 @@ logs, screenshots and shared test artifacts.
 
 JVM tests and APK builds do not verify Google tile rendering, device battery,
 or platform lifecycle behavior. Record those separately when observed.
+
+
+## Automated emulator checks
+
+The Android workflow provisions a headless API 35 Google APIs x86_64 emulator
+with KVM, disables animations and runs `make android-instrumentation` with a
+bounded timeout. The History UI tests use fake test-only data and require no
+Maps key, backend or real location; a separate Activity test exercises
+background/resume. `make android-test-build` compiles the instrumentation APK
+without starting an emulator. To run the tests locally, start a compatible
+emulator or connect a device, verify `adb devices -l`, then run
+`make android-instrumentation`. A compiled APK alone is not a test result.
+CI emulator evidence does not establish real GPS accuracy, OEM behavior or
+battery use; those require separate field validation.

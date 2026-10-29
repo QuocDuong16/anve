@@ -94,8 +94,23 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, circles.ErrOwnerMustDissolve):
 		body.Code, body.Message = "CIRCLE_HAS_MEMBERS", "The owner must confirm dissolution with dissolve=true."
 		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, locations.ErrHistoryRangeInvalid):
+		body.Code, body.Message = "LOCATION_HISTORY_INVALID", "Invalid history deletion interval."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locations.ErrRetentionInvalid):
+		body.Code, body.Message = "LOCATION_RETENTION_INVALID", "Retention must be between 1 and 30 days."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locationaccess.ErrHistoryInvalid):
+		body.Code, body.Message = "LOCATION_HISTORY_INVALID", "Invalid history interval or cursor."
+		writeJSON(w, http.StatusBadRequest, body)
 	case errors.Is(err, locations.ErrBatchTooLarge):
 		body.Code, body.Message = "LOCATION_BATCH_TOO_LARGE", "The batch exceeds the allowed number of events."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locations.ErrCaptureGeneration):
+		body.Code, body.Message = "LOCATION_CAPTURE_GENERATION_EXPIRED", "The location was captured before the current privacy checkpoint."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, locations.ErrHistoryDeleted):
+		body.Code, body.Message = "LOCATION_HISTORY_DELETED", "The location falls within deleted history."
 		writeJSON(w, http.StatusBadRequest, body)
 	case errors.Is(err, locations.ErrEventTooOld):
 		body.Code, body.Message = "LOCATION_EVENT_TOO_OLD", "The location is older than the retention window."

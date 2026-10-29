@@ -24,6 +24,7 @@ const val SYNC_BATCH_SIZE: Int = 100
 class LocationQueueRepository(
     private val dao: LocationQueueDao,
     private val now: () -> Long = System::currentTimeMillis,
+    private val captureGeneration: (String, Long) -> Long = { _, _ -> 0 },
 ) {
 
     /**
@@ -39,7 +40,7 @@ class LocationQueueRepository(
         if (!fix.isStorable()) return false
         purgeExpired()
         val inserted = dao.insert(
-            fix.toQueuedLocation(ownerUserId, clientDeviceId, now()),
+            fix.toQueuedLocation(ownerUserId, clientDeviceId, now(), captureGeneration(ownerUserId, fix.elapsedRealtimeNanos)),
         ) != -1L
         val count = dao.count(ownerUserId)
         if (count > MAX_QUEUED_LOCATIONS) {

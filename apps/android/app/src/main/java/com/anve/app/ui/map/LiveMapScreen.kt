@@ -362,7 +362,7 @@ private fun AudienceSheet(
         ) {
             Text("Ai có thể xem vị trí của bạn?", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Bật chia sẻ chỉ ghi nhận sự đồng ý; hãy cấp quyền riêng cho từng người. Quyền mới chỉ áp dụng từ lúc cấp và có thể thu hồi bất cứ lúc nào.",
+                "Bật chia sẻ chỉ ghi nhận sự đồng ý; hãy cấp quyền riêng cho từng người. Quyền mới chỉ áp dụng từ lúc cấp và có thể thu hồi bất cứ lúc nào. Một số điểm offline chưa đồng bộ có thể bị bỏ để bảo vệ quyền riêng tư.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             if (state.sharingLoading && state.sharing == null) {

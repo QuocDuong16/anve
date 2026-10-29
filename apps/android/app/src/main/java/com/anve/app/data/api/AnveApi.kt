@@ -10,6 +10,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * The AnVề HTTP surface, mirroring packages/api-contracts/openapi.yaml.
@@ -153,8 +154,12 @@ interface AnveApi {
         @Body body: RedeemInviteRequestDto,
     ): Response<CircleMembershipDto>
 
+    @GET("api/v1/me/location-capture-generation")
+    suspend fun captureGeneration(@Header("X-Anve-Expected-Owner") owner: String): Response<CaptureGenerationDto>
+
     @POST("api/v1/locations/batch")
     suspend fun uploadLocationBatch(
+        @Header("X-Anve-Expected-Owner") owner: String,
         @Body body: LocationBatchRequestDto,
     ): Response<LocationBatchResponseDto>
 
@@ -180,4 +185,29 @@ interface AnveApi {
         @Header("If-None-Match") etag: String? = null,
         @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
     ): Response<LatestVisibleLocationsDto>
+    @GET("api/v1/locations/history")
+    suspend fun history(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+        @Query("ownerId") owner: String,
+        @Query("from") from: String,
+        @Query("to") to: String,
+        @Query("limit") limit: Int = 100,
+        @Query("cursor") cursor: String? = null,
+    ): Response<HistoryPageDto>
+
+    @GET("api/v1/me/location-history/retention")
+    suspend fun historyRetention(@Header("X-Anve-Expected-Owner") expectedOwner: String): Response<HistoryRetentionDto>
+
+    @PUT("api/v1/me/location-history/retention")
+    suspend fun setHistoryRetention(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+        @Body body: HistoryRetentionUpdateDto,
+    ): Response<HistoryRetentionDto>
+
+    @DELETE("api/v1/me/location-history")
+    suspend fun deleteHistory(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+        @Query("from") from: String?,
+        @Query("to") to: String,
+    ): Response<Unit>
 }
