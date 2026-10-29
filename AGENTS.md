@@ -56,6 +56,19 @@ Use the Makefile rather than raw commands; CI runs the same targets.
 | Android checks      | `make android-check`  |
 | Everything          | `make quality-check`  |
 
+## Android device and emulator tests
+
+The current development environment has no connected Android device or
+emulator (`adb devices -l` is empty). The `adb` executable may be installed,
+but that alone is not a runnable test target. Do not claim instrumentation,
+emulator, or device validation from local JVM tests or APK builds.
+
+When a task needs `adb`-driven or instrumentation tests, add the test command
+to the Android GitHub Actions workflow and provision/start an Android emulator
+there. Keep local JVM tests and builds on the Make targets above. Report CI
+emulator evidence separately from physical-device validation; emulator CI does
+not verify OEM behavior, real GPS, or battery use on a physical device.
+
 ## Conventions
 
 - Go: `gofmt` clean, `go vet` clean, `golangci-lint` clean. Errors are
