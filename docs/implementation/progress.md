@@ -485,3 +485,27 @@ offline. Unknown or pre-receipt fixes are not persisted, and a stable diagnostic
 records missing provenance. Consent OFF and account changes invalidate the
 checkpoint and delayed responses; queued events are never relabeled. Server
 rejection of stale generations and its privacy-loss diagnostic remain in force.
+
+## M6 SOS work in progress
+
+The contract, migration and server-side SOS event store are under development.
+The store supports explicit recipients, idempotent creation, acknowledgement,
+owner closure and current membership checks without location data. The API and
+Android UI have been connected for ongoing integration; their security checks
+and full verification are unfinished. No real Firebase delivery or M6
+verification is claimed. See ADR 0011.
+The event transaction also records one queued notification per recipient.
+Server-side token registration, SOS and Place Alert dispatchers, and an FCM
+HTTP v1 gateway are being tested with a fake provider. Dispatch is conditional
+on Firebase configuration. Android has an encrypted SOS outbox, token
+registration, an SOS screen and notification navigation; their end-to-end
+behavior, additional concurrency and emulator tests, operational configuration
+and the complete M6 security review remain unfinished. Actual Firebase push
+delivery has not been validated.
+SOS reads enforce seven-day active expiry and a 30-day visibility limit even
+before the bounded retention worker processes a backlog. Retired event IDs
+remain fenced until account deletion. Owner-requested recipient revocation
+suppresses pending delivery and cannot be undone on the same SOS.
+Local `make quality-check`, `make server-test-race`, PostGIS integration and
+OpenAPI validation passed on the implementation; Android emulator CI and
+real Firebase delivery remain separate pending evidence.

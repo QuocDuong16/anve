@@ -26,7 +26,7 @@
 | [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
-| [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Planned |
+| [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Đang triển khai — chưa Automated Verified; FCM thật chờ kiểm chứng |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | Planned |
 | [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
 
@@ -248,6 +248,8 @@ xóa history, geofence + hysteresis, thông báo đến/rời.
 
 **Scope:** SOS event lifecycle, chống chạm nhầm, FCM, ba mốc trạng thái
 (gửi → push chấp nhận → người nhận xác nhận), queue sự kiện khi offline.
+M6 không đính kèm tọa độ SOS và không tự bật GPS. Chi tiết về quyền nhận,
+outbox và giới hạn gửi lại nằm ở [ADR 0011](../adr/0011-sos-notification-boundary.md).
 
 **Exit criteria đề xuất:** ba mốc hiển thị đúng; chỉ người có quyền nhận thông
 báo; không có tọa độ trong FCM payload.

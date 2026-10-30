@@ -112,6 +112,10 @@ Quy tắc:
   Latest read API không trả lịch sử M5.
 - **Quyền nhận sự kiện** (Place Alerts, SOS, Safe Journey) được chọn cho từng
   loại sự kiện/địa điểm/hành trình, không kế thừa âm thầm từ quyền xem bản đồ.
+  Với M6 đang triển khai, mỗi SOS chọn rõ người nhận, không đính kèm vị trí
+  hoặc tự bật GPS; có thể thu hồi từng người nhận. Push chỉ chứa ID và loại
+  sự kiện, và quyền được kiểm tra lại khi gửi cũng như khi đọc. Provider chấp
+  nhận không có nghĩa là thiết bị đã nhận hoặc người dùng đã xem.
   Với M5-B, chủ thể tự bật theo dõi và chọn người nhận; người nhận còn phải có
   grant vị trí hiện tại và quyền xem Place tương ứng. Mất rồi cấp lại một trong
   các quyền không tự phục hồi cấu hình nhận sự kiện trước đó.
@@ -129,8 +133,11 @@ Quy tắc:
 - Dữ liệu chờ đồng bộ (offline queue) trên thiết bị bị loại sau **7 ngày**
   hoặc khi vượt 5.000 điểm; điểm chưa gửi không được gửi bù sau khi người
   dùng tắt chia sẻ.
-- Dữ liệu sự kiện (SOS, Place Alert) giữ theo chính sách riêng, ngắn hơn history
-  nếu không có giá trị sản phẩm.
+- SOS hết hiệu lực sau 7 ngày; đọc bị chặn sau 30 ngày và worker xóa nội dung
+  theo lô, có thể trễ nếu tồn đọng. Server
+  vẫn giữ fence ID tối thiểu đến khi xóa tài khoản để ngăn tạo lại sự kiện cũ.
+  Place Alert phụ thuộc retention của các điểm bằng chứng; chính sách này đang
+  được kiểm thử trong M6.
 - Retention được thực thi **tự động phía backend** (chạy lúc khởi động và mỗi
   giờ), không phụ thuộc hành vi người dùng. Đã có integration test cho purge
   và runtime smoke test xác nhận dòng quá hạn bị xóa khi API khởi động.

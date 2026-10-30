@@ -266,3 +266,31 @@ emulator or connect a device, verify `adb devices -l`, then run
 `make android-instrumentation`. A compiled APK alone is not a test result.
 CI emulator evidence does not establish real GPS accuracy, OEM behavior or
 battery use; those require separate field validation.
+
+## Firebase configuration under development
+
+M6 is still under integration and has not been verified end to end. The
+work-in-progress Android build initializes Firebase programmatically and
+accepts `ANVE_FIREBASE_APP_ID`, `ANVE_FIREBASE_PROJECT_ID`,
+`ANVE_FIREBASE_API_KEY`, and `ANVE_FIREBASE_SENDER_ID` as Gradle properties or
+environment variables. All four must describe the same Firebase Android app.
+The debug application ID is `com.anve.app.debug`; release uses `com.anve.app`.
+Register the appropriate package and signing identities in the Firebase
+project. Empty values allow credential-free builds but disable initialization.
+Do not put service-account private keys or production credentials in the repo.
+See [Firebase Android setup](https://firebase.google.com/docs/android/setup)
+and [FCM server authorization](https://firebase.google.com/docs/cloud-messaging/auth-server)
+for provider-side setup.
+Set `FCM_PROJECT_ID` on the server and provide Google Application Default
+Credentials with Firebase Messaging permission. Without it, notification work
+remains queued and the SOS screen reports that push is not configured. Actual
+delivery remains pending external integration validation.
+For a local server process, ADC may be supplied through
+`GOOGLE_APPLICATION_CREDENTIALS` pointing to a private service-account file
+stored outside the repository. A container must receive that file through a
+read-only secret mount and the corresponding in-container path; setting the
+project ID alone does not provide credentials. Prefer a workload identity in
+an environment that provides one. Do not place private keys in Android builds
+or in GitHub Actions logs.
+Firebase project configuration is not evidence that an FCM message was sent,
+delivered, displayed, or acknowledged.

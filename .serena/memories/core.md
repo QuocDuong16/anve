@@ -67,7 +67,7 @@ intent — check them before developing a feature, and update them when feature
 scope changes. Do not assume planned functionality is implemented: M0–M4 are implemented
 (automated-verified; M3 has runtime HTTP smoke evidence but still awaits
 on-device field validation for battery/background/OEM behavior; M4 still awaits
-map/runtime validation). M5 History and Places are automated-verified; physical-device validation is pending. M6 SOS/FCM and M7 Journey remain planned. M4 Live Map uses conditional polling rather than server push. AGENTS.md
+map/runtime validation). M5 History and Places are automated-verified; physical-device validation is pending. M6 SOS/FCM is under implementation and verification; M7 Journey remains planned. M6 uses explicit per-event recipients and no GPS attachment; event/recipient revocation, expiry and notification work are server-authoritative. FCM carries only an opaque event ID and kind, provider acceptance is not delivery, and the client rechecks access before display. Android stores its bounded owner-scoped SOS outbox sealed with Keystore; uncertain creates retain their original ID and cancellation uses a durable server fence. See ADR 0011 and progress.md for the remaining verification and operational limits. M4 Live Map uses conditional polling rather than server push. AGENTS.md
 has a "Product context & source of truth" section pointing to the same documents.
 
 ## Other memories

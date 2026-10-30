@@ -528,35 +528,37 @@ khởi động thu thập GPS sau reboot.
 
 ## 10. SOS & Emergency Events
 
-> Trạng thái: **Planned — M6**.
+> Trạng thái: **M6 đang triển khai và kiểm thử**, chưa Automated Verified; gửi FCM thật chờ cấu hình và kiểm chứng bên ngoài.
 
 **Mục đích.** Cho phép thành viên chủ động kích hoạt tín hiệu cấp cứu đến những
 người thân được chọn.
 
 **User story.** *Là người dùng gặp tình huống nguy hiểm, tôi muốn bấm SOS một
-cách có chủ ý để người thân biết ngay tôi cần giúp và ở đâu, dù tôi không thể
+cách có chủ ý để người thân được chọn biết tôi cần giúp, dù tôi không thể
 giải thích thêm.*
 
 **Target behavior.**
 
 - Kích hoạt có **cơ chế chống chạm nhầm** (ví dụ giữ nút + xác nhận — thiết kế cụ thể để quyết sau).
-- Ghi nhận sự kiện vào backend kèm vị trí và thời gian hiện có.
+- Ghi nhận sự kiện vào backend với thời điểm người dùng kích hoạt và thời điểm server nhận.
 - Gửi thông báo đến những người được phép nhận qua **Firebase Cloud Messaging**.
-- Hiển thị chi tiết SOS (người gửi, vị trí, thời điểm).
+- Hiển thị chi tiết SOS được cấp quyền (người gửi, trạng thái, thời điểm).
 - Người nhận xác nhận đã nhận biết sự kiện (acknowledge).
-- Event lifecycle có trạng thái rõ ràng; có thể tiếp tục cập nhật hành trình khi người dùng cho phép.
+- Event lifecycle có trạng thái rõ ràng, bao gồm hủy và kết thúc.
 - Xử lý khi không có mạng (sự kiện được queue và gửi khi có kết nối).
 - Phân biệt ba mốc: **đã gửi** (thiết bị) → **đã được dịch vụ push chấp nhận** →
   **đã được người nhận xác nhận**.
 
-**Dữ liệu.** SOS Event (người gửi, lifecycle state, vị trí đính kèm, event time,
-danh sách người nhận + acknowledge), liên kết với Journey nếu đang chạy.
+**Dữ liệu.** SOS Event gồm người gửi, trạng thái, event time, danh sách người
+nhận được chọn và acknowledge. M6 không đính kèm tọa độ hoặc bật GPS; Journey
+thuộc M7.
 
 **Business rules.** Chỉ người được cấp quyền nhận mới nhận được SOS; lifecycle
 không được vẽ lại quá khứ (mỗi mốc thời gian ghi tại chỗ nó xảy ra).
 
-**Privacy/security.** Vị trí đính kèm theo SOS tuân cùng quyền chia sẻ; chống
-lạm dụng (spam SOS) cần giới hạn tỷ lệ — thiết kế ở [`privacy-and-safety.md`](privacy-and-safety.md).
+**Privacy/security.** Người gửi chọn từng người nhận và có thể thu hồi từng
+quyền; cùng Circle không tự cấp quyền xem sự kiện. Push chỉ chứa loại và ID
+sự kiện, không chứa tọa độ. Xem [ADR 0011](../adr/0011-sos-notification-boundary.md).
 
 **Ranh giới cam kết.** SOS **không** thay thế dịch vụ cấp cứu chuyên nghiệp
 (113/115/114). UI phải nói rõ điều này. Không cam kết thông báo đến ngay lập tức
@@ -646,7 +648,7 @@ trừ khi người dùng chọn rõ ràng.
 
 ## 13. Notifications
 
-> Trạng thái: **Planned — M6** (kênh FCM và cơ chế gửi nhận).
+> Trạng thái: **M6 đang triển khai và kiểm thử**; FCM thật chưa được kiểm chứng.
 
 **Mục đích.** Firebase Cloud Messaging là kênh push notification chính, dùng
 cho các sự kiện hợp lệ:
@@ -657,11 +659,13 @@ cho các sự kiện hợp lệ:
 - Safe Journey events (bắt đầu, hoàn tất, cảnh báo).
 - Những sự kiện an toàn hợp lệ khác.
 
+Phạm vi M6 hiện tại chỉ gồm SOS và Place Alerts; thông báo invitation và
+Safe Journey vẫn là định hướng, chưa được triển khai trong M6.
+
 **Ràng buộc kiến trúc.** **Không sử dụng FCM để truyền GPS liên tục.** M3
 ingestion và M4 authorized latest-location snapshots đi qua HTTPS. M4 dùng
 conditional polling; server-push qua SSE/WebSocket chưa được triển khai. FCM
-data message có thể dùng trong tương lai như *tín hiệu* (“có dữ liệu mới, hãy
-fetch”), nhưng không mang tọa độ (xem
+data message M6 chỉ là *tín hiệu* (“có dữ liệu mới, hãy fetch”), không mang tọa độ (xem
 [`../architecture/overview.md`](../architecture/overview.md)).
 
 **Acceptance criteria.** Mỗi loại sự kiện có template thông báo rõ ràng; không
@@ -671,5 +675,5 @@ tại thời điểm gửi.
 ---
 
 *Xem trạng thái ở đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
-[`../implementation/progress.md`](../implementation/progress.md). M6–M7
-vẫn là Planned; bằng chứng tự động không thay thế field validation.*
+[`../implementation/progress.md`](../implementation/progress.md). M6 chưa
+hoàn tất, M7 là Planned; bằng chứng tự động không thay thế field validation.*

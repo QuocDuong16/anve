@@ -14,6 +14,13 @@ pin, hai ứng dụng build độc lập), backend là **modular monolith** — 
 Go, module nội bộ có ranh giới rõ, không microservices cho đến khi quy mô buộc
 phải đổi.
 
+M6 đang tích hợp `internal/sos`, `internal/notifications` và outbox Android
+mã hóa. SOS không mang tọa độ; FCM chỉ mang ID và loại sự kiện, sau đó thiết bị
+phải kiểm tra lại quyền qua API. Provider acceptance không chứng minh thiết bị
+đã nhận hoặc người dùng đã đọc. Xem [ADR 0011](../adr/0011-sos-notification-boundary.md);
+FCM thật và kiểm thử end-to-end vẫn chưa được xác nhận. Các sơ đồ dưới đây
+phản ánh mốc M5 và chưa thể hiện đầy đủ công việc M6 đang diễn ra.
+
 ```mermaid
 flowchart LR
     subgraph androidI["apps/android — Kotlin/Compose — implemented (M0–M4)"]
