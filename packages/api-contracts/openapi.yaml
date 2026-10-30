@@ -33,8 +33,193 @@ tags:
     description: Explicit per-member location audience grants
   - name: circles
     description: Family Circle, membership and invites
+  - name: sos
+    description: Explicit emergency requests, recipients and acknowledgement
 
 paths:
+  /api/v1/notifications/status:
+    get:
+      operationId: notificationProviderStatus
+      summary: Check whether a push provider is configured, not whether delivery works
+      tags: [devices]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Provider configuration status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [configured]
+                properties:
+                  configured: {type: boolean}
+        "401": {description: Session unavailable.}
+  /api/v1/devices/push-token:
+    description: Registration is bound to the authenticated session and device.
+    parameters:
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getPushRegistration
+      summary: Check whether the authenticated session registered this device
+      tags: [devices]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Current registration status; token material is never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [registered]
+                properties:
+                  registered: {type: boolean}
+        "401": {description: Session unavailable.}
+    put:
+      operationId: registerPushToken
+      summary: Bind a push token to the authenticated device and session
+      tags: [devices]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: {type: string, minLength: 1, maxLength: 4096}
+      responses:
+        "204": {description: Registered.}
+        "400": {description: Invalid token.}
+        "401": {description: Session unavailable.}
+        "409": {description: Token is bound to another device.}
+    delete:
+      operationId: unregisterPushToken
+      summary: Remove the current device's push token
+      tags: [devices]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Removed or already absent.}
+        "401": {description: Session unavailable.}
+  /api/v1/sos:
+    description: Explicit recipient SOS metadata without location coordinates.
+    post:
+      operationId: createSos
+      summary: Create an explicitly addressed SOS without location
+      tags: [sos]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [eventId, recordedAt, recipientIds]
+              properties:
+                eventId: {type: string, format: uuid}
+                recordedAt: {type: string, format: date-time}
+                recipientIds: {type: array, minItems: 1, maxItems: 30, uniqueItems: true, items: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Existing idempotent event.
+          content: {application/json: {schema: {$ref: '#/components/schemas/SosEvent'}}}
+        "201":
+          description: Event committed.
+          content: {application/json: {schema: {$ref: '#/components/schemas/SosEvent'}}}
+        "400": {description: Invalid event or recipients.}
+        "401": {description: Invalid session or account mismatch.}
+        "409": {description: Event ID was reused with different content.}
+    get:
+      operationId: listSos
+      summary: List SOS events available to the current account
+      tags: [sos]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Authorized bounded event list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/SosEvent'}}
+        "401": {description: Invalid session or account mismatch.}
+  /api/v1/sos/{eventId}:
+    parameters:
+      - {in: path, name: eventId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getSos
+      summary: Read a currently authorized SOS
+      tags: [sos]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Authorized event.
+          content: {application/json: {schema: {$ref: '#/components/schemas/SosEvent'}}}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Event unavailable.}
+  /api/v1/sos/{eventId}/recipients:
+    parameters:
+      - {in: path, name: eventId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getSosRecipients
+      summary: Read sender-visible provider acceptance and recipient acknowledgements
+      tags: [sos]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Current authorized recipient status, not proof of notification delivery.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recipients]
+                properties:
+                  recipients: {type: array, maxItems: 30, items: {$ref: '#/components/schemas/SosRecipientStatus'}}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Event unavailable or caller is not the owner.}
+  /api/v1/sos/{eventId}/recipients/{recipientId}:
+    delete:
+      operationId: revokeSosRecipient
+      summary: Revoke one recipient's event access and suppress pending push
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: eventId, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: recipientId, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "204": {description: Recipient authorization revoked.}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Event or recipient unavailable.}
+  /api/v1/sos/{eventId}/{action}:
+    parameters:
+      - {in: path, name: eventId, required: true, schema: {type: string, format: uuid}}
+      - {in: path, name: action, required: true, schema: {type: string, enum: [acknowledge, cancel, resolve]}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: transitionSos
+      summary: Acknowledge as recipient or cancel/resolve as owner; cancellation fences a delayed create
+      tags: [sos]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Current event state after acknowledgement or resolution.
+          content: {application/json: {schema: {$ref: '#/components/schemas/SosEvent'}}}
+        "204": {description: "Cancellation recorded, including before an uncertain create commits."}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Event unavailable.}
+        "409": {description: State transition is not allowed.}
   /healthz:
     get:
       operationId: getHealthz
@@ -662,6 +847,21 @@ paths:
         "401": {description: Invalid session or account mismatch.}
         "404": {description: Place unavailable.}
 
+  /api/v1/places/events/{eventId}:
+    get:
+      operationId: getPlaceEvent
+      summary: Read one place event with current authorization checks
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: eventId, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Authorized event.
+          content: {application/json: {schema: {$ref: '#/components/schemas/PlaceEvent'}}}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Event unavailable.}
   /api/v1/places/events:
     get:
       operationId: listPlaceEvents
@@ -1531,6 +1731,24 @@ components:
         Google token: Google identity is only used once at sign-in.
 
   schemas:
+    SosEvent:
+      type: object
+      required: [id, ownerId, recordedAt, receivedAt, state]
+      properties:
+        id: {type: string, format: uuid}
+        ownerId: {type: string, format: uuid}
+        recordedAt: {type: string, format: date-time}
+        receivedAt: {type: string, format: date-time}
+        state: {type: string, enum: [ACTIVE, CANCELLED, RESOLVED, EXPIRED]}
+        acknowledgedAt: {type: string, format: date-time}
+    SosRecipientStatus:
+      type: object
+      required: [userId, pushState]
+      properties:
+        userId: {type: string, format: uuid}
+        pushState: {type: string, enum: [QUEUED, ACCEPTED, SUPPRESSED, EXPIRED]}
+        acceptedAt: {type: string, format: date-time, description: First provider acceptance for any recipient device; not device receipt.}
+        acknowledgedAt: {type: string, format: date-time}
     Health:
       type: object
       required: [status, version, time]

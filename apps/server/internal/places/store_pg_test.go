@@ -169,6 +169,9 @@ func TestPGPlaceTransitionsBackfillAuthorizationAndDeletion(t *testing.T) {
 			require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM place_event_queue),(SELECT count(*) FROM place_events)`).Scan(&pending, &events))
 			require.Equal(t, 3, pending)
 			require.Zero(t, events, "rolled-back processing must not emit an event")
+			var notifications int
+			require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT count(*) FROM place_notification_outbox`).Scan(&notifications))
+			require.Zero(t, notifications, "rolled-back place events must not enqueue push work")
 			var attempts int
 			require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT max(attempts) FROM place_event_queue`).Scan(&attempts))
 			require.Equal(t, 1, attempts)
@@ -195,6 +198,10 @@ func TestPGPlaceTransitionsBackfillAuthorizationAndDeletion(t *testing.T) {
 	require.Equal(t, "EXIT", events[0].Type)
 	require.Equal(t, "ENTER", events[1].Type)
 	require.True(t, events[1].Delayed)
+	enterID := events[1].ID
+	individual, err := f.places.Event(f.ctx, f.viewer.ID, enterID)
+	require.NoError(t, err)
+	require.Equal(t, enterID, individual.ID)
 	// The feed must apply the retention watermark before physical cleanup.
 	_, err = f.pool.Exec(f.ctx, `UPDATE location_retention_watermark SET cutoff=$1 WHERE singleton`, base.Add(3*time.Minute))
 	require.NoError(t, err)
@@ -220,10 +227,14 @@ func TestPGPlaceTransitionsBackfillAuthorizationAndDeletion(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, processed, "duplicate batches must not enqueue work")
 	require.NoError(t, f.places.SetAccess(f.ctx, f.owner.ID, p.ID, f.viewer.ID, false))
+	_, err = f.places.Event(f.ctx, f.viewer.ID, enterID)
+	require.ErrorIs(t, err, ErrNotFound)
 	events, err = f.places.Events(f.ctx, f.viewer.ID, 20)
 	require.NoError(t, err)
 	require.Empty(t, events, "revoking place access removes event visibility")
 	require.NoError(t, f.places.SetAccess(f.ctx, f.owner.ID, p.ID, f.viewer.ID, true))
+	_, err = f.places.Event(f.ctx, f.viewer.ID, enterID)
+	require.ErrorIs(t, err, ErrNotFound, "regrant must not restore a prior event")
 	events, err = f.places.Events(f.ctx, f.viewer.ID, 20)
 	require.NoError(t, err)
 	require.Empty(t, events, "resharing a place must not revive old recipient authorization")

@@ -103,7 +103,7 @@ jobs:
       - name: Run migration and store integration tests
         env:
           TEST_DATABASE_URL: postgres://anve:anve@localhost:5432/anve?sslmode=disable
-        run: go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations ./internal/locationaccess ./internal/places ./internal/httpapi
+        run: go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations ./internal/locationaccess ./internal/places ./internal/sos ./internal/httpapi
 
   repository:
     name: Repository checks

@@ -455,6 +455,26 @@ func (s *Store) StopMonitor(ctx context.Context, actor, placeID uuid.UUID) error
 
 // Events rechecks consent, monitoring, membership, epoch and each recipient's grant.
 func (s *Store) Events(ctx context.Context, actor uuid.UUID, limit int) ([]Event, error) {
+	return s.events(ctx, actor, limit, nil)
+}
+
+// Event uses the same authorization predicate as the feed, independent of
+// feed position, so an older push signal can be checked without enumerating.
+func (s *Store) Event(ctx context.Context, actor, id uuid.UUID) (Event, error) {
+	if id == uuid.Nil {
+		return Event{}, ErrInvalid
+	}
+	events, err := s.events(ctx, actor, 1, &id)
+	if err != nil {
+		return Event{}, err
+	}
+	if len(events) == 0 {
+		return Event{}, ErrNotFound
+	}
+	return events[0], nil
+}
+
+func (s *Store) events(ctx context.Context, actor uuid.UUID, limit int, id *uuid.UUID) ([]Event, error) {
 	if limit < 1 || limit > 100 {
 		return nil, ErrInvalid
 	}
@@ -470,7 +490,7 @@ func (s *Store) Events(ctx context.Context, actor uuid.UUID, limit int) ([]Event
  JOIN memberships m ON m.id=mp.membership_id AND m.user_id=pm.owner_user_id AND m.circle_id=p.circle_id
  JOIN circle_membership_periods pp ON pp.id=p.owner_membership_period_id AND pp.ended_at IS NULL
  JOIN memberships po ON po.id=pp.membership_id AND po.user_id=p.owner_user_id AND po.circle_id=p.circle_id
- WHERE e.recorded_at >= pm.started_at AND lp.received_at >= pm.started_at AND lp.capture_generation >= pm.capture_generation
+ WHERE ($4::uuid IS NULL OR e.id=$4) AND e.recorded_at >= pm.started_at AND lp.received_at >= pm.started_at AND lp.capture_generation >= pm.capture_generation
  AND LEAST(e.recorded_at,bp.recorded_at,ep.recorded_at) >= GREATEST(now()-u.location_retention_days*interval '1 day', $3::timestamptz,
    COALESCE((SELECT cutoff FROM location_retention_watermark WHERE singleton),'-infinity'::timestamptz))
  AND (pm.owner_user_id=p.owner_user_id OR EXISTS (SELECT 1 FROM place_access pa WHERE pa.place_id=p.id AND pa.member_user_id=pm.owner_user_id AND pa.member_period_id=pm.owner_period_id AND pa.revoked_at IS NULL))
@@ -481,7 +501,7 @@ func (s *Store) Events(ctx context.Context, actor uuid.UUID, limit int) ([]Event
  WHERE r.monitor_id=pm.id AND r.recipient_user_id=$1 AND g.owner_user_id=pm.owner_user_id AND g.viewer_user_id=$1 AND g.sharing_epoch_id=pm.sharing_epoch_id
  AND ($1=p.owner_user_id OR rm.id IS NOT NULL)
  AND e.recorded_at >= g.visible_from AND lp.received_at >= g.visible_from AND lp.capture_generation >= g.capture_generation))
- ORDER BY e.recorded_at DESC,e.id DESC LIMIT $2`, actor, limit, time.Now().UTC().Add(-s.retention))
+ ORDER BY e.recorded_at DESC,e.id DESC LIMIT $2`, actor, limit, time.Now().UTC().Add(-s.retention), id)
 	if err != nil {
 		return nil, fmt.Errorf("query place events: %w", err)
 	}

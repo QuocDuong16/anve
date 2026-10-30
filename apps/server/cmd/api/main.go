@@ -20,7 +20,9 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
+	"github.com/QuocDuong16/anve/server/internal/notifications"
 	"github.com/QuocDuong16/anve/server/internal/places"
+	"github.com/QuocDuong16/anve/server/internal/sos"
 )
 
 // version is the build version, injected at link time with
@@ -43,6 +45,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	if version != "dev" {
 		cfg.Version = version
@@ -60,6 +64,8 @@ func run() error {
 	var locationAccessService *locationaccess.Service
 	var locationStore *locations.PGStore
 	var placeStore *places.Store
+	var sosStore *sos.Store
+	var pushGateway notifications.Gateway
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
 		// The pool outlives the HTTP server; the context only bounds the
@@ -101,6 +107,15 @@ func run() error {
 		circlesService = circles.NewService(circles.NewPGStore(pool))
 		locationStore = locations.NewPGStore(pool)
 		placeStore = places.NewStore(pool, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
+		sosStore = sos.NewStore(pool)
+		if cfg.FCMProjectID != "" {
+			pushGateway, err = notifications.NewFCM(ctx, cfg.FCMProjectID)
+			if err != nil {
+				return fmt.Errorf("initialize push gateway: %w", err)
+			}
+		} else {
+			logger.Warn("push delivery disabled: FCM_PROJECT_ID is empty")
+		}
 		locationsService = locations.NewServiceWithRetention(locationStore, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		locationAccessService = locationaccess.NewService(
 			locationaccess.NewPGStore(pool),
@@ -121,17 +136,14 @@ func run() error {
 			Locations:               locationsService,
 			LocationAccess:          locationAccessService,
 			Places:                  placeStore,
+			SOS:                     sosStore,
+			PushConfigured:          pushGateway != nil,
 			DB:                      pool,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
 		}),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}
-
-	// A signal cancels the root context, which unwinds run() and triggers the
-	// graceful shutdown below.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	// Retention is a product obligation, not best-effort cleanup: it runs
 	// on the same lifetime as the server and stops with the shutdown
@@ -148,6 +160,13 @@ func run() error {
 	}
 	if placeStore != nil {
 		go places.RunWorker(ctx, placeStore, logger.With("component", "place-evaluation"))
+	}
+	if sosStore != nil {
+		go sos.RunRetention(ctx, sosStore, logger.With("component", "sos-retention"))
+	}
+	if pushGateway != nil {
+		go sos.RunDispatchWorker(ctx, sosStore, pushGateway, logger.With("component", "sos-notifications"))
+		go places.RunNotificationWorker(ctx, placeStore, pushGateway, logger.With("component", "place-notifications"))
 	}
 
 	serverErr := make(chan error, 1)

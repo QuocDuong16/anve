@@ -302,3 +302,24 @@ func placeEventsHandler(store *places.Store) http.HandlerFunc {
 		}{events})
 	}
 }
+
+func placeEventHandler(store *places.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actor, ok := placeActor(w, r)
+		if !ok {
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "eventId"))
+		if err != nil || id == uuid.Nil {
+			writeError(w, r, places.ErrInvalid)
+			return
+		}
+		event, err := store.Event(r.Context(), actor, id)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		writeJSON(w, http.StatusOK, event)
+	}
+}

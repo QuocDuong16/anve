@@ -15,6 +15,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 	"github.com/QuocDuong16/anve/server/internal/places"
+	"github.com/QuocDuong16/anve/server/internal/sos"
 )
 
 // HealthResponse is the payload returned by the health endpoints.
@@ -45,6 +46,8 @@ type Deps struct {
 	Locations      *locations.Service
 	LocationAccess *locationaccess.Service
 	Places         *places.Store
+	SOS            *sos.Store
+	PushConfigured bool
 	DB             Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
 	// development login. An empty list denies every request: the fixture
@@ -127,6 +130,27 @@ func NewRouter(deps Deps) chi.Router {
 			private.Use(RequireAuth(svc))
 
 			private.Post("/auth/signout", signOutHandler(svc))
+			if deps.SOS != nil {
+				limiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
+				private.Get("/notifications/status", func(w http.ResponseWriter, r *http.Request) {
+					if _, ok := placeActor(w, r); !ok {
+						return
+					}
+					w.Header().Set("Cache-Control", "no-store, private")
+					writeJSON(w, http.StatusOK, struct {
+						Configured bool `json:"configured"`
+					}{deps.PushConfigured})
+				})
+				private.With(RateLimit(limiter)).Get("/sos", sosCollection(deps.SOS))
+				private.With(RateLimit(limiter)).Post("/sos", sosCollection(deps.SOS))
+				private.Get("/sos/{eventId}", sosDetail(deps.SOS))
+				private.Get("/sos/{eventId}/recipients", sosRecipients(deps.SOS))
+				private.With(RateLimit(limiter)).Delete("/sos/{eventId}/recipients/{recipientId}", revokeSosRecipient(deps.SOS))
+				private.With(RateLimit(limiter)).Post("/sos/{eventId}/{action}", sosDetail(deps.SOS))
+				private.With(RateLimit(limiter)).Put("/devices/push-token", pushTokenHandler(deps.SOS))
+				private.With(RateLimit(limiter)).Get("/devices/push-token", pushTokenHandler(deps.SOS))
+				private.With(RateLimit(limiter)).Delete("/devices/push-token", pushTokenHandler(deps.SOS))
+			}
 
 			private.Route("/me", func(me chi.Router) {
 				me.Get("/", getMeHandler())
@@ -167,6 +191,7 @@ func NewRouter(deps Deps) chi.Router {
 				private.With(RateLimit(placeLimiter)).Get("/places", listPlacesHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Post("/places", createPlaceHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Get("/places/events", placeEventsHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Get("/places/events/{eventId}", placeEventHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Patch("/places/{placeId}", updatePlaceHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Delete("/places/{placeId}", deletePlaceHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/access", listPlaceAccessHandler(deps.Places))

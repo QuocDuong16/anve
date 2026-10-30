@@ -67,6 +67,9 @@ type Config struct {
 	// this is refused rather than stored and immediately purged. The
 	// product default is deliberately short while M5 history is unimplemented.
 	LocationRetentionDays int `env:"LOCATION_RETENTION_DAYS" envDefault:"30"`
+	// FCMProjectID enables the optional Firebase HTTP v1 notification gateway.
+	// Credentials are supplied separately through Application Default Credentials.
+	FCMProjectID string `env:"FCM_PROJECT_ID"`
 }
 
 // Load reads the configuration from the process environment.

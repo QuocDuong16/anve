@@ -101,6 +101,8 @@ services:
       # Google sign-in stays disabled until an OAuth client ID is provided;
       # the API fails closed rather than accepting unverified tokens.
       AUTH_GOOGLE_CLIENT_ID: ${AUTH_GOOGLE_CLIENT_ID:-}
+      # ADC must be supplied separately by the deployment environment.
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
       # Development login. Disabled by default; when enabled for the local
       # stack, the opt-in and allowlist below are mandatory (the server
       # refuses to start otherwise). The allowlist names the pinned edge

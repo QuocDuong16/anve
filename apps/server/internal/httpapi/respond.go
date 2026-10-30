@@ -12,6 +12,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 	"github.com/QuocDuong16/anve/server/internal/places"
+	"github.com/QuocDuong16/anve/server/internal/sos"
 )
 
 // Error codes of the structured error envelope. Stable API surface: clients
@@ -98,6 +99,18 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, places.ErrInvalid):
 		body.Code, body.Message = "PLACE_INVALID", "Invalid place or monitoring configuration."
 		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, sos.ErrInvalid):
+		body.Code, body.Message = "SOS_INVALID", "Invalid SOS event or recipients."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, sos.ErrNotFound):
+		body.Code, body.Message = "SOS_UNAVAILABLE", "The event is unavailable."
+		writeJSON(w, http.StatusNotFound, body)
+	case errors.Is(err, sos.ErrConflict):
+		body.Code, body.Message = "SOS_CONFLICT", "The event conflicts with its existing state."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, sos.ErrCancelled):
+		body.Code, body.Message = "SOS_CANCELLED", "The SOS request was cancelled and cannot be recreated."
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, places.ErrNoCircle):
 		body.Code, body.Message = "CIRCLE_REQUIRED", "An active Circle is required."
 		writeJSON(w, http.StatusForbidden, body)
