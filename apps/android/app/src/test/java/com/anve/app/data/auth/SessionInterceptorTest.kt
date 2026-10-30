@@ -54,6 +54,26 @@ class SessionInterceptorTest {
     }
 
     @Test
+    fun `owner-bound request forwards expected owner to the server`() = runBlocking {
+        storage.save(sessionOf(accessToken, refreshToken).copy(userId = "u1"))
+        server.enqueue(MockResponse().setBody("""{"generation":1}"""))
+        assertTrue(api.captureGeneration("u1").isSuccessful)
+        assertEquals("u1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
+    }
+
+    @Test
+    fun `owner-bound refresh retry preserves expected owner`() = runBlocking {
+        storage.save(sessionOf(accessToken, refreshToken).copy(userId = "u1"))
+        server.enqueue(MockResponse().setResponseCode(401))
+        server.enqueue(MockResponse().setBody("""{"session":{"accessToken":"access-token-2","refreshToken":"refresh-token-2","accessExpiresAt":"later","refreshExpiresAt":"later"}}"""))
+        server.enqueue(MockResponse().setBody("""{"generation":1}"""))
+        assertTrue(api.captureGeneration("u1").isSuccessful)
+        assertEquals("u1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
+        server.takeRequest()
+        assertEquals("u1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
+    }
+
+    @Test
     fun `expired access token refreshes once and retries`() = runBlocking {
         // 1st call: 401 with the stale token. 2nd (refresh): new pair.
         // 3rd (retry): 200.

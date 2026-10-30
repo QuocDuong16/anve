@@ -36,7 +36,6 @@ class SessionInterceptor(
         }
         val token = current?.accessToken
         val request = original.newBuilder()
-            .removeHeader(EXPECTED_OWNER_HEADER)
             .apply { if (token != null) header("Authorization", "Bearer $token") }
             .build()
         val response = chain.proceed(request)
@@ -55,7 +54,6 @@ class SessionInterceptor(
         }
         response.close()
         val retried = original.newBuilder()
-            .removeHeader(EXPECTED_OWNER_HEADER)
             .header("Authorization", "Bearer $fresh")
             .build()
         return chain.proceed(retried)
