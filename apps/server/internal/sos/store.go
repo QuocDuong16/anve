@@ -337,7 +337,8 @@ func (s *Store) RegisterPushToken(ctx context.Context, principal Principal, toke
 	// same installation from registering after an account switch. Never take a
 	// token away from a still-live session merely because it was presented.
 	_, err = tx.Exec(ctx, `DELETE FROM device_push_tokens d USING sessions s
- WHERE d.session_id=s.id AND d.token=$1 AND (s.revoked_at IS NOT NULL OR s.refresh_expires_at<=clock_timestamp())`, token)
+ WHERE d.session_id=s.id AND d.token=$1 AND (s.revoked_at IS NOT NULL OR
+ (s.refresh_expires_at<=clock_timestamp() AND s.access_expires_at<=clock_timestamp()))`, token)
 	if err != nil {
 		return fmt.Errorf("remove expired push registration: %w", err)
 	}
