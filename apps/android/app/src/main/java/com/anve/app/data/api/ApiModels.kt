@@ -198,6 +198,30 @@ data class LocationEventDto(
 data class CaptureGenerationDto(@Json(name = "generation") val generation: Long)
 
 @JsonClass(generateAdapter = false)
+data class SosCreateDto(val eventId: String, val recordedAt: String, val recipientIds: List<String>)
+
+@JsonClass(generateAdapter = false)
+data class SosEventDto(val id: String, val ownerId: String, val recordedAt: String, val receivedAt: String, val state: String, val acknowledgedAt: String? = null)
+
+@JsonClass(generateAdapter = false)
+data class SosListDto(val events: List<SosEventDto>)
+
+@JsonClass(generateAdapter = false)
+data class SosRecipientDto(val userId: String, val pushState: String, val acceptedAt: String? = null, val acknowledgedAt: String? = null)
+
+@JsonClass(generateAdapter = false)
+data class SosRecipientsDto(val recipients: List<SosRecipientDto>)
+
+@JsonClass(generateAdapter = false)
+data class PushTokenDto(val token: String)
+
+@JsonClass(generateAdapter = false)
+data class PushRegistrationDto(val registered: Boolean)
+
+@JsonClass(generateAdapter = false)
+data class PushProviderStatusDto(val configured: Boolean)
+
+@JsonClass(generateAdapter = false)
 data class PlaceInputDto(
     @Json(name = "name") val name: String,
     @Json(name = "latitude") val latitude: Double,

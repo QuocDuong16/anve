@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
+import com.anve.app.data.sos.IncomingPush
 import com.anve.app.ui.home.HomeScreen
 import com.anve.app.ui.signin.SignInScreen
 import com.anve.app.ui.splash.SplashScreen
@@ -32,7 +33,7 @@ private object Routes {
  * the session read is fast and cached.
  */
 @Composable
-fun AnVeApp(container: AppContainer) {
+fun AnVeApp(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     val navController = rememberNavController()
     val session by container.authRepository.session.collectAsStateWithLifecycle(initialValue = null)
     var splashDone by remember { mutableStateOf(false) }
@@ -68,7 +69,7 @@ fun AnVeApp(container: AppContainer) {
                 SignInScreen(container = container, onSignedIn = { /* session flow reroutes */ })
             }
             composable(Routes.HOME) {
-                HomeScreen(container = container)
+                HomeScreen(container = container, incomingPush = incomingPush, onPushConsumed = onPushConsumed)
             }
         }
     }

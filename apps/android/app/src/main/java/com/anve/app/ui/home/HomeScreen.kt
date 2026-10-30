@@ -33,6 +33,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -62,11 +64,14 @@ import com.anve.app.R
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.DeviceSessionDto
 import com.anve.app.data.api.UserDto
+import com.anve.app.data.sos.IncomingPush
+import com.anve.app.data.sos.pushDestination
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.tracking.TrackingScreen
 import com.anve.app.ui.map.LiveMapScreen
 import com.anve.app.ui.history.HistoryScreen
 import com.anve.app.ui.places.PlacesScreen
+import com.anve.app.ui.sos.SosScreen
 
 /**
  * M1 home: the account, the privacy consent switch and the device list.
@@ -78,6 +83,7 @@ private enum class HomeTab(val labelRes: Int) {
     MAP(R.string.tab_map),
     HISTORY(R.string.tab_history),
     PLACES(R.string.tab_places),
+    SOS(R.string.tab_sos),
     LOCATION(R.string.tab_location),
     ACCOUNT(R.string.tab_account),
 }
@@ -87,8 +93,24 @@ private enum class HomeTab(val labelRes: Int) {
  * object) and the account tab. Later milestones add the map tab here.
  */
 @Composable
-fun HomeScreen(container: AppContainer) {
+fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
+    var selectedSos by remember { mutableStateOf<String?>(null) }
+    val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(session?.userId) {
+        selectedSos = null
+        tab = HomeTab.CIRCLE
+    }
+    LaunchedEffect(incomingPush, session?.userId) {
+        val hint = incomingPush ?: return@LaunchedEffect
+        val owner = session?.userId ?: return@LaunchedEffect
+        val destination = pushDestination(hint.kind, hint.eventId, hint.ownerId, owner)
+        if (destination != null) {
+            selectedSos = if (destination.kind == "SOS") destination.eventId else null
+            tab = if (destination.kind == "SOS") HomeTab.SOS else HomeTab.PLACES
+        }
+        onPushConsumed()
+    }
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -103,6 +125,7 @@ fun HomeScreen(container: AppContainer) {
                                     HomeTab.MAP -> Icons.Default.Map
                                     HomeTab.HISTORY -> Icons.Default.History
                                     HomeTab.PLACES -> Icons.Default.Place
+                                    HomeTab.SOS -> Icons.Default.Warning
                                     HomeTab.LOCATION -> Icons.Default.LocationOn
                                     HomeTab.ACCOUNT -> Icons.Default.Person
                                 },
@@ -121,6 +144,7 @@ fun HomeScreen(container: AppContainer) {
                 HomeTab.MAP -> LiveMapScreen(container = container)
                 HomeTab.HISTORY -> HistoryScreen(container = container)
                 HomeTab.PLACES -> PlacesScreen(container = container)
+                HomeTab.SOS -> SosScreen(container = container, eventId = selectedSos)
                 HomeTab.LOCATION -> TrackingScreen(container = container)
                 HomeTab.ACCOUNT -> AccountContent(container = container)
             }

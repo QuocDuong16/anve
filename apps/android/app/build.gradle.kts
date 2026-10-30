@@ -15,6 +15,9 @@ val mapsApiKey = providers.gradleProperty("ANVE_MAPS_API_KEY")
     .orElse(providers.environmentVariable("ANVE_MAPS_API_KEY"))
     .getOrElse("")
 val escapedMapsApiKey = mapsApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+fun firebaseSetting(name: String): String = providers.gradleProperty(name)
+    .orElse(providers.environmentVariable(name)).getOrElse("")
+    .replace("\\", "\\\\").replace("\"", "\\\"")
 
 ksp {
     // Exported schemas make every Room version reviewable in the diff and
@@ -50,6 +53,9 @@ android {
             "\"${project.findProperty("ANVE_API_URL") ?: "http://10.0.2.2:8080"}\"",
         )
         buildConfigField("String", "MAPS_API_KEY", "\"$escapedMapsApiKey\"")
+        listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->
+            buildConfigField("String", name, "\"${firebaseSetting(name)}\"")
+        }
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
@@ -125,6 +131,8 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.play.services.location)
     implementation(libs.maps.compose)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // Network: Retrofit + Moshi reflection (ADR 0003 — no compiler plugins,
     // compatible with AGP 9's built-in Kotlin).

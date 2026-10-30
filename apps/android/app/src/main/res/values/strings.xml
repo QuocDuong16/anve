@@ -33,8 +33,9 @@
     <string name="home_device_this">Thiết bị này</string>
     <string name="home_device_revoke">Đăng xuất</string>
     <string name="home_sign_out">Đăng xuất</string>
+    <string name="tab_sos">SOS</string>
     <string name="home_sign_out_title">Đăng xuất thiết bị này?</string>
-    <string name="home_sign_out_body">Phiên trên thiết bị này sẽ bị xóa ngay. Nếu không có mạng, máy chủ có thể giữ phiên đến khi hết hạn — ứng dụng sẽ thử thu hồi lại ở lần mở sau.</string>
+    <string name="home_sign_out_body">Phiên trên thiết bị này sẽ bị xóa ngay. SOS đang chờ sẽ được giữ trên thiết bị và chỉ gửi tiếp khi bạn đăng nhập lại đúng tài khoản. Nếu không có mạng, máy chủ có thể giữ phiên đến khi hết hạn — ứng dụng sẽ thử thu hồi lại ở lần mở sau.</string>
     <string name="home_delete_account">Xóa tài khoản và dữ liệu</string>
     <string name="home_rename_title">Tên hiển thị</string>
     <string name="home_rename_label">Tên mà người thân sẽ thấy</string>

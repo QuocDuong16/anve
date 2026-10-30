@@ -23,6 +23,14 @@ import com.anve.app.data.location.LocationSyncGateway
 import com.anve.app.data.location.LocationSyncScheduler
 import com.anve.app.data.location.VisibleLocationRepository
 import com.anve.app.data.location.WorkManagerLocationSyncScheduler
+import com.anve.app.data.sos.ApiSosGateway
+import com.anve.app.data.sos.EncryptedSosOutbox
+import com.anve.app.data.sos.SosSyncEngine
+import com.anve.app.data.sos.WorkManagerSosSyncScheduler
+import com.anve.app.data.sos.PushRegistration
+import com.anve.app.data.sos.PushRegistrationScheduler
+import com.anve.app.data.sos.PushEventRepository
+import com.anve.app.data.sos.SosRepository
 import com.anve.app.tracking.AndroidConnectivityMonitor
 import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.AndroidTrackingServiceController
@@ -32,9 +40,11 @@ import com.anve.app.tracking.DataStoreTrackingStore
 import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.TrackingManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Interceptor
@@ -102,6 +112,14 @@ class AppContainer(application: Application) {
     val visibleLocationRepository: VisibleLocationRepository = VisibleLocationRepository(api = authApi)
 
     val placesRepository = com.anve.app.data.location.PlacesRepository(authApi, visibleLocationRepository)
+
+    val sosOutbox by lazy { EncryptedSosOutbox(application) }
+    val sosSyncScheduler by lazy { WorkManagerSosSyncScheduler(application) }
+    val sosSyncEngine by lazy { SosSyncEngine(sosOutbox, sessionStore, ApiSosGateway(authApi)) }
+    val pushRegistration by lazy { PushRegistration(authApi) }
+    val pushRegistrationScheduler by lazy { PushRegistrationScheduler(application) }
+    val pushEventRepository by lazy { PushEventRepository(authApi) }
+    val sosRepository by lazy { SosRepository(authApi) }
 
     // ── M3 location engine ───────────────────────────────────────────────
 
@@ -213,6 +231,23 @@ class AnVeApplication : Application() {
             } catch (_: Exception) {
                 // Storage being unavailable must not crash startup; the next
                 // enqueue schedules the worker again.
+            }
+        }
+        applicationScope.launch {
+            container.sessionStore.session.collectLatest { session ->
+                val owner = session?.userId ?: return@collectLatest
+                try {
+                    container.sosSyncEngine.recoverInterrupted(owner)
+                    if (container.sosOutbox.read(owner).any {
+                        it.state == com.anve.app.data.sos.SosLocalState.QUEUED ||
+                            it.state == com.anve.app.data.sos.SosLocalState.UNKNOWN ||
+                            it.state == com.anve.app.data.sos.SosLocalState.CANCEL_REQUESTED
+                    }) container.sosSyncScheduler.schedule(owner)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    android.util.Log.e("AnVe", "SOS outbox unavailable")
+                }
             }
         }
     }

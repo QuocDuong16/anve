@@ -190,8 +190,47 @@ interface AnveApi {
     @GET("api/v1/places/events")
     suspend fun placeEvents(@Header("X-Anve-Expected-Owner") owner: String, @Query("limit") limit: Int = 50): Response<PlaceEventListDto>
 
+    @GET("api/v1/places/events/{eventId}")
+    suspend fun placeEvent(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String): Response<PlaceEventDto>
+
     @GET("api/v1/me/location-capture-generation")
     suspend fun captureGeneration(@Header("X-Anve-Expected-Owner") owner: String): Response<CaptureGenerationDto>
+
+    @POST("api/v1/sos")
+    suspend fun createSos(@Header("X-Anve-Expected-Owner") owner: String, @Body body: SosCreateDto): Response<SosEventDto>
+
+    @POST("api/v1/sos/{eventId}/cancel")
+    suspend fun cancelSos(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String): Response<Unit>
+
+    @GET("api/v1/sos")
+    suspend fun listSos(@Header("X-Anve-Expected-Owner") owner: String): Response<SosListDto>
+
+    @GET("api/v1/sos/{eventId}")
+    suspend fun getSos(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String): Response<SosEventDto>
+
+    @POST("api/v1/sos/{eventId}/acknowledge")
+    suspend fun acknowledgeSos(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String): Response<SosEventDto>
+
+    @POST("api/v1/sos/{eventId}/resolve")
+    suspend fun resolveSos(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String): Response<SosEventDto>
+
+    @GET("api/v1/sos/{eventId}/recipients")
+    suspend fun sosRecipients(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String): Response<SosRecipientsDto>
+
+    @DELETE("api/v1/sos/{eventId}/recipients/{recipientId}")
+    suspend fun revokeSosRecipient(@Header("X-Anve-Expected-Owner") owner: String, @Path("eventId") eventId: String, @Path("recipientId") recipientId: String): Response<Unit>
+
+    @PUT("api/v1/devices/push-token")
+    suspend fun registerPushToken(@Header("X-Anve-Expected-Owner") owner: String, @Body body: PushTokenDto): Response<Unit>
+
+    @DELETE("api/v1/devices/push-token")
+    suspend fun unregisterPushToken(@Header("X-Anve-Expected-Owner") owner: String): Response<Unit>
+
+    @GET("api/v1/devices/push-token")
+    suspend fun pushRegistrationStatus(@Header("X-Anve-Expected-Owner") owner: String): Response<PushRegistrationDto>
+
+    @GET("api/v1/notifications/status")
+    suspend fun pushProviderStatus(@Header("X-Anve-Expected-Owner") owner: String): Response<PushProviderStatusDto>
 
     @POST("api/v1/locations/batch")
     suspend fun uploadLocationBatch(
