@@ -486,26 +486,29 @@ records missing provenance. Consent OFF and account changes invalidate the
 checkpoint and delayed responses; queued events are never relabeled. Server
 rejection of stale generations and its privacy-loss diagnostic remain in force.
 
-## M6 SOS work in progress
+## M6 SOS and notifications
 
-The contract, migration and server-side SOS event store are under development.
-The store supports explicit recipients, idempotent creation, acknowledgement,
-owner closure and current membership checks without location data. The API and
-Android UI have been connected for ongoing integration; their security checks
-and full verification are unfinished. No real Firebase delivery or M6
-verification is claimed. See ADR 0011.
-The event transaction also records one queued notification per recipient.
-Server-side token registration, SOS and Place Alert dispatchers, and an FCM
-HTTP v1 gateway are being tested with a fake provider. Dispatch is conditional
-on Firebase configuration. Android has an encrypted SOS outbox, token
-registration, an SOS screen and notification navigation; their end-to-end
-behavior, additional concurrency and emulator tests, operational configuration
-and the complete M6 security review remain unfinished. Actual Firebase push
-delivery has not been validated.
-SOS reads enforce seven-day active expiry and a 30-day visibility limit even
-before the bounded retention worker processes a backlog. Retired event IDs
-remain fenced until account deletion. Owner-requested recipient revocation
-suppresses pending delivery and cannot be undone on the same SOS.
-Local `make quality-check`, `make server-test-race`, PostGIS integration and
-OpenAPI validation passed on the implementation; Android emulator CI and
-real Firebase delivery remain separate pending evidence.
+**Implemented — Automated Verified; Firebase and physical-device validation
+pending.** SOS uses explicit per-event recipients and contains no coordinates;
+creation, acknowledgement, cancellation and individual revocation are
+server-authoritative. The transactional notification outbox rechecks access
+before each bounded provider attempt. FCM acceptance is distinct from device
+receipt and recipient acknowledgement. Android stores pending requests in an
+owner-scoped encrypted outbox, retains ambiguous outcomes, and binds retries
+to the original ID. See ADR 0011.
+
+SOS reads enforce seven-day active expiry and a 30-day visibility limit before
+the bounded retention worker processes a backlog. Retired event IDs remain
+fenced until account deletion. Place Alert dispatch uses the original grants;
+the recipient rechecks authorization before showing a notification.
+
+Local `make quality-check`, `make server-test-race`,
+`make server-test-integration`, `make android-release`, instrumentation APK
+compilation and OpenAPI validation passed. On commit
+`ee7d2ded17e445568107b2a6d2594207fee1e1db`,
+[Go CI](https://github.com/QuocDuong16/anve/actions/runs/41024490750) passed,
+including PostgreSQL/PostGIS, and
+[Android CI](https://github.com/QuocDuong16/anve/actions/runs/41024490589)
+passed, including headless emulator instrumentation. These tests use a fake FCM
+provider. They do not establish real Firebase delivery, process-kill behavior
+on a physical device, OEM behavior, or notification latency.

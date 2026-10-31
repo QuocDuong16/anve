@@ -528,7 +528,7 @@ khởi động thu thập GPS sau reboot.
 
 ## 10. SOS & Emergency Events
 
-> Trạng thái: **M6 đang triển khai và kiểm thử**, chưa Automated Verified; gửi FCM thật chờ cấu hình và kiểm chứng bên ngoài.
+> Trạng thái: **Implemented — Automated Verified**; gửi FCM thật và thiết bị vật lý chờ kiểm chứng.
 
 **Mục đích.** Cho phép thành viên chủ động kích hoạt tín hiệu cấp cứu đến những
 người thân được chọn.
@@ -648,7 +648,7 @@ trừ khi người dùng chọn rõ ràng.
 
 ## 13. Notifications
 
-> Trạng thái: **M6 đang triển khai và kiểm thử**; FCM thật chưa được kiểm chứng.
+> Trạng thái: **Implemented — Automated Verified** cho SOS và Place Alert với fake provider; FCM thật chưa được kiểm chứng.
 
 **Mục đích.** Firebase Cloud Messaging là kênh push notification chính, dùng
 cho các sự kiện hợp lệ:
@@ -675,5 +675,5 @@ tại thời điểm gửi.
 ---
 
 *Xem trạng thái ở đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
-[`../implementation/progress.md`](../implementation/progress.md). M6 chưa
-hoàn tất, M7 là Planned; bằng chứng tự động không thay thế field validation.*
+[`../implementation/progress.md`](../implementation/progress.md). M7 là
+Planned; bằng chứng tự động không thay thế field validation.*

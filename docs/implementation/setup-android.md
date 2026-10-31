@@ -267,10 +267,10 @@ emulator or connect a device, verify `adb devices -l`, then run
 CI emulator evidence does not establish real GPS accuracy, OEM behavior or
 battery use; those require separate field validation.
 
-## Firebase configuration under development
+## Firebase configuration for M6
 
-M6 is still under integration and has not been verified end to end. The
-work-in-progress Android build initializes Firebase programmatically and
+M6 has automated coverage using a fake provider; real Firebase delivery has
+not been verified. The Android build initializes Firebase programmatically and
 accepts `ANVE_FIREBASE_APP_ID`, `ANVE_FIREBASE_PROJECT_ID`,
 `ANVE_FIREBASE_API_KEY`, and `ANVE_FIREBASE_SENDER_ID` as Gradle properties or
 environment variables. All four must describe the same Firebase Android app.

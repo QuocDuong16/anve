@@ -1,6 +1,6 @@
 # ADR 0011 — SOS authorization and notification boundary
 
-- **Status:** Accepted; implementation verification and external Firebase validation in progress.
+- **Status:** Accepted; automated verification passed, external Firebase and physical-device validation pending.
 
 An SOS is explicitly created by its owner and explicitly addressed to selected
 members. This first contract never attaches coordinates and never starts GPS;
@@ -47,17 +47,17 @@ FCM delivery and offline recovery are not implemented by this decision alone.
 They require durable owner-scoped storage, authorization at dispatch and
 explicit verification before M6 is marked complete.
 
-The work-in-progress HTTP v1 gateway uses Application Default Credentials and
+The HTTP v1 gateway uses Application Default Credentials and
 an explicit Firebase project ID. It sends data-only signals containing an
 opaque event ID and event kind, never coordinates. A provider 2xx denotes
 acceptance only; a timeout after acceptance can cause an at-least-once retry.
-Client-side durable notification deduplication is required before enabling it.
+Client-side durable notification deduplication bounds repeated display.
 When `FCM_PROJECT_ID` and Application Default Credentials are configured, the
 server starts the bounded dispatchers. Without configuration, events can be
 recorded but notification work remains queued; the Android screen reports that
 push is not configured. Configuration or provider acceptance does not prove
-device receipt. Runtime integration and end-to-end verification remain in
-progress.
+device receipt. Real Firebase delivery and physical-device behavior remain
+unverified.
 Dispatch holds the event and authorization locks through a bounded provider
 attempt (up to ten seconds) so a completed revocation precedes subsequent
 attempts. This can delay concurrent revocation or deletion while a send is in

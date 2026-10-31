@@ -20,7 +20,7 @@ chung chung:
 | **Notification delivery** | Thời gian từ lúc sự kiện (SOS/Place Alert) được ghi đến lúc thông báo đến thiết bị nhận | Backend + FCM + thiết bị nhận | FCM, trạng thái thiết bị nhận |
 | **Battery overhead** | Mức tiêu thụ pin thêm do AnVề, so sánh với thiết bị không chạy AnVề | Thiết bị nguồn (field) | Location Engine, tần suất wake, network |
 
-M6 đang triển khai outbox bền vững và gửi lại có backoff; FCM chấp nhận chỉ là
+M6 có outbox bền vững và gửi lại có backoff; FCM chấp nhận chỉ là
 mốc provider, không chứng minh thiết bị đã nhận hay người dùng đã đọc. Chưa có
 đo đạc latency hoặc bằng chứng gửi FCM thật, và có thể thiếu thông báo khi mạng,
 thiết bị hoặc cấu hình provider không sẵn sàng.

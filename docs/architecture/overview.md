@@ -14,12 +14,12 @@ pin, hai ứng dụng build độc lập), backend là **modular monolith** — 
 Go, module nội bộ có ranh giới rõ, không microservices cho đến khi quy mô buộc
 phải đổi.
 
-M6 đang tích hợp `internal/sos`, `internal/notifications` và outbox Android
+M6 triển khai `internal/sos`, `internal/notifications` và outbox Android
 mã hóa. SOS không mang tọa độ; FCM chỉ mang ID và loại sự kiện, sau đó thiết bị
 phải kiểm tra lại quyền qua API. Provider acceptance không chứng minh thiết bị
 đã nhận hoặc người dùng đã đọc. Xem [ADR 0011](../adr/0011-sos-notification-boundary.md);
-FCM thật và kiểm thử end-to-end vẫn chưa được xác nhận. Các sơ đồ dưới đây
-phản ánh mốc M5 và chưa thể hiện đầy đủ công việc M6 đang diễn ra.
+FCM thật và kiểm thử trên thiết bị vật lý vẫn chưa được xác nhận. Sơ đồ đầu
+tiên dưới đây mô tả nền tảng M0–M4; sơ đồ tiếp theo bổ sung M5–M6.
 
 ```mermaid
 flowchart LR
@@ -40,24 +40,24 @@ flowchart LR
     API --> DB
 ```
 
-Kiến trúc hiện tại và các phần còn lại (M5 đã kiểm thử tự động; M6–M7 planned):
+Kiến trúc hiện tại và các phần còn lại (M5–M6 đã kiểm thử tự động; M7 planned):
 
 ```mermaid
 flowchart TB
-    subgraph androidT["Android app — M5 automated verified"]
-        UIF["UI features<br/>Circle · Tracking · Live Map · History · Places; SOS/Diagnostics planned"]
+    subgraph androidT["Android app — M5–M6 automated verified"]
+        UIF["UI features<br/>Circle · Tracking · Live Map · History · Places · SOS; Diagnostics planned"]
         LE["Location Engine<br/>state machine, battery-aware (M3)"]
         SYNC["SyncManager — Room + WorkManager (M3)"]
         ROOM[("Room DB — location queue (M3)")]
-        FCMC["FCM client (planned M6)"]
+        FCMC["FCM client (M6)"]
     end
-    subgraph serverT["Go backend — M5 automated verified"]
+    subgraph serverT["Go backend — M5–M6 automated verified"]
         AUTH["auth · devices (M1)"]
         CIRC["circles · membership (M2)"]
         ING["location ingestion + retention (M3)"]
         READ["locationaccess<br/>temporal audience + latest + history"]
-        EVT["places worker + in-app events; SOS/journeys planned"]
-        NOTIF["notification dispatcher (planned)"]
+        EVT["places worker + in-app events · SOS; journeys planned"]
+        NOTIF["notification dispatcher (M6)"]
         AUDIT["audit · privacy enforcement (M1–M3)"]
     end
     PG[("PostgreSQL + PostGIS")]

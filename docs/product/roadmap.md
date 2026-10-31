@@ -26,7 +26,7 @@
 | [M3 — Location Engine](#m3--native-location-engine-smart-tracking-offline-queue) | Location Engine, Smart Tracking, offline queue, ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
-| [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Đang triển khai — chưa Automated Verified; FCM thật chờ kiểm chứng |
+| [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | Planned |
 | [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
 
