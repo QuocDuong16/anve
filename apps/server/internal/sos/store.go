@@ -336,11 +336,36 @@ func (s *Store) RegisterPushToken(ctx context.Context, principal Principal, toke
 	// A token retained by an expired session must not permanently prevent the
 	// same installation from registering after an account switch. Never take a
 	// token away from a still-live session merely because it was presented.
-	_, err = tx.Exec(ctx, `DELETE FROM device_push_tokens d USING sessions s
- WHERE d.session_id=s.id AND d.token=$1 AND (s.revoked_at IS NOT NULL OR
- (s.refresh_expires_at<=clock_timestamp() AND s.access_expires_at<=clock_timestamp()))`, token)
-	if err != nil {
-		return fmt.Errorf("remove expired push registration: %w", err)
+	var priorSession uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT session_id FROM device_push_tokens WHERE token=$1`, token).Scan(&priorSession)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("find push registration: %w", err)
+	}
+	if err == nil {
+		var lockedSession uuid.UUID
+		err = tx.QueryRow(ctx, `SELECT id FROM sessions WHERE id=$1 FOR UPDATE`, priorSession).Scan(&lockedSession)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("lock previous push session: %w", err)
+		}
+		if err == nil {
+			var expired bool
+			if err = tx.QueryRow(ctx, `SELECT revoked_at IS NOT NULL OR (refresh_expires_at<=clock_timestamp() AND access_expires_at<=clock_timestamp()) FROM sessions WHERE id=$1`, priorSession).Scan(&expired); err != nil {
+				return fmt.Errorf("check previous push session: %w", err)
+			}
+			var currentSession uuid.UUID
+			err = tx.QueryRow(ctx, `SELECT session_id FROM device_push_tokens WHERE token=$1 FOR UPDATE`, token).Scan(&currentSession)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return fmt.Errorf("lock previous push registration: %w", err)
+			}
+			if err == nil && currentSession != priorSession {
+				return ErrConflict
+			}
+			if err == nil && expired {
+				if _, err = tx.Exec(ctx, `DELETE FROM device_push_tokens WHERE token=$1 AND session_id=$2`, token, priorSession); err != nil {
+					return fmt.Errorf("remove expired push registration: %w", err)
+				}
+			}
+		}
 	}
 	result, err := tx.Exec(ctx, `INSERT INTO device_push_tokens(device_id,owner_user_id,session_id,token) VALUES($1,$2,$3,$4)
  ON CONFLICT(device_id) DO UPDATE SET session_id=excluded.session_id,token=excluded.token,updated_at=clock_timestamp()

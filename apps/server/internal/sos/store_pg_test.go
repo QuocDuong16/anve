@@ -431,6 +431,34 @@ func TestPGPushTokenCannotMoveFromLiveSessionButCanAfterExpiry(t *testing.T) {
 	require.ErrorIs(t, store.RegisterPushToken(ctx, sp, "rotating-token"), sos.ErrConflict, "a still-valid access session retains its token")
 	_, err = pool.Exec(ctx, `UPDATE sessions SET access_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1`, fs.ID)
 	require.NoError(t, err)
+	refresh, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = refresh.Rollback(ctx) }()
+	_, err = refresh.Exec(ctx, `UPDATE sessions SET refresh_expires_at=clock_timestamp()+interval '1 hour', access_expires_at=clock_timestamp()+interval '15 minutes' WHERE id=$1`, fs.ID)
+	require.NoError(t, err)
+	result := make(chan error, 1)
+	go func() { result <- store.RegisterPushToken(ctx, sp, "rotating-token") }()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	waiting := false
+	for !waiting {
+		select {
+		case early := <-result:
+			t.Fatalf("registration completed before in-flight refresh resolved: %v", early)
+		case <-deadline.C:
+			t.Fatal("registration did not wait for the session lock")
+		case <-ticker.C:
+			var count int
+			require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'`).Scan(&count))
+			waiting = count > 0
+		}
+	}
+	require.NoError(t, refresh.Commit(ctx))
+	require.ErrorIs(t, <-result, sos.ErrConflict, "a committed refresh retains the registration")
+	_, err = pool.Exec(ctx, `UPDATE sessions SET refresh_expires_at=clock_timestamp()-interval '1 second', access_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1`, fs.ID)
+	require.NoError(t, err)
 	require.NoError(t, store.RegisterPushToken(ctx, sp, "rotating-token"))
 	registered, err := store.PushTokenRegistered(ctx, sp)
 	require.NoError(t, err)
