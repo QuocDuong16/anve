@@ -28,7 +28,7 @@ x-security: &security
 
 services:
   postgres:
-    image: postgis/postgis:17-3.6@sha256:d7053f57b0d62c427ffbf412208b6625317124d62eebf40672e990fea81e9d53
+    image: postgis/postgis:17-3.6@sha256:1ac10b2551ba84ae05db8e7da477afcd0a3fede99bcb7705da2ee157390cb095
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-anve}
