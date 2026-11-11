@@ -2,6 +2,7 @@ package com.anve.app.ui.journey
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -25,6 +26,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
@@ -59,11 +65,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -145,9 +154,9 @@ fun JourneyContent(
     }) { padding ->
         LazyColumn(Modifier.padding(padding).testTag("journey-content"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (state.loading || state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            state.error?.let { error -> item { JourneyNotice(error) { JourneyTextAction("Thử đọc lại", onReload, !state.busy) } } }
+            state.error?.let { error -> item { JourneyNotice(error) { ink -> JourneyTextAction("Thử đọc lại", onReload, !state.busy, ink) } } }
             if (!tracking.online && !state.loading && (selected == null || creating)) item {
-                JourneyNotice("Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.")
+                JourneyNotice("Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.", Icons.Default.WifiOff)
             }
             items(state.pending, key = { it.operationId }) { operation ->
                 JourneyNotice("Máy chủ chưa xác nhận ${when (operation.action) {
@@ -156,9 +165,9 @@ fun JourneyContent(
                     JourneyAction.END -> "kết thúc hành trình"
                     JourneyAction.CANCEL -> "hủy hành trình"
                     JourneyAction.REVOKE_RECIPIENT -> "thu hồi người xem"
-                }}. Ưu tiên trên thiết bị không được tự khôi phục.") {
-                    JourneyTextAction("Kiểm tra lại", onReload, !state.busy)
-                    if (operation.action != JourneyAction.CANCEL) JourneyTextAction("Hủy hành trình đang chờ", { onAction(operation.journeyId, JourneyAction.CANCEL, null) }, !state.busy)
+                }}. ${if (operation.action == JourneyAction.CREATE) "Kiểm tra lại hoặc hủy yêu cầu trước khi bắt đầu hành trình khác." else "Ưu tiên đã dừng trên thiết bị. Bạn có thể kiểm tra lại khi có mạng."}") { ink ->
+                    JourneyTextAction("Kiểm tra lại", onReload, !state.busy, ink)
+                    if (operation.action != JourneyAction.CANCEL) JourneyTextAction("Hủy hành trình đang chờ", { onAction(operation.journeyId, JourneyAction.CANCEL, null) }, !state.busy, ink)
                 }
             }
             when {
@@ -169,7 +178,7 @@ fun JourneyContent(
                     JourneyDetails(selected, state.owner == selected.ownerId, tracking, now, state.busy,
                         pending = state.pending.any { it.journeyId == selected.id },
                         onConfirm = { action, recipient, name -> confirmation = Confirmation(selected, action, recipient, name) },
-                        onResume = { onResume(selected.id) })
+                        onResume = { onResume(selected.id) }, onLocation = onLocation)
                 }
                 !state.loading -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -210,7 +219,7 @@ fun JourneyContent(
             onDismissRequest = { confirmation = null },
             title = { Text(title) },
             text = { Text(when (choice.action) {
-                JourneyAction.ARRIVE -> "Bạn xác nhận đã đến ${choice.journey.destination.label}. Những người bạn đã chọn theo dõi sẽ nhận sự kiện đến nơi khi máy chủ ghi nhận."
+                JourneyAction.ARRIVE -> "Bạn xác nhận đã đến điểm đến “${choice.journey.destination.label}”. Những người bạn đã chọn theo dõi sẽ nhận sự kiện đến nơi khi máy chủ ghi nhận."
                 JourneyAction.REVOKE_RECIPIENT -> "Quyền theo dõi hành trình này sẽ bị thu hồi khi máy chủ ghi nhận. Quyền xem vị trí thông thường được quản lý riêng."
                 else -> "Hành trình sẽ kết thúc mà không xác nhận đã đến nơi. Ưu tiên hành trình dừng trên thiết bị ngay; chia sẻ vị trí thông thường được quản lý riêng."
             }) },
@@ -222,7 +231,7 @@ fun JourneyContent(
 
 @Composable
 private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: TrackingStatus, now: Long, busy: Boolean, pending: Boolean,
-    onConfirm: (JourneyAction, String?, String?) -> Unit, onResume: () -> Unit) {
+    onConfirm: (JourneyAction, String?, String?) -> Unit, onResume: () -> Unit, onLocation: () -> Unit) {
     var people by remember(journey.id) { mutableStateOf(false) }
     val active = journey.state == "ACTIVE"
     val expiredLocally = runCatching { Instant.parse(journey.expiresAt).toEpochMilli() <= now }.getOrDefault(true)
@@ -232,32 +241,34 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 Icon(Icons.Default.Home, null, Modifier.padding(14.dp).size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             Column {
-                Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-                Text("Tự kết thúc ${journeyTime(journey.expiresAt)}", style = MaterialTheme.typography.bodyMedium)
+                Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                Text(if (active) "Tự kết thúc ${journeyTime(journey.expiresAt)}" else journey.endedAt?.let { "Kết thúc ${journeyTime(it)}" } ?: "Đã kết thúc hành trình", style = MaterialTheme.typography.bodyMedium)
             }
         }
         Column {
             JourneyStep("Đã bắt đầu · ${journeyTime(journey.startedAt)}", completed = true)
-            JourneyStep(if (active) "Hành trình đang diễn ra" else journeyStateLabel(journey.state), current = active, completed = !active) {
+            JourneyStep(if (active) "Hành trình đang diễn ra" else "Đã kết thúc hành trình", current = active, completed = !active) {
                 val progress = journey.progress
                 if (progress == null) Text(if (active) "Chưa có vị trí sau khi bắt đầu." else "Ưu tiên hành trình đã kết thúc.", style = MaterialTheme.typography.bodyMedium)
                 else {
                     val age = ((now - Instant.parse(progress.recordedAt).toEpochMilli()).coerceAtLeast(0) / 60_000)
-                    Text("Vị trí cập nhật ${if (age == 0L) "dưới 1 phút trước" else "$age phút trước"}")
-                    Text("Khoảng ${String.format(Locale.forLanguageTag("vi-VN"), "%.1f", progress.distanceMeters / 1000)} km đường chim bay")
+                    JourneyObservation(Icons.Default.LocationOn, "Vị trí cập nhật ${if (age == 0L) "dưới 1 phút trước" else "$age phút trước"}")
+                    JourneyObservation(Icons.Default.Route, "Khoảng ${String.format(Locale.forLanguageTag("vi-VN"), "%.1f", progress.distanceMeters / 1000)} km đường chim bay")
                     Text("Độ chính xác khoảng ${progress.accuracyMeters.toInt()} m${if (progress.isMock) " · Vị trí mô phỏng" else ""}", style = MaterialTheme.typography.bodySmall)
                 }
                 if (active) Text("Khoảng cách không phải thời gian đến.", style = MaterialTheme.typography.bodySmall)
             }
-            JourneyStep(if (journey.state == "ARRIVED") "Chủ hành trình đã xác nhận đến nơi" else "Xác nhận đến nơi", last = true, completed = journey.state == "ARRIVED") {
-                Text(if (active) "Bạn chủ động xác nhận khi đã đến." else "Không tự suy diễn đến nơi từ GPS.", style = MaterialTheme.typography.bodyMedium)
+            JourneyStep(when { journey.state == "ARRIVED" -> "Chủ hành trình đã xác nhận đến nơi"; active && owner -> "Xác nhận đến nơi"; active -> "Chờ chủ hành trình xác nhận"; else -> "Chưa xác nhận đến nơi" }, last = true, completed = journey.state == "ARRIVED") {
+                Text(when { !active -> "Không tự suy diễn đến nơi từ GPS."; owner -> "Bạn chủ động xác nhận khi đã đến."; else -> "Chủ hành trình sẽ tự xác nhận khi đã đến." }, style = MaterialTheme.typography.bodyMedium)
             }
         }
         if (expiredLocally && active) JourneyNotice("Đã đến thời hạn trên thiết bị. Đọc lại để xác nhận trạng thái máy chủ; ưu tiên không được kéo dài.")
         if (owner) {
             Column {
-                Text("Người theo dõi: ${journey.recipients.joinToString { it.displayName }.ifBlank { "Không còn người xem có quyền" }}")
-                JourneyTextAction(if (people) "Thu gọn người xem" else "Quản lý người xem", { people = !people })
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Người theo dõi: ${journey.recipients.joinToString { it.displayName }.ifBlank { "Không còn người xem có quyền" }}", Modifier.padding(vertical = 12.dp))
+                    JourneyTextAction(if (people) "Thu gọn người xem" else "Quản lý người xem", { people = !people })
+                }
                 if (people) journey.recipients.forEach { recipient ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(recipient.displayName, Modifier.weight(1f))
@@ -266,19 +277,22 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 }
             }
             if (active) {
-                if (!tracking.online) JourneyNotice("Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.")
+                if (!tracking.online) JourneyNotice("Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.", Icons.Default.WifiOff)
+                if (!tracking.activelyTracking) JourneyNotice("Thu thập vị trí đang dừng trên thiết bị. Mở màn Vị trí để tiếp tục; hành trình không tự bật GPS.") { ink ->
+                    JourneyTextAction("Mở màn Vị trí", onLocation, color = ink)
+                }
                 if (tracking.motion != MotionState.JOURNEY && !pending && !expiredLocally) {
                     JourneyTextAction("Tiếp tục ưu tiên hành trình", onResume, !busy && tracking.activelyTracking && tracking.online)
                 }
                 JourneyPrimaryAction("Đã đến nơi", { onConfirm(JourneyAction.ARRIVE, null, null) }, !busy && !pending && !expiredLocally)
                 OutlinedButton(onClick = { onConfirm(JourneyAction.END, null, null) }, enabled = !busy && !pending,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = actionInk()), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Icon(Icons.Default.Close, null); Spacer(Modifier.width(8.dp)); Text("Kết thúc hành trình")
+                    border = BorderStroke(1.dp, actionInk()), colors = ButtonDefaults.outlinedButtonColors(contentColor = actionInk()), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Icon(Icons.Default.Close, null); Spacer(Modifier.width(8.dp)); Text("Kết thúc hành trình", style = MaterialTheme.typography.titleMedium)
                 }
                 Text("Kết thúc hành trình dừng ưu tiên. Bạn quản lý chia sẻ vị trí thông thường ở màn Vị trí.", style = MaterialTheme.typography.bodySmall)
             }
         } else {
-            if (!tracking.online) JourneyNotice("Mất mạng: dữ liệu có thể cũ. Đọc lại khi có mạng.")
+            if (!tracking.online) JourneyNotice("Mất mạng: dữ liệu có thể cũ. Đọc lại khi có mạng.", Icons.Default.WifiOff)
             Text("Chỉ chủ hành trình xác nhận đến nơi hoặc kết thúc. Dữ liệu cũ không chứng minh người đó gặp sự cố.", style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -288,8 +302,8 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
 private fun JourneyStep(title: String, current: Boolean = false, completed: Boolean = false, last: Boolean = false, content: @Composable () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.width(32.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(if (completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, Modifier.size(32.dp), tint = actionInk())
-            if (!last) VerticalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+            Icon(when { completed -> Icons.Default.CheckCircle; current -> Icons.Default.RadioButtonChecked; else -> Icons.Default.RadioButtonUnchecked }, null, Modifier.size(32.dp), tint = actionInk())
+            if (!last) VerticalDivider(Modifier.weight(1f), color = if (completed) actionInk() else MaterialTheme.colorScheme.outlineVariant)
         }
         Surface(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 24.dp),
             color = if (current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
@@ -344,7 +358,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
         } }
         JourneyNotice("Bạn sẽ tự xác nhận khi đến nơi. Hành trình không tự phát hiện sự cố.")
         if (!state.consentEnabled || !tracking.activelyTracking) {
-            JourneyNotice("Cần bật chia sẻ và thu thập vị trí trước khi bắt đầu. Hành trình không tự bật GPS.") { JourneyTextAction("Mở màn Vị trí", onLocation) }
+            JourneyNotice("Cần bật chia sẻ và thu thập vị trí trước khi bắt đầu. Hành trình không tự bật GPS.") { ink -> JourneyTextAction("Mở màn Vị trí", onLocation, color = ink) }
         }
         JourneyPrimaryAction("Bắt đầu hành trình", {
             val place = state.places.firstOrNull { it.id == destination } ?: return@JourneyPrimaryAction
@@ -355,11 +369,15 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
 }
 
 @Composable
-private fun JourneyNotice(text: String, actions: @Composable () -> Unit = {}) {
+private fun JourneyNotice(text: String, icon: ImageVector = Icons.Default.Info, actions: @Composable (Color) -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
     val dark = colors.surface.luminance() < 0.5f
-    Surface(color = if (dark) colors.secondary else colors.secondaryContainer, contentColor = if (dark) colors.onSecondary else colors.onSecondaryContainer, shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(text); actions() }
+    val ink = if (dark) colors.onSecondary else colors.onSecondaryContainer
+    Surface(color = if (dark) colors.secondary else colors.secondaryContainer, contentColor = ink, shape = MaterialTheme.shapes.medium) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, null, Modifier.size(24.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(text); actions(ink) }
+        }
     }
 }
 
@@ -367,8 +385,8 @@ private fun JourneyNotice(text: String, actions: @Composable () -> Unit = {}) {
 private fun actionInk() = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary
 
 @Composable
-private fun JourneyTextAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
-    TextButton(onClick, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = actionInk()), modifier = Modifier.heightIn(min = 48.dp)) { Text(text) }
+private fun JourneyTextAction(text: String, onClick: () -> Unit, enabled: Boolean = true, color: Color? = null) {
+    TextButton(onClick, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = color ?: actionInk()), modifier = Modifier.heightIn(min = 48.dp)) { Text(text) }
 }
 
 @Composable
@@ -377,13 +395,21 @@ private fun JourneyPrimaryAction(text: String, onClick: () -> Unit, enabled: Boo
     val dark = colors.surface.luminance() < 0.5f
     Button(onClick, enabled = enabled, colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
         contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-        Text(text)
+        Text(text, style = MaterialTheme.typography.titleMedium)
     }
 }
 
 private fun journeyTime(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("HH:mm · dd/MM").withZone(ZoneId.systemDefault()).format(Instant.parse(value))
 }.getOrDefault("chưa rõ thời điểm")
+
+@Composable
+private fun JourneyObservation(icon: ImageVector, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(icon, null, Modifier.size(20.dp), tint = actionInk())
+        Text(text, Modifier.weight(1f))
+    }
+}
 
 private fun journeyStateLabel(state: String): String = when (state) {
     "ACTIVE" -> "Đang trong hành trình"

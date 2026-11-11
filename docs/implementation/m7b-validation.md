@@ -21,6 +21,37 @@ device, real Firebase, GPS, battery or OEM results are claimed.
 
 ## Evidence so far
 
+Latest local gate: `make quality-check android-test-build` passed after the
+owner-reconciliation guard and the first native review fix batch; 306 JVM
+tests, zero failures/errors/skips. No local adb target is present.
+
+Hosted snapshots:
+
+- `0c148a9`: [Go CI](https://github.com/QuocDuong16/anve/actions/runs/43048203691)
+  passed; [Android emulator job](https://github.com/QuocDuong16/anve/actions/runs/43048203829/job/130617784072)
+  passed 29 tests, no failures/errors/skips. Artifact `13867858190` contains
+  14 Journey PNGs including two composed-display dialogs; actual dialog font
+  metadata is 1.3. Checkout `37b9ed132e30cb0aad00f03e5c3c39f58b8e7c96` is the
+  PR merge commit: its tree and the head tree are both
+  `7a77d756708405f0eb5fe90db2577abc2fcbb28b`.
+- `32268b4`: [Go](https://github.com/QuocDuong16/anve/actions/runs/43049541098)
+  and [Android](https://github.com/QuocDuong16/anve/actions/runs/43049541092)
+  workflows passed, including debug/minified release and emulator. This adds
+  recipient-removal, offline-start and local-expiry interaction cases. Native
+  extraction/review of that artifact is separate from its green job status.
+- The first parent visual inspection opened all 14 Journey images and the
+  comp comparison. Comp-diff was **0.7156**, below 0.72; its fixed crops falsely
+  called visible displaced text/actions missing. The paired crops and whole
+  native frame distinguish that limitation from actual missing icons. The
+  first fix batch adds Material observation/offline icons and an active step
+  marker, improves notice-action contrast, and separates owner/viewer/terminal
+  copy. Its new CI capture and final review are still required.
+- Some full-height inline image previews omit visible header glyphs. The raw
+  top 842×180 pixel bytes of active, viewer, arrived and unknown captures have
+  the same SHA-256 prefix `a46bc62797ea44ac`; enlarged crops show the same Back
+  arrow (224 light pixels). Inspect original crops before calling these valid
+  source images blank or changing the actual UI to fix a preview artifact.
+
 - `mise install` and `make toolchain-check`: pass.
 - `make server-check`: pass before the final accuracy/test additions; final
   quality gate still required.
