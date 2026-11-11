@@ -134,8 +134,8 @@ available to your users (any normal Android device).
 ## What is NOT configured by this repo
 
 - No real OAuth client ID is committed (by design — see ADR 0002).
-- `google-services.json` does not exist; it becomes relevant with FCM (M6),
-  not with sign-in.
+- `google-services.json` is not required: M6 initializes Firebase
+  programmatically from explicit client inputs (see the Firebase section).
 
 ## Google Maps for M4
 

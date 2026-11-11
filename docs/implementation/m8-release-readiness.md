@@ -26,8 +26,9 @@ Implemented on the feature branch: explicit production configuration/version
 and upload-key guard, an isolated minified signed-validation package, format/
 signature/certificate verification and a main-only manual distribution workflow.
 See [ADR 0014](../adr/0014-android-release-gates.md) and the
-[release procedure](../operations/android-release.md). Exact-change CI evidence
-will be recorded before delivery. Real signing credentials, environment policy,
+[release procedure](../operations/android-release.md). Local `make quality-check` passed, including 306 Android JVM tests and the
+release configuration/resource gate. Exact-change signed AAB and emulator CI
+are tracked in [PR #18](https://github.com/QuocDuong16/anve/pull/18). Real signing credentials, environment policy,
 provider/deployment checks and Play submission are external prerequisites.
 
 ## Readiness inventory and next slices
@@ -38,8 +39,8 @@ provider/deployment checks and Play submission are external prerequisites.
 | Authentication/privacy | Per-request sessions and store authorization, consent/deletion tests from M1–M7 | Focused release threat-boundary review; not established by the new metrics tests |
 | Dependency checks | Go vet/lint/govulncheck/race tests, pinned toolchain and Dependabot | Final release SHA checks; Android dependency/release review and external provider validation |
 | Android transport | Main network security config refuses cleartext; debug has a local development overlay | M8-B syntax gate implemented; testing against the actual HTTPS deployment pending |
-| Android release configuration | Explicit required HTTPS/client inputs, legacy-main-config refusal and isolated fixture variant | Exact-change signed fixture CI; real deployment/client restrictions and integration checks |
-| Release identity/signing | Explicit versions and external-key/certificate guard; verified AAB plus digest/certificate record; main-only manual workflow | Exact-change fixture CI, owner-managed keys/environment policy, Play version progression; real distribution has not run |
+| Android release configuration | Explicit required HTTPS/client inputs, legacy-main-config refusal and isolated fixture variant | Fixture evidence tracked in PR #18; real deployment/client restrictions and integration checks remain |
+| Release identity/signing | Explicit versions and external-key/certificate guard; verified AAB plus digest/certificate record; main-only manual workflow | Fixture evidence tracked in PR #18; owner-managed keys/environment policy and Play version progression remain; real distribution has not run |
 | Permissions/backup | Manifest declares foreground/background location, location FGS and notifications; private app services; no app-defined receiver that auto-starts tracking. Backup/transfer rules exclude database/sharedpref/DataStore | Device behavior, disclosure/permission review and declarations checked against final package and current Play requirements |
 | Data inventory | Product privacy docs distinguish coordinates, selected audience, retention/deletion, audit and opaque push payloads | Data Safety draft reconciled with final dependencies/config, privacy policy/account deletion URLs and owner review |
 | Push/maps/auth providers | Source integration and fake/synthetic CI evidence exist | Restricted provider configuration, real sign-in/maps/push and recipient-revocation evidence |
@@ -90,3 +91,12 @@ make server-test-race SERVER_TEST_RACE_COUNT=50 SERVER_TEST_RACE_PACKAGES=./inte
 The Make target keeps its original defaults (all packages, count 1) while
 allowing focused repeated reproduction. Updated exact-head hosted results are
 recorded in the PR; the failed initial run is not described as a pass.
+
+## Next slice: M8-C review preparation
+
+Reconcile the final manifest and runtime dependencies with a focused
+auth/privacy threat-boundary review, Data Safety data inventory and location/
+notification/foreground-service disclosure and declaration drafts. Separate
+source/test evidence from real provider, deployment and physical-device
+evidence; keep owner policy URLs, retention decisions and store submission
+review explicit. No new UI or automatic journey behavior is implied.

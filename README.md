@@ -183,13 +183,19 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 | Full local stack | `make docker-up` / `make docker-down` |
 | Chạy API local | `make server-run` (port 8080) |
 | Build APK debug | `make android-build` |
-| Compile release (minified) | `make android-release` |
+| Kiểm chứng AAB minified bằng khóa tạm, package riêng | `make android-release-check` |
+| Build AAB production có ký và kiểm chứng | `make android-distribution` |
+| Build APK production có ký | `make android-release` |
 | Kiểm tra Go | `make server-check` |
 | Kiểm tra Android | `make android-check` |
 | Migrations | `make migrate-up` / `make migrate-down` |
 | Mọi thứ | `make quality-check` |
 
 `make help` liệt kê đầy đủ mọi target.
+
+Các target production yêu cầu cấu hình, phiên bản và khóa upload riêng; xem
+[quy trình Android release](docs/operations/android-release.md). CI dùng package
+thử và khóa tạm, không chứng minh cấu hình provider thật hay phát hành store.
 
 ### Cấu trúc repo
 
