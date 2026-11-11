@@ -1,6 +1,9 @@
 package com.anve.app.ui.diagnostics
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -31,6 +34,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,14 +66,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -182,6 +189,8 @@ fun DiagnosticsScreen(container: AppContainer, onBack: () -> Unit) {
 
 @Composable
 internal fun DiagnosticsExportReview(report: String, onDismiss: () -> Unit, onShare: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val actionColor = if (colors.background.luminance() < 0.5f) colors.onSurface else colors.primary
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Kiểm tra báo cáo trước khi gửi") },
@@ -193,8 +202,8 @@ internal fun DiagnosticsExportReview(report: String, onDismiss: () -> Unit, onSh
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onShare) { Text("Chọn nơi gửi") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Hủy") } },
+        confirmButton = { TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text("Chọn nơi gửi") } },
+        dismissButton = { TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text("Hủy") } },
     )
 }
 
@@ -214,13 +223,22 @@ fun DiagnosticsContent(
     val details = state.details
     val ready = state.owner != null && status.ownerUserId == state.owner
     val diagnosis = diagnoseTracking(status)
+    val colors = MaterialTheme.colorScheme
+    val dark = colors.background.luminance() < 0.5f
+    val appBarBackground = if (dark) colors.primaryContainer else colors.primary
+    val appBarForeground = if (dark) colors.onPrimaryContainer else colors.onPrimary
+    val actionColor = if (dark) colors.onSurface else colors.primary
+    val noticeBackground = if (!diagnosis.attention) colors.primaryContainer else if (dark) colors.secondary else colors.secondaryContainer
+    val noticeForeground = if (!diagnosis.attention) colors.onPrimaryContainer else if (dark) colors.onSecondary else colors.onSecondaryContainer
+    // Equal-contrast crossover for black versus white system status icons.
+    DiagnosticsStatusBar(appBarBackground.luminance() > 0.179f)
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Chẩn đoán vị trí") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Quay lại") } },
                 actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Làm mới chẩn đoán") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary, navigationIconContentColor = MaterialTheme.colorScheme.onPrimary, actionIconContentColor = MaterialTheme.colorScheme.onPrimary),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = appBarBackground, titleContentColor = appBarForeground, navigationIconContentColor = appBarForeground, actionIconContentColor = appBarForeground),
             )
         },
     ) { padding ->
@@ -234,7 +252,7 @@ fun DiagnosticsContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(Modifier.size(56.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.LocationOn, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.LocationOn, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
                     Column {
@@ -252,17 +270,17 @@ fun DiagnosticsContent(
                             onClick = { showDetails = index == 1 },
                             shape = SegmentedButtonDefaults.itemShape(index, 2),
                             modifier = Modifier.weight(1f),
-                            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primary, activeContentColor = MaterialTheme.colorScheme.onPrimary),
+                            colors = SegmentedButtonDefaults.colors(activeContainerColor = appBarBackground, activeContentColor = appBarForeground),
                             icon = {},
                         ) { Text(label) }
                     }
                 }
             }
             if (diagnosis.action != null) item {
-                Card(colors = CardDefaults.cardColors(containerColor = if (diagnosis.attention) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer)) {
+                Card(colors = CardDefaults.cardColors(containerColor = noticeBackground, contentColor = noticeForeground)) {
                     Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(if (diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS) "Mất kết nối mạng" else diagnosis.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                        TextButton(onClick = { onAction(diagnosis.action) }) { Text(diagnosis.actionLabel.orEmpty()) }
+                        TextButton(onClick = { onAction(diagnosis.action) }, colors = ButtonDefaults.textButtonColors(contentColor = noticeForeground)) { Text(diagnosis.actionLabel.orEmpty()) }
                     }
                 }
             }
@@ -299,7 +317,7 @@ fun DiagnosticsContent(
                     DiagnosticRow("Cần khôi phục", yesNo(status.recoveryRequired, "Có", "Không"))
                     DiagnosticRow("Tác vụ đồng bộ trên máy", details?.syncWork?.let { work -> if (work.isEmpty()) "Không có tác vụ đang chờ" else work.joinToString { workLabel(it) } } ?: unknownLabel(state.loading))
                     if (status.privacyDiscardedPoints) Text("Một số điểm đã bị loại theo chính sách riêng tư; không thể khôi phục bằng cách gửi lại.", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = { onAction(DiagnosticsAction.RETRY_SYNC) }, enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0, modifier = Modifier.padding(16.dp)) { Text("Yêu cầu đồng bộ lại") }
+                    OutlinedButton(onClick = { onAction(DiagnosticsAction.RETRY_SYNC) }, enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0, modifier = Modifier.padding(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor)) { Text("Yêu cầu đồng bộ lại") }
                 } }
                 item { DiagnosticsSection("Thông báo & SOS", Icons.Default.Security) {
                     DiagnosticRow("Quyền thông báo", yesNo(status.notificationsGranted, "Đã cấp", "Chưa cấp"))
@@ -316,7 +334,7 @@ fun DiagnosticsContent(
                 } }
             }
             item {
-                TextButton(onClick = onExport, enabled = !state.loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                TextButton(onClick = onExport, enabled = !state.loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) {
                     Icon(Icons.Default.Description, null, Modifier.padding(end = 12.dp))
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                         Text("Xuất báo cáo", style = MaterialTheme.typography.titleMedium)
@@ -334,8 +352,8 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
     OutlinedCard(colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             HorizontalDivider()
             content()
@@ -353,6 +371,24 @@ private fun DiagnosticRow(label: String, value: String) {
 
 private fun yesNo(value: Boolean, yes: String, no: String) = if (value) yes else no
 private fun unknownLabel(loading: Boolean) = if (loading) "Đang đọc…" else "Chưa xác định"
+
+@Composable
+private fun DiagnosticsStatusBar(darkIcons: Boolean) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    DisposableEffect(context, view, darkIcons) {
+        val controller = context.diagnosticsActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = darkIcons
+        onDispose { if (previous != null) controller.isAppearanceLightStatusBars = previous }
+    }
+}
+
+private fun Context.diagnosticsActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.diagnosticsActivity()
+    else -> null
+}
 
 private fun workLabel(status: SyncWorkStatus): String = when (status) {
     SyncWorkStatus.ENQUEUED -> "Đang chờ"

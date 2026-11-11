@@ -616,9 +616,10 @@ ngôn ngữ thận trọng; kết thúc hành trình chấm dứt hoàn toàn lu
 
 ## 12. Tracking Health & Diagnostics
 
-> Trạng thái: **M7-A đang triển khai** — có trang Tổng quan/Chi tiết và báo cáo
-> chẩn đoán allowlist trong working tree. Verification/CI/emulator và field
-> validation được ghi riêng tại [tracking validation](../implementation/tracking-validation.md).
+> Trạng thái: **Implemented — Automated Verified (M7-A)** — trang Tổng quan/Chi
+> tiết, export allowlist và 19 tests trên CI emulator. Formal Impeccable review
+> và kiểm chứng thiết bị thật còn mở; bằng chứng theo từng commit được ghi tại
+> [tracking validation](../implementation/tracking-validation.md).
 
 **Mục đích.** Module chẩn đoán giúp phát hiện vì sao tracking không hoạt động
 trên một thiết bị cụ thể — đặc biệt quan trọng vì dự án không có nhiều điện

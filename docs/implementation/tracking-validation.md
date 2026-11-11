@@ -98,8 +98,9 @@ latency hay pin giả lập thành kết quả đo thật.
   gọi vẫn được scanner báo riêng. Docker image digest được đọc từ registry;
   không có tuyên bố đã build/chạy Docker image mới.
 - `adb devices -l`: không có target; instrumentation execution, native
-  screenshot comparison, hosted CI và field validation **Not run** cho thay
-  đổi này. Mockup C chỉ được duyệt về bố cục, không phải runtime evidence.
+  screenshot comparison và field validation **Not run locally**. Hosted CI
+  được ghi riêng bên dưới. Mockup C chỉ được duyệt về bố cục, không phải
+  runtime evidence.
 - Impeccable plan/component review còn **pending** vì review server trả
   `no reviewer can open a browser in this session`. Không tự tạo approval.
   Session ID: `5297b254ace168458f8ce46520c388bcfa0c890f120185a615b7a0ed7d4f5dd1`.
@@ -134,3 +135,26 @@ Vòng tiếp theo trên `1719cba871e93cb641018462d8fb4c7027636a1b`:
 đã gỡ APK và xóa thư mục ảnh trước khi `adb pull`. Runner được sửa để giữ APK
 trong vòng đời emulator; không đổi assertions hay timeout. Kết quả toàn bộ
 workflow và artifact ảnh sau bản sửa phải được xác nhận ở run mới.
+
+## GitHub Actions — emulator và artifact đã PASS
+
+Commit `c2854d2709f2a38a44bff2c9101eb9966cafb7bb`:
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42970233522) và
+[Android](https://github.com/QuocDuong16/anve/actions/runs/42970233684) đều PASS.
+Go gồm race tests và PostgreSQL/PostGIS; Android gồm lint/JVM/debug, minified
+release và **19 instrumentation tests, 0 failures/errors** trên API 35 emulator.
+Artifact `android-instrumentation-results` có XML/HTML results và **11 ảnh native**
+(overview/details, light/dark, font scale 1.3, loading, empty, permission denied,
+consent pending, read/export error, preview). Đây là fixture tổng hợp trong app
+native, không phải GPS, tài khoản backend hoặc báo cáo người dùng thật.
+
+Đã mở và kiểm tra các ảnh: không blank/black hay sai state. Ảnh dark phát hiện
+chữ/action teal trên nền tối/cảnh báo thiếu tương phản. Bản sửa dùng các cặp
+container/content có sẵn của theme, giữ bố cục C và khôi phục màu icon status
+bar khi rời màn hình. Bản sửa cần CI/capture trên commit mới; không dùng kết
+quả `c2854d2` để tự chứng nhận thay đổi sau đó. Formal plan/component review
+vẫn pending như ghi ở trên; chưa có quyết định **ship** của finish reviewer.
+
+Runner giữ APK trong vòng đời emulator để thu ảnh trước khi hủy máy; script
+vẫn trả mã lỗi instrumentation khi test hỏng và chỉ trả thành công khi cả
+test lẫn thu ảnh thành công. Không tăng timeout hay bỏ assertion để qua gate.

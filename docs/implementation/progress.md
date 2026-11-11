@@ -22,8 +22,8 @@ near-real-time snapshot convergence, not server push.
 **M5 — History & Places: Implemented — Automated Verified; field validation pending.**
 **M6 — SOS & notifications: Implemented — Automated Verified with fake provider;
 real Firebase and physical-device validation pending.**
-**M7-A — Diagnostics: implementation in working tree; local Android checks pass;
-hosted CI, emulator captures and visual finish review pending.**
+**M7-A — Diagnostics: Implemented — Automated Verified (Go, Android and CI
+emulator); physical-device validation and formal Impeccable review remain open.**
 M7-B Safe Journey and M8 release hardening remain Planned.
 
 ## Milestones
@@ -37,7 +37,7 @@ M7-B Safe Journey and M8 release hardening remain Planned.
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
-| M7 Journey & diagnostics | M7-A implementation in working tree | Local Android checks pass; CI/emulator captures and visual review pending. Safe Journey remains Planned. |
+| M7 Journey & diagnostics | M7-A Implemented — Automated Verified | Go/Android CI, 19 emulator tests and 11 native captures at `c2854d2`; formal Impeccable review and field validation remain open. Safe Journey remains Planned. |
 | M8 Release hardening | Not started | |
 
 ## M1 evidence
@@ -537,17 +537,21 @@ preview and an explicit Android sharesheet action; its fixed allowlist contains
 relative ages and counts without coordinates, identities, credentials, raw
 exceptions or event/recipient IDs. Installation-wide metrics are excluded.
 
-Local Android lint, JVM tests and debug APK build passed during implementation;
-the instrumentation APK also compiled. The new SQLite and Compose tests have
-not run on an emulator locally. Android CI provisions an emulator and now
-collects synthetic native UI captures, including dark theme and Compose font
-scale 1.3. No new hosted CI result or native rendering/interaction evidence is
-claimed. The independent finish reviewer requested runtime captures before
-review; the visual disposition remains recapture. The separate Impeccable
-component/plan review is pending because its review server could not open a
-reviewer browser; the resumable session ID is recorded in tracking-validation.md.
-No physical GPS, OEM, battery,
-Maps-key or real Firebase measurements have been produced.
+Local Android lint, JVM tests, debug APK and instrumentation APK compilation
+passed. On `c2854d2`, [Go CI](https://github.com/QuocDuong16/anve/actions/runs/42970233522)
+and [Android CI](https://github.com/QuocDuong16/anve/actions/runs/42970233684)
+passed, including the minified release, PostgreSQL/PostGIS and 19 emulator
+tests with no failures/errors. The artifact contains 11 native screenshots
+with synthetic fixtures, including dark theme, font scale 1.3 and export/error
+states. Inspection found dark-theme contrast defects; paired theme roles and
+screen-scoped system-bar styling correct them in the follow-up change. That
+change requires its own hosted checks and recaptures before merge.
+
+The initial independent finish review requested runtime captures; its verdict
+does not count as visual approval. The separate Impeccable component/plan review
+remains pending because its review server could not open a reviewer browser;
+the resumable session ID is recorded in tracking-validation.md. No physical GPS,
+OEM, battery, Maps-key or real Firebase measurements have been produced.
 
 See [tracking validation](tracking-validation.md) for reproducible commands,
 the scenario matrix, evidence tiers and field-measurement protocol. Safe Journey

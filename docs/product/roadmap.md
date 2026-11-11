@@ -27,7 +27,7 @@
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
-| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A diagnostics đang triển khai; field validation và Safe Journey chưa hoàn tất |
+| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A Implemented — Automated Verified; formal Impeccable review, field validation và Safe Journey chưa hoàn tất |
 | [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
 
 ## M0 — Foundation
@@ -261,9 +261,10 @@ báo; không có tọa độ trong FCM payload.
 M7-A triển khai trang Diagnostics (Tổng quan/Chi tiết), báo cáo allowlist do
 người dùng chủ động xuất, kiểm thử owner isolation và nền tảng validation.
 Quy trình và các mức bằng chứng: [tracking validation](../implementation/tracking-validation.md).
-M7-A chưa được coi là hoàn tất trước khi kiểm chứng workflow/emulator và review
-giao diện thực tế; GPS/pin/OEM vẫn cần điện thoại vật lý. Safe Journey (M7-B)
-chưa triển khai.
+Go/Android CI và 19 tests trên emulator đã PASS tại `c2854d2`, kèm 11 ảnh native
+dùng dữ liệu tổng hợp. Bản sửa tương phản sau khi xem ảnh cần CI/capture trên
+commit mới trước merge. Formal Impeccable review còn mở; GPS/pin/OEM vẫn cần
+điện thoại vật lý. Toàn bộ M7 chưa hoàn tất. Safe Journey (M7-B) chưa triển khai.
 
 Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).
 Tài liệu liệt kê phạm vi, các quyết định còn mở và exit criteria; chưa triển
