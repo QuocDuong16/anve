@@ -23,6 +23,8 @@ against the certificate pin; wrong-pin, tampered, unsigned and added-unsigned-
 entry fixtures must fail. The temporary key is removed even if validation fails.
 Production packaging must also reject the synthetic endpoint, and configuration
 caching with signing inputs must be refused.
+The cached rejection graph must remain reusable after every signing input is
+replaced with invalid values: credentials must not be configuration-cache inputs.
 The validation AAB and JSON digest/certificate record are uploaded by Android CI;
 they are not the production app and cannot verify any provider integration.
 
@@ -118,8 +120,10 @@ release inputs. Do not delete or overwrite a contributor's local configuration.
 
 Missing configuration, a wrong pin/alias/password, expired certificate or key
 inside the checkout must be corrected at its source; do not disable the guard.
-If signing inputs are present, direct Gradle invocation must also disable
-configuration/build caches. Prefer the Make wrappers, and retain no build
-cache containing signing state. Neither synthetic CI nor AAB verification
+Production and validation release tasks require both caches disabled. Cached
+debug configuration does not read signing credentials; a cached release graph
+fails before the input guard reads them. A failed Gradle configuration can
+still create a cache entry, so throwing after reading secrets is insufficient.
+Prefer the Make wrappers. Neither synthetic CI nor AAB verification
 establishes real Firebase delivery, Google/Maps configuration, OEM lifecycle,
 hardware GPS/battery behavior, deployment security or Google Play acceptance.

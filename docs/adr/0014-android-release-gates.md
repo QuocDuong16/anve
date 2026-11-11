@@ -17,7 +17,10 @@ never use a test-mode bypass flag. Debug retains its existing local workflow.
 
 Signing secrets use environment variables only, not Gradle command-line
 properties. Signed builds run without configuration/build caches and with a
-single-use Gradle process. Real keys stay outside the checkout on the release
+single-use Gradle process. If caches are enabled, configuration never queries
+signing credentials and the release lifecycle guard refuses execution before
+reading them. This also protects failed builds whose configuration Gradle may
+still cache. Real keys stay outside the checkout on the release
 runner, are never uploaded, and are cleaned on success/failure. The manual
 workflow accepts only main, uses an explicit release environment and checks
 required inputs before build. Required environment protections and signing

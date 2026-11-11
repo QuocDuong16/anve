@@ -19,11 +19,15 @@ import org.gradle.work.DisableCachingByDefault;
 public abstract class VerifyReleaseInputs extends DefaultTask {
     @Input public abstract MapProperty<String,String> getSettings();
     @Input public abstract Property<Boolean> getDistribution();
+    @Input public abstract Property<Boolean> getSigningCachesDisabled();
     @Internal public abstract RegularFileProperty getLegacyConfig();
     @Internal public abstract DirectoryProperty getSourceRoot();
     @Inject protected abstract ProviderFactory getEnvironment();
 
     @TaskAction public void verify() {
+        if (!getSigningCachesDisabled().get()) {
+            throw new GradleException("Signing requires --no-configuration-cache --no-build-cache; use the release Make targets.");
+        }
         var problems = new ArrayList<>(ReleaseInputs.validate(getSettings().get(), getDistribution().get()));
         if (getLegacyConfig().get().getAsFile().exists()) {
             problems.add("move legacy main/res/values/config_local.xml to debug/res/values/config_local.xml before release builds");

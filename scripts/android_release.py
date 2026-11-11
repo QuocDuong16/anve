@@ -33,10 +33,10 @@ def run(args, env, *, expected=0, visible=False, cwd=ANDROID):
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=1800)
     output = redact(result.stdout, env)
     if (expected == 0 and result.returncode != 0) or (expected != 0 and result.returncode == 0):
-        print(output)
+        print(output, flush=True)
         raise RuntimeError("Release check command did not return the expected outcome")
     if visible:
-        print(output)
+        print(output, flush=True)
     return result.stdout
 
 
@@ -170,9 +170,17 @@ def check(quick):
         output = gradle([":app:bundleRelease"], env, expected=1)
         if "ANVE_API_URL must be an absolute HTTPS DNS URL" not in output:
             raise RuntimeError("Synthetic endpoint was not refused for the production package")
-        output = gradle([":app:help"], env, expected=1, extra=("--configuration-cache",))
-        if "Signing requires --no-configuration-cache --no-build-cache" not in output:
-            raise RuntimeError("Signing environment was allowed to enter the configuration cache")
+        for cache_flag in ("--configuration-cache", "--build-cache"):
+            output = gradle([":app:bundleReleaseValidation"], env, expected=1, extra=(cache_flag,))
+            if "Signing requires --no-configuration-cache --no-build-cache" not in output:
+                raise RuntimeError("Release packaging was allowed with a signing cache enabled")
+            if cache_flag == "--configuration-cache":
+                poisoned = dict(env)
+                for name in SIGNING:
+                    poisoned[name] = "deliberately-invalid-signing-input"
+                reused = gradle([":app:bundleReleaseValidation"], poisoned, expected=1, extra=(cache_flag,))
+                if "Reusing configuration cache." not in reused or "Signing requires --no-configuration-cache --no-build-cache" not in reused:
+                    raise RuntimeError("Cached release configuration depends on signing credential values")
         wrong_pin = dict(env, ANVE_SIGNING_CERT_SHA256="0" * 64)
         output = gradle([":app:verifyReleaseValidationInputs"], wrong_pin, expected=1)
         if "ANVE_SIGNING_CERT_SHA256 does not match" not in output:

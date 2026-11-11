@@ -17,21 +17,22 @@ plugins {
 fun releaseSetting(name: String): String = providers.environmentVariable(name)
     .orElse(providers.gradleProperty(name)).getOrElse("")
 val releaseSettings = ReleaseInputs.PUBLIC_NAMES.associateWith(::releaseSetting)
+// Gradle can store a configuration cache entry even after configuration fails.
+// Never query signing credentials at all when either cache is requested.
+val releaseCachesDisabled = !gradle.startParameter.isConfigurationCacheRequested && !gradle.startParameter.isBuildCacheEnabled
 val signingEnvironment = (ReleaseInputs.SIGNING_NAMES + "ANVE_KEYSTORE_TYPE").associateWith {
-    providers.environmentVariable(it).getOrElse("")
+    if (releaseCachesDisabled) providers.environmentVariable(it).getOrElse("") else ""
 }
-val signingPresent = ReleaseInputs.SIGNING_NAMES.any { signingEnvironment.getValue(it).isNotBlank() }
 val signingComplete = ReleaseInputs.SIGNING_NAMES.all { signingEnvironment.getValue(it).isNotBlank() }
-if (signingPresent && (gradle.startParameter.isConfigurationCacheRequested || gradle.startParameter.isBuildCacheEnabled)) {
-    throw GradleException("Signing requires --no-configuration-cache --no-build-cache; use the release Make targets.")
-}
 val verifyRelease = tasks.register<VerifyReleaseInputs>("verifyReleaseInputs") {
+    signingCachesDisabled.set(releaseCachesDisabled)
     settings.set(releaseSettings)
     distribution.set(true)
     legacyConfig.set(layout.projectDirectory.file("src/main/res/values/config_local.xml"))
     sourceRoot.set(rootProject.layout.projectDirectory.dir("../.."))
 }
 val verifyReleaseValidation = tasks.register<VerifyReleaseInputs>("verifyReleaseValidationInputs") {
+    signingCachesDisabled.set(releaseCachesDisabled)
     settings.set(releaseSettings)
     distribution.set(false)
     legacyConfig.set(layout.projectDirectory.file("src/main/res/values/config_local.xml"))
