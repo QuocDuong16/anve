@@ -105,5 +105,44 @@ copy and enlarged-text dialog are acceptable adaptations of the approved comps.
 Two material findings: selected viewer details need the owner's name even on
 push/deep-link entry; persisted build gates/formal portal are still open.
 The attribution fix adds the authorized owner's name beside the destination
-and an instrumentation assertion. Its new CI and rendered verdict are pending.
+and an instrumentation assertion. The verdict pass below scores that correction
+only; it does not replace the full review or close formal workflow gates.
 The workflow finding is not silently converted into a ship receipt.
+
+Read-only Impeccable documenter compared PRODUCT/DESIGN/sidecar, the finished
+Journey source and shared Color/Theme, direction/spec/state and native captures.
+No global palette/type/shape/token change or raster asset was introduced;
+incumbent DESIGN.md and design.json were preserved. Pre-existing sidecar
+freshness drift is reported, not repaired. Serena Kotlin initialization failed;
+known-file source fallback was used without language-server repairs.
+
+At `556a880`, local `make android-check android-test-build` and the complete
+`make quality-check` both pass after the owner-attribution correction. The
+viewer instrumentation now asserts the owner's visible name on directly
+selected details without relying on a parent list. Hosted recapture is recorded below; earlier captures alone do not prove this
+correction rendered.
+
+### Attribution correction evidence
+
+At `556a8805e57b6fbc9785c2ef3a8f282f32ee76d6`,
+[Go CI](https://github.com/QuocDuong16/anve/actions/runs/43054948889) passed all
+jobs. [Android emulator job](https://github.com/QuocDuong16/anve/actions/runs/43054948779/job/130641783709)
+passed **32 tests**, zero failures/errors/skips; artifact `13871975076` contains
+17 Journey PNGs and actual OS font metadata. PR merge checkout
+`5da45e078d703a5401294481353295c702795119` and head share tree
+`2b30557a3b6fba900f00913d832c101781bbc112`. The app build/release job is tracked
+separately from that successful emulator evidence.
+
+The same reviewer scored **viewer attribution resolved**: the new viewer
+capture visibly shows “Hành trình của An” under the destination with readable
+hierarchy. **Persistence unresolved; disposition fix**: formal plan receipt is
+pending, plates is open, later phases pending, finish null. Normal advance
+refuses that receipt and no override/approval was fabricated. Final workflow
+completion requires resolving the route or an explicit user exception covering
+final completion. The previous user exception covers the component plan only.
+
+The new full native comparison remains approximately 0.75 overall with the same
+fixed-coordinate crop limitations and explicit native adaptations. No measured
+fidelity pass is claimed. The capture files are reproducible CI artifacts, not
+shipping app assets. A final documentation-only commit may reference this tested
+code snapshot; its own CI result must be checked separately before merge.

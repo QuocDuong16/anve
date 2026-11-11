@@ -98,3 +98,23 @@ stale tự động. Những khả năng tự động còn lại tiếp tục Pla
 5. Chuẩn bị M8 bằng inventory security/observability/release và tài liệu Data
    Safety/permissions đối chiếu hành vi thực tế. M8 chưa bắt đầu và chưa có kết
    luận đủ điều kiện phát hành Google Play.
+
+## Ma trận thực địa cho bản thủ công — chưa chạy
+
+Dùng hai điện thoại/tài khoản thử có consent; thêm một tài khoản không được
+chọn làm đối chứng. Ghi SHA/APK, Android/OEM, thời điểm, expected/observed và
+artifact đã lọc theo protocol tracking validation, không ghi token/tọa độ.
+
+| Kịch bản | Expected | Bằng chứng cần thu |
+| --- | --- | --- |
+| Chọn một người xem, mở từ push | Chỉ người còn grant đọc được; màn chi tiết nêu đúng chủ hành trình | Server authorization readback, thông báo thực nhận và ảnh đã lọc |
+| Thu hồi rồi cấp lại grant / rời rồi vào Circle | Lựa chọn cũ không được phục hồi | GET sau revoke/regrant/rejoin và trạng thái trên máy người xem |
+| Create mất phản hồi, cancel khi offline | Không create ID mới hay khẳng định thành công; có mạng reconcile cùng ID | UI pending, server state, outbox metadata không tọa độ |
+| Đã đến nơi so với Kết thúc | Chỉ thao tác đầu tạo ARRIVED; ưu tiên dừng ở cả hai, chia sẻ thường theo cài đặt riêng | State server và diagnostics trước/sau |
+| Hết hạn khi offline hoặc upload đang chạy | Lease không vượt hạn; không tự xác nhận đến nơi | Đồng hồ thời gian thực/monotonic quan sát, state sau reconnect |
+| Consent OFF, đổi owner, kill/reboot | Không khôi phục ưu tiên từ push/read/response cũ | Provider/service và queue owner-bound trước/sau |
+| Trong nhà, GPS yếu, mẫu mock | Thiếu/cũ/accuracy/mock được thể hiện, không suy ra tai nạn hoặc ETA | Mẫu quan sát đã lọc, ảnh UI và điều kiện môi trường |
+| Màn hình khóa, Battery Saver, hạn chế OEM | Ghi gián đoạn và số đo thực; không suy từ test emulator | Phiên baseline/Journey cùng điều kiện, pin/thời lượng và OEM |
+
+Kết quả hiện tại của mọi hàng: **Not run — cần điện thoại và cấu hình dịch vụ
+thật**. Ma trận là kế hoạch cho lượt tiếp theo, không phải bằng chứng đã pass.
