@@ -167,7 +167,7 @@ vụ cấp cứu 113/115/114 — app nói rõ điều này ngay trong luồng SO
 **Nhân vật:** người đi về muộn (chủ hành trình) và người thân được chọn.
 **Milestone:** M7 — có thể lùi sau MVP.
 
-**Bản đầu M7-B (Automated Verified tại `0ddb112`; native/field review còn mở):** chọn địa điểm đã lưu và người đã có
+**Bản đầu M7-B (Automated Verified tại `bcde472`; native đã duyệt, field còn mở):** chọn địa điểm đã lưu và người đã có
 quyền xem vị trí; bắt đầu cần mạng và thu thập đã được bật riêng ở màn Vị trí.
 Người dùng chọn thời hạn tối đa 8 giờ, chủ động bấm “Đã đến nơi” hoặc kết thúc
 mà chưa xác nhận đến đích. Ngưỡng GPS/cảnh báo tự động dưới đây vẫn là mục tiêu

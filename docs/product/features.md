@@ -577,7 +577,8 @@ không bao giờ hứa “báo cảnh sát thay bạn”.
 ## 11. Safe Journey
 
 > Trạng thái: **Implemented — Automated Verified (M7-B)** trên nhánh triển
-> khai tại `0ddb112` (Go/Android CI, 32 emulator tests). Review native được
+> khai tại `bcde472` (Go/Android CI, 32 emulator tests), bản native đã được
+> duyệt qua tin nhắn theo ngoại lệ của người dùng. Phạm vi review được
 > ghi riêng tại [progress](../implementation/progress.md). Arrival tự động và
 > cảnh báo ngừng cập nhật vẫn **Planned**.
 

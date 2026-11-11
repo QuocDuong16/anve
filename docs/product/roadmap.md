@@ -269,8 +269,9 @@ GPS/pin/OEM vẫn cần
 bản đầu
 theo [ADR 0012](../adr/0012-safe-journey-lifecycle.md): xác nhận đến nơi thủ
 công, audience theo từng grant và ưu tiên thu thập có thời hạn. Go/Android CI
-tại `0ddb112` đã PASS, gồm 32 instrumentation tests. Review
-native, formal portal, Firebase thật và field validation còn mở; xem
+tại `bcde472` đã PASS, gồm 32 instrumentation tests. Bản native đã được người
+dùng duyệt; ngoại lệ hoàn tất cho cổng formal được ghi riêng. Firebase thật
+và field validation còn mở; xem
 [M7-B validation](../implementation/m7b-validation.md).
 
 Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).

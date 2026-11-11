@@ -1,7 +1,7 @@
 # M7-B — Safe Journey: chuẩn bị triển khai
 
-**Status: first manual release Implemented — Automated Verified (`0ddb112`);
-native finish review/formal portal and field validation pending.** Quyết định bản đầu ở
+**Status: first manual release Implemented — Automated Verified (`bcde472`);
+native rendering approved; formal completion waived by user, field validation pending.** Quyết định bản đầu ở
 [ADR 0012](../adr/0012-safe-journey-lifecycle.md), evidence hiện tại ở
 [M7-B validation](m7b-validation.md). Phần dưới giữ checklist chuẩn bị; không
 phải bằng chứng CI/field validation đã pass. Các yêu cầu đã chốt nằm ở

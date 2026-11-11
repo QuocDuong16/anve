@@ -1,7 +1,8 @@
 # M7-B validation record
 
-Status: Implemented — Automated Verified at `0ddb112`; independent native
-finish review and the formal component portal remain open. No physical device,
+Status: Implemented — Automated Verified at `bcde472`; native correction
+review resolved and final native rendering accepted by the user. The formal
+portal remains pending under an explicit completion exception. No physical device,
 real Firebase, GPS, battery or OEM results are claimed.
 
 ## Decisions and design
@@ -89,10 +90,11 @@ Hosted snapshots:
   DataStore reopening and owner isolation are tested separately. These use
   synthetic fixtures, not a live backend-to-Firebase end-to-end deployment.
 
-## Exit evidence still required
+## Evidence outside automated acceptance
 
-- Fresh Impeccable finish review and documenter; formal component-review session
-  remains pending under the explicit message-based plan exception.
+- Native review/documenter and final user exception are recorded below. The
+  formal component portal still has no receipt; its completion requirement was
+  explicitly waived for M7-B, not for future UI.
 - Real Firebase delivery/read behavior, hardware GPS, battery/OEM and calibrated
   automatic arrival/stale alerts need separate evidence. Automated CI does not
   establish those outcomes or complete all of M7.
@@ -146,3 +148,34 @@ fixed-coordinate crop limitations and explicit native adaptations. No measured
 fidelity pass is claimed. The capture files are reproducible CI artifacts, not
 shipping app assets. A final documentation-only commit may reference this tested
 code snapshot; its own CI result must be checked separately before merge.
+
+### Final automated snapshot and user decision — 2026-11-12
+
+At `bcde47253afbba39ac9e9e3e7bc9faf9512fb3b4`,
+[Go CI](https://github.com/QuocDuong16/anve/actions/runs/43056495298) and
+[Android CI](https://github.com/QuocDuong16/anve/actions/runs/43056495305)
+passed all jobs, including race/PostGIS/repository checks, JVM/lint/debug,
+minified release and emulator. Artifact `13871548653` reports **32 tests, zero
+failures/errors/skips** with native captures/OS font metadata; debug APK artifact
+is `13872856062`. This commit changes only two documentation files relative to
+`556a880`; the reviewed source and UI are unchanged.
+
+After displaying the current owner/viewer/dark-font130 dialog captures, the
+user was explicitly asked to accept the native rendering as the final M7-B UI
+reference and allow completion/merge with green CI despite the pending formal
+portal. The user replied **“Tiếp nhé và tôi duyệt”**. This is a final-render and
+completion exception, beyond the earlier component-plan exception. Comp-first
+remains mandatory for future screens/phases.
+
+The same reviewer then returned **disposition: ship** for its two findings:
+viewer attribution resolved; persistence accepted by explicit user exception.
+This is a verdict pass over those findings, not a new whole-surface audit.
+The documenter outcome remains applicable because no UI source changed later.
+
+`build-phase finish --disposition ship` was attempted and refused because
+plates/hero/sections/motion/responsive are not closed. The CLI does not recognize
+the message-based exception; the actual phase records and formal receipt remain
+open. No receipt, closed gate or numeric fidelity pass was manufactured. Delivery
+uses the user's explicit completion exception, not a claim the tool gate passed.
+Physical-device/GPS/battery/OEM, real Firebase and calibrated automatic arrival/
+stale alerts remain unverified or Planned as applicable.
