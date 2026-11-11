@@ -1,17 +1,19 @@
 package com.anve.app.ui.diagnostics
 
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
@@ -24,8 +26,6 @@ import com.anve.app.tracking.diagnostics.DiagnosticsDetails
 import com.anve.app.tracking.diagnostics.safeDiagnosticsReport
 import com.anve.app.ui.theme.AnVeTheme
 import java.io.File
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -188,21 +188,17 @@ class DiagnosticsScreenInstrumentedTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
+        // Compose's capture API enables drawing and commits every window, including dialogs.
+        val windowBitmap = compose.onRoot().captureToImage(timeoutMillis = 5_000).asAndroidBitmap()
+        saveCapture("compose-$name", windowBitmap)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        instrumentation.waitForIdleSync()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Compose idle precedes render-thread submission; screenshots need a committed frame.
-            val committed = CountDownLatch(1)
-            compose.runOnUiThread {
-                val view = compose.activity.window.decorView
-                check(view.isHardwareAccelerated) { "Validation captures require hardware rendering" }
-                view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
-                view.invalidate()
-            }
-            check(committed.await(5, TimeUnit.SECONDS)) { "No rendered frame committed for $name" }
-        }
         instrumentation.uiAutomation.waitForIdle(200, 5_000)
         val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        saveCapture(name, bitmap)
+    }
+
+    private fun saveCapture(name: String, bitmap: Bitmap) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
         val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("ui-validation"))
         File(directory, "$name.png").outputStream().use {
             check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
