@@ -240,7 +240,24 @@ thất bại. Không thay đổi assertions chức năng hoặc timeout toàn wo
 nhãn chúng như bằng chứng hợp lệ.
 
 Ảnh window giữ nguyên pixel do emulator tạo, không sửa kích thước/ghép ảnh;
-main window là 842×1870 px, 327 dpi. Dialog được chụp riêng từng window. Lớp
-glyph status/navigation của SystemUI không nằm trong ảnh window, nên không
+main window là 842×1870 px, 327 dpi. Lớp
+glyph status/navigation của SystemUI không nằm trong ảnh app-window, nên không
 có tuyên bố kiểm chứng lớp đó. Review phải nêu rõ phạm vi app-window, cùng
 các giới hạn về thiết bị vật lý đã ghi ở trên.
+
+
+## Dialog và drawing state của test runner
+
+Bộ ảnh app-window tại `1d319f4` có đủ tiêu đề khi kiểm tra file gốc và paired
+crops. Nhận định ban đầu rằng các ảnh này thiếu app bar đã được đối chiếu lại
+và không được dùng làm kết luận lỗi UI. Go/Android CI của commit đó PASS,
+gồm 19 instrumentation tests không failure/error.
+
+Ảnh dialog qua selector root thứ hai có thể crop nhầm window chủ; chúng không
+được dùng làm bằng chứng dialog. Helper giữ main-window capture của Compose,
+nhưng chụp dialog trên composed display trong khi `HardwareRendererCompat`
+được bật drawing, rồi phục hồi trạng thái drawing trước đó. Đây là cách quản
+lý drawing mà AndroidX dùng quanh các API capture; không thêm sleep hoặc sửa
+pixel ảnh. Cần xác nhận run mới cho phần fallback dialog này.
+
+[AndroidX window capture source](https://github.com/androidx/androidx/blob/androidx-main/compose/ui/ui-test/src/androidMain/kotlin/androidx/compose/ui/test/android/WindowCapture.android.kt).

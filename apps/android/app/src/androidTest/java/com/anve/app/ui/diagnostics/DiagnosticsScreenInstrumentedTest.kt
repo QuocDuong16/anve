@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.platform.graphics.HardwareRendererCompat
 import com.anve.app.data.location.QueueDiagnostics
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.TrackingStatus
@@ -204,10 +205,18 @@ class DiagnosticsScreenInstrumentedTest {
             }
         }
         saveCapture("compose-$name-window-0", requireNotNull(readyBitmap))
-        windows.fetchSemanticsNodes().indices.forEach { index ->
-            if (index == 0) return@forEach
-            val bitmap = windows[index].captureToImage().asAndroidBitmap()
-            saveCapture("compose-$name-window-$index", bitmap)
+        if (windows.fetchSemanticsNodes().size > 1) {
+            val instrumentation = InstrumentationRegistry.getInstrumentation()
+            val wasDrawingEnabled = HardwareRendererCompat.isDrawingEnabled()
+            try {
+                // UiAutomation needs drawing left enabled while it reads the composed display.
+                HardwareRendererCompat.setDrawingEnabled(true)
+                compose.waitForIdle()
+                instrumentation.uiAutomation.waitForIdle(200, 5_000)
+                saveCapture("dialog-$name", requireNotNull(instrumentation.uiAutomation.takeScreenshot()))
+            } finally {
+                HardwareRendererCompat.setDrawingEnabled(wasDrawingEnabled)
+            }
         }
     }
 

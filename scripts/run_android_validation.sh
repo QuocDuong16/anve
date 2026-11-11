@@ -9,7 +9,7 @@ mkdir -p "$evidence_dir"
     adb -e shell wm density
     adb -e shell settings get system font_scale
     echo 'Themes are fixture-controlled; dark-font130 captures use Compose fontScale=1.3.'
-    echo 'Images are native Compose window captures. SystemUI status/navigation glyph layers are excluded.'
+    echo 'compose-* images are native app windows (SystemUI glyph layers excluded); dialog-* images capture the composed display.'
 } > "$evidence_dir/emulator-metadata.txt"
 
 # Collect partial captures before the action shuts down its emulator, while
