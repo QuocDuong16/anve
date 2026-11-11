@@ -3,7 +3,9 @@ package com.anve.app.ui.journey
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
@@ -146,6 +148,43 @@ class JourneyScreenInstrumentedTest {
         compose.onNodeWithText("Đã đến nơi").assertDoesNotExist()
         compose.onNodeWithText("Kết thúc hành trình").assertDoesNotExist()
         capture("arrived-light")
+    }
+
+    @Test fun selectedRecipientRemovalHasItsOwnConfirmation() {
+        var removed: String? = null
+        compose.setContent { AnVeTheme { JourneyContent(state, tracking, onAction = { _, action, recipient ->
+            if (action == JourneyAction.REVOKE_RECIPIENT) removed = recipient
+        }) } }
+        scrollTo("Quản lý người xem")
+        compose.onNodeWithText("Quản lý người xem").performClick()
+        scrollTo("Thu hồi")
+        capture("recipients-light")
+        compose.onAllNodes(hasText("Thu hồi") and hasClickAction())[0].performClick()
+        compose.onNodeWithText("Ngừng cho Mẹ theo dõi?").assertIsDisplayed()
+        compose.onNodeWithText("Thu hồi người xem").performClick()
+        compose.runOnIdle { assertEquals("mother", removed) }
+    }
+
+    @Test fun losingNetworkDisablesAnOtherwiseValidStart() {
+        val online = mutableStateOf(true)
+        compose.setContent { AnVeTheme { JourneyContent(formState(), tracking.copy(online = online.value), initiallyCreating = true) } }
+        compose.onNode(hasText("Nhà") and hasClickAction()).performClick()
+        scrollTo("Mẹ")
+        compose.onNode(hasText("Mẹ") and hasClickAction()).performClick()
+        scrollTo("Bắt đầu hành trình")
+        compose.onNode(hasText("Bắt đầu hành trình") and hasClickAction()).assertIsEnabled()
+        compose.runOnIdle { online.value = false }
+        compose.onNode(hasText("Bắt đầu hành trình") and hasClickAction()).assertIsNotEnabled()
+        capture("create-offline")
+    }
+
+    @Test fun localExpiryNeverConfirmsArrivalWhileWaitingForServer() {
+        val old = journey.copy(expiresAt = now.minusSeconds(1).toString())
+        compose.setContent { AnVeTheme { JourneyContent(state.copy(journeys = listOf(old)), tracking.copy(online = true)) } }
+        scrollTo("Đã đến nơi")
+        compose.onNode(hasText("Đã đến nơi") and hasClickAction()).assertIsNotEnabled()
+        compose.onNode(hasText("Kết thúc hành trình") and hasClickAction()).assertIsEnabled()
+        capture("expiry-awaiting-server")
     }
 
     private fun formState() = JourneyUiState(owner = "owner", loading = false, consentEnabled = true,
