@@ -1,0 +1,8 @@
+{
+  "prompt": "Use case: ui-mockup. One high-fidelity native Android app screen for AnVề, portrait phone viewport 412×915, edge to edge, crisp readable Vietnamese text, no device frame. This voluntary family location-sharing screen helps an owner finish a journey explicitly; arrival is manual, no inferred safety or ETA. Attached genuine app screenshot contributes only incumbent teal/sand palette, native system type and Material 3 character, never its Diagnostics content or organization. Distinct option B is a journey checklist organized vertically, without segmented tabs or map. Top app bar Back, “Hành trình”, refresh. Destination summary “Về nhà”, “Tự kết thúc lúc 23:00”. The central content is a short clear native step list: checked “Đã bắt đầu · 21:10”, current “Đang di chuyển” with “Vị trí cập nhật 2 phút trước” and “Còn 3,2 km đường chim bay”, pending “Xác nhận đến nơi” with “Bạn chủ động xác nhận khi đã đến.” This describes lifecycle steps, not GPS route progress. Below, a compact line of selected recipients “Người theo dõi: Mẹ, Bố” and text action “Quản lý người xem”. Amber notice “Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.” Dominant filled button “Đã đến nơi”, secondary outlined “Kết thúc hành trình”. Ground the screen in standard Material components and realistic accessible scale; synthetic content is a design example. Make this visibly checklist-led rather than a dashboard of summary cards. No decorative illustration, percentage progress or countdown promising arrival.",
+  "approved": true,
+  "reference": ".impeccable/review/ci-a265dcb/compose-phone-light-overview-window-0.png",
+  "generator": "built-in image_gen",
+  "synthetic": true,
+  "approval": "User selected B: Các bước hành trình, 2026-11-11"
+}

@@ -6,6 +6,11 @@
 # the data classes and their constructors intact.
 -keep class com.anve.app.data.api.** { *; }
 -keep class com.anve.app.data.auth.StoredSession { *; }
+-keep class com.anve.app.data.journey.JourneyOperation { *; }
+-keep class com.anve.app.data.journey.JourneyAction { *; }
+-keep class com.anve.app.data.journey.JourneySyncWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
 -keepattributes Signature, InnerClasses, EnclosingMethod, *Annotation*
 
 # WorkManager instantiates workers by class name from its persisted

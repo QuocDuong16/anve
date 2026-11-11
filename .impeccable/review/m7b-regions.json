@@ -1,0 +1,270 @@
+{
+  "regions": [
+    {
+      "id": "appbar",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 841,
+        "h": 180
+      },
+      "note": "Native Material top app bar, Back and refresh actions; semantic teal surface.",
+      "container": true
+    },
+    {
+      "id": "appbar-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 113,
+        "y": 88,
+        "w": 229,
+        "h": 51
+      },
+      "note": "Hành trình; native Material titleLarge system font."
+    },
+    {
+      "id": "destination-icon",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 32,
+        "y": 229,
+        "w": 115,
+        "h": 115
+      },
+      "note": "Native home vector icon in a tonal circular surface, no raster asset.",
+      "codeDrawn": true
+    },
+    {
+      "id": "destination-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 171,
+        "y": 231,
+        "w": 164,
+        "h": 47
+      },
+      "note": "Về nhà; native Material headlineSmall."
+    },
+    {
+      "id": "expiry",
+      "kind": "text",
+      "pixelBox": {
+        "x": 171,
+        "y": 298,
+        "w": 320,
+        "h": 34
+      },
+      "note": "Tự kết thúc lúc 23:00; expiry not ETA."
+    },
+    {
+      "id": "steps",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 54,
+        "y": 410,
+        "w": 74,
+        "h": 468
+      },
+      "note": "Native Material vector status icons with a vertical divider; drawn by Compose, not painted artwork.",
+      "codeDrawn": true
+    },
+    {
+      "id": "started",
+      "kind": "text",
+      "pixelBox": {
+        "x": 157,
+        "y": 422,
+        "w": 410,
+        "h": 42
+      },
+      "note": "Đã bắt đầu · 21:10; native titleMedium."
+    },
+    {
+      "id": "active-step",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 143,
+        "y": 548,
+        "w": 674,
+        "h": 218
+      },
+      "note": "Tonal native active step container holding observed location information.",
+      "container": true
+    },
+    {
+      "id": "active-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 166,
+        "y": 570,
+        "w": 300,
+        "h": 45
+      },
+      "note": "Đang di chuyển; indicates journey lifecycle, not inferred velocity."
+    },
+    {
+      "id": "freshness",
+      "kind": "text",
+      "pixelBox": {
+        "x": 230,
+        "y": 635,
+        "w": 539,
+        "h": 34
+      },
+      "note": "Vị trí cập nhật 2 phút trước; observed sample timestamp."
+    },
+    {
+      "id": "distance",
+      "kind": "text",
+      "pixelBox": {
+        "x": 231,
+        "y": 695,
+        "w": 479,
+        "h": 34
+      },
+      "note": "Còn 3,2 km đường chim bay; no ETA."
+    },
+    {
+      "id": "arrival-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 157,
+        "y": 822,
+        "w": 347,
+        "h": 41
+      },
+      "note": "Xác nhận đến nơi; explicit manual next step."
+    },
+    {
+      "id": "arrival-help",
+      "kind": "text",
+      "pixelBox": {
+        "x": 157,
+        "y": 884,
+        "w": 548,
+        "h": 32
+      },
+      "note": "Bạn chủ động xác nhận khi đã đến."
+    },
+    {
+      "id": "recipient-summary",
+      "kind": "text",
+      "pixelBox": {
+        "x": 104,
+        "y": 1007,
+        "w": 328,
+        "h": 31
+      },
+      "note": "Người theo dõi: Mẹ, Bố; owner only."
+    },
+    {
+      "id": "recipient-action",
+      "kind": "control",
+      "pixelBox": {
+        "x": 541,
+        "y": 980,
+        "w": 276,
+        "h": 81
+      },
+      "note": "Native text action Quản lý người xem."
+    },
+    {
+      "id": "offline-notice",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 32,
+        "y": 1118,
+        "w": 779,
+        "h": 133
+      },
+      "note": "Amber tonal offline notice container, native Wi-Fi-off vector icon.",
+      "container": true
+    },
+    {
+      "id": "offline-copy",
+      "kind": "text",
+      "pixelBox": {
+        "x": 139,
+        "y": 1142,
+        "w": 631,
+        "h": 79
+      },
+      "note": "Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận."
+    },
+    {
+      "id": "arrive-action",
+      "kind": "control",
+      "pixelBox": {
+        "x": 26,
+        "y": 1313,
+        "w": 791,
+        "h": 113
+      },
+      "note": "Native filled Đã đến nơi action; at least 48dp touch target."
+    },
+    {
+      "id": "end-action",
+      "kind": "control",
+      "pixelBox": {
+        "x": 25,
+        "y": 1453,
+        "w": 792,
+        "h": 105
+      },
+      "note": "Native outlined Kết thúc hành trình action; wraps under font scaling."
+    },
+    {
+      "id": "destination-group",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 32,
+        "y": 220,
+        "w": 780,
+        "h": 150
+      },
+      "note": "Native destination summary with title, expiry and home vector.",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "start-step-row",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 50,
+        "y": 390,
+        "w": 740,
+        "h": 135
+      },
+      "note": "Native lifecycle row holding start timestamp and complete indicator.",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "arrival-step-row",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 50,
+        "y": 795,
+        "w": 740,
+        "h": 150
+      },
+      "note": "Native lifecycle row holding manual confirmation instruction.",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "end-button-row",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 24,
+        "y": 1430,
+        "w": 795,
+        "h": 160
+      },
+      "note": "Native secondary outlined end action and its real text label.",
+      "container": true,
+      "codeDrawn": true
+    }
+  ]
+}

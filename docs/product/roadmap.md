@@ -27,7 +27,7 @@
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
-| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A Implemented — Automated Verified; formal Impeccable review, field validation và Safe Journey chưa hoàn tất |
+| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A và M7-B bản thủ công Automated Verified; formal review, field validation và tính năng tự động chưa hoàn tất |
 | [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
 
 ## M0 — Foundation
@@ -265,11 +265,18 @@ Go/Android CI và 19 tests trên emulator đã PASS tại `c2854d2`, kèm 11 ả
 dùng dữ liệu tổng hợp. Bản sửa tương phản cũng qua Go/Android CI trên `91cbb7c`.
 Finish review yêu cầu recapture đúng khung comp; formal Impeccable review còn mở.
 GPS/pin/OEM vẫn cần
-điện thoại vật lý. Toàn bộ M7 chưa hoàn tất. Safe Journey (M7-B) chưa triển khai.
+điện thoại vật lý. Toàn bộ M7 chưa hoàn tất. Safe Journey (M7-B) đã triển khai
+bản đầu
+theo [ADR 0012](../adr/0012-safe-journey-lifecycle.md): xác nhận đến nơi thủ
+công, audience theo từng grant và ưu tiên thu thập có thời hạn. Go/Android CI
+tại `bcde472` đã PASS, gồm 32 instrumentation tests. Bản native đã được người
+dùng duyệt; ngoại lệ hoàn tất cho cổng formal được ghi riêng. Firebase thật
+và field validation còn mở; xem
+[M7-B validation](../implementation/m7b-validation.md).
 
 Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).
-Tài liệu liệt kê phạm vi, các quyết định còn mở và exit criteria; chưa triển
-khai lifecycle, API hay UI Safe Journey.
+Tài liệu ghi phạm vi và exit criteria; các quyết định bản đầu được chốt ở
+ADR 0012. Arrival tự động và cảnh báo ngừng cập nhật tiếp tục Planned.
 
 **Scope:** Safe Journey (có thể lùi nếu cần giảm scope — quyết định khi đến mốc),
 Tracking Health & Diagnostics, quy trình field validation trên nhiều thiết bị

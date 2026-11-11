@@ -18,6 +18,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
+	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 	"github.com/QuocDuong16/anve/server/internal/notifications"
@@ -65,6 +66,7 @@ func run() error {
 	var locationStore *locations.PGStore
 	var placeStore *places.Store
 	var sosStore *sos.Store
+	var journeyStore *journeys.Store
 	var pushGateway notifications.Gateway
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
@@ -108,6 +110,7 @@ func run() error {
 		locationStore = locations.NewPGStore(pool)
 		placeStore = places.NewStore(pool, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		sosStore = sos.NewStore(pool)
+		journeyStore = journeys.NewStore(pool, cfg.LocationRetentionDays)
 		if cfg.FCMProjectID != "" {
 			pushGateway, err = notifications.NewFCM(ctx, cfg.FCMProjectID)
 			if err != nil {
@@ -137,6 +140,7 @@ func run() error {
 			LocationAccess:          locationAccessService,
 			Places:                  placeStore,
 			SOS:                     sosStore,
+			Journeys:                journeyStore,
 			PushConfigured:          pushGateway != nil,
 			DB:                      pool,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
@@ -163,6 +167,9 @@ func run() error {
 	}
 	if sosStore != nil {
 		go sos.RunRetention(ctx, sosStore, logger.With("component", "sos-retention"))
+	}
+	if journeyStore != nil {
+		go journeys.RunWorker(ctx, journeyStore, pushGateway, logger.With("component", "journeys"))
 	}
 	if pushGateway != nil {
 		go sos.RunDispatchWorker(ctx, sosStore, pushGateway, logger.With("component", "sos-notifications"))

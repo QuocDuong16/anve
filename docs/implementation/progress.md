@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-11-11 (M7-A diagnostics and validation foundations).
+Last updated: 2026-11-12 (M7-B automated checks passed; native rendering approved).
 
 ## Current milestone
 
@@ -24,7 +24,11 @@ near-real-time snapshot convergence, not server push.
 real Firebase and physical-device validation pending.**
 **M7-A — Diagnostics: Implemented — Automated Verified (Go, Android and CI
 emulator); physical-device validation and formal Impeccable review remain open.**
-M7-B Safe Journey and M8 release hardening remain Planned.
+**M7-B Safe Journey first release: Implemented — Automated Verified** on the
+feature branch (`bcde472`, Go/Android CI and 32 emulator tests). Native
+correction review and documenter are complete; user approved the final render
+and completion with the formal portal pending. Automatic arrival/stale alerts
+and M8 remain Planned.
 
 ## Milestones
 
@@ -37,8 +41,15 @@ M7-B Safe Journey and M8 release hardening remain Planned.
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
-| M7 Journey & diagnostics | M7-A Implemented — Automated Verified | Go/Android CI, 19 emulator tests and 11 native captures at `c2854d2`; formal Impeccable review and field validation remain open. Safe Journey remains Planned. |
+| M7 Journey & diagnostics | M7-A and M7-B Automated Verified | M7-A merged in `6d3cb01`. M7-B `bcde472`: Go/Android CI, 306 JVM and 32 emulator tests pass; native render approved, formal completion explicitly waived by user, field evidence pending. Automatic arrival/stale alerts remain Planned. |
 | M8 Release hardening | Not started | |
+
+## M7-B work in flight
+
+See [M7-B validation](m7b-validation.md) for current checks, design decisions,
+manual plan/final-render completion exceptions and outstanding field evidence.
+M7-B manual release is accepted for merge with green CI; full M7 completion,
+field validation and M8 readiness are not claimed.
 
 ## M1 evidence
 

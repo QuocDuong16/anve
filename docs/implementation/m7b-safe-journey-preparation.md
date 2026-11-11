@@ -1,7 +1,10 @@
 # M7-B — Safe Journey: chuẩn bị triển khai
 
-**Status: Planned.** Đây là kế hoạch cho phase tiếp theo, không phải bằng chứng
-Safe Journey đã được triển khai. Các yêu cầu đã chốt nằm ở
+**Status: first manual release Implemented — Automated Verified (`bcde472`);
+native rendering approved; formal completion waived by user, field validation pending.** Quyết định bản đầu ở
+[ADR 0012](../adr/0012-safe-journey-lifecycle.md), evidence hiện tại ở
+[M7-B validation](m7b-validation.md). Phần dưới giữ checklist chuẩn bị; không
+phải bằng chứng CI/field validation đã pass. Các yêu cầu đã chốt nằm ở
 [features](../product/features.md#11-safe-journey),
 [user journeys](../product/user-journeys.md#8-safe-journey) và
 [roadmap](../product/roadmap.md#m7--safe-journey-diagnostics-field-validation).
@@ -40,8 +43,10 @@ người nhận đã đọc.
 | Retention | Thời hạn metadata, điểm hành trình, sự kiện và deletion fences; quan hệ với xóa history/retention của chủ dữ liệu |
 | Stale alerts | Inputs, ngưỡng, calibration và điều kiện không phát cảnh báo; chưa cam kết ETA hoặc latency |
 
-Những lựa chọn trong bảng chưa phải yêu cầu đã chốt. Ghi quyết định vào ADR
-trước khi thay đổi schema/contract hoặc viết luồng UI phụ thuộc vào chúng.
+Các chủ đề trong bảng đã được giải quyết cho bản đầu ở ADR 0012: xác nhận
+đến nơi thủ công, một active journey, exact existing audience grants, online
+start, expiry 15 phút–8 giờ ở API, retention tối đa 7 ngày và không có cảnh báo
+stale tự động. Những khả năng tự động còn lại tiếp tục Planned.
 
 ## Trình tự triển khai
 
@@ -77,3 +82,39 @@ trước khi thay đổi schema/contract hoặc viết luồng UI phụ thuộc 
   thao tác được. Record SHA, CI run và artifacts; field evidence được ghi riêng.
 - Cảnh báo/arrival tự động chỉ được đánh dấu Verified khi có bằng chứng phù hợp
   với quy tắc đã chốt, ngoài các test dùng dữ liệu tổng hợp.
+
+## Giai đoạn tiếp theo sau bản thủ công
+
+1. Chốt native finish review và ghi rõ giới hạn của cổng formal; chỉ merge khi
+   kiểm thử liên quan xanh và các lỗi material đã giải quyết.
+2. Chạy protocol [tracking validation](tracking-validation.md) trên điện thoại
+   thật: consent OFF/revoke, account switch, process kill/reboot, mất mạng và
+   recovery, kết thúc/hết hạn khi upload đang chạy. Ghi model/OEM, phiên bản,
+   thời lượng, độ chính xác và số đo pin; không đưa tọa độ vào báo cáo diagnostics.
+3. Kiểm tra Firebase thật trên tài khoản thử có quyền và đã bị revoke; ghi riêng
+   provider acceptance, notification được nhận và thao tác mở/đọc lại server.
+4. Dựa trên field samples mới đề xuất accuracy/dwell/gap cho arrival và stale;
+   cần quyết định sản phẩm và bằng chứng calibration trước contract/UI mới.
+5. Chuẩn bị M8 bằng inventory security/observability/release và tài liệu Data
+   Safety/permissions đối chiếu hành vi thực tế. M8 chưa bắt đầu và chưa có kết
+   luận đủ điều kiện phát hành Google Play.
+
+## Ma trận thực địa cho bản thủ công — chưa chạy
+
+Dùng hai điện thoại/tài khoản thử có consent; thêm một tài khoản không được
+chọn làm đối chứng. Ghi SHA/APK, Android/OEM, thời điểm, expected/observed và
+artifact đã lọc theo protocol tracking validation, không ghi token/tọa độ.
+
+| Kịch bản | Expected | Bằng chứng cần thu |
+| --- | --- | --- |
+| Chọn một người xem, mở từ push | Chỉ người còn grant đọc được; màn chi tiết nêu đúng chủ hành trình | Server authorization readback, thông báo thực nhận và ảnh đã lọc |
+| Thu hồi rồi cấp lại grant / rời rồi vào Circle | Lựa chọn cũ không được phục hồi | GET sau revoke/regrant/rejoin và trạng thái trên máy người xem |
+| Create mất phản hồi, cancel khi offline | Không create ID mới hay khẳng định thành công; có mạng reconcile cùng ID | UI pending, server state, outbox metadata không tọa độ |
+| Đã đến nơi so với Kết thúc | Chỉ thao tác đầu tạo ARRIVED; ưu tiên dừng ở cả hai, chia sẻ thường theo cài đặt riêng | State server và diagnostics trước/sau |
+| Hết hạn khi offline hoặc upload đang chạy | Lease không vượt hạn; không tự xác nhận đến nơi | Đồng hồ thời gian thực/monotonic quan sát, state sau reconnect |
+| Consent OFF, đổi owner, kill/reboot | Không khôi phục ưu tiên từ push/read/response cũ | Provider/service và queue owner-bound trước/sau |
+| Trong nhà, GPS yếu, mẫu mock | Thiếu/cũ/accuracy/mock được thể hiện, không suy ra tai nạn hoặc ETA | Mẫu quan sát đã lọc, ảnh UI và điều kiện môi trường |
+| Màn hình khóa, Battery Saver, hạn chế OEM | Ghi gián đoạn và số đo thực; không suy từ test emulator | Phiên baseline/Journey cùng điều kiện, pin/thời lượng và OEM |
+
+Kết quả hiện tại của mọi hàng: **Not run — cần điện thoại và cấu hình dịch vụ
+thật**. Ma trận là kế hoạch cho lượt tiếp theo, không phải bằng chứng đã pass.

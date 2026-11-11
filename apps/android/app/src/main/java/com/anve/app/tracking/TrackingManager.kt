@@ -118,12 +118,15 @@ class TrackingManager(
     private val consentMutations: ConsentMutationCoordinator = ConsentMutationCoordinator(),
     private val pendingConsentScheduler: com.anve.app.data.auth.PendingRevocationScheduler =
         com.anve.app.data.auth.NoOpPendingRevocationScheduler,
-) : TrackingControl {
+    private val fetchJourneyActive: suspend (String, String) -> Boolean = { _, _ -> false },
+) : TrackingControl, JourneyTrackingControl {
 
     private val _status = MutableStateFlow(TrackingStatus())
     override val status: StateFlow<TrackingStatus> = _status.asStateFlow()
 
     private val policy = AdaptiveTrackingPolicy()
+    private val journeyLease = JourneyPriorityLease(elapsedNow)
+    private var journeyConfirmationJob: Job? = null
     private val requestOptions = MutableStateFlow(policy.requestOptions())
 
     private var collectionJob: Job? = null
@@ -140,6 +143,55 @@ class TrackingManager(
     private var initialIntentLoaded = false
     private var lastMetricsTickElapsed = elapsedNow()
     private var serviceStartedAtElapsed: Long? = null
+
+    override fun journeyAdmissionRevision(): Long = journeyLease.revision
+
+    /** Explicit owner action only; never starts a service or restores a lease. */
+    override fun enableJourneyPriority(owner: String, id: String, expiresAtMillis: Long, revision: Long): Boolean {
+        val current = status.value
+        if (owner != sessionOwner || current.ownerUserId != owner || !current.activelyTracking ||
+            !current.consentEnabled || !current.consentConfirmedByServer ||
+            consentMutations.isLocationAdmissionClosed(owner)
+        ) return false
+        if (!journeyLease.activate(owner, id, expiresAtMillis - now(), revision)) return false
+        applyJourneyPolicy()
+        journeyConfirmationJob?.cancel()
+        val generation = sessionGeneration
+        journeyConfirmationJob = scope.launch {
+            while (journeyLease.active(owner, id)) {
+                delay(20_000)
+                if (generation != sessionGeneration || owner != sessionOwner || !journeyLease.active(owner, id)) break
+                val active = try {
+                    fetchJourneyActive(owner, id)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Failed reads cannot extend a process-local confirmation.
+                    continue
+                }
+                if (!active || generation != sessionGeneration || !journeyLease.renew(owner, id, revision)) {
+                    stopJourneyPriority(owner)
+                    break
+                }
+            }
+            applyJourneyPolicy()
+        }
+        return true
+    }
+
+    override fun stopJourneyPriority(owner: String) {
+        if (owner != sessionOwner) return
+        journeyLease.clear()
+        journeyConfirmationJob?.cancel()
+        journeyConfirmationJob = null
+        applyJourneyPolicy()
+    }
+
+    private fun applyJourneyPolicy() {
+        policy.setJourney(journeyLease.active(sessionOwner) && status.value.activelyTracking)
+        requestOptions.value = policy.requestOptions(batterySaver())
+        _status.update { it.copy(motion = policy.motion) }
+    }
 
     init {
         observeLocalState()
@@ -1264,6 +1316,7 @@ class TrackingManager(
             _status.update { it.copy(lastError = TrackingProblem.CHECKPOINT_UNAVAILABLE, lastErrorAtMillis = now()) }
             return
         }
+        applyJourneyPolicy()
         val decision = policy.onFix(
             fix = fix,
             nowElapsedMillis = elapsedNow(),
@@ -1325,6 +1378,7 @@ class TrackingManager(
 
     /** Internal for deterministic tests of permission/location loss. */
     internal suspend fun checkOperationalState() {
+        applyJourneyPolicy()
         val snapshot = permissions.snapshot()
         _status.update {
             it.copy(
@@ -1446,18 +1500,22 @@ class TrackingManager(
     }
 
     private fun stopAcquisition() {
+        journeyLease.clear()
+        journeyConfirmationJob?.cancel()
+        journeyConfirmationJob = null
         if (collectionJob != null) {
             val slice = (elapsedNow() - lastMetricsTickElapsed).coerceAtLeast(0)
             val motion = policy.motion
             val operational = _status.value.operational
             scope.launch { metrics.recordStateSlice(motion, operational, slice) }
         }
+        policy.setJourney(false)
         collectionJob?.cancel()
         collectionJob = null
         tickerJob?.cancel()
         tickerJob = null
         requestOptions.value = policy.requestOptions()
-        _status.update { it.copy(providerActive = false) }
+        _status.update { it.copy(providerActive = false, motion = policy.motion) }
     }
 
     private fun recordServiceLifetime() {

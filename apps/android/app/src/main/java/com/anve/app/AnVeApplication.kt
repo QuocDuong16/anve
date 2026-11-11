@@ -121,6 +121,12 @@ class AppContainer(application: Application) {
     val pushEventRepository by lazy { PushEventRepository(authApi) }
     val sosRepository by lazy { SosRepository(authApi) }
 
+    val journeyOutbox by lazy { com.anve.app.data.journey.EncryptedJourneyOutbox(application) }
+    val journeySyncScheduler by lazy { com.anve.app.data.journey.JourneySyncScheduler(application) }
+    val journeyRepository by lazy {
+        com.anve.app.data.journey.JourneyRepository(com.anve.app.data.journey.ApiJourneyGateway(authApi), sessionStore, journeyOutbox, journeySyncScheduler::schedule)
+    }
+
     // ── M3 location engine ───────────────────────────────────────────────
 
     /** Durable offline queue. No destructive migration: captured points survive updates. */
@@ -176,6 +182,15 @@ class AppContainer(application: Application) {
         batterySaver = { powerManager?.isPowerSaveMode == true },
         consentMutations = consentMutationCoordinator,
         pendingConsentScheduler = pendingRevocationScheduler,
+        fetchJourneyActive = { owner, id ->
+            if (journeyOutbox.read(owner).any { it.journeyId == id }) {
+                false
+            } else {
+                val response = authApi.journey(owner, id)
+                val journey = response.body()
+                response.isSuccessful && journey?.ownerId == owner && journey.id == id && journey.state == "ACTIVE" && journey.recipients.isNotEmpty()
+            }
+        },
     )
 
     val locationSyncEngine: LocationSyncEngine = LocationSyncEngine(
@@ -237,6 +252,13 @@ class AnVeApplication : Application() {
         applicationScope.launch {
             container.sessionStore.session.collectLatest { session ->
                 val owner = session?.userId ?: return@collectLatest
+                try {
+                    if (container.journeyOutbox.read(owner).isNotEmpty()) container.journeySyncScheduler.schedule(owner)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    android.util.Log.e("AnVe", "Journey outbox unavailable")
+                }
                 try {
                     container.sosSyncEngine.recoverInterrupted(owner)
                     if (container.sosOutbox.read(owner).any {

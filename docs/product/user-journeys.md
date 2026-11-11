@@ -167,6 +167,18 @@ vụ cấp cứu 113/115/114 — app nói rõ điều này ngay trong luồng SO
 **Nhân vật:** người đi về muộn (chủ hành trình) và người thân được chọn.
 **Milestone:** M7 — có thể lùi sau MVP.
 
+**Bản đầu M7-B (Automated Verified tại `bcde472`; native đã duyệt, field còn mở):** chọn địa điểm đã lưu và người đã có
+quyền xem vị trí; bắt đầu cần mạng và thu thập đã được bật riêng ở màn Vị trí.
+Người dùng chọn thời hạn tối đa 8 giờ, chủ động bấm “Đã đến nơi” hoặc kết thúc
+mà chưa xác nhận đến đích. Ngưỡng GPS/cảnh báo tự động dưới đây vẫn là mục tiêu
+Planned, không phải hành vi đã được xác minh. Khi mất mạng hoặc request chưa
+rõ kết quả, app giữ thao tác theo owner và đọc lại/fence cùng ID; không tạo ID
+mới hay tuyên bố máy chủ đã ghi nhận. Push bản đầu là thông báo sự kiện chung
+sau khi kiểm tra quyền; payload chỉ có UUID/kind, không chứa tên/đích/tọa độ.
+Provider acceptance không chứng minh người theo dõi đã nhận hoặc đọc. Copy cá
+nhân hóa và cảnh báo tự động trong luồng mục tiêu dưới đây chưa được triển
+khai đầy đủ. Xem ADR 0012.
+
 1. Người dùng bắt đầu hành trình: chọn điểm đến (hoặc dùng địa điểm đã có),
    chọn người thân được theo dõi hành trình này.
 2. Những người được chọn nhận thông báo “An đã bắt đầu hành trình về nhà”.

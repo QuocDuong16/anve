@@ -99,10 +99,14 @@ private enum class HomeTab(val labelRes: Int) {
 fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
     var showDiagnostics by remember { mutableStateOf(false) }
+    var showJourneys by remember { mutableStateOf(false) }
+    var selectedJourney by remember { mutableStateOf<String?>(null) }
     var selectedSos by remember { mutableStateOf<String?>(null) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     LaunchedEffect(session?.userId) {
         showDiagnostics = false
+        showJourneys = false
+        selectedJourney = null
         selectedSos = null
         tab = HomeTab.CIRCLE
     }
@@ -112,10 +116,18 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         val destination = pushDestination(hint.kind, hint.eventId, hint.ownerId, owner)
         if (destination != null) {
             showDiagnostics = false
+            showJourneys = destination.kind in com.anve.app.data.sos.JOURNEY_PUSH_KINDS
+            selectedJourney = if (showJourneys) destination.eventId else null
             selectedSos = if (destination.kind == "SOS") destination.eventId else null
             tab = if (destination.kind == "SOS") HomeTab.SOS else HomeTab.PLACES
         }
         onPushConsumed()
+    }
+    if (showJourneys) {
+        com.anve.app.ui.journey.JourneyScreen(container, onBack = { showJourneys = false },
+            onPlaces = { showJourneys = false; tab = HomeTab.PLACES },
+            onLocation = { showJourneys = false; tab = HomeTab.LOCATION }, journeyId = selectedJourney)
+        return
     }
     if (showDiagnostics) {
         BackHandler { showDiagnostics = false }
@@ -156,7 +168,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 HomeTab.HISTORY -> HistoryScreen(container = container)
                 HomeTab.PLACES -> PlacesScreen(container = container)
                 HomeTab.SOS -> SosScreen(container = container, eventId = selectedSos)
-                HomeTab.LOCATION -> TrackingScreen(container = container, onOpenDiagnostics = { showDiagnostics = true })
+                HomeTab.LOCATION -> TrackingScreen(container = container, onOpenDiagnostics = { showDiagnostics = true }, onOpenJourney = { selectedJourney = null; showJourneys = true })
                 HomeTab.ACCOUNT -> AccountContent(container = container)
             }
         }
