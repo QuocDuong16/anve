@@ -12,6 +12,9 @@ phục hồi bằng kịch bản lặp lại được. M7-A không triển khai 
    và lấy cả ảnh chụp khi có test thất bại. Các kiểm thử Diagnostics lưu ảnh toàn
    màn hình bằng Android UiAutomation; `make android-ui-captures` lấy ảnh vào
    `apps/android/app/build/outputs/ui-validation/` để upload cùng kết quả test.
+   Runner chỉ giữ APK sau test trong vòng đời emulator để lấy ảnh, bằng
+   `android.injected.androidTest.leaveApksInstalledAfterRun=true`; AGP mặc định
+   gỡ app và xóa app-specific external files trước bước `adb pull`.
    Chỉ ghi nhận Emulator Verified khi workflow thực sự chạy thành công trên
    SHA tương ứng. Ảnh dùng dữ liệu giả lập, không có vị trí/tài khoản thật.
 3. Field validation: điện thoại vật lý, GPS thật, mạng, pin và hạn chế OEM.
@@ -123,3 +126,11 @@ node offscreen bằng `performScrollTo`. Đồng thời bổ sung ảnh toàn m�
 empty/loading/permission/consent/error/export states và giữ partial captures
 trước khi emulator tắt. Không đổi timeout hoặc bỏ assertion. Cần workflow mới
 trên commit sửa lỗi để xác nhận kết quả.
+
+Vòng tiếp theo trên `1719cba871e93cb641018462d8fb4c7027636a1b`:
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42968947923) PASS;
+[Android instrumentation](https://github.com/QuocDuong16/anve/actions/runs/42968947397)
+đã chạy **19 tests, 0 failures/errors**. Job vẫn thất bại ở bước lấy ảnh vì AGP
+đã gỡ APK và xóa thư mục ảnh trước khi `adb pull`. Runner được sửa để giữ APK
+trong vòng đời emulator; không đổi assertions hay timeout. Kết quả toàn bộ
+workflow và artifact ảnh sau bản sửa phải được xác nhận ở run mới.

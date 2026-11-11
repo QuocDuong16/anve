@@ -124,6 +124,7 @@ server-check: ## Run the Go server format, vet, lint, test and build checks
 # pinned in apps/android/gradle/libs.versions.toml. When neither variable is
 # set, the default Android Studio location is used.
 ANDROID_DIR = apps/android
+ANDROID_TEST_GRADLE_ARGS ?=
 ANDROID_HOME ?= $(if $(ANDROID_SDK_ROOT),$(ANDROID_SDK_ROOT),$(HOME)/Android/Sdk)
 export ANDROID_HOME
 export ANDROID_SDK_ROOT := $(ANDROID_HOME)
@@ -146,7 +147,7 @@ android-test-build: android-sdk-check ## Compile the Android instrumentation tes
 	cd $(ANDROID_DIR) && ./gradlew :app:assembleDebugAndroidTest
 
 android-instrumentation: android-sdk-check ## Run instrumentation on a connected emulator or device
-	cd $(ANDROID_DIR) && ./gradlew :app:connectedDebugAndroidTest
+	cd $(ANDROID_DIR) && ./gradlew :app:connectedDebugAndroidTest $(ANDROID_TEST_GRADLE_ARGS)
 
 android-emulator-validation: android-sdk-check ## Run emulator tests and retain captures even when tests fail
 	bash scripts/run_android_validation.sh
