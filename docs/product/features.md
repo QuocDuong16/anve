@@ -576,8 +576,10 @@ không bao giờ hứa “báo cảnh sát thay bạn”.
 
 ## 11. Safe Journey
 
-> Trạng thái: **Planned — M7**. Có thể lùi sau MVP nếu cần giảm scope — quyết
-> định ở [`roadmap.md`](roadmap.md).
+> Trạng thái: **Implemented — M7-B, verification pending** trên nhánh triển
+> khai. Lifecycle/backend và client đã có; CI/emulator và review native được
+> ghi riêng tại [progress](../implementation/progress.md). Arrival tự động và
+> cảnh báo ngừng cập nhật vẫn **Planned**.
 
 **Mục đích.** Tính năng khác biệt: người dùng chủ động bắt đầu một hành trình
 (đi học, đi làm, di chuyển xa, về nhà muộn) và người thân được chọn theo dõi
@@ -609,6 +611,28 @@ kết thúc mà không đến đích.
 
 **Phụ thuộc.** Location Engine + JOURNEY state (M3), Notifications (M6),
 Diagnostics để thu thập dữ liệu thực địa cho ngưỡng cảnh báo (M7 cùng mốc).
+
+**Phạm vi bản đầu (ADR 0012).** Người dùng chọn địa điểm đã lưu, thời hạn
+30 phút–8 giờ trong app và từng người đang có quyền xem vị trí. Chỉ một hành
+trình đang hoạt động mỗi tài khoản; phải có mạng khi bắt đầu. App yêu cầu bật
+chia sẻ/thu thập ở màn Vị trí trước, không tự bật GPS. Đến nơi do chủ hành
+trình xác nhận thủ công; kết thúc riêng không khẳng định đã đến đích. Điểm đến
+và việc thêm người xem chỉ đổi bằng một hành trình mới; có thể thu hồi từng
+người đang xem ngay trong hành trình. Re-grant hoặc rời/tham gia lại Circle
+không khôi phục lời mời cũ.
+
+Ưu tiên JOURNEY chỉ được bật bằng hành động chủ động trong process hiện tại,
+có giới hạn thời gian monotonic và cần xác nhận quyền từ server ít nhất mỗi
+60 giây (thử đọc mỗi 20 giây). Mất mạng có thể làm ưu tiên dừng, nhưng chia sẻ
+thông thường vẫn theo lựa chọn riêng. Hết hạn, dừng, mất consent hoặc đổi tài
+khoản không được khôi phục ưu tiên từ response cũ. App không tự tiếp tục GPS
+sau process death/reboot.
+
+Mẫu tiến trình là dữ liệu sau khi bắt đầu, kèm tuổi, accuracy và nhãn mock nếu
+có. Khoảng cách là đường chim bay, không phải tuyến đường, phần trăm hoàn
+thành hoặc ETA. FCM chỉ có UUID/kind, không có tọa độ/đích/tên. Chấp nhận bởi
+provider không đồng nghĩa nhận hoặc đọc. Tạo/hủy chưa rõ kết quả giữ ID cũ để
+đọc lại/fence; app không tự gửi lại create hay báo thành công khi chưa xác nhận.
 
 **Acceptance criteria.** Người theo dõi nhận được: bắt đầu hành trình, tiến
 trình, đến nơi; hành trình dừng cập nhật sinh cảnh báo đúng quy tắc và đúng

@@ -265,11 +265,14 @@ Go/Android CI và 19 tests trên emulator đã PASS tại `c2854d2`, kèm 11 ả
 dùng dữ liệu tổng hợp. Bản sửa tương phản cũng qua Go/Android CI trên `91cbb7c`.
 Finish review yêu cầu recapture đúng khung comp; formal Impeccable review còn mở.
 GPS/pin/OEM vẫn cần
-điện thoại vật lý. Toàn bộ M7 chưa hoàn tất. Safe Journey (M7-B) chưa triển khai.
+điện thoại vật lý. Toàn bộ M7 chưa hoàn tất. Safe Journey (M7-B) đang triển khai
+theo [ADR 0012](../adr/0012-safe-journey-lifecycle.md): xác nhận đến nơi thủ
+công, audience theo từng grant và ưu tiên thu thập có thời hạn. Verification
+trên nhánh mới, review native, Firebase thật và field validation còn mở.
 
 Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).
-Tài liệu liệt kê phạm vi, các quyết định còn mở và exit criteria; chưa triển
-khai lifecycle, API hay UI Safe Journey.
+Tài liệu ghi phạm vi và exit criteria; các quyết định bản đầu được chốt ở
+ADR 0012. Arrival tự động và cảnh báo ngừng cập nhật tiếp tục Planned.
 
 **Scope:** Safe Journey (có thể lùi nếu cần giảm scope — quyết định khi đến mốc),
 Tracking Health & Diagnostics, quy trình field validation trên nhiều thiết bị

@@ -1,0 +1,7 @@
+{
+  "prompt": "Edit the attached native Android AnVề arrival confirmation mockup. Change only the dialog body text to correct the recipient meaning. Use exactly: “Bạn xác nhận đã đến Nhà. Những người bạn đã chọn theo dõi hành trình sẽ nhận sự kiện đến nơi khi máy chủ ghi nhận.” Keep title “Xác nhận đã đến nơi?”, actions “Quay lại” and “Đã đến nơi”, dialog layout, teal/sand Material 3 identity, phone portrait composition and dimmed steps-led background unchanged. Render crisp readable Vietnamese. This remains a synthetic design comp.",
+  "approved": true,
+  "generator": "built-in image_gen",
+  "synthetic": true,
+  "approval": "User approved the supporting flow and native Compose plan on 2026-11-11"
+}

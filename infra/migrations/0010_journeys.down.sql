@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS retention_changes_purge_journeys ON users;
+DROP TRIGGER IF EXISTS history_deletions_purge_journeys ON location_history_deletions;
+DROP FUNCTION IF EXISTS purge_journeys_on_history_change();
+DROP VIEW IF EXISTS current_journeys;
+DROP VIEW IF EXISTS authorized_journey_recipients;
+DROP TABLE IF EXISTS journey_notification_targets;
+DROP TABLE IF EXISTS journey_notification_outbox;
+DROP TABLE IF EXISTS journey_recipients;
+DROP TABLE IF EXISTS journeys;
+DROP TABLE IF EXISTS journey_requests;

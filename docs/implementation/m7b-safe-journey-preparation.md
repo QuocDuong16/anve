@@ -1,7 +1,9 @@
 # M7-B — Safe Journey: chuẩn bị triển khai
 
-**Status: Planned.** Đây là kế hoạch cho phase tiếp theo, không phải bằng chứng
-Safe Journey đã được triển khai. Các yêu cầu đã chốt nằm ở
+**Status: implementation started; verification pending.** Quyết định bản đầu ở
+[ADR 0012](../adr/0012-safe-journey-lifecycle.md), evidence hiện tại ở
+[M7-B validation](m7b-validation.md). Phần dưới giữ checklist chuẩn bị; không
+phải bằng chứng CI/field validation đã pass. Các yêu cầu đã chốt nằm ở
 [features](../product/features.md#11-safe-journey),
 [user journeys](../product/user-journeys.md#8-safe-journey) và
 [roadmap](../product/roadmap.md#m7--safe-journey-diagnostics-field-validation).
@@ -40,8 +42,10 @@ người nhận đã đọc.
 | Retention | Thời hạn metadata, điểm hành trình, sự kiện và deletion fences; quan hệ với xóa history/retention của chủ dữ liệu |
 | Stale alerts | Inputs, ngưỡng, calibration và điều kiện không phát cảnh báo; chưa cam kết ETA hoặc latency |
 
-Những lựa chọn trong bảng chưa phải yêu cầu đã chốt. Ghi quyết định vào ADR
-trước khi thay đổi schema/contract hoặc viết luồng UI phụ thuộc vào chúng.
+Các chủ đề trong bảng đã được giải quyết cho bản đầu ở ADR 0012: xác nhận
+đến nơi thủ công, một active journey, exact existing audience grants, online
+start, expiry 15 phút–8 giờ ở API, retention tối đa 7 ngày và không có cảnh báo
+stale tự động. Những khả năng tự động còn lại tiếp tục Planned.
 
 ## Trình tự triển khai
 

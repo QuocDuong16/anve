@@ -9,6 +9,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 	"github.com/QuocDuong16/anve/server/internal/places"
@@ -51,6 +52,18 @@ func writeNoContent(w http.ResponseWriter) {
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	body := errorBody{RequestID: middleware.GetReqID(r.Context())}
 	switch {
+	case errors.Is(err, journeys.ErrInvalid):
+		body.Code, body.Message = "JOURNEY_INVALID", "Invalid journey or selected audience."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, journeys.ErrNotFound):
+		body.Code, body.Message = "JOURNEY_UNAVAILABLE", "The journey is unavailable."
+		writeJSON(w, http.StatusNotFound, body)
+	case errors.Is(err, journeys.ErrConflict):
+		body.Code, body.Message = "JOURNEY_CONFLICT", "Recheck the current journey state."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, journeys.ErrCancelled):
+		body.Code, body.Message = "JOURNEY_CANCELLED", "This journey ID was cancelled."
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, auth.ErrUnauthenticated):
 		body.Code, body.Message = errCodeUnauthenticated, "Authentication required or credentials rejected."
 		writeJSON(w, http.StatusUnauthorized, body)

@@ -2,26 +2,26 @@
   "schemaVersion": 3,
   "stage": "components",
   "id": "components",
-  "title": "Plan and asset review · apps/android/app/src/main/java/com/anve/app/ui/diagnostics/DiagnosticsScreen.kt",
+  "title": "Plan and asset review · apps/android/app/src/main/java/com/anve/app/ui/journey/JourneyScreen.kt",
   "comp": {
-    "path": ".impeccable/mocks/m7-diagnostics-c.png",
+    "path": ".impeccable/mocks/decision/m7b-checklist.png",
     "width": 841,
     "height": 1870
   },
-  "specSha256": "2f67ce861c19582a373dcd1c709575e4be46caef03b99ad977e036fb5f546318",
+  "specSha256": "88d4c3a4319beafb8e1f6e56936638b6051054f2a5fe8ff4911b9937e59c72bb",
   "components": [
     {
-      "id": "app-bar",
-      "name": "App bar",
+      "id": "destination-icon",
+      "name": "Destination icon",
       "kind": "chrome",
       "role": "plan",
       "box": {
-        "x": 0,
-        "y": 0,
-        "w": 1,
-        "h": 0.0989
+        "x": 0.038,
+        "y": 0.1225,
+        "w": 0.1367,
+        "h": 0.0615
       },
-      "note": "Native Android system and application bars, teal theme; Back and refresh controls",
+      "note": "Native home vector icon in a tonal circular surface, no raster asset.",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -30,150 +30,93 @@
       "dependencies": []
     },
     {
-      "id": "summary-icon",
-      "name": "Summary icon",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0.0333,
-        "y": 0.1219,
-        "w": 0.1665,
-        "h": 0.0706
-      },
-      "note": "Semantic location status icon; native Material icon with tonal backing",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "tabs",
-      "name": "Tabs",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0.0357,
-        "y": 0.2198,
-        "w": 0.9322,
-        "h": 0.0369
-      },
-      "note": "Native equal-width overview and details segmented buttons",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "notice",
-      "name": "Notice",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0,
-        "y": 0.2727,
-        "w": 1,
-        "h": 0.0775
-      },
-      "note": "Actionable offline notice with network settings button; state-dependent native controls",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "capture-section",
-      "name": "Capture section",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0.0345,
-        "y": 0.3572,
-        "w": 0.9346,
-        "h": 0.1294
-      },
-      "note": "Native grouped acquisition rows with section heading and latest fix age",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "sync-section",
-      "name": "Sync section",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0.0345,
-        "y": 0.5021,
-        "w": 0.9346,
-        "h": 0.1278
-      },
-      "note": "Native grouped queue count and last successful upload rows",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "permissions-section",
-      "name": "Permissions section",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0,
-        "y": 0.6364,
-        "w": 1,
-        "h": 0.2299
-      },
-      "note": "Native grouped permission, location and power saver rows",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "export",
-      "name": "Export",
-      "kind": "control",
-      "role": "plan",
-      "box": {
-        "x": 0.0369,
-        "y": 0.8711,
-        "w": 0.9334,
-        "h": 0.0604
-      },
-      "note": "Explicit report preview and export entry; no automatic sending",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "preview-footer",
-      "name": "Preview footer",
+      "id": "steps",
+      "name": "Steps",
       "kind": "chrome",
       "role": "plan",
       "box": {
-        "x": 0,
-        "y": 0.9316,
-        "w": 1,
-        "h": 0.0684
+        "x": 0.0642,
+        "y": 0.2193,
+        "w": 0.088,
+        "h": 0.2503
       },
-      "note": "Mockup-only synthetic-data annotation and native system navigation; omit the annotation when rendering live data",
+      "note": "Native Material vector status icons with a vertical divider; drawn by Compose, not painted artwork.",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "destination-group",
+      "name": "Destination group",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.038,
+        "y": 0.1176,
+        "w": 0.9275,
+        "h": 0.0802
+      },
+      "note": "Native destination summary with title, expiry and home vector.",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "start-step-row",
+      "name": "Start step row",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.0595,
+        "y": 0.2086,
+        "w": 0.8799,
+        "h": 0.0722
+      },
+      "note": "Native lifecycle row holding start timestamp and complete indicator.",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "arrival-step-row",
+      "name": "Arrival step row",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.0595,
+        "y": 0.4251,
+        "w": 0.8799,
+        "h": 0.0802
+      },
+      "note": "Native lifecycle row holding manual confirmation instruction.",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "end-button-row",
+      "name": "End button row",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.0285,
+        "y": 0.7647,
+        "w": 0.9453,
+        "h": 0.0856
+      },
+      "note": "Native secondary outlined end action and its real text label.",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -184,28 +127,208 @@
   ],
   "codeRegions": [
     {
-      "id": "summary-title",
-      "name": "Summary title",
-      "kind": "text",
+      "id": "appbar",
+      "name": "Appbar",
+      "kind": "chrome",
       "box": {
-        "x": 0.2021,
-        "y": 0.1176,
-        "w": 0.7491,
-        "h": 0.0348
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.0963
       },
-      "note": "Primary diagnosis title; native Material headline, Roboto bold"
+      "note": "Native Material top app bar, Back and refresh actions; semantic teal surface."
     },
     {
-      "id": "summary-body",
-      "name": "Summary body",
+      "id": "appbar-title",
+      "name": "Appbar title",
       "kind": "text",
       "box": {
-        "x": 0.2021,
-        "y": 0.1524,
-        "w": 0.7729,
-        "h": 0.0481
+        "x": 0.1344,
+        "y": 0.0471,
+        "w": 0.2723,
+        "h": 0.0273
       },
-      "note": "Two-line explanation of current capture and upload state; native body text"
+      "note": "Hành trình; native Material titleLarge system font."
+    },
+    {
+      "id": "destination-title",
+      "name": "Destination title",
+      "kind": "text",
+      "box": {
+        "x": 0.2033,
+        "y": 0.1235,
+        "w": 0.195,
+        "h": 0.0251
+      },
+      "note": "Về nhà; native Material headlineSmall."
+    },
+    {
+      "id": "expiry",
+      "name": "Expiry",
+      "kind": "text",
+      "box": {
+        "x": 0.2033,
+        "y": 0.1594,
+        "w": 0.3805,
+        "h": 0.0182
+      },
+      "note": "Tự kết thúc lúc 23:00; expiry not ETA."
+    },
+    {
+      "id": "started",
+      "name": "Started",
+      "kind": "text",
+      "box": {
+        "x": 0.1867,
+        "y": 0.2257,
+        "w": 0.4875,
+        "h": 0.0225
+      },
+      "note": "Đã bắt đầu · 21:10; native titleMedium."
+    },
+    {
+      "id": "active-step",
+      "name": "Active step",
+      "kind": "chrome",
+      "box": {
+        "x": 0.17,
+        "y": 0.293,
+        "w": 0.8014,
+        "h": 0.1166
+      },
+      "note": "Tonal native active step container holding observed location information."
+    },
+    {
+      "id": "active-title",
+      "name": "Active title",
+      "kind": "text",
+      "box": {
+        "x": 0.1974,
+        "y": 0.3048,
+        "w": 0.3567,
+        "h": 0.0241
+      },
+      "note": "Đang di chuyển; indicates journey lifecycle, not inferred velocity."
+    },
+    {
+      "id": "freshness",
+      "name": "Freshness",
+      "kind": "text",
+      "box": {
+        "x": 0.2735,
+        "y": 0.3396,
+        "w": 0.6409,
+        "h": 0.0182
+      },
+      "note": "Vị trí cập nhật 2 phút trước; observed sample timestamp."
+    },
+    {
+      "id": "distance",
+      "name": "Distance",
+      "kind": "text",
+      "box": {
+        "x": 0.2747,
+        "y": 0.3717,
+        "w": 0.5696,
+        "h": 0.0182
+      },
+      "note": "Còn 3,2 km đường chim bay; no ETA."
+    },
+    {
+      "id": "arrival-title",
+      "name": "Arrival title",
+      "kind": "text",
+      "box": {
+        "x": 0.1867,
+        "y": 0.4396,
+        "w": 0.4126,
+        "h": 0.0219
+      },
+      "note": "Xác nhận đến nơi; explicit manual next step."
+    },
+    {
+      "id": "arrival-help",
+      "name": "Arrival help",
+      "kind": "text",
+      "box": {
+        "x": 0.1867,
+        "y": 0.4727,
+        "w": 0.6516,
+        "h": 0.0171
+      },
+      "note": "Bạn chủ động xác nhận khi đã đến."
+    },
+    {
+      "id": "recipient-summary",
+      "name": "Recipient summary",
+      "kind": "text",
+      "box": {
+        "x": 0.1237,
+        "y": 0.5385,
+        "w": 0.39,
+        "h": 0.0166
+      },
+      "note": "Người theo dõi: Mẹ, Bố; owner only."
+    },
+    {
+      "id": "recipient-action",
+      "name": "Recipient action",
+      "kind": "control",
+      "box": {
+        "x": 0.6433,
+        "y": 0.5241,
+        "w": 0.3282,
+        "h": 0.0433
+      },
+      "note": "Native text action Quản lý người xem."
+    },
+    {
+      "id": "offline-notice",
+      "name": "Offline notice",
+      "kind": "chrome",
+      "box": {
+        "x": 0.038,
+        "y": 0.5979,
+        "w": 0.9263,
+        "h": 0.0711
+      },
+      "note": "Amber tonal offline notice container, native Wi-Fi-off vector icon."
+    },
+    {
+      "id": "offline-copy",
+      "name": "Offline copy",
+      "kind": "text",
+      "box": {
+        "x": 0.1653,
+        "y": 0.6107,
+        "w": 0.7503,
+        "h": 0.0422
+      },
+      "note": "Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận."
+    },
+    {
+      "id": "arrive-action",
+      "name": "Arrive action",
+      "kind": "control",
+      "box": {
+        "x": 0.0309,
+        "y": 0.7021,
+        "w": 0.9405,
+        "h": 0.0604
+      },
+      "note": "Native filled Đã đến nơi action; at least 48dp touch target."
+    },
+    {
+      "id": "end-action",
+      "name": "End action",
+      "kind": "control",
+      "box": {
+        "x": 0.0297,
+        "y": 0.777,
+        "w": 0.9417,
+        "h": 0.0561
+      },
+      "note": "Native outlined Kết thúc hành trình action; wraps under font scaling."
     }
   ]
 }

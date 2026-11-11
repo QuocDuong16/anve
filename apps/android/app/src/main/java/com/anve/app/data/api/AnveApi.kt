@@ -18,6 +18,21 @@ import retrofit2.http.Query
  * structured API errors (envelope present) from transport failures.
  */
 interface AnveApi {
+    @GET("api/v1/journeys")
+    suspend fun journeys(@Header("X-Anve-Expected-Owner") owner: String): Response<JourneysDto>
+
+    @GET("api/v1/journeys/{id}")
+    suspend fun journey(@Header("X-Anve-Expected-Owner") owner: String, @Path("id") id: String): Response<JourneyDto>
+
+    @POST("api/v1/journeys")
+    suspend fun createJourney(@Header("X-Anve-Expected-Owner") owner: String, @Body body: CreateJourneyDto): Response<JourneyDto>
+
+    @POST("api/v1/journeys/{id}/{action}")
+    suspend fun transitionJourney(@Header("X-Anve-Expected-Owner") owner: String, @Path("id") id: String, @Path("action") action: String): Response<Unit>
+
+    @DELETE("api/v1/journeys/{id}/recipients/{recipient}")
+    suspend fun revokeJourneyRecipient(@Header("X-Anve-Expected-Owner") owner: String, @Path("id") id: String, @Path("recipient") recipient: String): Response<Unit>
+
     @GET("api/v1/auth/config")
     suspend fun authConfig(): Response<AuthConfigDto>
 

@@ -141,6 +141,22 @@ Quy tắc:
   giờ), không phụ thuộc hành vi người dùng. Đã có integration test cho purge
   và runtime smoke test xác nhận dòng quá hạn bị xóa khi API khởi động.
 
+- M7-B Journey không sao chép điểm/route. Điểm đến và metadata chỉ được đọc
+  tối đa 7 ngày, chịu giới hạn ngắn hơn của owner/server. Xóa history hoặc
+  đổi retention xóa toàn bộ nội dung Journey của owner, gồm điểm đến và
+  notification work. Fence UUID tối thiểu tồn tại đến xóa tài khoản để chặn
+  tái tạo ID cũ; tăng trưởng fence cần được theo dõi vận hành. Outbox Android
+  được mã hóa Keystore, tối đa 20 thao tác chưa rõ kết quả trên installation,
+  chỉ lưu owner/ID/loại/thời điểm/recipient nếu cần, không lưu tọa độ hoặc điểm
+  đến. Tự retry dừng sau 7 ngày; ý định chưa xác nhận vẫn hiện để người dùng
+  kiểm tra lại, không tự xóa thành thành công.
+
+- Journey chỉ thu hẹp location grant hiện hành bằng lựa chọn riêng cho từng
+  hành trình, không tự cấp quyền Circle. Mọi read/dispatch kiểm tra lại đúng
+  grant ID và membership/epoch, kể cả sau đến nơi. Ưu tiên thu thập là admission
+  process-local có thời hạn; response cũ hoặc push không thể tự khởi động nó.
+  Đến nơi là xác nhận của chủ hành trình, không phải bằng chứng GPS/an toàn.
+
 ## 5. Xóa dữ liệu và tài khoản
 
 - **Xóa location history**: chủ thể dữ liệu xóa được toàn bộ hoặc theo khoảng

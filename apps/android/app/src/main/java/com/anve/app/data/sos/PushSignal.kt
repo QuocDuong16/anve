@@ -35,7 +35,7 @@ class PushEventRepository(private val api: AnveApi) {
         when (kind) {
             "SOS" -> api.getSos(owner, id).orThrow().let { it.state == "ACTIVE" && it.acknowledgedAt == null }
             "PLACE" -> api.placeEvent(owner, id).orThrow().id == id
-            else -> false
+            else -> if (kind in JOURNEY_PUSH_KINDS) api.journey(owner, id).orThrow().let { it.id == id && it.state == kind.removePrefix("JOURNEY_") } else false
         }
     } catch (e: ApiException) {
         if (e.httpStatus in setOf(401, 403, 404)) false else throw e
@@ -46,7 +46,7 @@ class PushEventRepository(private val api: AnveApi) {
 class PushSignalScheduler(context: Context) {
     private val app = context.applicationContext
     fun schedule(kind: String, eventId: String) {
-        if (kind !in setOf("SOS", "PLACE") || runCatching { UUID.fromString(eventId) }.isFailure) return
+        if ((kind !in setOf("SOS", "PLACE") && kind !in JOURNEY_PUSH_KINDS) || runCatching { UUID.fromString(eventId) }.isFailure) return
         val work = OneTimeWorkRequestBuilder<PushSignalWorker>()
             .setInputData(workDataOf("kind" to kind, "eventId" to eventId))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -59,7 +59,7 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
     override suspend fun doWork(): Result {
         val kind = inputData.getString("kind") ?: return Result.failure()
         val eventId = inputData.getString("eventId") ?: return Result.failure()
-        if (kind !in setOf("SOS", "PLACE") || runCatching { UUID.fromString(eventId) }.isFailure) return Result.failure()
+        if ((kind !in setOf("SOS", "PLACE") && kind !in JOURNEY_PUSH_KINDS) || runCatching { UUID.fromString(eventId) }.isFailure) return Result.failure()
         val app = applicationContext as? AnVeApplication ?: return Result.failure()
         val owner = app.container.sessionStore.current()?.userId ?: return Result.success()
         return try {
@@ -84,7 +84,7 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
             val pending = PendingIntent.getActivity(applicationContext, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val notification = NotificationCompat.Builder(applicationContext, "anve_events")
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(if (kind == "SOS") "Có yêu cầu hỗ trợ" else "Có sự kiện địa điểm")
+                .setContentTitle(when { kind == "SOS" -> "Có yêu cầu hỗ trợ"; kind in JOURNEY_PUSH_KINDS -> "Có cập nhật hành trình"; else -> "Có sự kiện địa điểm" })
                 .setContentText("Mở AnVề để xem thông tin được phép.")
                 .setContentIntent(pending).setAutoCancel(true).build()
             manager.notify(id, notification)

@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: AnVề API
-  version: 0.5.0
+  version: 0.6.0
   description: |
     HTTP contract of the AnVề backend.
 
@@ -35,8 +35,99 @@ tags:
     description: Family Circle, membership and invites
   - name: sos
     description: Explicit emergency requests, recipients and acknowledgement
+  - name: journeys
+    description: Explicitly addressed journeys with manual owner arrival confirmation
 
 paths:
+  /api/v1/journeys:
+    parameters:
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: listJourneys
+      summary: List at most 50 currently authorized journeys
+      tags: [journeys]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Owner or explicitly selected current audience; private no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [journeys]
+                properties:
+                  journeys: {type: array, maxItems: 50, items: {$ref: '#/components/schemas/Journey'}}
+        "401": {description: Session or expected owner mismatch.}
+    post:
+      operationId: createJourney
+      summary: Start one journey with existing explicit location grants
+      description: |
+        Online admission only. preparedAt is within two minutes of server time.
+        Choose a stable journeyId before the first attempt. Exact retries return
+        the original state without renewing expiry; ambiguous results require
+        a same-ID read or cancellation, never a fresh UUID. Destination and
+        added recipients are immutable. No GPS or stale-alert inference.
+      tags: [journeys]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateJourney'}
+      responses:
+        "200": {description: Matching existing journey., content: {application/json: {schema: {$ref: '#/components/schemas/Journey'}}}}
+        "201": {description: Committed journey., content: {application/json: {schema: {$ref: '#/components/schemas/Journey'}}}}
+        "400": {description: JOURNEY_INVALID input.}
+        "401": {description: Session or expected owner mismatch.}
+        "409": {description: JOURNEY_CONFLICT, JOURNEY_CANCELLED or LOCATION_CONSENT_REQUIRED.}
+  /api/v1/journeys/{journeyId}:
+    parameters:
+      - {in: path, name: journeyId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getJourney
+      summary: Recheck journey authorization and authoritative lifecycle
+      tags: [journeys]
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Currently authorized private no-store state., content: {application/json: {schema: {$ref: '#/components/schemas/Journey'}}}}
+        "401": {description: Session or expected owner mismatch.}
+        "404": {description: JOURNEY_UNAVAILABLE including revoked access, deleted or retained-out content.}
+  /api/v1/journeys/{journeyId}/{action}:
+    parameters:
+      - {in: path, name: journeyId, required: true, schema: {type: string, format: uuid}}
+      - {in: path, name: action, required: true, schema: {type: string, enum: [arrive, end, cancel]}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: transitionJourney
+      summary: Owner confirms arrival, ends or cancels a journey
+      description: |
+        No request body. A repeated matching terminal transition is idempotent.
+        cancel also fences an uncertain or not-yet-created ID and returns 204.
+        Manual arrival is an owner assertion. A different terminal transition
+        returns conflict; reconcile by reading authoritative state.
+      tags: [journeys]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Committed transition or durable cancellation fence.}
+        "400": {description: JOURNEY_INVALID.}
+        "401": {description: Session or expected owner mismatch.}
+        "404": {description: JOURNEY_UNAVAILABLE.}
+        "409": {description: JOURNEY_CONFLICT with terminal state.}
+  /api/v1/journeys/{journeyId}/recipients/{recipientId}:
+    parameters:
+      - {in: path, name: journeyId, required: true, schema: {type: string, format: uuid}}
+      - {in: path, name: recipientId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    delete:
+      operationId: revokeJourneyRecipient
+      summary: Owner removes a selected viewer without changing ordinary location grants
+      tags: [journeys]
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Removed or already removed. No automatic restoration.}
+        "401": {description: Session or expected owner mismatch.}
+        "404": {description: JOURNEY_UNAVAILABLE.}
   /api/v1/notifications/status:
     get:
       operationId: notificationProviderStatus
@@ -1731,6 +1822,59 @@ components:
         Google token: Google identity is only used once at sign-in.
 
   schemas:
+    CreateJourney:
+      type: object
+      additionalProperties: false
+      required: [journeyId, preparedAt, durationMinutes, destination, recipientIds]
+      properties:
+        journeyId: {type: string, format: uuid}
+        preparedAt: {type: string, format: date-time}
+        durationMinutes: {type: integer, minimum: 15, maximum: 480}
+        destination:
+          type: object
+          additionalProperties: false
+          required: [label, latitude, longitude]
+          properties:
+            label: {type: string, minLength: 1, maxLength: 80}
+            latitude: {type: number, minimum: -90, maximum: 90}
+            longitude: {type: number, minimum: -180, maximum: 180}
+        recipientIds: {type: array, minItems: 1, maxItems: 30, uniqueItems: true, items: {type: string, format: uuid}}
+    Journey:
+      type: object
+      required: [id, ownerId, ownerName, state, startedAt, expiresAt, destination]
+      properties:
+        id: {type: string, format: uuid}
+        ownerId: {type: string, format: uuid}
+        ownerName: {type: string}
+        state: {type: string, enum: [ACTIVE, ARRIVED, ENDED, CANCELLED, EXPIRED]}
+        startedAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+        endedAt: {type: string, format: date-time}
+        destination:
+          type: object
+          required: [label, latitude, longitude]
+          properties:
+            label: {type: string}
+            latitude: {type: number}
+            longitude: {type: number}
+        recipients:
+          description: Present only for owner reads; currently selected and authorized recipients.
+          type: array
+          items:
+            type: object
+            required: [userId, displayName]
+            properties:
+              userId: {type: string, format: uuid}
+              displayName: {type: string}
+        progress:
+          description: Optional currently authorized post-start sample; absent for terminal journeys. Not an ETA.
+          type: object
+          required: [recordedAt, distanceMeters, accuracyMeters, isMock]
+          properties:
+            recordedAt: {type: string, format: date-time}
+            distanceMeters: {type: number, minimum: 0}
+            accuracyMeters: {type: number, minimum: 0}
+            isMock: {type: boolean}
     SosEvent:
       type: object
       required: [id, ownerId, recordedAt, receivedAt, state]

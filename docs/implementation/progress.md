@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-11-11 (M7-A diagnostics and validation foundations).
+Last updated: 2026-11-11 (M7-B Safe Journey implementation; hosted verification pending).
 
 ## Current milestone
 
@@ -24,7 +24,9 @@ near-real-time snapshot convergence, not server push.
 real Firebase and physical-device validation pending.**
 **M7-A — Diagnostics: Implemented — Automated Verified (Go, Android and CI
 emulator); physical-device validation and formal Impeccable review remain open.**
-M7-B Safe Journey and M8 release hardening remain Planned.
+M7-B Safe Journey first release is implemented on the feature branch with
+verification pending; automatic arrival/stale alerts remain Planned. M8 remains
+Planned.
 
 ## Milestones
 
@@ -37,8 +39,14 @@ M7-B Safe Journey and M8 release hardening remain Planned.
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
-| M7 Journey & diagnostics | M7-A Implemented — Automated Verified | Go/Android CI, 19 emulator tests and 11 native captures at `c2854d2`; formal Impeccable review and field validation remain open. Safe Journey remains Planned. |
+| M7 Journey & diagnostics | M7-A Automated Verified; M7-B Implemented, verification pending | M7-A merged in `6d3cb01`. M7-B manual arrival/lifecycle/client added; new hosted CI/native review and all field evidence pending. Automatic arrival/stale alerts remain Planned. |
 | M8 Release hardening | Not started | |
+
+## M7-B work in flight
+
+See [M7-B validation](m7b-validation.md) for current checks, design decisions,
+manual plan-review exception and outstanding hosted/native evidence. No final
+M7-B acceptance, field validation or M8 readiness is claimed.
 
 ## M1 evidence
 

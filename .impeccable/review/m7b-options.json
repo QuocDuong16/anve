@@ -1,0 +1,72 @@
+{
+  "title": "AnVề · Safe Journey",
+  "question": "Chọn bố cục cho luồng hành trình; giữ nhận diện Material hiện có và xác nhận đến nơi thủ công.",
+  "options": [
+    {
+      "id": "m7b-overview",
+      "kind": "assigned",
+      "label": "A · Của tôi / Theo dõi",
+      "kicker": "THE ROLL",
+      "thesis": "Hai nhóm rõ ràng: hành trình của bạn và hành trình được mời theo dõi.",
+      "palette": [
+        "#00505A",
+        "#FBF7F0",
+        "#B9E4E8",
+        "#F2C48A"
+      ],
+      "materials": [
+        "Native Material 3",
+        "Roboto hệ thống"
+      ],
+      "viewport": "Trạng thái, điểm đến và dữ liệu gần nhất dẫn đầu; hành động đến nơi luôn rõ.",
+      "risk": "Cần chuyển nhóm để xem hành trình của người thân.",
+      "comp": ".impeccable/mocks/decision/m7b-overview.png"
+    },
+    {
+      "id": "m7b-checklist",
+      "kind": "dealt",
+      "label": "B · Các bước hành trình",
+      "kicker": "PHƯƠNG ÁN",
+      "thesis": "Trình bày hành trình thành bắt đầu, đang đi và xác nhận đến nơi.",
+      "palette": [
+        "#00505A",
+        "#FBF7F0",
+        "#B9E4E8",
+        "#F2C48A"
+      ],
+      "materials": [
+        "Native Material 3",
+        "Roboto hệ thống"
+      ],
+      "viewport": "Tiến trình theo các bước nằm giữa điểm đến và người theo dõi.",
+      "risk": "Dễ hiểu, nhưng có thể tạo cảm giác đã biết tiến độ thực khi GPS cũ.",
+      "comp": ".impeccable/mocks/decision/m7b-checklist.png"
+    },
+    {
+      "id": "m7b-map",
+      "kind": "dealt",
+      "label": "C · Bản đồ dẫn đầu",
+      "kicker": "PHƯƠNG ÁN",
+      "thesis": "Vị trí được phép đọc dẫn đầu; điểm đến và hành động nằm dưới bản đồ.",
+      "palette": [
+        "#00505A",
+        "#FBF7F0",
+        "#B9E4E8",
+        "#F2C48A"
+      ],
+      "materials": [
+        "Native Material 3",
+        "Roboto hệ thống"
+      ],
+      "viewport": "Bản đồ, tuổi dữ liệu và khoảng cách đường chim bay, rồi xác nhận đến nơi.",
+      "risk": "Bản đồ chiếm chỗ của thông tin quyền và trạng thái khi kết nối kém.",
+      "comp": ".impeccable/mocks/decision/m7b-map.png"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  }
+}

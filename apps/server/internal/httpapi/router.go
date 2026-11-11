@@ -12,6 +12,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 	"github.com/QuocDuong16/anve/server/internal/places"
@@ -47,6 +48,7 @@ type Deps struct {
 	LocationAccess *locationaccess.Service
 	Places         *places.Store
 	SOS            *sos.Store
+	Journeys       *journeys.Store
 	PushConfigured bool
 	DB             Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
@@ -130,6 +132,14 @@ func NewRouter(deps Deps) chi.Router {
 			private.Use(RequireAuth(svc))
 
 			private.Post("/auth/signout", signOutHandler(svc))
+			if deps.Journeys != nil {
+				limiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				private.With(RateLimit(limiter)).Get("/journeys", journeyCollection(deps.Journeys))
+				private.With(RateLimit(limiter)).Post("/journeys", journeyCollection(deps.Journeys))
+				private.With(RateLimit(limiter)).Get("/journeys/{journeyId}", journeyDetail(deps.Journeys))
+				private.With(RateLimit(limiter)).Post("/journeys/{journeyId}/{action}", journeyDetail(deps.Journeys))
+				private.With(RateLimit(limiter)).Delete("/journeys/{journeyId}/recipients/{recipientId}", journeyDetail(deps.Journeys))
+			}
 			if deps.SOS != nil {
 				limiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
 				private.Get("/notifications/status", func(w http.ResponseWriter, r *http.Request) {
