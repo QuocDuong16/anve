@@ -8,9 +8,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -29,10 +32,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -66,9 +72,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -277,12 +285,14 @@ fun DiagnosticsContent(
                 }
             }
             if (diagnosis.action != null) item {
-                Card(colors = CardDefaults.cardColors(containerColor = noticeBackground, contentColor = noticeForeground)) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(if (diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS) "Mất kết nối mạng" else diagnosis.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                        TextButton(onClick = { onAction(diagnosis.action) }, colors = ButtonDefaults.textButtonColors(contentColor = noticeForeground)) { Text(diagnosis.actionLabel.orEmpty()) }
-                    }
-                }
+                DiagnosticsNotice(
+                    title = if (diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS) "Mất kết nối mạng" else diagnosis.title,
+                    actionLabel = diagnosis.actionLabel.orEmpty(),
+                    networkIssue = diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS,
+                    background = noticeBackground,
+                    foreground = noticeForeground,
+                    onAction = { onAction(diagnosis.action) },
+                )
             }
             if (actionError != null) item { Text(actionError, color = MaterialTheme.colorScheme.error) }
             if (state.readFailed) item { Text("Chưa đọc được chẩn đoán bổ sung. Dùng nút Làm mới để thử lại.", color = MaterialTheme.colorScheme.error) }
@@ -343,6 +353,37 @@ fun DiagnosticsContent(
                 }
             }
             item { Text("Trạng thái tại lần đọc gần nhất. Làm mới sau khi đổi cài đặt.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
+@Composable
+private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: Boolean, background: Color, foreground: Color, onAction: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = background, contentColor = foreground)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(12.dp)) {
+            val icon = if (networkIssue) Icons.Default.WifiOff else Icons.Default.Info
+            val action: @Composable (Modifier) -> Unit = { modifier ->
+                OutlinedButton(onClick = onAction, modifier = modifier, border = BorderStroke(1.dp, foreground), colors = ButtonDefaults.outlinedButtonColors(contentColor = foreground)) {
+                    Icon(Icons.Default.Settings, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(actionLabel)
+                }
+            }
+            if (maxWidth < 340.dp || LocalDensity.current.fontScale > 1.15f) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(icon, null)
+                        Text(title, style = MaterialTheme.typography.titleMedium)
+                    }
+                    action(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(icon, null)
+                    Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    action(Modifier)
+                }
+            }
         }
     }
 }

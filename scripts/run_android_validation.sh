@@ -8,7 +8,7 @@ mkdir -p "$evidence_dir"
     adb -e shell wm size
     adb -e shell wm density
     adb -e shell settings get system font_scale
-    echo 'Themes are fixture-controlled; dark-font130 captures use Compose fontScale=1.3.'
+    echo 'Themes are fixture-controlled; dark-font130 tests set Android system font_scale=1.3 before Activity launch and restore it afterward.'
     echo 'compose-* images are native app windows (SystemUI glyph layers excluded); dialog-* images capture the composed display.'
 } > "$evidence_dir/emulator-metadata.txt"
 

@@ -2,11 +2,9 @@ package com.anve.app.ui.diagnostics
 
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
@@ -17,7 +15,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.platform.graphics.HardwareRendererCompat
 import com.anve.app.data.location.QueueDiagnostics
@@ -31,9 +28,13 @@ import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 
 class DiagnosticsScreenInstrumentedTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val systemFontScale: TestRule = SystemFontScaleRule("enlargedTextAndDarkThemeKeepActionsReachable", 1.3f)
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val state = DiagnosticsUiState(
@@ -80,15 +81,13 @@ class DiagnosticsScreenInstrumentedTest {
 
     @Test
     fun enlargedTextAndDarkThemeKeepActionsReachable() {
+        assertEquals(1.3f, InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale, 0.01f)
         val show = mutableStateOf(false)
         val report = safeDiagnosticsReport(state.status, state.details, "synthetic-debug", 35, 1_000_000)
         compose.setContent {
             AnVeTheme(darkTheme = true) {
-                val density = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(density.density, 1.3f)) {
-                    DiagnosticsContent(state, 1_000_000, {}, {}, {}, { show.value = true })
-                    if (show.value) DiagnosticsExportReview(report, { show.value = false }, {})
-                }
+                DiagnosticsContent(state, 1_000_000, {}, {}, {}, { show.value = true })
+                if (show.value) DiagnosticsExportReview(report, { show.value = false }, {})
             }
         }
         scrollTo("Mở cài đặt mạng")
@@ -190,6 +189,9 @@ class DiagnosticsScreenInstrumentedTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
+        val captureContext = InstrumentationRegistry.getInstrumentation().targetContext
+        File(requireNotNull(captureContext.getExternalFilesDir("ui-validation")), "$name-font-scale.txt")
+            .writeText("androidFontScale=${captureContext.resources.configuration.fontScale}\n")
         // Compose capture forces drawing; semantic idleness alone can leave stale pixels.
         val windows = compose.onAllNodes(isRoot())
         val titleBounds = compose.onNodeWithText("Chẩn đoán vị trí").fetchSemanticsNode().boundsInRoot

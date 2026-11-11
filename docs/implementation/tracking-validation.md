@@ -261,3 +261,19 @@ lý drawing mà AndroidX dùng quanh các API capture; không thêm sleep hoặc
 pixel ảnh. Cần xác nhận run mới cho phần fallback dialog này.
 
 [AndroidX window capture source](https://github.com/androidx/androidx/blob/androidx-main/compose/ui/ui-test/src/androidMain/kotlin/androidx/compose/ui/test/android/WindowCapture.android.kt).
+
+
+## Sửa theo finish review
+
+Reviewer trả **fix**: khôi phục network icon và nút settings có viền như comp
+C; kiểm chứng modal bằng Android font scale 1.3 thật. Notice dùng native
+`OutlinedButton` có gear icon; màn hẹp hoặc chữ lớn xếp action xuống dòng để
+không ép/clamp nhãn.
+
+Test phóng chữ đặt `settings system font_scale=1.3` trước Activity rule, xác
+nhận `Resources.configuration.fontScale`, rồi khôi phục giá trị cũ sau khi
+Activity đóng, cả khi test thất bại. Mỗi capture ghi font scale thực tế bên
+cạnh PNG. Không còn dùng LocalDensity override làm bằng chứng dialog chữ lớn.
+
+Formal component/plan review, hero gate và seed corroboration vẫn còn mở;
+không coi CI xanh là quyết định **ship** của Impeccable.
