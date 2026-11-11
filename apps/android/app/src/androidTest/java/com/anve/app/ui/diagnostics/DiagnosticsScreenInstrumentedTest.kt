@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
@@ -190,14 +191,38 @@ class DiagnosticsScreenInstrumentedTest {
         compose.waitForIdle()
         // Compose capture forces drawing; semantic idleness alone can leave stale pixels.
         val windows = compose.onAllNodes(isRoot())
+        val titleBounds = compose.onNodeWithText("Chẩn đoán vị trí").fetchSemanticsNode().boundsInRoot
+        var readyBitmap: Bitmap? = null
+        compose.waitUntil(timeoutMillis = 5_000) {
+            val candidate = windows[0].captureToImage().asAndroidBitmap()
+            if (hasRenderedText(candidate, titleBounds)) {
+                readyBitmap = candidate
+                true
+            } else {
+                candidate.recycle()
+                false
+            }
+        }
+        saveCapture("compose-$name-window-0", requireNotNull(readyBitmap))
         windows.fetchSemanticsNodes().indices.forEach { index ->
+            if (index == 0) return@forEach
             val bitmap = windows[index].captureToImage().asAndroidBitmap()
             saveCapture("compose-$name-window-$index", bitmap)
         }
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        instrumentation.uiAutomation.waitForIdle(200, 5_000)
-        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
-        saveCapture(name, bitmap)
+    }
+
+    private fun hasRenderedText(bitmap: Bitmap, bounds: Rect): Boolean {
+        val left = bounds.left.toInt().coerceIn(0, bitmap.width - 1)
+        val top = bounds.top.toInt().coerceIn(0, bitmap.height - 1)
+        val right = bounds.right.toInt().coerceIn(left + 1, bitmap.width)
+        val bottom = bounds.bottom.toInt().coerceIn(top + 1, bitmap.height)
+        val background = bitmap.getPixel(left, top)
+        for (y in top until bottom) {
+            for (x in left until right) {
+                if (bitmap.getPixel(x, y) != background) return true
+            }
+        }
+        return false
     }
 
     private fun saveCapture(name: String, bitmap: Bitmap) {

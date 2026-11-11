@@ -223,3 +223,24 @@ bản thư viện đã ghim đã bị loại và compile lại bằng API tươn
 
 `make android-test-build` PASS sau chỉnh API. Execution và độ hợp lệ ảnh phải
 được xác nhận trên run mới. Không tuyên bố đã đóng Impeccable finish review.
+
+
+## Phạm vi ảnh review chính thức
+
+Trên `e593246`, instrumentation chạy 19/19 tests và tạo được ảnh window bằng
+Compose. Ảnh `UiAutomation` sau đó vẫn đen/thiếu nội dung; chúng không được
+chọn làm bằng chứng chất lượng UI. Không coi renderer mới hoặc lần capture
+API đầu tiên là đã sửa toàn bộ vấn đề đồng bộ.
+
+Harness lưu ảnh native window qua Compose và thêm điều kiện sẵn sàng có giới
+hạn: chính bitmap được lưu phải có glyph tiêu đề app bar, dựa trên bounds của
+node text đã layout. Nếu vùng đó chỉ có nền, đợi frame tiếp; hết hạn thì test
+thất bại. Không thay đổi assertions chức năng hoặc timeout toàn workflow.
+Ảnh toàn display không hợp lệ được loại khỏi các run tiếp theo thay vì gắn
+nhãn chúng như bằng chứng hợp lệ.
+
+Ảnh window giữ nguyên pixel do emulator tạo, không sửa kích thước/ghép ảnh;
+main window là 842×1870 px, 327 dpi. Dialog được chụp riêng từng window. Lớp
+glyph status/navigation của SystemUI không nằm trong ảnh window, nên không
+có tuyên bố kiểm chứng lớp đó. Review phải nêu rõ phạm vi app-window, cùng
+các giới hạn về thiết bị vật lý đã ghi ở trên.
