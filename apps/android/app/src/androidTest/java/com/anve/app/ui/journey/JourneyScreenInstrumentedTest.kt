@@ -79,6 +79,7 @@ class JourneyScreenInstrumentedTest {
         compose.onNodeWithText("Đã đến nơi").assertDoesNotExist()
         compose.onNodeWithText("Kết thúc hành trình").assertDoesNotExist()
         compose.onNodeWithText("Quản lý người xem").assertDoesNotExist()
+        compose.onNodeWithText("Hành trình của An").assertIsDisplayed()
         capture("viewer-light")
     }
 

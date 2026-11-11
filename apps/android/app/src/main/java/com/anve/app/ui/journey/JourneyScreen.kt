@@ -240,8 +240,9 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                 Icon(Icons.Default.Home, null, Modifier.padding(14.dp).size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                if (!owner) Text("Hành trình của ${journey.ownerName}", style = MaterialTheme.typography.titleMedium)
                 Text(if (active) "Tự kết thúc ${journeyTime(journey.expiresAt)}" else journey.endedAt?.let { "Kết thúc ${journeyTime(it)}" } ?: "Đã kết thúc hành trình", style = MaterialTheme.typography.bodyMedium)
             }
         }

@@ -576,8 +576,8 @@ không bao giờ hứa “báo cảnh sát thay bạn”.
 
 ## 11. Safe Journey
 
-> Trạng thái: **Implemented — M7-B, verification pending** trên nhánh triển
-> khai. Lifecycle/backend và client đã có; CI/emulator và review native được
+> Trạng thái: **Implemented — Automated Verified (M7-B)** trên nhánh triển
+> khai tại `0ddb112` (Go/Android CI, 32 emulator tests). Review native được
 > ghi riêng tại [progress](../implementation/progress.md). Arrival tự động và
 > cảnh báo ngừng cập nhật vẫn **Planned**.
 
@@ -634,9 +634,11 @@ thành hoặc ETA. FCM chỉ có UUID/kind, không có tọa độ/đích/tên. 
 provider không đồng nghĩa nhận hoặc đọc. Tạo/hủy chưa rõ kết quả giữ ID cũ để
 đọc lại/fence; app không tự gửi lại create hay báo thành công khi chưa xác nhận.
 
-**Acceptance criteria.** Người theo dõi nhận được: bắt đầu hành trình, tiến
-trình, đến nơi; hành trình dừng cập nhật sinh cảnh báo đúng quy tắc và đúng
-ngôn ngữ thận trọng; kết thúc hành trình chấm dứt hoàn toàn luồng đẩy vị trí.
+**Acceptance criteria bản đầu.** Chỉ người được chọn và còn quyền mới đọc
+tiến trình/nhận sự kiện; chủ hành trình xác nhận đến nơi hoặc kết thúc riêng.
+Kết thúc chấm dứt ưu tiên JOURNEY; chia sẻ vị trí thông thường vẫn theo lựa
+chọn riêng ở màn Vị trí. Cảnh báo ngừng cập nhật chỉ được nghiệm thu sau khi
+quy tắc và ngôn ngữ thận trọng được kiểm chứng thực địa.
 
 ## 12. Tracking Health & Diagnostics
 

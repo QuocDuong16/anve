@@ -1,6 +1,7 @@
 # M7-B — Safe Journey: chuẩn bị triển khai
 
-**Status: implementation started; verification pending.** Quyết định bản đầu ở
+**Status: first manual release Implemented — Automated Verified (`0ddb112`);
+native finish review/formal portal and field validation pending.** Quyết định bản đầu ở
 [ADR 0012](../adr/0012-safe-journey-lifecycle.md), evidence hiện tại ở
 [M7-B validation](m7b-validation.md). Phần dưới giữ checklist chuẩn bị; không
 phải bằng chứng CI/field validation đã pass. Các yêu cầu đã chốt nằm ở
@@ -81,3 +82,19 @@ stale tự động. Những khả năng tự động còn lại tiếp tục Pla
   thao tác được. Record SHA, CI run và artifacts; field evidence được ghi riêng.
 - Cảnh báo/arrival tự động chỉ được đánh dấu Verified khi có bằng chứng phù hợp
   với quy tắc đã chốt, ngoài các test dùng dữ liệu tổng hợp.
+
+## Giai đoạn tiếp theo sau bản thủ công
+
+1. Chốt native finish review và ghi rõ giới hạn của cổng formal; chỉ merge khi
+   kiểm thử liên quan xanh và các lỗi material đã giải quyết.
+2. Chạy protocol [tracking validation](tracking-validation.md) trên điện thoại
+   thật: consent OFF/revoke, account switch, process kill/reboot, mất mạng và
+   recovery, kết thúc/hết hạn khi upload đang chạy. Ghi model/OEM, phiên bản,
+   thời lượng, độ chính xác và số đo pin; không đưa tọa độ vào báo cáo diagnostics.
+3. Kiểm tra Firebase thật trên tài khoản thử có quyền và đã bị revoke; ghi riêng
+   provider acceptance, notification được nhận và thao tác mở/đọc lại server.
+4. Dựa trên field samples mới đề xuất accuracy/dwell/gap cho arrival và stale;
+   cần quyết định sản phẩm và bằng chứng calibration trước contract/UI mới.
+5. Chuẩn bị M8 bằng inventory security/observability/release và tài liệu Data
+   Safety/permissions đối chiếu hành vi thực tế. M8 chưa bắt đầu và chưa có kết
+   luận đủ điều kiện phát hành Google Play.
