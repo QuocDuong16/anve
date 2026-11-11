@@ -1,0 +1,108 @@
+# M7-A — kiểm chứng tracking và diagnostics
+
+Mục tiêu: giải thích được vì sao vị trí chưa cập nhật, kiểm chứng privacy và
+phục hồi bằng kịch bản lặp lại được. M7-A không triển khai Safe Journey.
+
+## Các mức bằng chứng
+
+1. `make tracking-validation`: Android lint, JVM tests, debug APK và biên dịch
+   instrumentation APK. Đây là kiểm chứng local, chưa chạy trên thiết bị.
+2. Android GitHub Actions khởi động emulator API 35 và chạy
+   `make android-instrumentation`. Các kiểm thử Diagnostics lưu ảnh bằng Compose
+   capture trên Android; `make android-ui-captures` lấy ảnh vào
+   `apps/android/app/build/outputs/ui-validation/` để upload cùng kết quả test.
+   Chỉ ghi nhận Emulator Verified khi workflow thực sự chạy thành công trên
+   SHA tương ứng. Ảnh dùng dữ liệu giả lập, không có vị trí/tài khoản thật.
+3. Field validation: điện thoại vật lý, GPS thật, mạng, pin và hạn chế OEM.
+   Không suy ra kết quả của mức này từ APK, JVM hoặc emulator CI.
+
+Môi trường local hiện không có target khi kiểm tra `adb devices -l`. Không
+chạy hoặc tuyên bố instrumentation local nếu chỉ có executable `adb`.
+
+## Kịch bản tự động
+
+| Kịch bản | Bằng chứng cần xem |
+| --- | --- |
+| Mất mạng khi service/provider chạy | `DiagnosticsTest`: thu thập được phân biệt với chờ gửi; nút mở cài đặt mạng |
+| Consent OFF, pending và conflict | Lý do không khẳng định server đã xác nhận; không tự bật lại GPS/consent |
+| Service có mặt nhưng provider chưa chạy | Không hiển thị như đang thu thập |
+| Service dừng thất bại | Trạng thái dừng còn chưa xác nhận, kể cả khi consent cục bộ OFF |
+| Chưa có mẫu hoặc timestamp tương lai | Hiển thị thiếu dữ liệu/kiểm tra đồng hồ; không bịa tuổi bằng 0 |
+| Queue của hai owner và queue rỗng | Repository JVM test và `LocationQueueDiagnosticsInstrumentedTest` với SQLite thật |
+| Tổng attempts lớn hơn Int | SQLite trả Long; lần gửi đầu chưa được tính là retry |
+| Đổi tài khoản, sign-out, response cũ đến muộn | `DiagnosticsViewModelTest` và `TrackingManagerTest`: không kế thừa fix/upload/queue/report |
+| Trang bị đóng hoặc app dừng hiển thị | Xóa snapshot/report, dừng đọc bổ sung; mở lại đọc mới |
+| Push chậm hoặc không đọc được | Queue local hiển thị trước; trạng thái push là chưa xác định, không suy ra delivery |
+| Xuất báo cáo | Allowlist không chứa owner, tọa độ, credentials, raw exception hoặc recipient/event IDs |
+| UI sáng, tối và font scale 1.3 | Emulator checks thao tác Tổng quan/Chi tiết, recovery/export và lưu ảnh; font scale được mô phỏng trong Compose |
+
+## Kiểm tra thủ công trên điện thoại
+
+Dùng tài khoản và Circle thử nghiệm, với sự đồng ý của tất cả người tham gia.
+Ghi phiên bản APK/SHA, Android/OEM, cấu hình test, thời gian bắt đầu/kết thúc và
+kết quả quan sát. Không chép token, email, installation ID hoặc tọa độ vào
+báo cáo hỗ trợ. Không thu logcat/bugreport đầy đủ làm artifact mặc định.
+
+| Kịch bản | Thao tác | Điều cần quan sát |
+| --- | --- | --- |
+| Bắt đầu online | Chủ động bật chia sẻ và theo dõi | Consent, quyền, service/provider và mẫu vị trí được phân biệt |
+| Màn hình tắt | Theo dõi với nền được cấp; khóa màn hình rồi mở lại | Thời điểm ghi/gửi và sự gián đoạn thực tế; không suy ra từ notification |
+| Offline → online | Sau khi đã có checkpoint, tắt rồi bật mạng | Queue chờ, sau đó accepted/duplicate được xóa; không gửi chéo owner |
+| Fresh process offline | Đóng process rồi mở lại khi offline | Không tự thu thập khi chưa có checkpoint hiện hành; có hướng khắc phục |
+| Thu hồi quyền/định vị | Rút permission hoặc tắt location trong Settings | Thu thập dừng, trạng thái cập nhật sau khi quay lại; không tự reprompt liên tục |
+| Battery Saver/OEM | Thử chế độ tiết kiệm pin và hạn chế nền của máy | Ghi hạn chế thực tế; không hứa miễn tối ưu hóa sẽ sửa mọi OEM |
+| Process bị kill/reboot | Ghi rõ cách đóng process hoặc khởi động lại máy | Không tự nhận tracking đã phục hồi; yêu cầu người dùng chủ động tiếp tục |
+| Consent OFF offline | Tắt consent trước khi sign-out; mở lại và có mạng | Acquisition/upload admission đóng cục bộ, queue purge/outbox và xác nhận server tách biệt |
+| Đổi tài khoản | A có queue, sign-out rồi đăng nhập B | Diagnostics và export của B không chứa dấu vết hoạt động của A |
+| Export | Mở Xuất báo cáo, đọc preview, hủy/gửi có chủ động | Preview đúng nội dung; hủy không gửi; tài khoản thay đổi làm report mất hiệu lực |
+
+## Đo pin
+
+Đo baseline và tracking trên cùng điện thoại, cùng độ dài phiên và điều kiện
+mạng/màn hình/di chuyển có thể so sánh. Ghi mức pin hoặc charge counter đầu/cuối,
+thời lượng, chế độ Battery Saver và mọi gián đoạn; lặp lại để đánh giá biến thiên.
+Chỉ công bố chênh lệch khi có số đo cùng phương pháp. Bộ đếm GPS/service/upload
+hiện có không phải battery overhead; chúng chưa được đưa vào báo cáo Diagnostics
+vì lưu theo installation, chưa được cách ly theo tài khoản.
+
+## Prerequisite cho tích hợp thật
+
+- Google OAuth, API base URL và Maps key giới hạn đúng package/signing certificate:
+  [setup Android](setup-android.md). CI không có key không chứng minh map tiles
+  hay Google Sign-In hoạt động với tài khoản thật.
+- Firebase app/project/sender/API configuration và credential server:
+  [Firebase setup](setup-android.md#firebase-configuration-for-m6). Không commit credentials. Fake provider
+  chỉ chứng minh logic authorization/outbox, không chứng minh gửi FCM thật.
+- Không dùng FCM để chở tọa độ. Provider acceptance, thiết bị nhận và người dùng
+  acknowledge là ba mốc riêng.
+
+## Ghi kết quả
+
+Mỗi lần validation ghi: SHA/APK, môi trường, kịch bản, điều kiện, expected,
+observed, artifact đã lọc và hạn chế. Nếu không thực hiện, ghi **Not run**;
+nếu thiếu cấu hình/thiết bị, ghi prerequisite còn thiếu. Không điền số GPS,
+latency hay pin giả lập thành kết quả đo thật.
+
+## Bằng chứng local — 2026-11-11
+
+- `make quality-check android-test-build`: PASS. Android JVM có 293 tests,
+  không failure/error; lint, debug APK và instrumentation APK compile PASS.
+- `mise exec -- actionlint .github/workflows/android.yml`: PASS.
+- Full gate ban đầu phát hiện `GO-2026-6859` trên Go 1.27.3. Đã đồng bộ Go
+  1.27.4 trong mise/go.mod/Docker builder và lockfile; govulncheck sau đó không
+  còn reachable vulnerability. Ba advisory trong required modules không được
+  gọi vẫn được scanner báo riêng. Docker image digest được đọc từ registry;
+  không có tuyên bố đã build/chạy Docker image mới.
+- `adb devices -l`: không có target; instrumentation execution, native
+  screenshot comparison, hosted CI và field validation **Not run** cho thay
+  đổi này. Mockup C chỉ được duyệt về bố cục, không phải runtime evidence.
+- Impeccable plan/component review còn **pending** vì review server trả
+  `no reviewer can open a browser in this session`. Không tự tạo approval.
+  Session ID: `5297b254ace168458f8ce46520c388bcfa0c890f120185a615b7a0ed7d4f5dd1`.
+  Manifest: `.impeccable/review/components.json` (0 raster assets, native
+  controls/text/chrome). Resume bằng `impeccable component-review serve --session`
+  với đầy đủ ID trên khi có browser cho người duyệt.
+- Finish reviewer trả **recapture**: cần ảnh native overview/details, dark
+  theme, font scale 1.3, export review/failure và permission/offline/error
+  states trước khi đánh giá fidelity/craft. M7-A chưa đóng visual review.
+- Các thay đổi vẫn ở working tree; chưa commit hoặc push từ phiên làm việc này.

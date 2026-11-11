@@ -934,6 +934,42 @@ class TrackingManagerTest {
     }
 
     @Test
+    fun `diagnostic fix and upload fields never transfer to a replacement account`() = runBlocking {
+        startAndConfirm()
+        emitFix()
+        store.setLastSuccessfulUpload(now - 100)
+        awaitUntil { manager.status.value.lastFixAtMillis != null && manager.status.value.lastUploadAtMillis != null }
+
+        sessions.save(session("u2"))
+
+        awaitUntil { manager.status.value.ownerUserId == "u2" }
+        assertEquals(null, manager.status.value.lastFixAtMillis)
+        assertEquals(null, manager.status.value.lastAccuracyMeters)
+        assertEquals(null, manager.status.value.lastUploadAtMillis)
+        assertEquals(null, manager.status.value.lastError)
+        assertFalse(manager.status.value.recoveryRequired)
+    }
+
+    @Test
+    fun `an old status refresh cannot publish consent or queue state for the next account`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        gateway.beforeCurrentUser = { entered.complete(Unit); release.await() }
+        manager.refreshStatus()
+        entered.await()
+
+        sessions.save(session("u2"))
+        awaitUntil { manager.status.value.ownerUserId == "u2" }
+        val before = manager.status.value
+        release.complete(Unit)
+        yield()
+
+        assertEquals(before, manager.status.value)
+        assertEquals(null, manager.status.value.serverConsentEnabled)
+        assertFalse(manager.status.value.consentEnabled)
+    }
+
+    @Test
     fun `losing the session stops tracking and purges the queue`() = runBlocking {
         startAndConfirm()
         awaitUntil { provider.activeCollectors == 1 }

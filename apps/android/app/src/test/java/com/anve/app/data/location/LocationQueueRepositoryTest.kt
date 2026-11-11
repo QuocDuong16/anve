@@ -29,6 +29,24 @@ class LocationQueueRepositoryTest {
     ) = LocationQueueRepository(dao, now = { now }, captureGeneration = { _, _ -> 1 }) to dao
 
     @Test
+    fun `diagnostics aggregate only the requested owner's queue without modifying it`() = runBlocking {
+        val (repo, dao) = repository()
+        dao.rows["a"] = queued("a", "user-1", now - 4_000)
+            .copy(createdAtMillis = now - 2_000, attemptCount = 1)
+        dao.rows["b"] = queued("b", "user-1", now - 3_000)
+            .copy(createdAtMillis = now - 1_000, attemptCount = 3)
+        dao.rows["other"] = queued("other", "user-2", now - 8_000)
+            .copy(createdAtMillis = now - 7_000, attemptCount = 9)
+        val before = dao.rows.toMap()
+
+        assertEquals(QueueDiagnostics(2, now - 2_000, 4L, 1), repo.diagnostics("user-1"))
+        assertEquals(QueueDiagnostics(0, null, 0L, 0), repo.diagnostics("absent-owner"))
+        assertEquals(before, dao.rows)
+        assertEquals(null, dao.lastRetentionCutoff)
+        assertEquals(null, dao.lastAttemptMarked)
+    }
+
+    @Test
     fun `a valid fix is stored with its owner and original event identity`() = runBlocking {
         val (repo, dao) = repository()
         val fix = testFix(eventId = "event-a", recordedAtMillis = now - 1_000)

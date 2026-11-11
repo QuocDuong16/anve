@@ -254,6 +254,15 @@ hứa trước.
 
 ## 9. Thực thi hai tầng
 
+Diagnostics M7-A là read-only: không tự bật consent/GPS và không thay đổi quyền
+chia sẻ. Queue và SOS counts được đọc theo owner; đổi tài khoản hoặc rời trang
+làm snapshot và report cũ mất hiệu lực. Export dùng allowlist plain text,
+không serialize nguyên TrackingStatus, API DTO hoặc outbox; người dùng xem
+preview trước khi chọn nơi gửi. Không có tọa độ, định danh, credentials hay
+raw exception trong báo cáo. Thao tác mở Android sharesheet không chứng minh
+ứng dụng nhận đã giao báo cáo thành công. Metrics hiện theo installation chưa
+được đưa vào báo cáo để tránh kế thừa hoạt động của tài khoản trước.
+
 Mỗi điều khiển privacy ở trên phải tồn tại ở **cả hai** tầng:
 
 - **Go backend**: authorization per-request, chấm dứt phân phát khi thu hồi,

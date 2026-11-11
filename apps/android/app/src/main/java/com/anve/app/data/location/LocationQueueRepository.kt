@@ -67,6 +67,8 @@ class LocationQueueRepository(
 
     suspend fun count(ownerUserId: String): Int = dao.count(ownerUserId)
 
+    suspend fun diagnostics(ownerUserId: String): QueueDiagnostics = dao.diagnostics(ownerUserId)
+
     suspend fun countAll(): Int = dao.countAll()
 
     fun observeCount(ownerUserId: String): Flow<Int> = dao.observeCount(ownerUserId)

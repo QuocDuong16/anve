@@ -11,7 +11,7 @@
 	up down logs \
 	migrate-up migrate-down \
 	server-run server-build server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-clean \
+	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint \
 	quality-check
 
@@ -147,6 +147,12 @@ android-test-build: android-sdk-check ## Compile the Android instrumentation tes
 
 android-instrumentation: android-sdk-check ## Run instrumentation on a connected emulator or device
 	cd $(ANDROID_DIR) && ./gradlew :app:connectedDebugAndroidTest
+
+android-ui-captures: android-sdk-check ## Collect synthetic UI captures from the connected validation target
+	mkdir -p $(ANDROID_DIR)/app/build/outputs/ui-validation
+	"$(ANDROID_HOME)/platform-tools/adb" pull /sdcard/Android/data/com.anve.app.debug/files/ui-validation/. $(ANDROID_DIR)/app/build/outputs/ui-validation/
+
+tracking-validation: android-check android-test-build ## Check tracking diagnostics and compile emulator validation tests
 
 android-lint: android-sdk-check ## Run the Android lint checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug

@@ -46,8 +46,12 @@ class FakeTrackingStore(
 
     override suspend fun setConsentOwner(ownerUserId: String?) {
         writes += "consentOwner=$ownerUserId"
-        _state.value = _state.value.copy(consentOwnerUserId = ownerUserId,
-            lastSyncErrorCode = if (_state.value.consentOwnerUserId == ownerUserId) _state.value.lastSyncErrorCode else null)
+        val sameOwner = _state.value.consentOwnerUserId == ownerUserId
+        _state.value = _state.value.copy(
+            consentOwnerUserId = ownerUserId,
+            lastSyncErrorCode = _state.value.lastSyncErrorCode.takeIf { sameOwner },
+            lastSuccessfulUploadAtMillis = _state.value.lastSuccessfulUploadAtMillis.takeIf { sameOwner },
+        )
     }
 
     override suspend fun setLastSuccessfulUpload(atMillis: Long) {

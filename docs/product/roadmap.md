@@ -27,7 +27,7 @@
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
-| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | Planned |
+| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A diagnostics đang triển khai; field validation và Safe Journey chưa hoàn tất |
 | [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
 
 ## M0 — Foundation
@@ -257,6 +257,13 @@ báo; không có tọa độ trong FCM payload.
 **Phụ thuộc:** M2 (quyền nhận), M3 (vị trí đính kèm).
 
 ## M7 — Safe Journey, diagnostics, field validation
+
+M7-A triển khai trang Diagnostics (Tổng quan/Chi tiết), báo cáo allowlist do
+người dùng chủ động xuất, kiểm thử owner isolation và nền tảng validation.
+Quy trình và các mức bằng chứng: [tracking validation](../implementation/tracking-validation.md).
+M7-A chưa được coi là hoàn tất trước khi kiểm chứng workflow/emulator và review
+giao diện thực tế; GPS/pin/OEM vẫn cần điện thoại vật lý. Safe Journey (M7-B)
+chưa triển khai.
 
 **Scope:** Safe Journey (có thể lùi nếu cần giảm scope — quyết định khi đến mốc),
 Tracking Health & Diagnostics, quy trình field validation trên nhiều thiết bị

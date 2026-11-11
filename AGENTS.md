@@ -42,6 +42,32 @@ impact on the product documentation and on the privacy requirements in
 - `infra/migrations` — ordered SQL migrations, `<version>_<name>.up.sql`
   with a matching `.down.sql`. Migrations are append-only once merged.
 
+## UI design workflow
+
+Using the **Impeccable skill is mandatory** whenever designing or implementing
+frontend/UI in this repository, including native Android Compose, web surfaces,
+new screens, refinements and UI fixes. Read the installed skill's `SKILL.md`
+and the applicable playbook before UI work; load its project context once per
+session and follow the approved design workflow.
+
+The user's build-path preference in `.impeccable/config.json` applies to
+every UI screen, including native Android app screens, dialogs, onboarding
+and settings, as well as landing pages and showcases. This explicit project
+instruction overrides Impeccable's default restriction of comp-first to
+landing pages and showcases.
+
+When the configured path is `comp`, establish the user flow and relevant
+loading, empty, error, offline and permission states, then create image
+mockups before implementing a new screen or redesign. Present the mockups
+for user review before implementation unless the user delegates that choice.
+Keep related screens consistent and reuse approved comps for refinements;
+update the comp when the layout or interaction changes materially.
+
+Implement the approved design with native Compose components, accessible
+controls and real text. Mockups are design references, not screenshots of a
+working app. Verify the rendered implementation and interactions separately
+on an emulator or device, following the evidence boundaries below.
+
 ## Make targets
 
 Use the Makefile rather than raw commands; CI runs the same targets.
@@ -68,6 +94,10 @@ to the Android GitHub Actions workflow and provision/start an Android emulator
 there. Keep local JVM tests and builds on the Make targets above. Report CI
 emulator evidence separately from physical-device validation; emulator CI does
 not verify OEM behavior, real GPS, or battery use on a physical device.
+
+Use GitHub Actions for validation that requires an environment unavailable
+locally. Check the workflow results, logs and artifacts for the exact change
+commit; a local build is not a substitute for hosted CI or emulator execution.
 
 ## Conventions
 

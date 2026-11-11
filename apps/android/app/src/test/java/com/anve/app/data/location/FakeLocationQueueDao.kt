@@ -10,6 +10,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
  */
 class FakeLocationQueueDao : LocationQueueDao {
 
+    override suspend fun diagnostics(ownerUserId: String): QueueDiagnostics {
+        val own = rows.values.filter { it.ownerUserId == ownerUserId }
+        return QueueDiagnostics(
+            queuedPoints = own.size,
+            oldestCreatedAtMillis = own.minOfOrNull { it.createdAtMillis },
+            attempts = own.sumOf { it.attemptCount.toLong() },
+            retriedPoints = own.count { it.attemptCount > 1 },
+        )
+    }
+
     val rows = linkedMapOf<String, QueuedLocation>()
     var forcedCount: Int? = null
     var lastRetentionCutoff: Long? = null

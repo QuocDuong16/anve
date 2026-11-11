@@ -1,5 +1,8 @@
 package com.anve.app.ui.home
 
+import androidx.activity.compose.BackHandler
+import com.anve.app.ui.diagnostics.DiagnosticsScreen
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -95,9 +98,11 @@ private enum class HomeTab(val labelRes: Int) {
 @Composable
 fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
+    var showDiagnostics by remember { mutableStateOf(false) }
     var selectedSos by remember { mutableStateOf<String?>(null) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     LaunchedEffect(session?.userId) {
+        showDiagnostics = false
         selectedSos = null
         tab = HomeTab.CIRCLE
     }
@@ -106,10 +111,16 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         val owner = session?.userId ?: return@LaunchedEffect
         val destination = pushDestination(hint.kind, hint.eventId, hint.ownerId, owner)
         if (destination != null) {
+            showDiagnostics = false
             selectedSos = if (destination.kind == "SOS") destination.eventId else null
             tab = if (destination.kind == "SOS") HomeTab.SOS else HomeTab.PLACES
         }
         onPushConsumed()
+    }
+    if (showDiagnostics) {
+        BackHandler { showDiagnostics = false }
+        DiagnosticsScreen(container = container, onBack = { showDiagnostics = false })
+        return
     }
     Scaffold(
         bottomBar = {
@@ -145,7 +156,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 HomeTab.HISTORY -> HistoryScreen(container = container)
                 HomeTab.PLACES -> PlacesScreen(container = container)
                 HomeTab.SOS -> SosScreen(container = container, eventId = selectedSos)
-                HomeTab.LOCATION -> TrackingScreen(container = container)
+                HomeTab.LOCATION -> TrackingScreen(container = container, onOpenDiagnostics = { showDiagnostics = true })
                 HomeTab.ACCOUNT -> AccountContent(container = container)
             }
         }

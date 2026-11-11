@@ -88,6 +88,8 @@ enum class TrackingProblem {
  * which is reported by `running` and `operational`.
  */
 data class TrackingStatus(
+    /** Internal provenance for diagnostics; never rendered or exported. */
+    val ownerUserId: String? = null,
     /** Whether the storage layer currently holds a session for this account. */
     val sessionReady: Boolean = false,
     /** Effective local consent; false while this owner's emergency privacy gate is closed. */

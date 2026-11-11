@@ -6,9 +6,25 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
+/** Aggregate only; diagnostics must never read or expose coordinate columns. */
+data class QueueDiagnostics(
+    val queuedPoints: Int,
+    val oldestCreatedAtMillis: Long?,
+    val attempts: Long,
+    val retriedPoints: Int,
+)
+
 /** Room access for the durable offline location queue. */
 @Dao
 interface LocationQueueDao {
+
+    @Query(
+        "SELECT COUNT(*) AS queuedPoints, MIN(createdAtMillis) AS oldestCreatedAtMillis, " +
+            "COALESCE(SUM(attemptCount), 0) AS attempts, " +
+            "COALESCE(SUM(CASE WHEN attemptCount > 1 THEN 1 ELSE 0 END), 0) AS retriedPoints " +
+            "FROM location_queue WHERE ownerUserId = :ownerUserId",
+    )
+    suspend fun diagnostics(ownerUserId: String): QueueDiagnostics
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(row: QueuedLocation): Long

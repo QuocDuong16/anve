@@ -100,7 +100,10 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
 
     override suspend fun setConsentOwner(ownerUserId: String?) {
         dataStore.edit { prefs ->
-            if (prefs[KEY_CONSENT_OWNER] != ownerUserId) prefs.remove(KEY_LAST_SYNC_ERROR)
+            if (prefs[KEY_CONSENT_OWNER] != ownerUserId) {
+                prefs.remove(KEY_LAST_SYNC_ERROR)
+                prefs.remove(KEY_LAST_UPLOAD_AT)
+            }
             if (ownerUserId == null) {
                 prefs.remove(KEY_CONSENT_OWNER)
             } else {
