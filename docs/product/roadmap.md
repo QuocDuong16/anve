@@ -28,7 +28,7 @@
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A và M7-B bản thủ công Automated Verified; formal review, field validation và tính năng tự động chưa hoàn tất |
-| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | Planned |
+| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A observability đang triển khai; release/field gates còn mở |
 
 ## M0 — Foundation
 
@@ -289,6 +289,12 @@ cáo battery overhead có số đo.
 **Phụ thuộc:** M3–M6.
 
 ## M8 — Release hardening, Google Play readiness
+
+M8-A đang triển khai nền tảng observability backend: metrics HTTP tổng hợp trên
+listener loopback riêng, nhãn hữu hạn, log completion theo allowlist và recovery
+không ghi payload panic. Đây là công việc chuẩn bị song song; không đóng các
+hạng mục thực địa M7 còn thiếu. Phạm vi, inventory và exit evidence nằm ở
+[M8 readiness](../implementation/m8-release-readiness.md).
 
 **Scope:** hardening (security review, error budget, observability đầy đủ),
 chuẩn bị data safety form, permission declarations cho background location,

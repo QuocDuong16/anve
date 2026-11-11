@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-11-12 (M7-B automated checks passed; native rendering approved).
+Last updated: 2026-11-12 (M7-B merged; M8-A private HTTP observability in progress).
 
 ## Current milestone
 
@@ -25,10 +25,11 @@ real Firebase and physical-device validation pending.**
 **M7-A — Diagnostics: Implemented — Automated Verified (Go, Android and CI
 emulator); physical-device validation and formal Impeccable review remain open.**
 **M7-B Safe Journey first release: Implemented — Automated Verified** on the
-feature branch (`bcde472`, Go/Android CI and 32 emulator tests). Native
+main (`5773724`, merged PR #16; main Go/Android CI passed, 32 emulator tests). Native
 correction review and documenter are complete; user approved the final render
 and completion with the formal portal pending. Automatic arrival/stale alerts
-and M8 remain Planned.
+remain Planned. **M8-A HTTP observability is in progress**; release readiness
+and the remaining M7 field evidence are tracked separately.
 
 ## Milestones
 
@@ -42,13 +43,20 @@ and M8 remain Planned.
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
 | M7 Journey & diagnostics | M7-A and M7-B Automated Verified | M7-A merged in `6d3cb01`. M7-B `bcde472`: Go/Android CI, 306 JVM and 32 emulator tests pass; native render approved, formal completion explicitly waived by user, field evidence pending. Automatic arrival/stale alerts remain Planned. |
-| M8 Release hardening | Not started | |
+| M8 Release hardening | M8-A Implemented; verification pending | Private HTTP metrics/recovery/listener lifecycle and readiness inventory; full release/field gates remain open. |
 
-## M7-B work in flight
+## M8-A work in flight
+
+See [M8 readiness](m8-release-readiness.md), ADR 0013 and the operator runbook.
+Current scope is private HTTP observability, not a completed security audit,
+production monitoring deployment or signed/store release. Required checks run
+through Make and exact-change GitHub Actions.
+
+## M7-B acceptance and remaining evidence
 
 See [M7-B validation](m7b-validation.md) for current checks, design decisions,
 manual plan/final-render completion exceptions and outstanding field evidence.
-M7-B manual release is accepted for merge with green CI; full M7 completion,
+M7-B manual release is merged after green CI; full M7 completion,
 field validation and M8 readiness are not claimed.
 
 ## M1 evidence

@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,10 +17,12 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
+	"github.com/QuocDuong16/anve/server/internal/httpserver"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 	"github.com/QuocDuong16/anve/server/internal/notifications"
+	"github.com/QuocDuong16/anve/server/internal/observability"
 	"github.com/QuocDuong16/anve/server/internal/places"
 	"github.com/QuocDuong16/anve/server/internal/sos"
 )
@@ -128,11 +129,20 @@ func run() error {
 		logger.Warn("DATABASE_URL is empty: business endpoints answer 503")
 	}
 
+	// A typed nil pool stored in Pinger is a non-nil interface and would
+	// panic in /readyz instead of reporting the configured no-DB 503 state.
+	var databasePinger httpapi.Pinger
+	if pool != nil {
+		databasePinger = pool
+	}
+	metrics := observability.New()
 	server := &http.Server{
 		// ListenAddr is resolved by config: loopback in development unless
 		// explicitly overridden, mandatory outside development.
 		Addr: cfg.ListenAddr,
 		Handler: httpapi.NewRouter(httpapi.Deps{
+			Metrics:                 metrics,
+			Logger:                  logger,
 			Version:                 cfg.Version,
 			Auth:                    authService,
 			Circles:                 circlesService,
@@ -142,7 +152,7 @@ func run() error {
 			SOS:                     sosStore,
 			Journeys:                journeyStore,
 			PushConfigured:          pushGateway != nil,
-			DB:                      pool,
+			DB:                      databasePinger,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,
 		}),
 		ReadTimeout:  cfg.ReadTimeout,
@@ -176,29 +186,19 @@ func run() error {
 		go places.RunNotificationWorker(ctx, placeStore, pushGateway, logger.With("component", "place-notifications"))
 	}
 
-	serverErr := make(chan error, 1)
-	go func() {
-		logger.Info("http server listening", "addr", server.Addr)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			serverErr <- err
-			return
-		}
-		serverErr <- nil
-	}()
-
-	select {
-	case err := <-serverErr:
-		return err
-	case <-ctx.Done():
-		logger.Info("shutdown signal received, draining connections")
+	servers := []*http.Server{server}
+	if cfg.MetricsListenAddr != "" {
+		servers = append(servers, &http.Server{
+			Addr: cfg.MetricsListenAddr, Handler: metrics.Handler(),
+			ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
+			WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 8 << 10,
+		})
 	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
-	defer cancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		return err
-	}
-	logger.Info("http server stopped")
-	return nil
+	logger.Info("http listeners starting", "api_addr", cfg.ListenAddr, "metrics_enabled", cfg.MetricsListenAddr != "")
+	err = httpserver.Run(ctx, cfg.ShutdownTimeout, servers...)
+	// Cancel background workers before the deferred pool close, including
+	// startup/listener failure when no OS signal cancelled the root context.
+	stop()
+	logger.Info("http listeners stopped")
+	return err
 }
