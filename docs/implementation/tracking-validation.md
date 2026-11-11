@@ -175,10 +175,33 @@ Reviewer độc lập mở đủ 11 ảnh và trả **recapture**, không phải
 minh fidelity. Không kéo giãn/upscale/stitch ảnh để tạo bằng chứng.
 
 Workflow bổ sung `make android-validation-avd` sau khi tạo AVD, trước khi boot:
-841×1870 px, 327 dpi (làm tròn thành 412×915 dp). Metadata artifact ghi SHA,
+842×1870 px, 327 dpi (làm tròn thành 412×915 dp; framebuffer cần chiều rộng chẵn). Metadata artifact ghi SHA,
 `wm size`, `wm density`, system font scale và các Compose fixture overrides.
 Phải xác nhận kích thước PNG thật từ run mới rồi tạo hero/final diff và review
 trên bộ ảnh đó. Formal plan/component review vẫn pending, không tự tạo receipt.
 
 `DESIGN.md` và `.impeccable/design.json` được trích từ palette/theme Compose hiện
 có; không đổi nhận diện hoặc coi preview tài liệu là runtime evidence.
+
+
+## Capture đồng bộ với rendered frame
+
+Commit `d8481301fe7b3857f847208985671c7d772ba3f5` qua
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42974051997) và
+[Android](https://github.com/QuocDuong16/anve/actions/runs/42974051990), gồm
+19/19 instrumentation tests. Metadata checkout là merge ref
+`b604bb4b9d62ff71856fb63982a9871eb77dbeb9`, có cùng Git tree
+`54ea54b1b635f0ae08568afac5ba2f4babac307a` với head PR.
+Ảnh thật 842×1870 px, 327 dpi, system font scale 1.0; dark/font130 fixture
+override Compose scale 1.3. Comp gốc 841×1870 được giữ nguyên.
+
+Khi mở toàn bộ ảnh, một số frame thiếu chữ trên app bar dù phần nội dung đã
+hiện. Không gửi chúng như bằng chứng UI đã ổn định. Capture helper bổ sung
+đợi frame commit và accessibility idle trước `UiAutomation.takeScreenshot`;
+không thêm sleep tùy ý hoặc tăng timeout của workflow. Nếu frame không commit,
+test thất bại rõ ràng. Cần run/captures mới để xác nhận sửa bước đồng bộ này.
+Tham khảo API [frame commit callback](https://developer.android.com/reference/android/view/ViewTreeObserver#registerFrameCommitCallback(java.lang.Runnable)).
+
+CI xanh ở các mốc trên là bằng chứng tự động, không thay thế finish review.
+Kết quả cuối cùng của PR được lưu trong checks/artifacts và phần validation của
+[PR #15](https://github.com/QuocDuong16/anve/pull/15).

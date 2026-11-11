@@ -551,9 +551,9 @@ passed, with 19/19 emulator tests and 11 new captures.
 
 The independent finish review returned **recapture**: the 320×640 captures
 are valid compact-phone evidence but do not cover the recorded 412×915 dp
-comparison viewport. CI now configures the AVD to the comp's 841×1870 px at
-327 dpi and records resolution/density/source metadata; this capture change
-requires a new hosted run. No visual approval is claimed. The separate Impeccable component/plan review
+comparison viewport. CI now configures an even-width 842×1870 px framebuffer at
+327 dpi (412×915 dp) and records resolution/density/source metadata. The source
+comp is 841 px wide; captures are never resized to hide this one-pixel difference. No visual approval is claimed. The separate Impeccable component/plan review
 remains pending because its review server could not open a reviewer browser;
 the resumable session ID is recorded in tracking-validation.md. No physical GPS,
 OEM, battery, Maps-key or real Firebase measurements have been produced.

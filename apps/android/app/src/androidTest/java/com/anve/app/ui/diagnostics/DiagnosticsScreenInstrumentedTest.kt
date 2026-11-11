@@ -1,6 +1,7 @@
 package com.anve.app.ui.diagnostics
 
 import android.graphics.Bitmap
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +24,8 @@ import com.anve.app.tracking.diagnostics.DiagnosticsDetails
 import com.anve.app.tracking.diagnostics.safeDiagnosticsReport
 import com.anve.app.ui.theme.AnVeTheme
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -186,6 +189,19 @@ class DiagnosticsScreenInstrumentedTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Compose idle precedes render-thread submission; screenshots need a committed frame.
+            val committed = CountDownLatch(1)
+            compose.runOnUiThread {
+                val view = compose.activity.window.decorView
+                check(view.isHardwareAccelerated) { "Validation captures require hardware rendering" }
+                view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
+                view.invalidate()
+            }
+            check(committed.await(5, TimeUnit.SECONDS)) { "No rendered frame committed for $name" }
+        }
+        instrumentation.uiAutomation.waitForIdle(200, 5_000)
         val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
         val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("ui-validation"))
         File(directory, "$name.png").outputStream().use {
