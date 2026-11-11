@@ -205,3 +205,21 @@ Tham khảo API [frame commit callback](https://developer.android.com/reference/
 CI xanh ở các mốc trên là bằng chứng tự động, không thay thế finish review.
 Kết quả cuối cùng của PR được lưu trong checks/artifacts và phần validation của
 [PR #15](https://github.com/QuocDuong16/anve/pull/15).
+
+
+## Capture API tương thích Compose
+
+Các run sau bước đợi frame vẫn qua 19 instrumentation tests nhưng ảnh
+`UiAutomation` có lúc thiếu app bar hoặc còn nền window. Chuyển từ renderer
+`swiftshader_indirect` đã deprecated sang `swiftshader` không giải quyết hết
+triệu chứng; không coi thay đổi renderer là root-cause fix đã được xác nhận.
+
+Helper mới dùng `captureToImage()` của bản Compose đang ghim trên từng root
+window trước khi đọc full display. Artifact lưu riêng ảnh `compose-...-window-N`
+và ảnh toàn màn hình; đây là hai phép chụp native, không resize hoặc ghép ảnh.
+API Compose quản lý drawing/force-redraw theo test clock; chữ, controls và
+sharesheet vẫn là UI native. Bản thử có tham số timeout không tồn tại trong
+bản thư viện đã ghim đã bị loại và compile lại bằng API tương thích.
+
+`make android-test-build` PASS sau chỉnh API. Execution và độ hợp lệ ảnh phải
+được xác nhận trên run mới. Không tuyên bố đã đóng Impeccable finish review.

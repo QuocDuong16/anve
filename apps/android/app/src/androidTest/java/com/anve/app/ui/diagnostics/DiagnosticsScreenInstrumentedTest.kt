@@ -11,9 +11,9 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
@@ -188,9 +188,12 @@ class DiagnosticsScreenInstrumentedTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
-        // Compose's capture API enables drawing and commits every window, including dialogs.
-        val windowBitmap = compose.onRoot().captureToImage(timeoutMillis = 5_000).asAndroidBitmap()
-        saveCapture("compose-$name", windowBitmap)
+        // Compose capture forces drawing; semantic idleness alone can leave stale pixels.
+        val windows = compose.onAllNodes(isRoot())
+        windows.fetchSemanticsNodes().indices.forEach { index ->
+            val bitmap = windows[index].captureToImage().asAndroidBitmap()
+            saveCapture("compose-$name-window-$index", bitmap)
+        }
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.uiAutomation.waitForIdle(200, 5_000)
         val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
