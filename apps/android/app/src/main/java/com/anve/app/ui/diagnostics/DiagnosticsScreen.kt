@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -158,36 +159,43 @@ fun DiagnosticsScreen(container: AppContainer, onBack: () -> Unit) {
     )
 
     export?.let { report ->
-        AlertDialog(
-            onDismissRequest = { export = null },
-            title = { Text("Kiểm tra báo cáo trước khi gửi") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Báo cáo gồm phiên bản, quyền, trạng thái dịch vụ/mạng/pin, số điểm chờ, tuổi dữ liệu và trạng thái thông báo. Không chứa tọa độ, tên, tài khoản hay thông tin đăng nhập.")
-                    SelectionContainer {
-                        Text(report.text, Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+        DiagnosticsExportReview(
+            report = report.text,
+            onDismiss = { export = null },
+            onShare = {
+                scope.launch {
+                    if (model.canShare(report)) {
+                        open(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Báo cáo chẩn đoán AnVề")
+                            putExtra(Intent.EXTRA_TEXT, report.text)
+                        }, "Chọn nơi gửi báo cáo"))
+                    } else {
+                        actionError = "Tài khoản hoặc trạng thái đã thay đổi. Hãy tạo lại báo cáo."
                     }
+                    export = null
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        if (model.canShare(report)) {
-                            open(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Báo cáo chẩn đoán AnVề")
-                                putExtra(Intent.EXTRA_TEXT, report.text)
-                            }, "Chọn nơi gửi báo cáo"))
-                        } else {
-                            actionError = "Tài khoản hoặc trạng thái đã thay đổi. Hãy tạo lại báo cáo."
-                        }
-                        export = null
-                    }
-                }) { Text("Chọn nơi gửi") }
-            },
-            dismissButton = { TextButton(onClick = { export = null }) { Text("Hủy") } },
         )
     }
+}
+
+@Composable
+internal fun DiagnosticsExportReview(report: String, onDismiss: () -> Unit, onShare: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Kiểm tra báo cáo trước khi gửi") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Báo cáo gồm phiên bản, quyền, trạng thái dịch vụ/mạng/pin, số điểm chờ, tuổi dữ liệu và trạng thái thông báo. Không chứa tọa độ, tên, tài khoản hay thông tin đăng nhập.")
+                SelectionContainer {
+                    Text(report, Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onShare) { Text("Chọn nơi gửi") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Hủy") } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -216,7 +224,7 @@ fun DiagnosticsContent(
             )
         },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("diagnostics-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (!ready) {
                 item { Text("Đang đọc trạng thái tài khoản. Quay lại màn Vị trí nếu phiên đăng nhập đã thay đổi.") }

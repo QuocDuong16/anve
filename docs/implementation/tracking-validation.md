@@ -8,8 +8,9 @@ phục hồi bằng kịch bản lặp lại được. M7-A không triển khai 
 1. `make tracking-validation`: Android lint, JVM tests, debug APK và biên dịch
    instrumentation APK. Đây là kiểm chứng local, chưa chạy trên thiết bị.
 2. Android GitHub Actions khởi động emulator API 35 và chạy
-   `make android-instrumentation`. Các kiểm thử Diagnostics lưu ảnh bằng Compose
-   capture trên Android; `make android-ui-captures` lấy ảnh vào
+   `make android-emulator-validation`. Target này giữ exit code của instrumentation
+   và lấy cả ảnh chụp khi có test thất bại. Các kiểm thử Diagnostics lưu ảnh toàn
+   màn hình bằng Android UiAutomation; `make android-ui-captures` lấy ảnh vào
    `apps/android/app/build/outputs/ui-validation/` để upload cùng kết quả test.
    Chỉ ghi nhận Emulator Verified khi workflow thực sự chạy thành công trên
    SHA tương ứng. Ảnh dùng dữ liệu giả lập, không có vị trí/tài khoản thật.
@@ -105,4 +106,20 @@ latency hay pin giả lập thành kết quả đo thật.
 - Finish reviewer trả **recapture**: cần ảnh native overview/details, dark
   theme, font scale 1.3, export review/failure và permission/offline/error
   states trước khi đánh giá fidelity/craft. M7-A chưa đóng visual review.
-- Các thay đổi vẫn ở working tree; chưa commit hoặc push từ phiên làm việc này.
+- Tại mốc kiểm chứng local này, thay đổi chưa được commit/push. Bằng chứng
+  hosted CI sau đó được ghi riêng bên dưới.
+
+## GitHub Actions — vòng kiểm chứng đầu tiên
+
+PR [#15](https://github.com/QuocDuong16/anve/pull/15), commit
+`bea35e5dc25fefbceae96185f0801e9308804145`:
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42967459507) PASS,
+gồm race tests và PostgreSQL/PostGIS. [Android](https://github.com/QuocDuong16/anve/actions/runs/42967459524)
+phát hiện hai test Diagnostics tìm node “Xuất báo cáo” chưa được tạo ngoài
+viewport của LazyColumn. Báo cáo instrumentation: 13 tests, 2 failures.
+
+Đã sửa bằng `performScrollToNode` trên chính LazyColumn thay vì tìm trước một
+node offscreen bằng `performScrollTo`. Đồng thời bổ sung ảnh toàn màn hình,
+empty/loading/permission/consent/error/export states và giữ partial captures
+trước khi emulator tắt. Không đổi timeout hoặc bỏ assertion. Cần workflow mới
+trên commit sửa lỗi để xác nhận kết quả.

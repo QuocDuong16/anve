@@ -265,6 +265,10 @@ M7-A chưa được coi là hoàn tất trước khi kiểm chứng workflow/emu
 giao diện thực tế; GPS/pin/OEM vẫn cần điện thoại vật lý. Safe Journey (M7-B)
 chưa triển khai.
 
+Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).
+Tài liệu liệt kê phạm vi, các quyết định còn mở và exit criteria; chưa triển
+khai lifecycle, API hay UI Safe Journey.
+
 **Scope:** Safe Journey (có thể lùi nếu cần giảm scope — quyết định khi đến mốc),
 Tracking Health & Diagnostics, quy trình field validation trên nhiều thiết bị
 thật (battery, OEM restrictions, reboot).
