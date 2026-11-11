@@ -30,7 +30,9 @@ Tổng quan/Chi tiết tabs; actionable notice; grouped acquisition, synchroniza
 and device/permission rows; export follows the content and remains scrollable.
 
 FORM: user-selected option C from three compositional comps.
-seed:8cc5421842665ca5
+Direction authority: the user-selected comp C and incumbent AnVề Material 3.
+The build tool normalized the user-pinned direction into an internal seed alias;
+this is not claimed as a concept-seed roll. See `.impeccable/review/direction-provenance.md`.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
