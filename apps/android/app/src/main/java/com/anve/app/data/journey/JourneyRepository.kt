@@ -104,7 +104,9 @@ class JourneyRepository(
             if (outbox.read(owner).none { it.operationId == item.operationId }) continue
             try {
                 when (item.action) {
-                    JourneyAction.CREATE -> gateway.get(owner, item.journeyId)
+                    JourneyAction.CREATE -> gateway.get(owner, item.journeyId).also {
+                        check(it.ownerId == owner && it.id == item.journeyId) { "Journey owner mismatch" }
+                    }
                     JourneyAction.REVOKE_RECIPIENT -> gateway.revoke(owner, item.journeyId, requireNotNull(item.recipient))
                     else -> gateway.transition(owner, item.journeyId, item.action.name.lowercase())
                 }

@@ -302,3 +302,35 @@ func TestPGJourneyAtomicOutboxDispatchAndSuppression(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, gateway.signals, 2, "revoked recipients must not receive terminal work")
 }
+
+func TestPGJourneyProgressOnlyUsesPostStartAuthorizedSamples(t *testing.T) {
+	f := setup(t)
+	locationStore := locations.NewPGStore(f.pool)
+	generation, err := locationStore.CaptureGeneration(f.ctx, f.owner.ID)
+	require.NoError(t, err)
+	ingest := locations.NewService(locationStore)
+	principal := locations.Principal{UserID: f.owner.ID, SessionID: f.session.ID, DeviceID: f.session.DeviceID}
+	input := f.request()
+	record := func(recorded time.Time) {
+		t.Helper()
+		_, err := ingest.Ingest(f.ctx, principal, []locations.Event{{EventID: uuid.New(), CaptureGeneration: generation,
+			ClientDeviceID: "journey-owner", RecordedAt: recorded, Latitude: input.Destination.Latitude, Longitude: input.Destination.Longitude,
+			HorizontalAccuracyMeters: 42, Provider: "fused", IsMock: true, SchemaVersion: 1}})
+		require.NoError(t, err)
+	}
+	record(time.Now().UTC())
+	j, _, err := f.store.Create(f.ctx, f.p, input)
+	require.NoError(t, err)
+	require.Nil(t, j.Progress, "a pre-start point does not describe this journey")
+	record(j.StartedAt.Add(time.Second))
+	j, err = f.store.Get(f.ctx, f.viewer.ID, j.ID)
+	require.NoError(t, err)
+	require.NotNil(t, j.Progress)
+	require.InDelta(t, 0, j.Progress.DistanceMeters, 0.001)
+	require.Equal(t, 42.0, j.Progress.AccuracyMeters)
+	require.True(t, j.Progress.IsMock)
+	require.NoError(t, f.store.Transition(f.ctx, f.p, j.ID, "arrive"))
+	j, err = f.store.Get(f.ctx, f.viewer.ID, j.ID)
+	require.NoError(t, err)
+	require.Nil(t, j.Progress, "terminal journeys do not keep a copied location sample")
+}

@@ -101,6 +101,17 @@ class JourneyRepositoryTest {
         sessions.save(session(owner)); assertFalse(repository.reconcile(owner)); assertEquals(listOf("cancel"), gateway.transitions)
     }
 
+    @Test fun `an authorized incoming journey cannot confirm another owners unknown create`() = runBlocking {
+        val sessions = InMemorySessionStorage().also { it.save(session(owner)) }
+        val outbox = MemoryJourneyOutbox()
+        val item = JourneyOperation(owner = owner, journeyId = UUID.randomUUID().toString(), action = JourneyAction.CREATE, createdAtMillis = 1000)
+        outbox.put(item)
+        val gateway = FakeJourneyGateway().also { it.onGet = { _, id -> syntheticJourney("another-owner", id) } }
+        val repository = JourneyRepository(gateway, sessions, outbox, {}, now = { 2000 })
+        assertTrue(repository.reconcile(owner))
+        assertEquals(item, outbox.read(owner).single())
+    }
+
     @Test fun `automatic retry window ends without silently declaring an unknown stop successful`() = runBlocking {
         val sessions = InMemorySessionStorage().also { it.save(session(owner)) }
         val outbox = MemoryJourneyOutbox(); val gateway = FakeJourneyGateway()
