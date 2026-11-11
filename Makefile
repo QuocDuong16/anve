@@ -11,7 +11,7 @@
 	up down logs \
 	migrate-up migrate-down \
 	server-run server-build server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-clean \
+	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint \
 	quality-check
 
@@ -124,6 +124,7 @@ server-check: ## Run the Go server format, vet, lint, test and build checks
 # pinned in apps/android/gradle/libs.versions.toml. When neither variable is
 # set, the default Android Studio location is used.
 ANDROID_DIR = apps/android
+ANDROID_TEST_GRADLE_ARGS ?=
 ANDROID_HOME ?= $(if $(ANDROID_SDK_ROOT),$(ANDROID_SDK_ROOT),$(HOME)/Android/Sdk)
 export ANDROID_HOME
 export ANDROID_SDK_ROOT := $(ANDROID_HOME)
@@ -146,7 +147,19 @@ android-test-build: android-sdk-check ## Compile the Android instrumentation tes
 	cd $(ANDROID_DIR) && ./gradlew :app:assembleDebugAndroidTest
 
 android-instrumentation: android-sdk-check ## Run instrumentation on a connected emulator or device
-	cd $(ANDROID_DIR) && ./gradlew :app:connectedDebugAndroidTest
+	cd $(ANDROID_DIR) && ./gradlew :app:connectedDebugAndroidTest $(ANDROID_TEST_GRADLE_ARGS)
+
+android-emulator-validation: android-sdk-check ## Run emulator tests and retain captures even when tests fail
+	bash scripts/run_android_validation.sh
+
+android-validation-avd: ## Match the CI AVD to the approved Diagnostics comparison viewport
+	python3 scripts/configure_android_validation_avd.py
+
+android-ui-captures: android-sdk-check ## Collect synthetic UI captures from the connected validation target
+	mkdir -p $(ANDROID_DIR)/app/build/outputs/ui-validation
+	"$(ANDROID_HOME)/platform-tools/adb" pull /sdcard/Android/data/com.anve.app.debug/files/ui-validation/. $(ANDROID_DIR)/app/build/outputs/ui-validation/
+
+tracking-validation: android-check android-test-build ## Check tracking diagnostics and compile emulator validation tests
 
 android-lint: android-sdk-check ## Run the Android lint checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug

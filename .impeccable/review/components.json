@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 3,
+  "stage": "components",
+  "id": "components",
+  "title": "Plan and asset review · apps/android/app/src/main/java/com/anve/app/ui/diagnostics/DiagnosticsScreen.kt",
+  "comp": {
+    "path": ".impeccable/mocks/m7-diagnostics-c.png",
+    "width": 841,
+    "height": 1870
+  },
+  "specSha256": "2f67ce861c19582a373dcd1c709575e4be46caef03b99ad977e036fb5f546318",
+  "components": [
+    {
+      "id": "app-bar",
+      "name": "App bar",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.0989
+      },
+      "note": "Native Android system and application bars, teal theme; Back and refresh controls",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "summary-icon",
+      "name": "Summary icon",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0333,
+        "y": 0.1219,
+        "w": 0.1665,
+        "h": 0.0706
+      },
+      "note": "Semantic location status icon; native Material icon with tonal backing",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "tabs",
+      "name": "Tabs",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0357,
+        "y": 0.2198,
+        "w": 0.9322,
+        "h": 0.0369
+      },
+      "note": "Native equal-width overview and details segmented buttons",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "notice",
+      "name": "Notice",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0.2727,
+        "w": 1,
+        "h": 0.0775
+      },
+      "note": "Actionable offline notice with network settings button; state-dependent native controls",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "capture-section",
+      "name": "Capture section",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0345,
+        "y": 0.3572,
+        "w": 0.9346,
+        "h": 0.1294
+      },
+      "note": "Native grouped acquisition rows with section heading and latest fix age",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "sync-section",
+      "name": "Sync section",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0345,
+        "y": 0.5021,
+        "w": 0.9346,
+        "h": 0.1278
+      },
+      "note": "Native grouped queue count and last successful upload rows",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "permissions-section",
+      "name": "Permissions section",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0.6364,
+        "w": 1,
+        "h": 0.2299
+      },
+      "note": "Native grouped permission, location and power saver rows",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "export",
+      "name": "Export",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0369,
+        "y": 0.8711,
+        "w": 0.9334,
+        "h": 0.0604
+      },
+      "note": "Explicit report preview and export entry; no automatic sending",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "preview-footer",
+      "name": "Preview footer",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0.9316,
+        "w": 1,
+        "h": 0.0684
+      },
+      "note": "Mockup-only synthetic-data annotation and native system navigation; omit the annotation when rendering live data",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    }
+  ],
+  "codeRegions": [
+    {
+      "id": "summary-title",
+      "name": "Summary title",
+      "kind": "text",
+      "box": {
+        "x": 0.2021,
+        "y": 0.1176,
+        "w": 0.7491,
+        "h": 0.0348
+      },
+      "note": "Primary diagnosis title; native Material headline, Roboto bold"
+    },
+    {
+      "id": "summary-body",
+      "name": "Summary body",
+      "kind": "text",
+      "box": {
+        "x": 0.2021,
+        "y": 0.1524,
+        "w": 0.7729,
+        "h": 0.0481
+      },
+      "note": "Two-line explanation of current capture and upload state; native body text"
+    }
+  ]
+}

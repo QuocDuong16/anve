@@ -131,6 +131,7 @@ class AppContainer(application: Application) {
     ).addMigrations(LocationDatabase.MIGRATION_1_2).build()
 
     private val captureGenerations = CaptureGenerationStore()
+    fun hasCaptureCheckpoint(owner: String): Boolean = captureGenerations.has(owner)
     private val captureRequestLocks = ConcurrentHashMap<String, Mutex>()
     private val locationGateway: LocationSyncGateway = object : LocationSyncGateway by ApiLocationSyncGateway(authApi) {
         private val apiGateway = ApiLocationSyncGateway(authApi)
@@ -145,7 +146,7 @@ class AppContainer(application: Application) {
 
     val trackingStore: DataStoreTrackingStore = DataStoreTrackingStore(application)
 
-    private val trackingMetrics = DataStoreTrackingMetricsStore(application)
+    val trackingMetrics = DataStoreTrackingMetricsStore(application)
 
     val locationSyncScheduler: LocationSyncScheduler =
         WorkManagerLocationSyncScheduler(application)

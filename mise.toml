@@ -14,7 +14,7 @@
 lockfile = true
 
 [tools]
-go = "1.27.3"
+go = "1.27.4"
 java = "temurin-21.0.12+8.0.LTS"
 gradle = "9.6.0"
 

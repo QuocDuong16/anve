@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-10-28 (M4 authorized Live Map implementation).
+Last updated: 2026-11-11 (M7-A diagnostics and validation foundations).
 
 ## Current milestone
 
@@ -19,6 +19,13 @@ Automated Verified; Pending Field Validation.**
 Automated Verified; Pending Runtime/Device Validation.** Conditional polling is
 near-real-time snapshot convergence, not server push.
 
+**M5 — History & Places: Implemented — Automated Verified; field validation pending.**
+**M6 — SOS & notifications: Implemented — Automated Verified with fake provider;
+real Firebase and physical-device validation pending.**
+**M7-A — Diagnostics: Implemented — Automated Verified (Go, Android and CI
+emulator); physical-device validation and formal Impeccable review remain open.**
+M7-B Safe Journey and M8 release hardening remain Planned.
+
 ## Milestones
 
 | Milestone | Status | Notes |
@@ -29,8 +36,8 @@ near-real-time snapshot convergence, not server push.
 | M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
-| M6 SOS & FCM | Not started | |
-| M7 Journey & diagnostics | Not started | |
+| M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
+| M7 Journey & diagnostics | M7-A Implemented — Automated Verified | Go/Android CI, 19 emulator tests and 11 native captures at `c2854d2`; formal Impeccable review and field validation remain open. Safe Journey remains Planned. |
 | M8 Release hardening | Not started | |
 
 ## M1 evidence
@@ -512,3 +519,50 @@ including PostgreSQL/PostGIS, and
 passed, including headless emulator instrumentation. These tests use a fake FCM
 provider. They do not establish real Firebase delivery, process-kill behavior
 on a physical device, OEM behavior, or notification latency.
+
+## M7-A diagnostics and validation foundations
+
+Native Diagnostics is reached near the top of the Vị trí screen. The user
+approved comp C, Tổng quan/Chi tiết; the mockup is design evidence only.
+The overview separates acquisition, delivery and permissions. Details add queue
+age/retries, capture checkpoint availability, active device sync work, power
+limitations, SOS backlog and server push-registration/configuration status.
+Local diagnostics load before optional remote push checks; failed reads remain
+unknown. No diagnostics action silently starts GPS or changes consent.
+
+Status, queue and SOS data are owner-bound. Account changes reject late reads,
+clear prior fix/upload state and invalidate prepared reports. Leaving the
+screen clears diagnostics and stops supplementary reads. Export requires
+preview and an explicit Android sharesheet action; its fixed allowlist contains
+relative ages and counts without coordinates, identities, credentials, raw
+exceptions or event/recipient IDs. Installation-wide metrics are excluded.
+
+Local Android lint, JVM tests, debug APK and instrumentation APK compilation
+passed. On `c2854d2`, [Go CI](https://github.com/QuocDuong16/anve/actions/runs/42970233522)
+and [Android CI](https://github.com/QuocDuong16/anve/actions/runs/42970233684)
+passed, including the minified release, PostgreSQL/PostGIS and 19 emulator
+tests with no failures/errors. The artifact contains 11 native screenshots
+with synthetic fixtures, including dark theme, font scale 1.3 and export/error
+states. Inspection found dark-theme contrast defects; paired theme roles and
+screen-scoped system-bar styling correct them in `91cbb7c`. Its
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42971957080) and
+[Android](https://github.com/QuocDuong16/anve/actions/runs/42971957143) CI also
+passed, with 19/19 emulator tests and 11 new captures.
+
+The independent finish review returned **recapture**: the 320×640 captures
+are valid compact-phone evidence but do not cover the recorded 412×915 dp
+comparison viewport. CI now configures an even-width 842×1870 px framebuffer at
+327 dpi (412×915 dp) and records resolution/density/source metadata. The source
+comp is 841 px wide; captures are never resized to hide this one-pixel difference. No visual approval is claimed. The separate Impeccable component/plan review
+remains pending because its review server could not open a reviewer browser;
+the resumable session ID is recorded in tracking-validation.md. No physical GPS,
+OEM, battery, Maps-key or real Firebase measurements have been produced.
+
+See [tracking validation](tracking-validation.md) for reproducible commands,
+the scenario matrix, evidence tiers and field-measurement protocol. Safe Journey
+has not been started.
+
+Final local validation: `make quality-check android-test-build` PASS, 293 Android
+JVM tests with no failures/errors; workflow actionlint PASS. Go pins and Docker
+builder were synchronized to Go 1.27.4 to clear the newly reported
+GO-2026-6859 from govulncheck; this is not a Docker runtime verification.

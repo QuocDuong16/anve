@@ -1,0 +1,385 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T06:27:41.100679+00:00",
+  "title": "Design System: AnVề",
+  "extensions": {
+    "colorMeta": {
+      "teal-900": {
+        "role": "primary",
+        "displayName": "Teal 900",
+        "tonalRamp": [
+          "oklch(0.15 0.01807 202.84)",
+          "oklch(0.26 0.03212 202.84)",
+          "oklch(0.38 0.04442 202.84)",
+          "oklch(0.49 0.05070 202.84)",
+          "oklch(0.61 0.05070 202.84)",
+          "oklch(0.72 0.04442 202.84)",
+          "oklch(0.84 0.03212 202.84)",
+          "oklch(0.95 0.01807 202.84)"
+        ]
+      },
+      "teal-700": {
+        "role": "primary",
+        "displayName": "Teal 700",
+        "tonalRamp": [
+          "oklch(0.15 0.02384 209.20)",
+          "oklch(0.26 0.04238 209.20)",
+          "oklch(0.38 0.05861 209.20)",
+          "oklch(0.49 0.06689 209.20)",
+          "oklch(0.61 0.06689 209.20)",
+          "oklch(0.72 0.05861 209.20)",
+          "oklch(0.84 0.04238 209.20)",
+          "oklch(0.95 0.02384 209.20)"
+        ]
+      },
+      "teal-400": {
+        "role": "primary",
+        "displayName": "Teal 400",
+        "tonalRamp": [
+          "oklch(0.15 0.03089 204.02)",
+          "oklch(0.26 0.05491 204.02)",
+          "oklch(0.38 0.07594 204.02)",
+          "oklch(0.49 0.08668 204.02)",
+          "oklch(0.61 0.08668 204.02)",
+          "oklch(0.72 0.07594 204.02)",
+          "oklch(0.84 0.05491 204.02)",
+          "oklch(0.95 0.03089 204.02)"
+        ]
+      },
+      "teal-100": {
+        "role": "primary",
+        "displayName": "Teal 100",
+        "tonalRamp": [
+          "oklch(0.15 0.01572 203.37)",
+          "oklch(0.26 0.02794 203.37)",
+          "oklch(0.38 0.03864 203.37)",
+          "oklch(0.49 0.04410 203.37)",
+          "oklch(0.61 0.04410 203.37)",
+          "oklch(0.72 0.03864 203.37)",
+          "oklch(0.84 0.02794 203.37)",
+          "oklch(0.95 0.01572 203.37)"
+        ]
+      },
+      "amber-600": {
+        "role": "secondary",
+        "displayName": "Amber 600",
+        "tonalRamp": [
+          "oklch(0.15 0.04799 67.03)",
+          "oklch(0.26 0.08530 67.03)",
+          "oklch(0.38 0.11797 67.03)",
+          "oklch(0.49 0.13464 67.03)",
+          "oklch(0.61 0.13464 67.03)",
+          "oklch(0.72 0.11797 67.03)",
+          "oklch(0.84 0.08530 67.03)",
+          "oklch(0.95 0.04799 67.03)"
+        ]
+      },
+      "amber-300": {
+        "role": "secondary",
+        "displayName": "Amber 300",
+        "tonalRamp": [
+          "oklch(0.15 0.03186 72.55)",
+          "oklch(0.26 0.05663 72.55)",
+          "oklch(0.38 0.07833 72.55)",
+          "oklch(0.49 0.08939 72.55)",
+          "oklch(0.61 0.08939 72.55)",
+          "oklch(0.72 0.07833 72.55)",
+          "oklch(0.84 0.05663 72.55)",
+          "oklch(0.95 0.03186 72.55)"
+        ]
+      },
+      "sand-50": {
+        "role": "neutral",
+        "displayName": "Sand 50",
+        "tonalRamp": [
+          "oklch(0.15 0.00357 81.80)",
+          "oklch(0.26 0.00635 81.80)",
+          "oklch(0.38 0.00878 81.80)",
+          "oklch(0.49 0.01003 81.80)",
+          "oklch(0.61 0.01003 81.80)",
+          "oklch(0.72 0.00878 81.80)",
+          "oklch(0.84 0.00635 81.80)",
+          "oklch(0.95 0.00357 81.80)"
+        ]
+      },
+      "sand-200": {
+        "role": "neutral",
+        "displayName": "Sand 200",
+        "tonalRamp": [
+          "oklch(0.15 0.00881 81.12)",
+          "oklch(0.26 0.01566 81.12)",
+          "oklch(0.38 0.02166 81.12)",
+          "oklch(0.49 0.02472 81.12)",
+          "oklch(0.61 0.02472 81.12)",
+          "oklch(0.72 0.02166 81.12)",
+          "oklch(0.84 0.01566 81.12)",
+          "oklch(0.95 0.00881 81.12)"
+        ]
+      },
+      "ink-900": {
+        "role": "neutral",
+        "displayName": "Ink 900",
+        "tonalRamp": [
+          "oklch(0.15 0.00723 190.48)",
+          "oklch(0.26 0.01285 190.48)",
+          "oklch(0.38 0.01777 190.48)",
+          "oklch(0.49 0.02028 190.48)",
+          "oklch(0.61 0.02028 190.48)",
+          "oklch(0.72 0.01777 190.48)",
+          "oklch(0.84 0.01285 190.48)",
+          "oklch(0.95 0.00723 190.48)"
+        ]
+      },
+      "ink-600": {
+        "role": "neutral",
+        "displayName": "Ink 600",
+        "tonalRamp": [
+          "oklch(0.15 0.00830 192.27)",
+          "oklch(0.26 0.01476 192.27)",
+          "oklch(0.38 0.02041 192.27)",
+          "oklch(0.49 0.02329 192.27)",
+          "oklch(0.61 0.02329 192.27)",
+          "oklch(0.72 0.02041 192.27)",
+          "oklch(0.84 0.01476 192.27)",
+          "oklch(0.95 0.00830 192.27)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Native headline",
+        "purpose": "MaterialTheme.typography.headlineSmall; local Semibold only in Diagnostics."
+      },
+      "title": {
+        "displayName": "Native title",
+        "purpose": "MaterialTheme.typography.titleMedium for section and action headings."
+      },
+      "body": {
+        "displayName": "Native body",
+        "purpose": "MaterialTheme.typography.bodyMedium and bodySmall for supporting text."
+      },
+      "label": {
+        "displayName": "Native control label",
+        "purpose": "Material component default typography."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [],
+    "native": {
+      "platform": "android",
+      "layoutUnit": "dp",
+      "textUnit": "sp",
+      "themeSources": [
+        "apps/android/app/src/main/java/com/anve/app/ui/theme/Color.kt",
+        "apps/android/app/src/main/java/com/anve/app/ui/theme/Theme.kt"
+      ],
+      "roleMapping": {
+        "primary": {
+          "light": "teal-700",
+          "dark": "teal-400"
+        },
+        "onPrimary": {
+          "light": "sand-50",
+          "dark": "teal-900"
+        },
+        "primaryContainer": {
+          "light": "teal-100",
+          "dark": "teal-700"
+        },
+        "onPrimaryContainer": {
+          "light": "teal-900",
+          "dark": "teal-100"
+        },
+        "secondary": {
+          "light": "amber-600",
+          "dark": "amber-300"
+        },
+        "onSecondary": {
+          "light": "sand-50",
+          "dark": "ink-900"
+        },
+        "secondaryContainer": {
+          "light": "amber-300",
+          "dark": "amber-600"
+        },
+        "onSecondaryContainer": {
+          "light": "ink-900",
+          "dark": "sand-50"
+        },
+        "background": {
+          "light": "sand-50",
+          "dark": "ink-900"
+        },
+        "onBackground": {
+          "light": "ink-900",
+          "dark": "sand-50"
+        },
+        "surface": {
+          "light": "sand-50",
+          "dark": "ink-900"
+        },
+        "onSurface": {
+          "light": "ink-900",
+          "dark": "sand-50"
+        },
+        "surfaceVariant": {
+          "light": "sand-200",
+          "dark": "ink-600"
+        },
+        "onSurfaceVariant": {
+          "light": "ink-600",
+          "dark": "sand-200"
+        }
+      },
+      "typography": "Inherited Material 3 defaults; no Type.kt or app override in the inspected theme directory.",
+      "shapes": "Inherited Material 3 defaults; CircleShape used for Diagnostics status icon.",
+      "dynamicColor": "Opt-in; disabled by default.",
+      "components": [
+        {
+          "refersTo": "button-filled",
+          "platform": "android-compose",
+          "example": "Button(onClick = onSignIn, enabled = enabled && email.isNotBlank()) { Text(label) }"
+        },
+        {
+          "refersTo": "button-outlined",
+          "platform": "android-compose",
+          "example": "OutlinedButton(onClick = onRetry, enabled = canRetry) { Text(\"Yêu cầu đồng bộ lại\") }"
+        },
+        {
+          "refersTo": "button-text",
+          "platform": "android-compose",
+          "example": "TextButton(onClick = onExport, enabled = !loading) { Text(\"Xuất báo cáo\") }"
+        },
+        {
+          "refersTo": "field-outlined",
+          "platform": "android-compose",
+          "example": "OutlinedTextField(value = email, onValueChange = onEmailChange, label = { Text(label) }, singleLine = true)"
+        },
+        {
+          "refersTo": "navigation-bar",
+          "platform": "android-compose",
+          "example": "NavigationBar { NavigationBarItem(selected = selected, onClick = onSelect, icon = icon, label = label) }"
+        },
+        {
+          "refersTo": "card-outlined",
+          "platform": "android-compose",
+          "example": "OutlinedCard(colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) { content() }"
+        },
+        {
+          "refersTo": "segmented-choice",
+          "platform": "android-compose",
+          "example": "SingleChoiceSegmentedButtonRow { SegmentedButton(selected = selected, onClick = onSelect, shape = shape) { Text(label) } }"
+        }
+      ],
+      "panelLimitations": "Static HTML/CSS illustrations are not native UI previews or Android behavior specifications. No hover, focus, pressed, keyboard or accessibility behavior is synthesized.",
+      "ramps": "Synthesized OKLCH ramps for documentation panels only; not native theme tokens.",
+      "evidence": "Source extraction and approved synthetic comp only. Final emulator review is managed separately; no physical-device validation claimed."
+    }
+  },
+  "components": [
+    {
+      "name": "Filled button",
+      "kind": "button",
+      "refersTo": "button-filled",
+      "description": "Filled native action; light-scheme illustration. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-button-filled\">Đăng nhập</div>",
+      "css": ".ds-native-button-filled { background:#00505A;color:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+    },
+    {
+      "name": "Outlined button",
+      "kind": "button",
+      "refersTo": "button-outlined",
+      "description": "Native secondary action; enabled state is governed by Compose. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-button-outlined\">Yêu cầu đồng bộ lại</div>",
+      "css": ".ds-native-button-outlined { border:1px solid #00505A;color:#00505A;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+    },
+    {
+      "name": "Text action",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Native text action with explicit enabled state. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-button-text\">Xuất báo cáo</div>",
+      "css": ".ds-native-button-text { color:#00505A;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+    },
+    {
+      "name": "Outlined field",
+      "kind": "input",
+      "refersTo": "field-outlined",
+      "description": "Static field illustration; native keyboard and editing are not simulated. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-field-outlined\">Email · ten@example.com</div>",
+      "css": ".ds-native-field-outlined { border:1px solid #3C4F4E;color:#11201F;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+    },
+    {
+      "name": "Navigation item",
+      "kind": "nav",
+      "refersTo": "navigation-bar",
+      "description": "Native navigation primitive; no destination count or expanded layout implied. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-navigation-bar\">Vị trí</div>",
+      "css": ".ds-native-navigation-bar { color:#11201F;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+    },
+    {
+      "name": "Outlined section",
+      "kind": "card",
+      "refersTo": "card-outlined",
+      "description": "Tonal header and content remain native Compose. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-card-outlined\">Thu thập vị trí</div>",
+      "css": ".ds-native-card-outlined { border:1px solid #3C4F4E;color:#11201F;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+    },
+    {
+      "name": "Segmented choice",
+      "kind": "custom",
+      "refersTo": "segmented-choice",
+      "description": "Local single-choice control; not a global page composition. Static documentation illustration only.",
+      "html": "<div class=\"ds-native-segmented-choice\">Tổng quan  |  Chi tiết</div>",
+      "css": ".ds-native-segmented-choice { color:#FBF7F0;background:#00505A; font-family: sans-serif; white-space: normal; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "AnVề native Material 3",
+    "overview": "AnVề uses a native Android Material 3 system: deep teal, warm amber, sand surfaces and ink text. The palette source describes a Vietnamese lacquerware influence (sơn mài); this is an existing palette rationale, not a new decorative direction. The default is the static brand scheme, with separate light and dark mappings. Material You is an explicit opt-in on supported Android versions.\n\nThe interface uses Vietnamese text and familiar Compose controls to make voluntary location sharing understandable. State, freshness and uncertainty must be legible without implying that a missing update proves harm. This document records the incumbent system; the Diagnostics overview/details composition belongs to its approved surface brief, not to every screen.",
+    "keyCharacteristics": [
+      "Native Material 3 components and semantic theme roles.",
+      "Deep teal with warm amber, sand and ink neutrals.",
+      "Vietnamese copy that distinguishes observed state from uncertainty.",
+      "Privacy and user control expressed through explicit actions."
+    ],
+    "rules": [
+      {
+        "name": "The Paired Roles Rule",
+        "body": "Choose a container and its corresponding content role together; verify the resulting pair in both themes. A role name alone is not proof of contrast.",
+        "section": "colors"
+      },
+      {
+        "name": "The Native Type Rule",
+        "body": "Use MaterialTheme.typography roles and Android sp scaling; do not copy mockup pixel measurements into Compose text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Surface Boundary Rule",
+        "body": "Reuse the existing theme and native components. Keep a screen-specific composition in its surface brief unless it has been deliberately adopted across the product.",
+        "section": "layout"
+      },
+      {
+        "name": "The Native State Rule",
+        "body": "Keep Material interaction semantics, disabled states, focus, pressed feedback and accessibility behavior on the real Compose control.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do use semantic Material color roles and test their actual light/dark contrast.",
+      "Do use native Compose controls, real Vietnamese text and Android dp/sp units.",
+      "Do preserve explicit unknown, loading, offline and permission states.",
+      "Do keep consent, system permissions, capture state and viewer access distinguishable.",
+      "Do follow the configured comp-first workflow for every UI surface, including Android, and keep the approved surface reference scoped.",
+      "Do verify rendered screens, enlarged text and interactions on an emulator or device."
+    ],
+    "donts": [
+      "Don't interpret a stale location or missing update as evidence of a person’s safety or danger.",
+      "Don't replace the incumbent palette, typography or native controls during a scoped refinement.",
+      "Don't turn the Diagnostics overview/details layout or its synthetic example values into global rules or runtime evidence.",
+      "Don't imply a report has been shared before the user reviews it and explicitly chooses to share.",
+      "Don't present static documentation previews, source review, APK builds or JVM tests as emulator or physical-device validation."
+    ]
+  }
+}

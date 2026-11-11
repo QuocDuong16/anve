@@ -616,8 +616,10 @@ ngôn ngữ thận trọng; kết thúc hành trình chấm dứt hoàn toàn lu
 
 ## 12. Tracking Health & Diagnostics
 
-> Trạng thái: **Planned — M7** (mốc hoàn thiện; các dấu hiệu cần quan sát phải
-> được thiết kế trong Location Engine ngay từ M3).
+> Trạng thái: **Implemented — Automated Verified (M7-A)** — trang Tổng quan/Chi
+> tiết, export allowlist và 19 tests trên CI emulator. Formal Impeccable review
+> và kiểm chứng thiết bị thật còn mở; bằng chứng theo từng commit được ghi tại
+> [tracking validation](../implementation/tracking-validation.md).
 
 **Mục đích.** Module chẩn đoán giúp phát hiện vì sao tracking không hoạt động
 trên một thiết bị cụ thể — đặc biệt quan trọng vì dự án không có nhiều điện
@@ -641,6 +643,13 @@ không có mạng, queue kẹt…) để tôi hoặc người hỗ trợ tự s�
 
 **Ràng buộc.** Không đưa tọa độ chính xác hoặc thông tin nhạy cảm vào log mặc
 định; export phải tường minh những gì nó chứa.
+
+M7-A xuất plain text qua Android sharesheet sau khi người dùng xem preview.
+Báo cáo chỉ chứa phiên bản/API level, trạng thái quyền, consent, service,
+mạng/pin, queue/retry counts, tuổi dữ liệu và trạng thái push/SOS tổng hợp;
+không chứa tọa độ, tên, owner/device/event/recipient IDs, token, endpoint,
+raw exception hoặc số đo pin suy diễn. Không có tùy chọn xuất tọa độ trong
+M7-A. Không đọc metrics installation-wide vào báo cáo của một tài khoản.
 
 **Acceptance criteria.** Từ trang diagnostics, một người không phải developer
 cũng đọc ra được lý do tracking không chạy; export không chứa tọa độ chính xác

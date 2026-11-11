@@ -186,14 +186,14 @@ class TrackingManager(
                         consentConflict = pendingConsent?.hasConsentConflict == true,
                         conflictServerConsent = pendingConsent?.conflictServerEnabled,
                         trackingRequested = ownerMatches && local.trackingRequested,
-                        lastUploadAtMillis = local.lastSuccessfulUploadAtMillis,
+                        lastUploadAtMillis = if (ownerMatches) local.lastSuccessfulUploadAtMillis else null,
                         privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED", "LOCATION_CAPTURE_CHECKPOINT_MISSING"),
-                        recoveryRequired = if (wasInitial && local.trackingRequested && !current.running) {
+                        recoveryRequired = if (wasInitial && ownerMatches && local.trackingRequested && !current.running) {
                             true
                         } else {
                             current.recoveryRequired
                         },
-                        operational = if (wasInitial && local.trackingRequested && !current.running) {
+                        operational = if (wasInitial && ownerMatches && local.trackingRequested && !current.running) {
                             OperationalState.PAUSED
                         } else {
                             current.operational
@@ -207,7 +207,7 @@ class TrackingManager(
                         },
                     )
                 }
-                if (wasInitial && local.trackingRequested && !status.value.running) {
+                if (wasInitial && ownerMatches && local.trackingRequested && !status.value.running) {
                     _status.update {
                         it.copy(lastError = TrackingProblem.RECOVERY_REQUIRED, recoveryRequired = true)
                     }
@@ -230,6 +230,12 @@ class TrackingManager(
                     stopInternal(clearIntent = true, clearRecovery = true)
                     _status.update {
                         it.copy(
+                            ownerUserId = null,
+                            lastFixAtMillis = null,
+                            lastAccuracyMeters = null,
+                            lastUploadAtMillis = null,
+                            lastError = null,
+                            lastErrorAtMillis = null,
                             sessionReady = false,
                             trackingRequested = false,
                             consentEnabled = false,
@@ -250,6 +256,16 @@ class TrackingManager(
                         sessionGeneration++
                         _status.update {
                             it.copy(
+                                ownerUserId = null,
+                                lastFixAtMillis = null,
+                                lastAccuracyMeters = null,
+                                lastUploadAtMillis = null,
+                                pendingQueueCount = 0,
+                                // Initial adoption may follow the owner-checked
+                                // recovery signal emitted by observeLocalState.
+                                lastError = if (sessionOwner == null && it.recoveryRequired) it.lastError else null,
+                                lastErrorAtMillis = if (sessionOwner == null && it.recoveryRequired) it.lastErrorAtMillis else null,
+                                recoveryRequired = sessionOwner == null && it.recoveryRequired,
                                 consentEnabled = false,
                                 consentConfirmedByServer = false,
                                 serverConsentEnabled = null,
@@ -292,6 +308,7 @@ class TrackingManager(
                             store.setConsentOwner(null)
                         }
                         sessionOwner = owner
+                        _status.update { it.copy(ownerUserId = owner) }
                         observeQueueCount(owner)
                     }
                 }
@@ -1058,6 +1075,13 @@ class TrackingManager(
         scope.launch {
             val snapshot = permissions.snapshot()
             val activeSession = sessions.current()
+            val refreshGeneration = sessionGeneration
+            suspend fun refreshIsCurrent(): Boolean {
+                val latest = sessions.current()
+                return refreshGeneration == sessionGeneration &&
+                    latest?.userId == activeSession?.userId &&
+                    (activeSession?.userId != null || latest?.accessToken == activeSession?.accessToken)
+            }
             var owner = activeSession?.userId ?: sessionOwner
             var remote: UserDto? = null
             if (activeSession != null && connectivity.isOnline()) {
@@ -1068,6 +1092,7 @@ class TrackingManager(
                 } catch (_: Exception) {
                     null
                 }
+                if (!refreshIsCurrent()) return@launch
                 if (refreshedUser != null &&
                     (activeSession.userId == null || refreshedUser.id == activeSession.userId)
                 ) {
@@ -1092,9 +1117,13 @@ class TrackingManager(
 
             val local = try {
                 store.current()
+            } catch (error: CancellationException) {
+                throw error
             } catch (_: Exception) {
+                if (!refreshIsCurrent()) return@launch
                 if (owner != null) consentMutations.closeLocationAdmission(owner)
                 _status.update {
+                    if (refreshGeneration != sessionGeneration || it.ownerUserId != owner) return@update it
                     it.copy(
                         locationAdmissionOpen = false,
                         consentSyncPending = true,
@@ -1118,7 +1147,9 @@ class TrackingManager(
             val admissionOpen = ownerMatches && pendingOperation == null && !pendingRevocation &&
                 !consentMutations.isLocationAdmissionClosed(owner)
             val count = owner?.let { runCatching { queue.count(it) }.getOrNull() }
+            if (!refreshIsCurrent()) return@launch
             _status.update {
+                if (refreshGeneration != sessionGeneration || it.ownerUserId != owner) return@update it
                 it.copy(
                     permission = snapshot.location,
                     backgroundPermissionGranted = snapshot.backgroundLocation,

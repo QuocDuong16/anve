@@ -83,7 +83,7 @@ private enum class PendingAction { NONE, START, ENABLE_THEN_START, CONSENT_ONLY 
  * product rule is that consent is not evidence of collection.
  */
 @Composable
-fun TrackingScreen(container: AppContainer) {
+fun TrackingScreen(container: AppContainer, onOpenDiagnostics: () -> Unit = {}) {
     val viewModel: TrackingViewModel = viewModel(
         factory = TrackingViewModel.factory(container.trackingManager),
     )
@@ -351,6 +351,7 @@ fun TrackingScreen(container: AppContainer) {
         },
         onDismissMessage = viewModel::consumeMessage,
         permissionPermanentlyDenied = foregroundPermissionPermanentlyDenied,
+        onOpenDiagnostics = onOpenDiagnostics,
     )
 }
 
@@ -368,6 +369,7 @@ fun TrackingContent(
     onOpenLocationSettings: () -> Unit,
     onDismissMessage: () -> Unit,
     permissionPermanentlyDenied: Boolean = false,
+    onOpenDiagnostics: () -> Unit = {},
 ) {
     val status = state.status
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -385,6 +387,12 @@ fun TrackingContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+
+            item {
+                OutlinedButton(onClick = onOpenDiagnostics, modifier = Modifier.fillMaxWidth()) {
+                    Text("Chẩn đoán vị trí")
                 }
             }
 
