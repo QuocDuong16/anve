@@ -158,3 +158,27 @@ vẫn pending như ghi ở trên; chưa có quyết định **ship** của finis
 Runner giữ APK trong vòng đời emulator để thu ảnh trước khi hủy máy; script
 vẫn trả mã lỗi instrumentation khi test hỏng và chỉ trả thành công khi cả
 test lẫn thu ảnh thành công. Không tăng timeout hay bỏ assertion để qua gate.
+
+
+## Kiểm chứng bản sửa tương phản và yêu cầu recapture
+
+Commit `91cbb7c9bd3a5a05286e6bbe78248cd9e17e5fba`:
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42971957080) và
+[Android](https://github.com/QuocDuong16/anve/actions/runs/42971957143) PASS.
+Artifact có 19 tests, 0 failures/errors/skips và 11 ảnh mới. Đã xem toàn bộ ảnh;
+dark heading/action/export buttons dùng cặp màu mới, không còn vấn đề tương
+phản đã xác định ở ảnh trước.
+
+Reviewer độc lập mở đủ 11 ảnh và trả **recapture**, không phải verdict source:
+ảnh 320×640 hợp lệ cho màn nhỏ nhưng thiếu khung comparison 412×915 dp và
+`hero-repro.png`. Diff chuẩn hóa khác viewport (`overall=0.6259`) không chứng
+minh fidelity. Không kéo giãn/upscale/stitch ảnh để tạo bằng chứng.
+
+Workflow bổ sung `make android-validation-avd` sau khi tạo AVD, trước khi boot:
+841×1870 px, 327 dpi (làm tròn thành 412×915 dp). Metadata artifact ghi SHA,
+`wm size`, `wm density`, system font scale và các Compose fixture overrides.
+Phải xác nhận kích thước PNG thật từ run mới rồi tạo hero/final diff và review
+trên bộ ảnh đó. Formal plan/component review vẫn pending, không tự tạo receipt.
+
+`DESIGN.md` và `.impeccable/design.json` được trích từ palette/theme Compose hiện
+có; không đổi nhận diện hoặc coi preview tài liệu là runtime evidence.

@@ -544,11 +544,16 @@ passed, including the minified release, PostgreSQL/PostGIS and 19 emulator
 tests with no failures/errors. The artifact contains 11 native screenshots
 with synthetic fixtures, including dark theme, font scale 1.3 and export/error
 states. Inspection found dark-theme contrast defects; paired theme roles and
-screen-scoped system-bar styling correct them in the follow-up change. That
-change requires its own hosted checks and recaptures before merge.
+screen-scoped system-bar styling correct them in `91cbb7c`. Its
+[Go](https://github.com/QuocDuong16/anve/actions/runs/42971957080) and
+[Android](https://github.com/QuocDuong16/anve/actions/runs/42971957143) CI also
+passed, with 19/19 emulator tests and 11 new captures.
 
-The initial independent finish review requested runtime captures; its verdict
-does not count as visual approval. The separate Impeccable component/plan review
+The independent finish review returned **recapture**: the 320×640 captures
+are valid compact-phone evidence but do not cover the recorded 412×915 dp
+comparison viewport. CI now configures the AVD to the comp's 841×1870 px at
+327 dpi and records resolution/density/source metadata; this capture change
+requires a new hosted run. No visual approval is claimed. The separate Impeccable component/plan review
 remains pending because its review server could not open a reviewer browser;
 the resumable session ID is recorded in tracking-validation.md. No physical GPS,
 OEM, battery, Maps-key or real Firebase measurements have been produced.

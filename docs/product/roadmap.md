@@ -262,8 +262,9 @@ M7-A triển khai trang Diagnostics (Tổng quan/Chi tiết), báo cáo allowlis
 người dùng chủ động xuất, kiểm thử owner isolation và nền tảng validation.
 Quy trình và các mức bằng chứng: [tracking validation](../implementation/tracking-validation.md).
 Go/Android CI và 19 tests trên emulator đã PASS tại `c2854d2`, kèm 11 ảnh native
-dùng dữ liệu tổng hợp. Bản sửa tương phản sau khi xem ảnh cần CI/capture trên
-commit mới trước merge. Formal Impeccable review còn mở; GPS/pin/OEM vẫn cần
+dùng dữ liệu tổng hợp. Bản sửa tương phản cũng qua Go/Android CI trên `91cbb7c`.
+Finish review yêu cầu recapture đúng khung comp; formal Impeccable review còn mở.
+GPS/pin/OEM vẫn cần
 điện thoại vật lý. Toàn bộ M7 chưa hoàn tất. Safe Journey (M7-B) chưa triển khai.
 
 Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).
