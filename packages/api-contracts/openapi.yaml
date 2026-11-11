@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: AnVề API
-  version: 0.6.0
+  version: 0.7.0
   description: |
     HTTP contract of the AnVề backend.
 
@@ -39,6 +39,37 @@ tags:
     description: Explicitly addressed journeys with manual owner arrival confirmation
 
 paths:
+  /metrics:
+    servers:
+      - url: http://127.0.0.1:9090
+        description: Optional operator listener; never mounted on the public API
+    get:
+      operationId: getOperatorMetrics
+      tags: [meta]
+      summary: Read bounded aggregate HTTP metrics on the private listener
+      description: |
+        Disabled unless METRICS_LISTEN_ADDR is configured as a literal loopback
+        address. This endpoint is absent from the main API listener. It is for
+        trusted local operators, not an authenticated business API or a public
+        reverse-proxy route. No coordinates, identities, raw paths/queries,
+        headers, bodies, request IDs or panic values are exposed. Labels use
+        registered route templates, a fixed method set and status classes;
+        requests rejected before route selection use the unmatched group.
+        Both the connection peer and Host must be literal loopback addresses;
+        browser Origin requests are refused and forwarded-address headers ignored.
+        Counters reset on process restart. HTTP duration is not GPS freshness,
+        durable ingestion latency or notification delivery time.
+      security: []
+      responses:
+        "200":
+          description: Prometheus exposition; private no-store, no application data.
+          content:
+            text/plain:
+              schema: {type: string}
+        "403":
+          description: Peer/Host is not literal loopback or browser Origin is present.
+        "503":
+          description: Scrape is temporarily unavailable or concurrency limit reached.
   /api/v1/journeys:
     parameters:
       - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}

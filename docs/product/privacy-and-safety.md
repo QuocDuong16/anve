@@ -251,6 +251,20 @@ bật/tắt consent, đăng xuất, thu hồi thiết bị, xóa tài khoản, r
 nhóm. Log vận hành của ingestion chỉ chứa user/device id, số lượng
 accepted/duplicate/rejected và thời gian xử lý — không tọa độ.
 
+**Metrics HTTP vận hành (M8-A).** Registry process-local chỉ có số lượng,
+status class, histogram thời lượng, in-flight và panic/abort counters. Nhãn là
+route template đã đăng ký và method/status hữu hạn; URL lạ không tạo nhãn mới.
+Không ghi tọa độ, user/device/event IDs, URL/query/body/header/request ID hoặc
+nội dung panic vào metrics hay log completion HTTP mới. Các schema audit/log
+nghiệp vụ khác vẫn là nguồn riêng, không được suy ra đã qua audit toàn diện.
+
+Endpoint metrics opt-in trên listener loopback riêng, kiểm tra peer/Host literal
+loopback và từ chối browser Origin; không có trên API công khai, không tin header
+forwarded. Loopback không phải authentication: process tin cậy trên host vẫn đọc
+được dữ liệu vận hành. Không publish/proxy endpoint này. Counter reset khi restart;
+retention/access của collector và log là trách nhiệm deployment, chưa có kết quả
+production. Xem [ADR 0013](../adr/0013-private-http-observability.md).
+
 ## 8. Giới hạn của các tính năng an toàn (phải phản ánh trong UI)
 
 | Tính năng | Giới hạn bắt buộc phải công bố |

@@ -10,7 +10,7 @@
 	docker-up docker-down docker-logs docker-clean docker-config compose-lint \
 	up down logs \
 	migrate-up migrate-down \
-	server-run server-build server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
+	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
 	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint \
 	quality-check
@@ -83,6 +83,9 @@ server-run: ## Run the API server locally (no hot reload; restart after changes)
 server-build: ## Build the API and migrate binaries
 	cd apps/server && go build -o bin/api ./cmd/api
 	cd apps/server && go build -o bin/migrate ./cmd/migrate
+
+server-observability-smoke: server-build ## Smoke-test private metrics and clean HTTP shutdown without a database
+	python3 scripts/check_observability_smoke.py
 
 server-test: ## Run the Go server tests
 	cd apps/server && go test ./...
@@ -184,7 +187,7 @@ deps-lint: ## Validate the Dependabot configuration against its schema
 	python3 scripts/check_dependabot.py
 
 ##@ Quality gate
-quality-check: toolchain-check server-check android-check contracts-lint deps-lint compose-lint ## Run the full CI quality gate
+quality-check: toolchain-check server-check server-observability-smoke android-check contracts-lint deps-lint compose-lint ## Run the full CI quality gate
 
 ##@ Cleanup
 clean: android-clean ## Remove all generated build outputs

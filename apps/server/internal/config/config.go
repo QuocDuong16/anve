@@ -19,6 +19,10 @@ import (
 
 // Config holds every runtime knob of the AnVề API server.
 type Config struct {
+	// MetricsListenAddr enables the separate operator endpoint only when set
+	// to a literal loopback host:port. Empty keeps it disabled.
+	MetricsListenAddr string `env:"METRICS_LISTEN_ADDR"`
+
 	// Port is the TCP port used when ListenAddr is not set. It is retained
 	// for the local workflow (PORT=8081 ./bin/api).
 	Port string `env:"PORT" envDefault:"8080"`
@@ -117,6 +121,21 @@ func (c *Config) resolve() error {
 	if c.LocationRetentionDays < 1 || c.LocationRetentionDays > 365 {
 		return fmt.Errorf("LOCATION_RETENTION_DAYS must be between 1 and 365 (got %d)",
 			c.LocationRetentionDays)
+	}
+
+	if c.MetricsListenAddr != "" {
+		metricsHost, metricsPort, err := net.SplitHostPort(c.MetricsListenAddr)
+		if err != nil {
+			return errors.New("METRICS_LISTEN_ADDR must be a literal loopback IP and port")
+		}
+		ip, err := netip.ParseAddr(metricsHost)
+		if err != nil || !ip.Unmap().IsLoopback() || ip.Zone() != "" {
+			return errors.New("METRICS_LISTEN_ADDR must use a literal loopback IP")
+		}
+		number, err := strconv.Atoi(metricsPort)
+		if err != nil || number < 1 || number > 65535 {
+			return errors.New("METRICS_LISTEN_ADDR port must be between 1 and 65535")
+		}
 	}
 
 	if !c.AuthDevLoginEnabled {

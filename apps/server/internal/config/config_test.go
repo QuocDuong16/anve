@@ -20,6 +20,7 @@ func TestLoadDefaults(t *testing.T) {
 		"a development process must not listen on every interface by default")
 	assert.Equal(t, 15*time.Second, cfg.ShutdownTimeout)
 	assert.Empty(t, cfg.AuthDevLoginNetworks, "the fixture is off by default")
+	assert.Empty(t, cfg.MetricsListenAddr, "operator metrics are opt-in")
 	assert.Equal(t, 30, cfg.LocationRetentionDays, "location retention is short by default")
 }
 
@@ -212,4 +213,26 @@ func TestPortIsTheDefaultListenerOnly(t *testing.T) {
 	cfg, err := config.Load()
 	require.NoError(t, err)
 	assert.Equal(t, "127.0.0.1:9091", cfg.ListenAddr)
+}
+
+func TestMetricsListenerIsOptInAndLiteralLoopbackOnly(t *testing.T) {
+	cases := []struct {
+		addr  string
+		valid bool
+	}{
+		{"", true}, {"127.0.0.1:9090", true}, {"127.0.1.2:9090", true}, {"[::1]:9090", true}, {"[::ffff:127.0.0.1]:9090", true},
+		{":9090", false}, {"0.0.0.0:9090", false}, {"[::]:9090", false}, {"192.0.2.4:9090", false}, {"localhost:9090", false},
+		{"[::1%lo]:9090", false}, {"127.0.0.1:0", false}, {"127.0.0.1:70000", false}, {"127.0.0.1:http", false}, {"127.0.0.1", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.addr, func(t *testing.T) {
+			t.Setenv("METRICS_LISTEN_ADDR", tc.addr)
+			_, err := config.Load()
+			if tc.valid {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, "METRICS_LISTEN_ADDR")
+			}
+		})
+	}
 }

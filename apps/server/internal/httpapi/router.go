@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
+	"github.com/QuocDuong16/anve/server/internal/observability"
 	"github.com/QuocDuong16/anve/server/internal/places"
 	"github.com/QuocDuong16/anve/server/internal/sos"
 )
@@ -41,6 +43,9 @@ type Pinger interface {
 // the process can still serve health and version probes (ADR: the API
 // server starts without a database until the first DB-backed feature).
 type Deps struct {
+	Metrics *observability.Registry
+	Logger  *slog.Logger
+
 	Version        string
 	Auth           *auth.Service
 	Circles        *circles.Service
@@ -76,7 +81,10 @@ func NewRouter(deps Deps) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.Recoverer)
+	if deps.Metrics == nil {
+		deps.Metrics = observability.New()
+	}
+	r.Use(observeHTTP(deps.Metrics, deps.Logger))
 	// Hard 15s ceiling for the current JSON API. Long-lived connection
 	// endpoints (the planned realtime WebSockets) do not fit a per-request
 	// deadline and need their own timeout and lifecycle design before they
@@ -233,6 +241,10 @@ func NewRouter(deps Deps) chi.Router {
 		})
 	})
 
+	_ = chi.Walk(r, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		deps.Metrics.RegisterRoute(method, route)
+		return nil
+	})
 	return r
 }
 

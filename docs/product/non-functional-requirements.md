@@ -143,7 +143,11 @@ Mỗi mục gồm: định nghĩa, cách đo, và proposed target.
   duration và counter tổng hợp (không tọa độ); Android status store có
   permission, service/provider state, last fix/upload, queue size, online và
   battery saver; `TrackingMetrics` lưu counter tổng hợp để field validation.
-  Chưa có endpoint metrics/tracing production (M8).
+  M8-A bổ sung registry HTTP process-local và endpoint metrics opt-in trên
+  listener loopback riêng (không mount vào API công khai), với nhãn template/
+  method/status hữu hạn; xem [runbook](../operations/observability.md). Chưa có
+  collector, tracing hoặc SLO/latency production đã được đo kiểm. HTTP duration
+  không được đồng nhất với ingestion commit latency hay GPS freshness.
 - **Proposed target:** mỗi failure mode của Location Engine có một dấu hiệu
   quan sát được tương ứng.
 
