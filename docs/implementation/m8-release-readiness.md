@@ -56,3 +56,25 @@ Without DATABASE_URL, main previously put a typed nil `*pgxpool.Pool` into the
 returned 500 through recovery instead of the contracted 503. M8-A assigns that
 interface only for a real pool; the no-database binary smoke asserts 503. Router
 unit tests with an untyped nil dependency alone had not covered this wiring.
+
+## CI shutdown regression and reproduction
+
+The first [Go run](https://github.com/QuocDuong16/anve/actions/runs/43107311696)
+passed repository/PostGIS checks but failed the race suite's clean-shutdown test.
+A 50-repeat local race run reproduced pending `StateNew` connections: the test
+client closed unread response bodies, causing transport dials to be abandoned
+rather than reusing completed requests. The test now consumes each body to EOF
+before closing; its original one-second clean-drain assertion remains intact.
+A separate raw TCP case asserts the common drain deadline force-closes a
+connection that never sends a request, alongside the existing active-handler
+case. No timeout was raised and no assertion or case was skipped.
+
+After the correction, this passed locally:
+
+```bash
+make server-test-race SERVER_TEST_RACE_COUNT=50 SERVER_TEST_RACE_PACKAGES=./internal/httpserver
+```
+
+The Make target keeps its original defaults (all packages, count 1) while
+allowing focused repeated reproduction. Updated exact-head hosted results are
+recorded in the PR; the failed initial run is not described as a pass.

@@ -90,8 +90,11 @@ server-observability-smoke: server-build ## Smoke-test private metrics and clean
 server-test: ## Run the Go server tests
 	cd apps/server && go test ./...
 
+SERVER_TEST_RACE_COUNT ?= 1
+SERVER_TEST_RACE_PACKAGES ?= ./...
+
 server-test-race: ## Run the Go server tests with the race detector
-	cd apps/server && go test -race -count=1 ./...
+	cd apps/server && go test -race -count=$(SERVER_TEST_RACE_COUNT) $(SERVER_TEST_RACE_PACKAGES)
 
 server-test-integration: ## Run the DB integration tests against the running local stack (make docker-up first)
 	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations ./internal/locationaccess ./internal/places ./internal/sos ./internal/journeys ./internal/httpapi

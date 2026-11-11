@@ -2,9 +2,11 @@ package httpserver_test
 
 import (
 	"context"
-	"errors"
+	"io"
 	"net"
 	"net/http"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,6 +63,19 @@ func TestDedicatedListenerIsIsolatedAndBothStop(t *testing.T) {
 	apiStarted, metricsStarted := make(chan string, 1), make(chan string, 1)
 	api := server(httpapi.NewRouter(httpapi.Deps{Metrics: registry}), apiStarted)
 	metrics := server(registry.Handler(), metricsStarted)
+	var stateMu sync.Mutex
+	states := make(map[net.Conn]http.ConnState)
+	for _, peer := range []*http.Server{api, metrics} {
+		peer.ConnState = func(conn net.Conn, state http.ConnState) {
+			stateMu.Lock()
+			defer stateMu.Unlock()
+			if state == http.StateClosed {
+				delete(states, conn)
+			} else {
+				states[conn] = state
+			}
+		}
+	}
 	done := make(chan error, 1)
 	go func() { done <- httpserver.Run(ctx, time.Second, api, metrics) }()
 	apiURL, metricsURL := address(t, apiStarted), address(t, metricsStarted)
@@ -74,14 +89,24 @@ func TestDedicatedListenerIsIsolatedAndBothStop(t *testing.T) {
 		response, err := httpClient.Get(tc.url)
 		require.NoError(t, err)
 		assert.Equal(t, tc.status, response.StatusCode)
+		// Reuse completed connections rather than cancelling unread bodies,
+		// which can leave speculative transport dials in StateNew.
+		_, err = io.Copy(io.Discard, response.Body)
+		require.NoError(t, err)
 		require.NoError(t, response.Body.Close())
 	}
 	response, err := httpClient.Head(metricsURL + "/metrics")
 	require.NoError(t, err)
 	assert.Equal(t, 200, response.StatusCode)
 	require.NoError(t, response.Body.Close())
+	stateMu.Lock()
+	beforeCancel := make([]http.ConnState, 0, len(states))
+	for _, state := range states {
+		beforeCancel = append(beforeCancel, state)
+	}
+	stateMu.Unlock()
 	cancel()
-	require.NoError(t, stopped(t, done))
+	require.NoError(t, stopped(t, done), "connection states before cancellation: %v", beforeCancel)
 	for _, url := range []string{apiURL, metricsURL} {
 		response, err := httpClient.Get(url)
 		if response != nil {
@@ -151,8 +176,31 @@ func TestDrainDeadlineClosesActiveConnection(t *testing.T) {
 	require.Error(t, stopped(t, requestDone))
 }
 
-func TestNoServersIsRefused(t *testing.T) {
-	err := httpserver.Run(context.Background(), time.Second)
-	assert.Error(t, err)
-	assert.False(t, errors.Is(err, context.Canceled))
+func TestDrainDeadlineClosesConnectionWithoutRequest(t *testing.T) {
+	started := make(chan string, 1)
+	accepted := make(chan struct{}, 1)
+	api := server(http.NotFoundHandler(), started)
+	api.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			accepted <- struct{}{}
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- httpserver.Run(ctx, 20*time.Millisecond, api) }()
+	apiURL := address(t, started)
+	conn, err := net.DialTimeout("tcp", strings.TrimPrefix(apiURL, "http://"), time.Second)
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+	select {
+	case <-accepted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("connection was not accepted")
+	}
+	cancel()
+	require.ErrorIs(t, stopped(t, done), context.DeadlineExceeded)
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(time.Second)))
+	_, err = conn.Read(make([]byte, 1))
+	require.ErrorIs(t, err, io.EOF)
 }
