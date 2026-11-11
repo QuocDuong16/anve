@@ -1,3 +1,6 @@
+import com.anve.buildlogic.ReleaseInputs
+import com.anve.buildlogic.VerifyReleaseInputs
+
 plugins {
     alias(libs.plugins.android.application)
     // The Kotlin Android plugin is deliberately absent: AGP 9 compiles the
@@ -9,6 +12,30 @@ plugins {
     // the only supported annotation processor for Kotlin now that the Kotlin
     // Android plugin (and therefore kapt) is gone.
     alias(libs.plugins.ksp)
+}
+
+fun releaseSetting(name: String): String = providers.environmentVariable(name)
+    .orElse(providers.gradleProperty(name)).getOrElse("")
+val releaseSettings = ReleaseInputs.PUBLIC_NAMES.associateWith(::releaseSetting)
+val signingEnvironment = (ReleaseInputs.SIGNING_NAMES + "ANVE_KEYSTORE_TYPE").associateWith {
+    providers.environmentVariable(it).getOrElse("")
+}
+val signingPresent = ReleaseInputs.SIGNING_NAMES.any { signingEnvironment.getValue(it).isNotBlank() }
+val signingComplete = ReleaseInputs.SIGNING_NAMES.all { signingEnvironment.getValue(it).isNotBlank() }
+if (signingPresent && (gradle.startParameter.isConfigurationCacheRequested || gradle.startParameter.isBuildCacheEnabled)) {
+    throw GradleException("Signing requires --no-configuration-cache --no-build-cache; use the release Make targets.")
+}
+val verifyRelease = tasks.register<VerifyReleaseInputs>("verifyReleaseInputs") {
+    settings.set(releaseSettings)
+    distribution.set(true)
+    legacyConfig.set(layout.projectDirectory.file("src/main/res/values/config_local.xml"))
+    sourceRoot.set(rootProject.layout.projectDirectory.dir("../.."))
+}
+val verifyReleaseValidation = tasks.register<VerifyReleaseInputs>("verifyReleaseValidationInputs") {
+    settings.set(releaseSettings)
+    distribution.set(false)
+    legacyConfig.set(layout.projectDirectory.file("src/main/res/values/config_local.xml"))
+    sourceRoot.set(rootProject.layout.projectDirectory.dir("../.."))
 }
 
 val mapsApiKey = providers.gradleProperty("ANVE_MAPS_API_KEY")
@@ -37,26 +64,32 @@ android {
         applicationId = "com.anve.app"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.2.0"
+        versionCode = releaseSettings.getValue("ANVE_VERSION_CODE").toIntOrNull()?.takeIf { it > 0 } ?: 1
+        versionName = releaseSettings.getValue("ANVE_VERSION_NAME").ifBlank { "0.2.0" }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // The API the app talks to. The debug default points at the host
-        // machine from inside an emulator (10.0.2.2); override with
-        // -PANVE_API_URL=https://... or gradle.properties for a real device
-        // or a deployed backend. Release builds must be pointed at a real
-        // deployment at build time — see docs/implementation/setup-android.md.
-        buildConfigField(
-            "String",
-            "API_BASE_URL",
-            "\"${project.findProperty("ANVE_API_URL") ?: "http://10.0.2.2:8080"}\"",
-        )
+        // Only debug retains the local emulator fallback. Release build types
+        // override it and cannot package before their explicit-input guard.
+        buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(
+            providers.gradleProperty("ANVE_API_URL").orElse(providers.environmentVariable("ANVE_API_URL"))
+                .getOrElse("http://10.0.2.2:8080"),
+        ))
         buildConfigField("String", "MAPS_API_KEY", "\"$escapedMapsApiKey\"")
         listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->
             buildConfigField("String", name, "\"${firebaseSetting(name)}\"")
         }
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+    }
+
+    if (signingComplete) {
+        signingConfigs.create("upload") {
+            storeFile = file(signingEnvironment.getValue("ANVE_KEYSTORE_FILE"))
+            storePassword = signingEnvironment.getValue("ANVE_KEYSTORE_PASSWORD")
+            keyAlias = signingEnvironment.getValue("ANVE_KEY_ALIAS")
+            keyPassword = signingEnvironment.getValue("ANVE_KEY_PASSWORD")
+            storeType = signingEnvironment.getValue("ANVE_KEYSTORE_TYPE").ifBlank { "PKCS12" }
+        }
     }
 
     buildTypes {
@@ -65,11 +98,25 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
+            buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(releaseSettings.getValue("ANVE_API_URL")))
+            resValue("string", "anve_google_server_client_id", releaseSettings.getValue("ANVE_GOOGLE_WEB_CLIENT_ID"))
+            buildConfigField("String", "MAPS_API_KEY", ReleaseInputs.javaString(releaseSettings.getValue("ANVE_MAPS_API_KEY")))
+            listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->
+                buildConfigField("String", name, ReleaseInputs.javaString(releaseSettings.getValue(name)))
+            }
+            manifestPlaceholders["MAPS_API_KEY"] = releaseSettings.getValue("ANVE_MAPS_API_KEY")
+            if (signingComplete) signingConfig = signingConfigs.getByName("upload")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+        create("releaseValidation") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".releasevalidation"
+            versionNameSuffix = "-validation"
+            matchingFallbacks += "release"
         }
     }
 
@@ -79,6 +126,7 @@ android {
     }
 
     buildFeatures {
+        resValues = true
         compose = true
         // AGP 8 no longer generates BuildConfig by default, but the app
         // reports its version on the splash screen and reads API_BASE_URL.
@@ -154,3 +202,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+// Attach guards to the real variant lifecycle, not only an optional wrapper.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verifyRelease) }
+tasks.matching { it.name == "preReleaseValidationBuild" }.configureEach { dependsOn(verifyReleaseValidation) }

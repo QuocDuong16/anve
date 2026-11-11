@@ -152,3 +152,6 @@ jobs:
 
       - name: Validate the local Compose network exposure
         run: python3 scripts/check_compose_ports.py
+
+      - name: Validate the release CI gate
+        run: make release-tooling-check

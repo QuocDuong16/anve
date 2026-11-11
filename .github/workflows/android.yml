@@ -92,10 +92,18 @@ jobs:
       - name: Build the debug APK
         run: ./gradlew :app:assembleDebug
 
-      # Release is unsigned without a signing config, but R8/minify must
-      # compile: a release-only shrinker failure is otherwise invisible.
-      - name: Compile the minified release build
-        run: ./gradlew :app:assembleRelease
+      - name: Verify minified validation AAB and ephemeral signing
+        id: release_check
+        working-directory: .
+        run: make android-release-check
+
+      - name: Upload validation AAB and verification record
+        uses: actions/upload-artifact@v7
+        with:
+          name: anve-release-validation
+          path: ${{ steps.release_check.outputs.artifact_dir }}
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload the debug APK
         uses: actions/upload-artifact@v7

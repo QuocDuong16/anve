@@ -28,3 +28,12 @@ captures/
 # Tooling
 .zcode/
 apps/android/app/src/main/res/values/config_local.xml
+
+# Upload keys and debug-only local configuration
+*.jks
+*.keystore
+*.p12
+apps/android/app/src/debug/res/values/config_local.xml
+
+# Python tooling bytecode
+__pycache__/

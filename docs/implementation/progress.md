@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-11-12 (M7-B merged; M8-A private HTTP observability in progress).
+Last updated: 2026-11-12 (M8-A merged; M8-B Android release gates in progress).
 
 ## Current milestone
 
@@ -28,8 +28,9 @@ emulator); physical-device validation and formal Impeccable review remain open.*
 main (`5773724`, merged PR #16; main Go/Android CI passed, 32 emulator tests). Native
 correction review and documenter are complete; user approved the final render
 and completion with the formal portal pending. Automatic arrival/stale alerts
-remain Planned. **M8-A HTTP observability is in progress**; release readiness
-and the remaining M7 field evidence are tracked separately.
+remain Planned. **M8-A HTTP observability is merged and automated-verified**
+(PR #17, `6ecf1d2`, main Go/Android CI passed). **M8-B Android release gates are
+in progress**; release readiness and remaining M7 field evidence stay separate.
 
 ## Milestones
 
@@ -43,14 +44,25 @@ and the remaining M7 field evidence are tracked separately.
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
 | M7 Journey & diagnostics | M7-A and M7-B Automated Verified | M7-A merged in `6d3cb01`. M7-B `bcde472`: Go/Android CI, 306 JVM and 32 emulator tests pass; native render approved, formal completion explicitly waived by user, field evidence pending. Automatic arrival/stale alerts remain Planned. |
-| M8 Release hardening | M8-A Implemented; verification pending | Private HTTP metrics/recovery/listener lifecycle and readiness inventory; full release/field gates remain open. |
+| M8 Release hardening | M8-A merged — Automated Verified; M8-B in progress | Private HTTP observability; explicit Android config/signing and verified AAB tooling; full release/field gates remain open. |
 
-## M8-A work in flight
+## M8-A acceptance and M8-B work in flight
 
-See [M8 readiness](m8-release-readiness.md), ADR 0013 and the operator runbook.
-Current scope is private HTTP observability, not a completed security audit,
-production monitoring deployment or signed/store release. Required checks run
-through Make and exact-change GitHub Actions.
+M8-A merged through [PR #17](https://github.com/QuocDuong16/anve/pull/17) as
+`6ecf1d2d54ac06f1197bcbd710bde50e081bd6a6` after exact-change CI passed;
+main Go/Android CI also passed. ADR 0013 and the observability runbook define
+its privacy/exposure boundary. Deployment monitoring and a completed security
+audit are separate gates.
+
+M8-B adds explicit production API/client/version inputs, an external upload
+key and certificate pin, a minified signed-validation variant with a separate
+package and ephemeral key, and AAB format/signature verification. Android CI
+runs signed fixture and tamper-rejection checks; the manual main-only release
+workflow requires exact-main Go/Android CI and owner-managed environment
+configuration. It uploads only the verified AAB and digest/certificate record,
+never a keystore, and never publishes to a store. See [M8 readiness](m8-release-readiness.md),
+ADR 0014 and the [release procedure](../operations/android-release.md). Exact-change
+verification is pending; no real signing/provider/device validation is claimed.
 
 ## M7-B acceptance and remaining evidence
 
