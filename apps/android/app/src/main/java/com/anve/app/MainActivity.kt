@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState?.containsKey("anve_event_kind") == true) {
             incomingPush = IncomingPush(savedInstanceState.getString("anve_event_kind"), savedInstanceState.getString("anve_event_id"), savedInstanceState.getString("anve_event_owner"))
         } else readPush(intent)
+        if (savedInstanceState == null) readInvitation(intent) else intent?.data = null
         enableEdgeToEdge()
         val container = (application as AnVeApplication).container
         setContent {
@@ -33,6 +34,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         readPush(intent)
+        readInvitation(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -50,5 +52,13 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra("anve_event_kind")
         intent.removeExtra("anve_event_id")
         intent.removeExtra("anve_event_owner")
+    }
+
+    private fun readInvitation(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        incomingPush = null
+        val raw = intent.dataString
+        intent.data = null
+        if (raw != null) (application as AnVeApplication).container.invitationInbox.offer(raw)
     }
 }

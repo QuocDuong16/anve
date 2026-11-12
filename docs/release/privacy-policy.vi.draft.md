@@ -25,8 +25,12 @@ hệ điều hành có thể làm chậm hoặc ngừng cập nhật.
 
 AnVề cũng lưu thông tin nhóm, người được phép xem, địa điểm đã lưu, hành trình
 do bạn tạo, sự kiện SOS và xác nhận để thực hiện các tính năng tương ứng.
-SOS hiện không đính kèm tọa độ và không tự bật GPS. “Đã đến nơi” là xác nhận
-thủ công của người dùng, không phải kết luận từ vị trí.
+SOS hiện không đính kèm tọa độ và không tự bật GPS. Hành trình mặc định xác
+nhận đến nơi thủ công. Bạn có thể chủ động bật tự nhận diện cho riêng từng
+chuyến; ứng dụng dùng các mẫu vị trí đã được phép thu thập và ghi rõ kết quả
+là “Đến nơi tự động — ước tính”. Kết quả có thể sai và không chứng minh an
+toàn. Nhắc khi thiếu cập nhật cũng là lựa chọn riêng từng chuyến, gửi cho bạn
+và người xem đã chọn còn quyền; thông báo không kết luận có tai nạn.
 
 Máy chủ xử lý dữ liệu cần thiết để vận hành dịch vụ và ghi nhận các thay đổi
 quyền, tài khoản và phiên. Báo cáo chẩn đoán trong app chỉ được gửi khi bạn
@@ -38,6 +42,12 @@ chứa tọa độ, token đăng nhập hoặc định danh tài khoản/thiết
 Tham gia nhóm không tự bật chia sẻ vị trí. Bạn quyết định bật/tắt chia sẻ và
 cấp hoặc thu hồi quyền xem của từng thành viên. Vai trò quản trị nhóm không
 tự cấp quyền xem vị trí. Máy chủ kiểm tra quyền khi gửi/đọc dữ liệu.
+
+Chia sẻ link/mã mời là hành động chủ động qua ứng dụng bạn chọn. Người nhận
+đăng nhập, xem trước tên nhóm và thời hạn rồi mới xác nhận tham gia. Link
+đang chờ chỉ giữ tạm trong bộ nhớ tiến trình, tối đa 15 phút; đổi tài khoản
+hoặc kết thúc tiến trình sẽ làm mất lời mời đang chờ. Không ghi mã mời vào
+báo cáo chẩn đoán hoặc trạng thái Activity lưu trên đĩa.
 
 Tắt chia sẻ dừng thu thập trên thiết bị này và xóa các điểm chưa gửi. Khi mất
 mạng, app hiển thị trạng thái chờ xác nhận từ máy chủ; không coi thao tác đó

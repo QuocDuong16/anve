@@ -1,6 +1,9 @@
 package com.anve.app.ui.circle
 
 import com.anve.app.data.api.ApiFactory
+import com.anve.app.data.api.CircleDto
+import com.anve.app.data.api.CircleMembershipDto
+import com.anve.app.data.api.MembershipDto
 import com.anve.app.data.circles.CircleRepository
 import com.anve.app.ui.awaitUntil
 import kotlinx.coroutines.CoroutineScope
@@ -77,6 +80,20 @@ class CircleViewModelTest {
         awaitUntil { !vm.state.value.loading }
 
         assertNull(vm.state.value.circle)
+    }
+
+    @Test
+    fun `confirmed membership stays visible when subsequent details fail`() = runBlocking {
+        enqueueMyCircle(name = null)
+        val vm = CircleViewModel(repository, scope)
+        awaitUntil { !vm.state.value.loading }
+        server.enqueue(MockResponse().setResponseCode(503))
+        val joined = CircleMembershipDto(CircleDto("c1", "Nhà mình", "u1", "now"), MembershipDto("c1", "u2", "member", "now"))
+        vm.acceptJoined("u2", joined)
+        awaitUntil { vm.state.value.error != null }
+        assertEquals("c1", vm.state.value.circle?.id)
+        assertEquals("member", vm.state.value.myRole)
+        assertEquals("Đã tham gia nhóm.", vm.state.value.message)
     }
 
     @Test

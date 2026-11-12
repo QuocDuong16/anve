@@ -32,6 +32,17 @@ class InvitationConfirmationTest {
         } finally { server.shutdown() }
     }
 
+    @Test fun `inconsistent membership cannot confirm another circle`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val repository = CircleRepository(ApiFactory.api(ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough()))))
+            server.enqueue(MockResponse().setBody(joined.replace("\"circleId\":\"circle\"", "\"circleId\":\"other\"")))
+            server.enqueue(MockResponse().setBody("""{"circle":null,"membership":null}"""))
+            assertEquals(InvitationConfirmation.Unknown, repository.confirmInvitation("owner", "ABCD234567", "circle"))
+        } finally { server.shutdown() }
+    }
+
     @Test fun `empty readback is unknown and check again remains read only`() = runBlocking {
         val server = MockWebServer()
         server.start()

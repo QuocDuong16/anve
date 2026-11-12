@@ -109,14 +109,31 @@ class JourneyViewModelTest {
         } finally { model.visible(false); model.viewModelScope.cancel() }
     }
 
+    @Test fun `automation choices reach immutable create input and legacy creation remains manual`() = runTest(dispatcher) {
+        sessions.save(session("a"))
+        tracking.status.value = TrackingStatus(ownerUserId = "a", running = true, serviceRunning = true, providerActive = true, online = true)
+        repository.createReply = { journey("a") }
+        val model = JourneyViewModel(sessions, repository, places, tracking)
+        model.visible(true)
+        try {
+            model.createWithOptions(places.place, 120, setOf("viewer"), true, 15)
+            assertEquals(true, repository.captured?.automaticArrival)
+            assertEquals(15, repository.captured?.staleAfterMinutes)
+            model.create(places.place, 120, setOf("viewer"))
+            assertEquals(false, repository.captured?.automaticArrival)
+            assertEquals(0, repository.captured?.staleAfterMinutes)
+        } finally { model.visible(false); model.viewModelScope.cancel() }
+    }
+
     private class Source : JourneyDataSource {
+        var captured: CreateJourneyDto? = null
         var read: suspend (String) -> List<JourneyDto> = { emptyList() }
         var detail: suspend (String, String) -> JourneyDto = { _, _ -> error("unexpected detail") }
         var createReply: suspend () -> JourneyDto = { error("unexpected create") }
         override suspend fun list(owner: String) = read(owner)
         override suspend fun get(owner: String, id: String) = detail(owner, id)
         override suspend fun pending(owner: String) = emptyList<JourneyOperation>()
-        override suspend fun create(owner: String, request: CreateJourneyDto) = createReply()
+        override suspend fun create(owner: String, request: CreateJourneyDto): JourneyDto { captured = request; return createReply() }
         override suspend fun request(owner: String, id: String, action: JourneyAction, recipient: String?) = Unit
         override suspend fun reconcile(owner: String, explicit: Boolean) = false
     }

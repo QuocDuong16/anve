@@ -36,7 +36,15 @@ private object Routes {
 fun AnVeApp(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     val navController = rememberNavController()
     val session by container.authRepository.session.collectAsStateWithLifecycle(initialValue = null)
+    val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
     var splashDone by remember { mutableStateOf(false) }
+
+    LaunchedEffect(session?.accessToken) {
+        if (session != null && session?.userId == null) {
+            // Pre-M3 sessions acquire their account ID through the existing guarded profile read.
+            runCatching { container.authRepository.me() }
+        }
+    }
 
     // Routing rule in one place, keyed on the signed-in *state* (not the
     // session object — token rotation emits a new value and must not
@@ -66,7 +74,7 @@ fun AnVeApp(container: AppContainer, incomingPush: IncomingPush? = null, onPushC
                 }
             }
             composable(Routes.SIGN_IN) {
-                SignInScreen(container = container, onSignedIn = { /* session flow reroutes */ })
+                SignInScreen(container = container, onSignedIn = { /* session flow reroutes */ }, invitationPending = invitation != null)
             }
             composable(Routes.HOME) {
                 HomeScreen(container = container, incomingPush = incomingPush, onPushConsumed = onPushConsumed)

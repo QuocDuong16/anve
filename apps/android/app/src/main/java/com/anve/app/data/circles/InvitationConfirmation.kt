@@ -14,7 +14,7 @@ sealed interface InvitationConfirmation {
 suspend fun CircleRepository.confirmInvitation(owner: String, code: String, circleId: String): InvitationConfirmation {
     val failure = try {
         val joined = joinWithCode(owner, code)
-        if (joined.circle?.id == circleId && joined.membership?.userId == owner) return InvitationConfirmation.Joined(joined)
+        if (joined.circle?.id == circleId && joined.membership?.userId == owner && joined.membership.circleId == circleId) return InvitationConfirmation.Joined(joined)
         null
     } catch (e: CancellationException) { throw e } catch (e: Exception) { e }
     return reconcileInvitation(owner, circleId, failure)
@@ -24,7 +24,7 @@ suspend fun CircleRepository.confirmInvitation(owner: String, code: String, circ
 suspend fun CircleRepository.reconcileInvitation(owner: String, circleId: String, failure: Exception? = null): InvitationConfirmation {
     try {
         val mine = myCircle(owner)
-        if (mine.circle?.id == circleId && mine.membership?.userId == owner) return InvitationConfirmation.Joined(mine)
+        if (mine.circle?.id == circleId && mine.membership?.userId == owner && mine.membership.circleId == circleId) return InvitationConfirmation.Joined(mine)
     } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Preserve uncertainty. */ }
     return if (failure is ApiException && failure.httpStatus in 400..499 && failure.httpStatus !in setOf(408, 429)) {
         InvitationConfirmation.Rejected(failure.code)

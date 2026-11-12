@@ -2,7 +2,7 @@
 version: 1
 slug: "va-com-anve-app-ui-circle-circlescreen-kt-ea94d527"
 primary_target: "apps/android/app/src/main/java/com/anve/app/ui/circle/CircleScreen.kt"
-related_targets: ["apps/android/app/src/main/java/com/anve/app/ui/circle/InvitationViewModel.kt","apps/android/app/src/main/java/com/anve/app/ui/circle/InvitationDialog.kt"]
+related_targets: ["apps/android/app/src/main/java/com/anve/app/ui/circle/InvitationViewModel.kt","apps/android/app/src/main/java/com/anve/app/ui/circle/InvitationDialog.kt","apps/android/app/src/main/java/com/anve/app/ui/circle/InvitationHost.kt"]
 ---
 
 # Invitation preview and sharing
@@ -40,4 +40,6 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 Plan: all foreground regions are native Compose controls, text, containers and
 Material vectors. No mockup pixels ship. The chat plan review includes this C
 dialog and the Journey B sheet because the formal review portal cannot open.
-Current manual exception is pending; no fake receipt or implied waiver.
+On 2026-11-12 the user approved this current plan through chat:
+“Duyệt nha bạn code tiếp đi”. Implement B/C natively; retain the formal portal
+as pending and verify the actual native implementation separately. No fake receipt.

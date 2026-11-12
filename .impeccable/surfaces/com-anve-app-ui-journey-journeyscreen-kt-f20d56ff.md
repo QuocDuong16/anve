@@ -112,6 +112,14 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 Measured plan: `.impeccable/build/spec.json` has 22 semantic regions, zero
 plates. New plan review revision
 `95493b755678576b6856795746d56fd24ecf96e1869bf33ea71b9fcce850f69b`
-could not open a reviewer browser (serve exited 2). A current message-based
-plan-review exception has been requested; the old M7-B exception is not
-silently reused. No UI code was written past this new checkpoint yet.
+could not open a reviewer browser (serve exited 2). On 2026-11-12 the user
+approved the current message-based native plan: “Duyệt nha bạn code tiếp đi”.
+This authorizes implementing B and C with native Compose controls while the
+formal portal remains pending; no formal receipt or gate pass is fabricated.
+Native CI rendering and an independent finish review remain required.
+
+Native translation keeps Material type roles and scrolling at font scale 1.3;
+generated text sizes are not fixed Android sp values. Arrival helper copy also
+makes the approved automatic consequence explicit: enough evidence ends the
+journey and notifies viewers. The comp's two switches remain OFF by default,
+while the comparison fixture may turn reminders on to expose the threshold row.

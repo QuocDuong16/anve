@@ -36,7 +36,7 @@ tags:
   - name: sos
     description: Explicit emergency requests, recipients and acknowledgement
   - name: journeys
-    description: Explicitly addressed journeys with manual owner arrival confirmation
+    description: Explicitly addressed journeys with manual arrival or optional per-journey arrival estimates and missing-update reminders
 
 paths:
   /metrics:

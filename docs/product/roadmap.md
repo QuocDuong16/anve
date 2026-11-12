@@ -147,8 +147,9 @@ test dùng lock-wait barrier chứng minh create-thắng (dissolution audit đú
 một lần), delete-thắng (create fail FK, không có `circle.created`) và
 deadlock được retry với đúng một audit row.
 
-Còn thiếu: field validation trên thiết bị thật; invite **link** (deep link)
-chưa làm — hiện nhập mã thủ công (đã ghi nhận ở progress.md).
+Còn thiếu: field validation trên thiết bị thật. Invite **link** native đã
+triển khai trên PR #21, gồm preview/xác nhận và mã nhập dự phòng; chưa có
+verified HTTPS App Links. Bằng chứng theo feature-completion.md.
 
 **Exit criteria M2:** ✅ không ai vào nhóm khi chưa tự chấp nhận (redeem là
 hành động chủ động của người được mời) · ✅ rời nhóm chấm dứt toàn bộ quyền
@@ -276,7 +277,10 @@ và field validation còn mở; xem
 
 Chuẩn bị M7-B: [Safe Journey preparation](../implementation/m7b-safe-journey-preparation.md).
 Tài liệu ghi phạm vi và exit criteria; các quyết định bản đầu được chốt ở
-ADR 0012. Arrival tự động và cảnh báo ngừng cập nhật tiếp tục Planned.
+ADR 0012. Phần mở rộng ADR 0016 và PR #21 đã triển khai tự đến nơi tắt mặc
+định theo từng chuyến, cảnh báo thiếu cập nhật và bảng tùy chọn Android;
+trạng thái CI/native review theo [feature completion](../implementation/feature-completion.md).
+Các ngưỡng vẫn cần kiểm chứng thực địa, không coi toàn bộ M7 đã hoàn tất.
 
 **Scope:** Safe Journey (có thể lùi nếu cần giảm scope — quyết định khi đến mốc),
 Tracking Health & Diagnostics, quy trình field validation trên nhiều thiết bị

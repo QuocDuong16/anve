@@ -157,8 +157,8 @@ Quy tắc:
   process-local có thời hạn; response cũ hoặc push không thể tự khởi động nó.
   Bản đầu xác nhận đến nơi thủ công. Phần mở rộng backend tại ADR 0016 thêm
   lựa chọn tự đến nơi tắt mặc định theo từng chuyến; kết quả tự động phải ghi
-  rõ là ước tính, không phải bằng chứng an toàn. Giao diện bật tùy chọn còn
-  chờ comp và triển khai.
+  rõ là ước tính, không phải bằng chứng an toàn. Android có bảng tùy chọn
+  riêng từng chuyến; đóng khi chưa áp dụng thì bỏ thay đổi.
 
 - Cảnh báo thiếu cập nhật của phần mở rộng chỉ nói “Hành trình chưa có cập
   nhật mới — hãy liên hệ”, không suy diễn tai nạn. Một đợt gửi cho owner và
@@ -170,8 +170,10 @@ Quy tắc:
 - Link mời là capability, không phải lệnh tự tham gia. API xem trước yêu
   cầu đăng nhập và đúng tài khoản; chỉ trả tên/ID nhóm, hạn mời. Xác nhận
   tham gia vẫn kiểm tra lại mã một lần và không bật chia sẻ. Không ghi mã
-  mời vào URL API, log hoặc báo cáo chẩn đoán. Luồng Android còn đang nối;
-  chưa có xác minh HTTPS App Links trên domain dự định.
+  mời vào URL API, log hoặc báo cáo chẩn đoán. Android giữ lời mời tạm trong
+  bộ nhớ qua đăng nhập/xoay máy, xóa khi đổi tài khoản và kiểm tra lại kết quả
+  tham gia chưa rõ bằng request chỉ đọc. Chưa có xác minh HTTPS App Links
+  trên domain dự định.
 
 ## 5. Xóa dữ liệu và tài khoản
 
