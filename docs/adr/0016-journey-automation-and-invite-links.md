@@ -80,6 +80,20 @@ and one-Circle rules. New link clients also bind redemption to the account
 that previewed; the optional expected-account header remains compatible with
 existing manual clients. Joining never enables location sharing.
 
+Pending invitations stay in application-process memory, bind to the first
+authenticated account, expire after 15 minutes and clear on account changes.
+They survive configuration changes and sign-in within that process, but never
+saved instance state, backup or process death. Each link has an ephemeral
+identity so an older callback cannot clear a newer invitation. Secret-bearing
+pending values redact their string representation.
+
+A confirmation submits once and then reconciles ambiguous outcomes through
+expected-account-bound current membership. Matching target circle and owner
+can confirm success; an empty or failed read remains unknown. “Check again”
+only reads. No automatic new redemption attempt or claim of success occurs
+while server state is uncertain. These helpers do not themselves open a
+screen or redeem a link on receipt.
+
 ## Evidence boundary
 
 Unit tests and PostgreSQL/PostGIS integration tests exercise synthetic data.

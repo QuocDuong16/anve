@@ -4,24 +4,43 @@
   "id": "components",
   "title": "Plan and asset review · apps/android/app/src/main/java/com/anve/app/ui/journey/JourneyScreen.kt",
   "comp": {
-    "path": ".impeccable/mocks/decision/m7b-checklist.png",
+    "path": ".impeccable/mocks/feature-completion/journey-automation-b.png",
     "width": 841,
     "height": 1870
   },
-  "specSha256": "88d4c3a4319beafb8e1f6e56936638b6051054f2a5fe8ff4911b9937e59c72bb",
+  "specSha256": "0b126b963db97cf972b2a1a93f12299496c0d693ee065eecc403a8b9b1739157",
   "components": [
     {
-      "id": "destination-icon",
-      "name": "Destination icon",
+      "id": "app-bar",
+      "name": "App bar",
       "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.0888
+      },
+      "note": "Incumbent native app bar, Back, title and refresh; dimmed behind sheet",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "destination",
+      "name": "Destination",
+      "kind": "control",
       "role": "plan",
       "box": {
         "x": 0.038,
-        "y": 0.1225,
-        "w": 0.1367,
-        "h": 0.0615
+        "y": 0.1005,
+        "w": 0.9263,
+        "h": 0.1086
       },
-      "note": "Native home vector icon in a tonal circular surface, no raster asset.",
+      "note": "Existing destination radio and management controls; dimmed background",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -30,36 +49,17 @@
       "dependencies": []
     },
     {
-      "id": "steps",
-      "name": "Steps",
-      "kind": "chrome",
-      "role": "plan",
-      "box": {
-        "x": 0.0642,
-        "y": 0.2193,
-        "w": 0.088,
-        "h": 0.2503
-      },
-      "note": "Native Material vector status icons with a vertical divider; drawn by Compose, not painted artwork.",
-      "medium": "code",
-      "preview": {
-        "kind": "comp-crop"
-      },
-      "codeDrawn": true,
-      "dependencies": []
-    },
-    {
-      "id": "destination-group",
-      "name": "Destination group",
-      "kind": "chrome",
+      "id": "duration",
+      "name": "Duration",
+      "kind": "control",
       "role": "plan",
       "box": {
         "x": 0.038,
-        "y": 0.1176,
-        "w": 0.9275,
-        "h": 0.0802
+        "y": 0.223,
+        "w": 0.9263,
+        "h": 0.1214
       },
-      "note": "Native destination summary with title, expiry and home vector.",
+      "note": "Existing expiry chips and title; dimmed background",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -68,17 +68,17 @@
       "dependencies": []
     },
     {
-      "id": "start-step-row",
-      "name": "Start step row",
-      "kind": "chrome",
+      "id": "audience",
+      "name": "Audience",
+      "kind": "control",
       "role": "plan",
       "box": {
-        "x": 0.0595,
-        "y": 0.2086,
-        "w": 0.8799,
-        "h": 0.0722
+        "x": 0.038,
+        "y": 0.3578,
+        "w": 0.9263,
+        "h": 0.1283
       },
-      "note": "Native lifecycle row holding start timestamp and complete indicator.",
+      "note": "Existing selected-viewer checkboxes and helper text; dimmed background",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -87,17 +87,17 @@
       "dependencies": []
     },
     {
-      "id": "arrival-step-row",
-      "name": "Arrival step row",
-      "kind": "chrome",
+      "id": "options-entry",
+      "name": "Options entry",
+      "kind": "control",
       "role": "plan",
       "box": {
-        "x": 0.0595,
-        "y": 0.4251,
-        "w": 0.8799,
-        "h": 0.0802
+        "x": 0.038,
+        "y": 0.5005,
+        "w": 0.9263,
+        "h": 0.0455
       },
-      "note": "Native lifecycle row holding manual confirmation instruction.",
+      "note": "Tappable native options row with current per-journey setting summary",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -106,17 +106,188 @@
       "dependencies": []
     },
     {
-      "id": "end-button-row",
-      "name": "End button row",
+      "id": "sheet-surface",
+      "name": "Sheet surface",
       "kind": "chrome",
       "role": "plan",
       "box": {
-        "x": 0.0285,
-        "y": 0.7647,
-        "w": 0.9453,
-        "h": 0.0856
+        "x": 0,
+        "y": 0.5604,
+        "w": 1,
+        "h": 0.4396
       },
-      "note": "Native secondary outlined end action and its real text label.",
+      "note": "Native modal bottom sheet surface and rounded top corners",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "drag-handle",
+      "name": "Drag handle",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.4542,
+        "y": 0.5743,
+        "w": 0.0916,
+        "h": 0.0064
+      },
+      "note": "Native bottom-sheet drag handle",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "arrival-frame",
+      "name": "Arrival frame",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.0416,
+        "y": 0.6668,
+        "w": 0.918,
+        "h": 0.0781
+      },
+      "note": "Native outlined settings group surface",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "arrival-icon",
+      "name": "Arrival icon",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0737,
+        "y": 0.6791,
+        "w": 0.0749,
+        "h": 0.0326
+      },
+      "note": "Material location icon on tonal backing",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "arrival-switch",
+      "name": "Arrival switch",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.8395,
+        "y": 0.6856,
+        "w": 0.0975,
+        "h": 0.0289
+      },
+      "note": "Native Material Switch initially off",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "stale-frame",
+      "name": "Stale frame",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.0416,
+        "y": 0.7599,
+        "w": 0.918,
+        "h": 0.1412
+      },
+      "note": "Native outlined reminder settings group",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "stale-icon",
+      "name": "Stale icon",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0737,
+        "y": 0.7738,
+        "w": 0.0749,
+        "h": 0.0332
+      },
+      "note": "Material notification icon on tonal backing",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "stale-switch",
+      "name": "Stale switch",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.8395,
+        "y": 0.7765,
+        "w": 0.0975,
+        "h": 0.0283
+      },
+      "note": "Native Material Switch on in illustrative state; default off in actual creation",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "stale-thresholds",
+      "name": "Stale thresholds",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0737,
+        "y": 0.8561,
+        "w": 0.7765,
+        "h": 0.0289
+      },
+      "note": "Native chips 5 phút, 10 phút selected, 15 phút, 30 phút",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "apply",
+      "name": "Apply",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0333,
+        "y": 0.9262,
+        "w": 0.9334,
+        "h": 0.0481
+      },
+      "note": "Áp dụng native primary button",
       "medium": "code",
       "preview": {
         "kind": "comp-crop"
@@ -127,208 +298,88 @@
   ],
   "codeRegions": [
     {
-      "id": "appbar",
-      "name": "Appbar",
-      "kind": "chrome",
-      "box": {
-        "x": 0,
-        "y": 0,
-        "w": 1,
-        "h": 0.0963
-      },
-      "note": "Native Material top app bar, Back and refresh actions; semantic teal surface."
-    },
-    {
-      "id": "appbar-title",
-      "name": "Appbar title",
+      "id": "sheet-title",
+      "name": "Sheet title",
       "kind": "text",
       "box": {
-        "x": 0.1344,
-        "y": 0.0471,
-        "w": 0.2723,
+        "x": 0.0428,
+        "y": 0.5979,
+        "w": 0.8323,
         "h": 0.0273
       },
-      "note": "Hành trình; native Material titleLarge system font."
+      "note": "Cho hành trình này — native Material headline"
     },
     {
-      "id": "destination-title",
-      "name": "Destination title",
+      "id": "sheet-helper",
+      "name": "Sheet helper",
       "kind": "text",
       "box": {
-        "x": 0.2033,
-        "y": 0.1235,
-        "w": 0.195,
-        "h": 0.0251
+        "x": 0.0428,
+        "y": 0.631,
+        "w": 0.868,
+        "h": 0.0198
       },
-      "note": "Về nhà; native Material headlineSmall."
+      "note": "Thiết lập riêng cho hành trình này. Native body"
     },
     {
-      "id": "expiry",
-      "name": "Expiry",
+      "id": "arrival-label",
+      "name": "Arrival label",
       "kind": "text",
       "box": {
-        "x": 0.2033,
-        "y": 0.1594,
-        "w": 0.3805,
-        "h": 0.0182
-      },
-      "note": "Tự kết thúc lúc 23:00; expiry not ETA."
-    },
-    {
-      "id": "started",
-      "name": "Started",
-      "kind": "text",
-      "box": {
-        "x": 0.1867,
-        "y": 0.2257,
-        "w": 0.4875,
-        "h": 0.0225
-      },
-      "note": "Đã bắt đầu · 21:10; native titleMedium."
-    },
-    {
-      "id": "active-step",
-      "name": "Active step",
-      "kind": "chrome",
-      "box": {
-        "x": 0.17,
-        "y": 0.293,
-        "w": 0.8014,
-        "h": 0.1166
-      },
-      "note": "Tonal native active step container holding observed location information."
-    },
-    {
-      "id": "active-title",
-      "name": "Active title",
-      "kind": "text",
-      "box": {
-        "x": 0.1974,
-        "y": 0.3048,
-        "w": 0.3567,
-        "h": 0.0241
-      },
-      "note": "Đang di chuyển; indicates journey lifecycle, not inferred velocity."
-    },
-    {
-      "id": "freshness",
-      "name": "Freshness",
-      "kind": "text",
-      "box": {
-        "x": 0.2735,
-        "y": 0.3396,
-        "w": 0.6409,
-        "h": 0.0182
-      },
-      "note": "Vị trí cập nhật 2 phút trước; observed sample timestamp."
-    },
-    {
-      "id": "distance",
-      "name": "Distance",
-      "kind": "text",
-      "box": {
-        "x": 0.2747,
-        "y": 0.3717,
-        "w": 0.5696,
-        "h": 0.0182
-      },
-      "note": "Còn 3,2 km đường chim bay; no ETA."
-    },
-    {
-      "id": "arrival-title",
-      "name": "Arrival title",
-      "kind": "text",
-      "box": {
-        "x": 0.1867,
-        "y": 0.4396,
-        "w": 0.4126,
+        "x": 0.1784,
+        "y": 0.6759,
+        "w": 0.6243,
         "h": 0.0219
       },
-      "note": "Xác nhận đến nơi; explicit manual next step."
+      "note": "Tự nhận diện đến nơi, native title"
     },
     {
-      "id": "arrival-help",
-      "name": "Arrival help",
+      "id": "arrival-body",
+      "name": "Arrival body",
       "kind": "text",
       "box": {
-        "x": 0.1867,
-        "y": 0.4727,
+        "x": 0.1784,
+        "y": 0.7005,
         "w": 0.6516,
+        "h": 0.0348
+      },
+      "note": "GPS chỉ cho kết quả ước tính. Bạn vẫn có thể xác nhận thủ công."
+    },
+    {
+      "id": "stale-label",
+      "name": "Stale label",
+      "kind": "text",
+      "box": {
+        "x": 0.1784,
+        "y": 0.7701,
+        "w": 0.6397,
+        "h": 0.023
+      },
+      "note": "Nhắc khi ngừng cập nhật"
+    },
+    {
+      "id": "stale-body",
+      "name": "Stale body",
+      "kind": "text",
+      "box": {
+        "x": 0.1784,
+        "y": 0.7941,
+        "w": 0.6421,
         "h": 0.0171
       },
-      "note": "Bạn chủ động xác nhận khi đã đến."
+      "note": "Gửi cho bạn và người xem đã chọn."
     },
     {
-      "id": "recipient-summary",
-      "name": "Recipient summary",
+      "id": "stale-threshold-label",
+      "name": "Stale threshold label",
       "kind": "text",
       "box": {
-        "x": 0.1237,
-        "y": 0.5385,
-        "w": 0.39,
-        "h": 0.0166
+        "x": 0.0737,
+        "y": 0.8278,
+        "w": 0.8323,
+        "h": 0.0182
       },
-      "note": "Người theo dõi: Mẹ, Bố; owner only."
-    },
-    {
-      "id": "recipient-action",
-      "name": "Recipient action",
-      "kind": "control",
-      "box": {
-        "x": 0.6433,
-        "y": 0.5241,
-        "w": 0.3282,
-        "h": 0.0433
-      },
-      "note": "Native text action Quản lý người xem."
-    },
-    {
-      "id": "offline-notice",
-      "name": "Offline notice",
-      "kind": "chrome",
-      "box": {
-        "x": 0.038,
-        "y": 0.5979,
-        "w": 0.9263,
-        "h": 0.0711
-      },
-      "note": "Amber tonal offline notice container, native Wi-Fi-off vector icon."
-    },
-    {
-      "id": "offline-copy",
-      "name": "Offline copy",
-      "kind": "text",
-      "box": {
-        "x": 0.1653,
-        "y": 0.6107,
-        "w": 0.7503,
-        "h": 0.0422
-      },
-      "note": "Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận."
-    },
-    {
-      "id": "arrive-action",
-      "name": "Arrive action",
-      "kind": "control",
-      "box": {
-        "x": 0.0309,
-        "y": 0.7021,
-        "w": 0.9405,
-        "h": 0.0604
-      },
-      "note": "Native filled Đã đến nơi action; at least 48dp touch target."
-    },
-    {
-      "id": "end-action",
-      "name": "End action",
-      "kind": "control",
-      "box": {
-        "x": 0.0297,
-        "y": 0.777,
-        "w": 0.9417,
-        "h": 0.0561
-      },
-      "note": "Native outlined Kết thúc hành trình action; wraps under font scaling."
+      "note": "Báo khi chưa có cập nhật trong"
     }
   ]
 }

@@ -127,6 +127,10 @@ func createCircleHandler(svc *circles.Service) http.HandlerFunc {
 func myCircleHandler(svc *circles.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ac, _ := AuthFromContext(r.Context())
+		w.Header().Set("Cache-Control", "no-store, private")
+		if r.Header.Get("X-Anve-Expected-Owner") != "" && !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
 		circle, membership, err := svc.MyCircle(r.Context(), ac.User.ID)
 		if err != nil {
 			writeError(w, r, err)

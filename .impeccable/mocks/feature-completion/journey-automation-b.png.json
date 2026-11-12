@@ -1,7 +1,8 @@
 {
   "prompt": "Edit this synthetic AnVề Android design comp while preserving its exact native layout, palette, controls, spacing, switch states and portrait frame. Correct only these factual Vietnamese UI labels: replace '2. Thời gian dự kiến' with '2. Tự kết thúc sau'; replace 'Tùy chọn tự động và nhắc nhở. Bạn có thể thay đổi sau.' with 'Thiết lập riêng cho hành trình này.'; replace 'Nhắc lại sau mỗi' with 'Báo khi chưa có cập nhật trong'. Do not change any other words, add claims, or alter the design. Crisp readable Vietnamese text. This is a mockup, not a working app.",
-  "approved": false,
+  "approved": true,
   "synthetic": true,
   "reference": "PR20 native Journey screenshot for incumbent theme only",
-  "option": "b"
+  "option": "b",
+  "approval": "User selected this comp in the conversation on 2026-11-12."
 }

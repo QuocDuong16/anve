@@ -1480,6 +1480,12 @@ paths:
       tags: [circles]
       security:
         - bearerAuth: []
+      parameters:
+        - name: X-Anve-Expected-Owner
+          in: header
+          required: false
+          description: If supplied, must match the authenticated user; binds reconciliation to its original account.
+          schema: {type: string, format: uuid}
       responses:
         "200":
           description: The caller's circle and membership, or nulls.

@@ -21,6 +21,8 @@ class CircleRepository(
 
     suspend fun myCircle(): CircleMembershipDto = api.myCircle().orThrow()
 
+    suspend fun myCircle(owner: String): CircleMembershipDto = api.myCircle(owner).orThrow()
+
     suspend fun create(name: String): CircleMembershipDto =
         api.createCircle(CreateCircleRequestDto(name)).orThrow()
 

@@ -1,7 +1,8 @@
 {
   "prompt": "Create a high fidelity native Android portrait screen comp for AnVề, edge to edge, crisp readable Vietnamese text, no handset frame or desk. The user has opened an invitation after signing in and needs to verify which family Circle they will join before choosing. This is synthetic example data. Use the attached current Android screenshot only for AnVề palette, native Material 3 type and component character, not its journey content, numbered steps or arrangement. Keep the screen modest and usable, with real looking native controls; no decorative illustration or map. A native Material confirmation dialog over the existing Family Circle empty screen. The quiet background uses an AnVề app bar, “Gia đình của bạn”, create-group and manual-code controls, bottom tabs with Circle selected. The foreground dialog is a compact, readable explicit decision, headed “Tham gia nhóm?”. Lead its body with the invited Circle name “Nhà mình” in stronger type. Then display “Lời mời dùng một lần.” and “Hết hạn: 14/11, 20:00”. Give a warm informational block or native icon-and-copy row inside the dialog reading “Tham gia nhóm không tự bật chia sẻ vị trí.” Finish body with “Đang đăng nhập: Dương”. Native bottom dialog actions are “Để sau” and the stronger “Tham gia nhóm”. Keep a comfortable scrollable body and enough width for Vietnamese labels; no invented permission toggles. The family context stays visible behind the dialog, but the final confirmation is clearly the current task. This protected decision must feel native and calm.",
-  "approved": false,
+  "approved": true,
   "synthetic": true,
   "reference": "PR20 native Journey screenshot for incumbent theme only",
-  "option": "c"
+  "option": "c",
+  "approval": "User selected this comp in the conversation on 2026-11-12."
 }
