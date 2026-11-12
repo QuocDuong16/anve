@@ -375,6 +375,9 @@ data class InviteListDto(
 )
 
 @JsonClass(generateAdapter = false)
+data class InvitePreviewDto(val circleId: String, val circleName: String, val expiresAt: String)
+
+@JsonClass(generateAdapter = false)
 data class CreateCircleRequestDto(
     @Json(name = "name") val name: String,
 )

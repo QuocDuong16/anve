@@ -167,7 +167,14 @@ interface AnveApi {
     @POST("api/v1/invites/redeem")
     suspend fun redeemInvite(
         @Body body: RedeemInviteRequestDto,
+        @Header("X-Anve-Expected-Owner") owner: String? = null,
     ): Response<CircleMembershipDto>
+
+    @POST("api/v1/invites/preview")
+    suspend fun previewInvite(
+        @Header("X-Anve-Expected-Owner") owner: String,
+        @Body body: RedeemInviteRequestDto,
+    ): Response<InvitePreviewDto>
 
     @GET("api/v1/places")
     suspend fun places(@Header("X-Anve-Expected-Owner") owner: String): Response<PlaceListDto>

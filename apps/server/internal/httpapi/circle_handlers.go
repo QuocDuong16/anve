@@ -54,6 +54,12 @@ type inviteListBody struct {
 	Invites []inviteBody `json:"invites"`
 }
 
+type invitePreviewBody struct {
+	CircleID   string `json:"circleId"`
+	CircleName string `json:"circleName"`
+	ExpiresAt  string `json:"expiresAt"`
+}
+
 type createCircleRequest struct {
 	Name string `json:"name"`
 }
@@ -292,6 +298,9 @@ func revokeInviteHandler(svc *circles.Service) http.HandlerFunc {
 func redeemInviteHandler(svc *circles.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ac, _ := AuthFromContext(r.Context())
+		if r.Header.Get("X-Anve-Expected-Owner") != "" && !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
 		var body redeemInviteRequest
 		if !decodeAuthBody(w, r, &body) {
 			return
@@ -302,5 +311,25 @@ func redeemInviteHandler(svc *circles.Service) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, toCircleMembership(circle, &membership))
+	}
+}
+
+func previewInviteHandler(svc *circles.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, _ := AuthFromContext(r.Context())
+		if !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
+		var body redeemInviteRequest
+		if !decodeAuthBody(w, r, &body) {
+			return
+		}
+		preview, err := svc.Preview(r.Context(), ac.User.ID, body.Code)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		writeJSON(w, http.StatusOK, invitePreviewBody{CircleID: preview.CircleID.String(), CircleName: preview.CircleName, ExpiresAt: preview.ExpiresAt.UTC().Format(timeFormat)})
 	}
 }

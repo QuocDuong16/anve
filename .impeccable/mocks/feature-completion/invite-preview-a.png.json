@@ -1,0 +1,7 @@
+{
+  "prompt": "Create a high fidelity native Android portrait screen comp for AnVề, edge to edge, crisp readable Vietnamese text, no handset frame or desk. The user has opened an invitation after signing in and needs to verify which family Circle they will join before choosing. This is synthetic example data. Use the attached current Android screenshot only for AnVề palette, native Material 3 type and component character, not its journey content, numbered steps or arrangement. Keep the screen modest and usable, with real looking native controls; no decorative illustration or map. A full dedicated invitation preview screen. A top app bar reads “Lời mời gia đình” with Back. The main reading sequence leads with the group name “Nhà mình” in a clear headline, a small group icon, then “Bạn được mời tham gia nhóm này.” A separated details area says “Lời mời dùng một lần” and “Hết hạn: 14/11, 20:00”. Give a distinct warm informational section: “Tham gia nhóm không tự bật chia sẻ vị trí.” A quiet account row says “Đang đăng nhập: Dương”. At the foot, one prominent native button “Tham gia nhóm” and a text action “Để sau”. There is no main tab navigation on this dedicated screen. Keep plenty of room for long group names and large type. Footer note: “Bạn sẽ tự chọn người được xem vị trí sau.”",
+  "approved": false,
+  "synthetic": true,
+  "reference": "PR20 native Journey screenshot for incumbent theme only",
+  "option": "a"
+}

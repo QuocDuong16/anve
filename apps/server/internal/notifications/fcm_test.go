@@ -41,3 +41,30 @@ func TestFCMDataOnlyAndErrorClassification(t *testing.T) {
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "private-test-token")
 }
+
+func TestFCMStaleEpisodeIsOpaqueAndStrictlyValidated(t *testing.T) {
+	var data map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Message struct {
+				Data map[string]any `json:"data"`
+			} `json:"message"`
+		}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+		data = payload.Message.Data
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	f := &FCM{client: server.Client(), endpoint: server.URL}
+	id := uuid.New()
+	require.NoError(t, f.Send(context.Background(), "fake-token", Signal{EventID: id, Kind: "JOURNEY_STALE", Episode: 2}))
+	require.Equal(t, map[string]any{"eventId": id.String(), "kind": "JOURNEY_STALE", "episode": "2"}, data)
+	for _, signal := range []Signal{
+		{EventID: id, Kind: "JOURNEY_STALE"},
+		{EventID: id, Kind: "JOURNEY_STALE", Episode: -1},
+		{EventID: id, Kind: "JOURNEY_ACTIVE", Episode: 2},
+		{EventID: id, Kind: "SOS", Episode: 2},
+	} {
+		require.Error(t, f.Send(context.Background(), "fake-token", signal))
+	}
+}

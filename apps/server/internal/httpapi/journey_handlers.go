@@ -49,7 +49,9 @@ func journeyCollection(store *journeys.Store) http.HandlerFunc {
 				Latitude  *float64 `json:"latitude"`
 				Longitude *float64 `json:"longitude"`
 			} `json:"destination"`
-			RecipientIDs []uuid.UUID `json:"recipientIds"`
+			RecipientIDs      []uuid.UUID `json:"recipientIds"`
+			AutomaticArrival  bool        `json:"automaticArrival"`
+			StaleAfterMinutes int         `json:"staleAfterMinutes"`
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, 8192)
 		decoder := json.NewDecoder(r.Body)
@@ -63,7 +65,7 @@ func journeyCollection(store *journeys.Store) http.HandlerFunc {
 			return
 		}
 		j, created, err := store.Create(r.Context(), p, journeys.CreateRequest{JourneyID: body.JourneyID, PreparedAt: body.PreparedAt, DurationMinutes: body.DurationMinutes, RecipientIDs: body.RecipientIDs,
-			Destination: journeys.Destination{Label: body.Destination.Label, Latitude: *body.Destination.Latitude, Longitude: *body.Destination.Longitude}})
+			Destination: journeys.Destination{Label: body.Destination.Label, Latitude: *body.Destination.Latitude, Longitude: *body.Destination.Longitude}, AutomaticArrival: body.AutomaticArrival, StaleAfterMinutes: body.StaleAfterMinutes})
 		if err != nil {
 			writeError(w, r, err)
 			return

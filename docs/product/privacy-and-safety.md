@@ -155,7 +155,23 @@ Quy tắc:
   hành trình, không tự cấp quyền Circle. Mọi read/dispatch kiểm tra lại đúng
   grant ID và membership/epoch, kể cả sau đến nơi. Ưu tiên thu thập là admission
   process-local có thời hạn; response cũ hoặc push không thể tự khởi động nó.
-  Đến nơi là xác nhận của chủ hành trình, không phải bằng chứng GPS/an toàn.
+  Bản đầu xác nhận đến nơi thủ công. Phần mở rộng backend tại ADR 0016 thêm
+  lựa chọn tự đến nơi tắt mặc định theo từng chuyến; kết quả tự động phải ghi
+  rõ là ước tính, không phải bằng chứng an toàn. Giao diện bật tùy chọn còn
+  chờ comp và triển khai.
+
+- Cảnh báo thiếu cập nhật của phần mở rộng chỉ nói “Hành trình chưa có cập
+  nhật mới — hãy liên hệ”, không suy diễn tai nạn. Một đợt gửi cho owner và
+  người xem đã chọn còn quyền; có mẫu live mới thì dừng cảnh báo và chỉ đợt
+  thiếu cập nhật mới được gửi tiếp. FCM chỉ thêm bộ đếm episode không chứa
+  dữ liệu cá nhân; app phải kiểm tra quyền và episode online trước hiển thị.
+  Metadata suy ra tuân theo cùng retention, xóa history và capture generation.
+
+- Link mời là capability, không phải lệnh tự tham gia. API xem trước yêu
+  cầu đăng nhập và đúng tài khoản; chỉ trả tên/ID nhóm, hạn mời. Xác nhận
+  tham gia vẫn kiểm tra lại mã một lần và không bật chia sẻ. Không ghi mã
+  mời vào URL API, log hoặc báo cáo chẩn đoán. Luồng Android còn đang nối;
+  chưa có xác minh HTTPS App Links trên domain dự định.
 
 ## 5. Xóa dữ liệu và tài khoản
 

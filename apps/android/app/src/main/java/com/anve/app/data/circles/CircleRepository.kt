@@ -5,6 +5,7 @@ import com.anve.app.data.api.CircleMembershipDto
 import com.anve.app.data.api.CreateCircleRequestDto
 import com.anve.app.data.api.CreateInviteRequestDto
 import com.anve.app.data.api.InviteDto
+import com.anve.app.data.api.InvitePreviewDto
 import com.anve.app.data.api.LeaveCircleRequestDto
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.api.RedeemInviteRequestDto
@@ -25,6 +26,12 @@ class CircleRepository(
 
     suspend fun joinWithCode(code: String): CircleMembershipDto =
         api.redeemInvite(RedeemInviteRequestDto(code)).orThrow()
+
+    suspend fun joinWithCode(owner: String, code: String): CircleMembershipDto =
+        api.redeemInvite(RedeemInviteRequestDto(code), owner).orThrow()
+
+    suspend fun previewInvite(owner: String, code: String): InvitePreviewDto =
+        api.previewInvite(owner, RedeemInviteRequestDto(code)).orThrow()
 
     suspend fun members(circleId: String): List<MemberDto> =
         api.members(circleId).orThrow().members

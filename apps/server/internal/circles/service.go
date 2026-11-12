@@ -75,6 +75,13 @@ type Invite struct {
 	CreatedAt time.Time
 }
 
+// InvitePreview exposes no member identities or sharing information.
+type InvitePreview struct {
+	CircleID   uuid.UUID
+	CircleName string
+	ExpiresAt  time.Time
+}
+
 // Store is the persistence contract. Every method takes the calling user
 // and enforces scoping itself: "not a member of this circle" is
 // auth.ErrNotFound, "member but not owner" is ErrForbidden — callers
@@ -90,6 +97,7 @@ type Store interface {
 	ListInvites(ctx context.Context, userID, circleID uuid.UUID) ([]Invite, error)
 	RevokeInvite(ctx context.Context, userID, inviteID uuid.UUID) error
 	RedeemInvite(ctx context.Context, userID uuid.UUID, code string) (Circle, Membership, error)
+	PreviewInvite(ctx context.Context, userID uuid.UUID, code string) (InvitePreview, error)
 }
 
 // Service implements the circle use-cases. Audit events are owned by the
@@ -175,6 +183,15 @@ func (s *Service) Redeem(ctx context.Context, userID uuid.UUID, code string) (Ci
 		return Circle{}, Membership{}, fmt.Errorf("%w: code must be 4-32 characters", auth.ErrValidation)
 	}
 	return s.store.RedeemInvite(ctx, userID, code)
+}
+
+// Preview checks a capability without burning it. Redeem revalidates at confirmation.
+func (s *Service) Preview(ctx context.Context, userID uuid.UUID, code string) (InvitePreview, error) {
+	code = strings.TrimSpace(code)
+	if len(code) < 4 || len(code) > 32 {
+		return InvitePreview{}, fmt.Errorf("%w: code must be 4-32 characters", auth.ErrValidation)
+	}
+	return s.store.PreviewInvite(ctx, userID, code)
 }
 
 // codeAlphabet is Crockford-ish base32 without ambiguous glyphs; codes are

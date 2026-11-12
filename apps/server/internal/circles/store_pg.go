@@ -451,6 +451,21 @@ func (s *PGStore) RevokeInvite(ctx context.Context, userID, inviteID uuid.UUID) 
 	return nil
 }
 
+// PreviewInvite is a capability lookup and does not grant membership or data access.
+func (s *PGStore) PreviewInvite(ctx context.Context, userID uuid.UUID, code string) (InvitePreview, error) {
+	var preview InvitePreview
+	err := s.pool.QueryRow(ctx, `SELECT c.id,c.name,i.expires_at FROM invites i JOIN circles c ON c.id=i.circle_id
+ WHERE i.code=$1 AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>clock_timestamp()
+ AND EXISTS(SELECT 1 FROM users WHERE id=$2)`, code, userID).Scan(&preview.CircleID, &preview.CircleName, &preview.ExpiresAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return InvitePreview{}, ErrInviteUnavailable
+	}
+	if err != nil {
+		return InvitePreview{}, fmt.Errorf("preview invite: %w", err)
+	}
+	return preview, nil
+}
+
 // RedeemInvite joins the caller's circle with a code: validates the code
 // state, enforces one-circle-per-user, creates the membership and burns the
 // code in one transaction. Concurrent redeems serialize on the invite

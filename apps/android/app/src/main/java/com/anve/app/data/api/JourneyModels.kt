@@ -12,6 +12,8 @@ data class CreateJourneyDto(
     val durationMinutes: Int,
     val destination: JourneyDestinationDto,
     val recipientIds: List<String>,
+    val automaticArrival: Boolean = false,
+    val staleAfterMinutes: Int = 0,
 )
 
 @JsonClass(generateAdapter = false)
@@ -32,6 +34,12 @@ data class JourneyDto(
     val endedAt: String? = null,
     val recipients: List<JourneyRecipientDto> = emptyList(),
     val progress: JourneyProgressDto? = null,
+    val automaticArrival: Boolean = false,
+    val staleAfterMinutes: Int = 0,
+    val arrivalSource: String? = null,
+    val lastLiveUpdateAt: String? = null,
+    val staleSince: String? = null,
+    val staleEpisode: Int = 0,
 )
 
 @JsonClass(generateAdapter = false)

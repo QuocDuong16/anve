@@ -580,7 +580,9 @@ không bao giờ hứa “báo cảnh sát thay bạn”.
 > khai tại `bcde472` (Go/Android CI, 32 emulator tests), bản native đã được
 > duyệt qua tin nhắn theo ngoại lệ của người dùng. Phạm vi review được
 > ghi riêng tại [progress](../implementation/progress.md). Arrival tự động và
-> cảnh báo ngừng cập nhật vẫn **Planned**.
+> cảnh báo ngừng cập nhật có backend mở rộng trên nhánh triển khai; UI bật
+> tùy chọn và luồng link mời còn **Planned**, xem
+> [feature completion](../implementation/feature-completion.md).
 
 **Mục đích.** Tính năng khác biệt: người dùng chủ động bắt đầu một hành trình
 (đi học, đi làm, di chuyển xa, về nhà muộn) và người thân được chọn theo dõi
@@ -684,7 +686,8 @@ trừ khi người dùng chọn rõ ràng.
 
 ## 13. Notifications
 
-> Trạng thái: **Implemented — Automated Verified** cho SOS và Place Alert với fake provider; FCM thật chưa được kiểm chứng.
+> Trạng thái: **Implemented — Automated Verified** cho SOS, Place Alert và
+> lifecycle Journey với fake provider; FCM thật chưa được kiểm chứng.
 
 **Mục đích.** Firebase Cloud Messaging là kênh push notification chính, dùng
 cho các sự kiện hợp lệ:
@@ -695,8 +698,9 @@ cho các sự kiện hợp lệ:
 - Safe Journey events (bắt đầu, hoàn tất, cảnh báo).
 - Những sự kiện an toàn hợp lệ khác.
 
-Phạm vi M6 hiện tại chỉ gồm SOS và Place Alerts; thông báo invitation và
-Safe Journey vẫn là định hướng, chưa được triển khai trong M6.
+M6 triển khai SOS và Place Alerts; M7-B bổ sung lifecycle Journey. Invitation
+dùng chia sẻ mã/link chủ động, chưa có FCM invitation. Cảnh báo thiếu cập nhật
+của phần mở rộng được theo dõi tại feature-completion.md.
 
 **Ràng buộc kiến trúc.** **Không sử dụng FCM để truyền GPS liên tục.** M3
 ingestion và M4 authorized latest-location snapshots đi qua HTTPS. M4 dùng
@@ -711,5 +715,6 @@ tại thời điểm gửi.
 ---
 
 *Xem trạng thái ở đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
-[`../implementation/progress.md`](../implementation/progress.md). M7 là
-Planned; bằng chứng tự động không thay thế field validation.*
+[`../implementation/progress.md`](../implementation/progress.md) và
+[`../implementation/feature-completion.md`](../implementation/feature-completion.md).
+Bằng chứng tự động không thay thế field validation.*
