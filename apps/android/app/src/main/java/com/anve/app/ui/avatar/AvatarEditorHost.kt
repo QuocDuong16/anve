@@ -47,7 +47,7 @@ fun AvatarEditorHost(container: AppContainer, owner: String, name: String, conte
         }, onRemove = controller::chooseRemoval, onSave = { controller.save(tracking.online) },
             onCheck = { controller.checkAgain(tracking.online) }, onRetry = controller::refresh) {
             if (selected != null || state.removeDraft || state.metadata?.imageId == null) AvatarFrame(name, selected, Modifier.size(160.dp))
-            else AvatarImage(owner, owner, state.metadata?.imageId, name, container.avatarRepository, Modifier.size(160.dp))
+            else AvatarImage(owner, owner, state.metadata?.imageId, name, container.avatarRepository, Modifier.size(160.dp), retryable = true)
         }
     }
 }

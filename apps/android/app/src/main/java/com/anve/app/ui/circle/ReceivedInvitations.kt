@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -21,6 +23,8 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, onReview: (String) -> Unit, onHide: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val actionColor = if (colors.surface.luminance() < 0.5f) colors.onSurface else colors.primary
     Column(Modifier.fillMaxWidth().testTag("received-invitations"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Lời mời dành cho bạn", style = MaterialTheme.typography.titleMedium)
         if (state.loading) CircularProgressIndicator()
@@ -34,13 +38,16 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                 Text("Hết hạn: $expiry", style = MaterialTheme.typography.bodySmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { onReview(invite.id) }, enabled = !state.detailBusy,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
                         modifier = Modifier.heightIn(min = 48.dp)) { Text("Xem lời mời") }
                     TextButton(onClick = { onHide(invite.id) }, enabled = !state.detailBusy,
+                        colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
                         modifier = Modifier.heightIn(min = 48.dp)) { Text("Ẩn với tôi") }
                 }
             }
         }
-        TextButton(onClick = onRefresh, enabled = !state.loading && !state.detailBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Tải lại lời mời") }
+        TextButton(onClick = onRefresh, enabled = !state.loading && !state.detailBusy,
+            colors = ButtonDefaults.textButtonColors(contentColor = actionColor), modifier = Modifier.heightIn(min = 48.dp)) { Text("Tải lại lời mời") }
         state.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
     }
 }

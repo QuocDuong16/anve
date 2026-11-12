@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,12 +35,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, gateway: AvatarGateway, modifier: Modifier = Modifier) {
+fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, gateway: AvatarGateway, modifier: Modifier = Modifier, retryable: Boolean = false) {
     var image by remember(owner, subject, imageId) { mutableStateOf<ImageBitmap?>(null) }
     var loading by remember(owner, subject, imageId) { mutableStateOf(imageId != null) }
     var failed by remember(owner, subject, imageId) { mutableStateOf(false) }
-    LaunchedEffect(owner, subject, imageId) {
+    var attempt by remember(owner, subject, imageId) { mutableStateOf(0) }
+    LaunchedEffect(owner, subject, imageId, attempt) {
         if (imageId == null) return@LaunchedEffect
+        loading = true
+        failed = false
         try {
             val bytes = gateway.image(owner, subject, imageId)
             val bitmap = withContext(Dispatchers.Default) { decodeAvatarImage(bytes)?.asImageBitmap() }
@@ -47,6 +54,10 @@ fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, 
         loading = false
     }
     AvatarFrame(name, image, modifier.semantics { if (failed) contentDescription = "Chưa tải được ảnh đại diện; đang hiển thị chữ cái." }) {
+        if (failed && retryable) Surface(Modifier.align(Alignment.BottomEnd).size(48.dp), shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+            IconButton(onClick = { attempt++ }) { Icon(Icons.Outlined.Refresh, "Tải lại ảnh đại diện") }
+        }
         if (loading) CircularProgressIndicator(Modifier.align(Alignment.BottomEnd).size(16.dp), strokeWidth = 2.dp)
     }
 }

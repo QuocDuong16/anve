@@ -23,8 +23,13 @@ are illustrative; existing navigation is preserved. No mockup is an app asset.
 | Product journey/progress text | Contains obsolete splash-only/Planned statements and superseded privacy examples | Reconcile with source and ADRs without relabeling field evidence |
 | Multiple Circles, numeric confidence, server-push transport | Proposed | Do not silently add to MVP |
 
-This is a plan until the corresponding source and exact-head checks exist.
-No new feature in this slice is yet claimed verified.
+The listed features now have source implementations on this branch. Local
+`make quality-check` and `make android-test-build` passed at `617c17f`, with
+328 JVM tests and zero failures/errors/skips. PostgreSQL race integration
+passed after migrations 0012/0013. Hosted checks and native renders/review are
+tracked by [PR #22](https://github.com/QuocDuong16/anve/pull/22), stacked on
+unmerged PR #21. Later refinements require exact-head revalidation; no provider
+or physical-device result is implied.
 
 ## Profile photo boundary
 

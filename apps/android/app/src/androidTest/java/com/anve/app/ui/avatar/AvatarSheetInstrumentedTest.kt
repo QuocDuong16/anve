@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +18,9 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anve.app.data.api.AvatarStateDto
+import com.anve.app.data.avatar.AvatarGateway
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import com.anve.app.ui.captureNativeFixture
 import com.anve.app.ui.diagnostics.SystemFontScaleRule
 import com.anve.app.ui.theme.AnVeTheme
@@ -70,6 +74,31 @@ class AvatarSheetInstrumentedTest {
         compose.onNodeWithTag("avatar-check").performClick()
         compose.runOnIdle { assertEquals(0, saves); assertEquals(1, checks) }
         captureNativeFixture("avatar-unknown")
+    }
+
+    @Test fun failedCurrentImageHasAnExplicitReadOnlyRetry() {
+        var requests = 0
+        val pixels = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
+        val bytes = ByteArrayOutputStream().use { pixels.compress(Bitmap.CompressFormat.JPEG, 90, it); it.toByteArray() }
+        pixels.recycle()
+        val gateway = object : AvatarGateway {
+            override suspend fun state(owner: String): AvatarStateDto = error("unused")
+            override suspend fun replace(owner: String, operation: String, revision: Long, image: ByteArray): AvatarStateDto = error("must not write")
+            override suspend fun remove(owner: String, operation: String, revision: Long): AvatarStateDto = error("must not write")
+            override suspend fun image(owner: String, subject: String, imageId: String): ByteArray {
+                requests++; if (requests == 1) throw IOException("synthetic transport failure"); return bytes
+            }
+        }
+        compose.setContent { AnVeTheme { AvatarSheet(ready.copy(selection = null), true, {}, {}, {}, {}, {}, {}) {
+            AvatarImage("owner", "owner", "synthetic-current-image", "An", gateway, Modifier.size(160.dp), retryable = true)
+        } } }
+        compose.waitUntil(5_000) { requests == 1 }
+        compose.onNodeWithContentDescription("Tải lại ảnh đại diện").performScrollTo().assertIsDisplayed()
+        captureNativeFixture("avatar-image-error")
+        compose.onNodeWithContentDescription("Tải lại ảnh đại diện").performClick()
+        compose.waitUntil(5_000) { requests == 2 }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Tải lại ảnh đại diện").assertDoesNotExist()
     }
 
     @Test fun darkLargeTextKeepsControlsReachable() {

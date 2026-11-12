@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -76,7 +77,8 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                             color = if (state.mode == mode) colors.primaryContainer else colors.surface,
                             contentColor = if (state.mode == mode) colors.onPrimaryContainer else colors.onSurface) {
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = state.mode == mode, onClick = null, enabled = editable)
+                                RadioButton(selected = state.mode == mode, onClick = null, enabled = editable,
+                                    colors = RadioButtonDefaults.colors(selectedColor = colors.onPrimaryContainer))
                                 Text(label, Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
                             }
                         }
@@ -110,7 +112,8 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                     }
                 } }
                 item { Box {
-                    TextButton(onClick = { showExpiry = true }, enabled = editable, modifier = Modifier.heightIn(min = 48.dp)) {
+                    TextButton(onClick = { showExpiry = true }, enabled = editable,
+                        colors = ButtonDefaults.textButtonColors(contentColor = if (dark) colors.onSurface else colors.primary), modifier = Modifier.heightIn(min = 48.dp)) {
                         Icon(Icons.Outlined.Schedule, null, Modifier.size(20.dp))
                         Text("Lời mời dùng một lần · " + if (state.hours == 168) "7 ngày" else "${state.hours} giờ", Modifier.padding(horizontal = 8.dp))
                         Icon(Icons.Outlined.ArrowDropDown, null)
