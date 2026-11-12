@@ -20,15 +20,16 @@ class AvatarImagesInstrumentedTest {
     @Test fun selectedJpegIsOrientedCroppedAndReencodedWithoutMetadata() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.cacheDir, "synthetic-avatar-input.jpg")
-        val bitmap = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(320, 240, Bitmap.Config.ARGB_8888)
         try {
             bitmap.eraseColor(Color.RED)
-            for (x in 0..799) for (y in 300..599) bitmap.setPixel(x, y, Color.BLUE)
+            for (x in 0..319) for (y in 120..239) bitmap.setPixel(x, y, Color.BLUE)
             file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it)) }
             // Use a deterministic EXIF fixture rather than depending on the old
             // platform writer, whose saveAttributes can reject generated JPEGs.
             file.writeBytes(withSyntheticExif(file.readBytes()))
-            val original = file.inputStream().use { ExifInterface(it) }
+            assertTrue(file.length() < 5_000) // regression: Android 8 has a fixed-size signature probe
+            val original = readExif(file.readBytes())
             assertEquals(ExifInterface.ORIENTATION_ROTATE_90, original.getAttributeInt(ExifInterface.TAG_ORIENTATION, 0))
             assertEquals("synthetic-private-metadata", original.getAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION))
             assertTrue(!original.getAttribute(ExifInterface.TAG_GPS_LATITUDE).isNullOrEmpty())
@@ -41,7 +42,7 @@ class AvatarImagesInstrumentedTest {
                 assertTrue(Color.blue(result.getPixel(40, 128)) > 200)
                 assertTrue(Color.red(result.getPixel(215, 128)) > 200)
             } finally { result.recycle() }
-            val exif = ExifInterface(bytes.inputStream())
+            val exif = readExif(bytes)
             assertTrue(exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE).isNullOrEmpty())
             assertTrue(exif.getAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION).isNullOrEmpty())
             // An absent orientation may be reported as UNDEFINED by Android.
@@ -70,6 +71,11 @@ class AvatarImagesInstrumentedTest {
         assertTrue(intent.type == "image/*" || intent.type == null)
         assertTrue(!intent.getBooleanExtra(android.content.Intent.EXTRA_ALLOW_MULTIPLE, false))
     }
+    // Independently read the actual tags, including on Android 8: its reader
+    // otherwise returns default/empty attributes without parsing small JPEGs.
+    private fun readExif(bytes: ByteArray): ExifInterface =
+        (if (bytes.size < 5_000) bytes.copyOf(5_000) else bytes).inputStream().use { ExifInterface(it) }
+
     private fun withSyntheticExif(jpeg: ByteArray): ByteArray {
         val description = "synthetic-private-metadata\u0000".toByteArray(Charsets.US_ASCII)
         val descriptionOffset = 50 // TIFF header + three IFD0 entries + next-IFD pointer

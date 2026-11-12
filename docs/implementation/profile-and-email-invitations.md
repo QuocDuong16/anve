@@ -116,3 +116,11 @@ one-shot, including empty DELETE. This blocks automatic 503 Retry-After:0
 follow-ups as well as connection replay. The existing explicit owner-bound
 401 refresh is safe after refused admission. MockWebServer tests verify one
 request for PUT/POST/DELETE under 503 and no forwarding on a 307 redirect.
+
+
+API 26 testing exposed the platform EXIF reader's fixed 5,000-byte signature
+probe: valid small JPEGs can lose orientation silently. Legacy processing pads
+only the metadata reader, not image pixels or uploads. The regression fixture
+is explicitly smaller than the probe, has independently verified orientation,
+GPS and description tags, and checks oriented output colors and stripped tags.
+This is a compatibility fix in production decoding, not a skipped assertion.

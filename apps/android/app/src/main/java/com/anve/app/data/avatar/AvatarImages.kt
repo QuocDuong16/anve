@@ -83,7 +83,10 @@ private fun decodeLegacy(raw: ByteArray): Bitmap {
     options.inPreferredConfig = Bitmap.Config.ARGB_8888
     val bitmap = requireNotNull(BitmapFactory.decodeByteArray(raw, 0, raw.size, options))
     val orientation = try {
-        ExifInterface(ByteArrayInputStream(raw)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        // Android 8 probes exactly 5,000 bytes and silently drops EXIF on
+        // shorter valid JPEGs. Pad only this metadata reader, never the image.
+        val probe = if (raw.size < 5_000) raw.copyOf(5_000) else raw
+        ExifInterface(ByteArrayInputStream(probe)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
     } catch (_: java.io.IOException) { ExifInterface.ORIENTATION_NORMAL }
     val matrix = Matrix().apply {
         when (orientation) {

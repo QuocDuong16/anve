@@ -144,3 +144,12 @@ OkHttp HTTP follow-ups such as 503 Retry-After:0, independently of controller
 readback logic. Do not create a second independent token refresher or assume
 retryOnConnectionFailure(false) alone disables every follow-up. A rejected
 401 can still use the existing explicit, expected-owner-bound refresh retry.
+
+
+The platform EXIF reader on Android 8 silently skips valid JPEGs shorter
+than its fixed signature probe. Legacy avatar decoding pads only the metadata
+reader, never the image/upload, to preserve EXIF orientation for small photos.
+The instrumentation regression verifies a small JPEG has real rotation/GPS/
+description tags, checks oriented output pixels and reads normalized metadata
+with the same platform probe quirk accounted for; empty/default reader output
+alone is not evidence that metadata was stripped.
