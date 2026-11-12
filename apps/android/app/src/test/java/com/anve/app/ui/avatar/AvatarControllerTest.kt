@@ -31,6 +31,12 @@ class AvatarControllerTest {
         controller.open()
         controller.picked(controller.beginPicker()!!) { byteArrayOf(1, 2) }
         assertEquals(0, gateway.writes)
+        controller.chooseRemoval()
+        assertFalse(controller.state.value.removeDraft)
+        assertFalse(controller.state.value.changed)
+        controller.save(true)
+        assertEquals(0, gateway.writes)
+        controller.picked(controller.beginPicker()!!) { byteArrayOf(1, 2) }
         controller.save(false)
         assertEquals(0, gateway.writes)
         controller.dismiss()

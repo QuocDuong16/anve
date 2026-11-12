@@ -43,14 +43,15 @@ class AvatarSheetInstrumentedTest {
         var saves = 0; var chooses = 0; var removes = 0
         val state = mutableStateOf(ready)
         compose.setContent { AnVeTheme { AvatarSheet(state.value, true, {}, { chooses++ }, { removes++ }, { saves++ }, {}, {}) {
-            AvatarFrame("An", bitmap, Modifier.size(160.dp))
+            AvatarFrame("An", if (state.value.removeDraft) null else bitmap, Modifier.size(160.dp))
         } } }
         compose.onNodeWithTag("avatar-choose").performScrollTo().performClick()
         compose.onNodeWithTag("avatar-remove").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(0, saves); assertEquals(1, chooses); assertEquals(1, removes) }
         captureNativeFixture("avatar-preview-light")
         compose.onNodeWithTag("avatar-save").performClick()
-        compose.runOnIdle { assertEquals(1, saves); state.value = ready.copy(removeDraft = true, selection = null) }
+        compose.runOnIdle { assertEquals(1, saves); state.value = ready.copy(removeDraft = true, selection = null,
+            metadata = AvatarStateDto(1, "b1a64ffd-bf07-476a-8f3d-1f7755fb03d1", "b1a64ffd-bf07-476a-8f3d-1f7755fb03d1")) }
         compose.onNodeWithText("Ảnh hiện tại sẽ được xóa sau khi bạn lưu.").performScrollTo().assertIsDisplayed()
         captureNativeFixture("avatar-removal-draft")
     }
@@ -60,7 +61,7 @@ class AvatarSheetInstrumentedTest {
         val online = mutableStateOf(false)
         var saves = 0; var checks = 0
         compose.setContent { AnVeTheme { AvatarSheet(state.value, online.value, {}, {}, {}, { saves++ }, { checks++ }, {}) {
-            AvatarFrame("An", null, Modifier.size(160.dp))
+            AvatarFrame("An", if (state.value.selection != null) bitmap else null, Modifier.size(160.dp))
         } } }
         compose.onNodeWithTag("avatar-save").assertIsNotEnabled()
         compose.runOnIdle { state.value = ready }
@@ -94,6 +95,9 @@ class AvatarSheetInstrumentedTest {
         } } }
         compose.waitUntil(5_000) { requests == 1 }
         compose.onNodeWithContentDescription("Tải lại ảnh đại diện").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("avatar-sheet").assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
         captureNativeFixture("avatar-image-error")
         compose.onNodeWithContentDescription("Tải lại ảnh đại diện").performClick()
         compose.waitUntil(5_000) { requests == 2 }

@@ -133,7 +133,7 @@ class AvatarController(
         if (!active || s.loading || s.busy || s.processing || s.unknown) return
         picker = null
         sequence++
-        mutable.update { it.copy(selection = null, removeDraft = true, error = null, message = null) }
+        mutable.update { it.copy(selection = null, removeDraft = it.metadata?.imageId != null, error = null, message = null) }
     }
 
     fun save(online: Boolean) {

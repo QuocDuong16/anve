@@ -3,6 +3,10 @@ package com.anve.app.ui.circle
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Scaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -65,7 +69,9 @@ class EmailInvitationInstrumentedTest {
         var reviews = 0; var hides = 0
         val state = PrivateInvitationsState(loading = false, received = listOf(ReceivedInvitationDto(
             "synthetic-invite", "synthetic-circle", "Nhà mình", "Mai", Instant.now().plusSeconds(3600).toString())))
-        compose.setContent { AnVeTheme { Column { ReceivedInvitations(state, {}, { reviews++ }, { hides++ }) } } }
+        compose.setContent { AnVeTheme { Scaffold { insets ->
+            Column(Modifier.padding(insets).padding(16.dp)) { ReceivedInvitations(state, {}, { reviews++ }, { hides++ }) }
+        } } }
         compose.onNodeWithText("Mai mời bạn tham gia").assertIsDisplayed()
         compose.onNodeWithText("Xem lời mời").performClick()
         compose.onNodeWithText("Ẩn với tôi").performClick()
