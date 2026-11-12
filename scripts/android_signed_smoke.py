@@ -265,6 +265,9 @@ def run_smoke(directory, output, env):
         smoke.launch()
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
+        report["crash"] = crash_probe(smoke.call("logcat", "-b", "crash", "-d", "-v", "brief"))
+        if report["crash"]["ownedCrashFound"]:
+            raise RuntimeError("Signed fixture recorded a crash during lifecycle checks")
         report.update({"processRecreation": True, "trackingNotStarted": True, "success": True})
     finally:
         try:
