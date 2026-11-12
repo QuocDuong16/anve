@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-11-12 (M8-A merged; M8-B Android release gates implemented on PR #18).
+Last updated: 2026-11-12 (M8-B merged; M8-C release/privacy review implementation).
 
 ## Current milestone
 
@@ -30,7 +30,8 @@ correction review and documenter are complete; user approved the final render
 and completion with the formal portal pending. Automatic arrival/stale alerts
 remain Planned. **M8-A HTTP observability is merged and automated-verified**
 (PR #17, `6ecf1d2`, main Go/Android CI passed). **M8-B Android release gates are
-implemented on PR #18**; release readiness and remaining M7 field evidence stay separate.
+merged (`67eaf03`, PR #18; exact-head CI passed)**; M8-C adds scoped release/
+privacy review and a versioned Android inventory gate; release readiness and remaining M7 field evidence stay separate.
 
 ## Milestones
 
@@ -44,9 +45,9 @@ implemented on PR #18**; release readiness and remaining M7 field evidence stay 
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
 | M7 Journey & diagnostics | M7-A and M7-B Automated Verified | M7-A merged in `6d3cb01`. M7-B `bcde472`: Go/Android CI, 306 JVM and 32 emulator tests pass; native render approved, formal completion explicitly waived by user, field evidence pending. Automatic arrival/stale alerts remain Planned. |
-| M8 Release hardening | M8-A merged — Automated Verified; M8-B Implemented on PR #18 | Private HTTP observability; explicit Android config/signing and verified AAB tooling; full release/field gates remain open. |
+| M8 Release hardening | M8-A/M8-B merged — Automated Verified; M8-C Implemented on feature branch | Private HTTP observability; explicit Android config/signing and verified AAB tooling; full release/field gates remain open. |
 
-## M8-A acceptance and M8-B implementation
+## M8-A/M8-B acceptance and M8-C implementation
 
 M8-A merged through [PR #17](https://github.com/QuocDuong16/anve/pull/17) as
 `6ecf1d2d54ac06f1197bcbd710bde50e081bd6a6` after exact-change CI passed;
@@ -54,7 +55,8 @@ main Go/Android CI also passed. ADR 0013 and the observability runbook define
 its privacy/exposure boundary. Deployment monitoring and a completed security
 audit are separate gates.
 
-M8-B adds explicit production API/client/version inputs, an external upload
+M8-B merged via PR #18 as `67eaf03ec5715fa28b2557836ec6138b2e6e3d3d` after
+all six checks passed on `6d66037`. It adds explicit production API/client/version inputs, an external upload
 key and certificate pin, a minified signed-validation variant with a separate
 package and ephemeral key, and AAB format/signature verification. Android CI
 runs signed fixture and tamper-rejection checks; the manual main-only release
@@ -64,9 +66,22 @@ never a keystore, and never publishes to a store. See [M8 readiness](m8-release-
 ADR 0014 and the [release procedure](../operations/android-release.md). Local `make quality-check` passed (306 Android JVM tests, lint/debug build,
 build-logic tests and release configuration/resource checks); exact-change
 signed AAB/emulator CI is tracked in [PR #18](https://github.com/QuocDuong16/anve/pull/18).
-No real signing/provider/device validation is claimed. The next scoped work is
-M8-C threat-boundary review, Data Safety inventory and permission-declaration
-preparation, with external evidence gates retained.
+No real signing/provider/device validation is claimed.
+
+M8-C implements a reviewed Android inventory (207 resolved module coordinates,
+14 merged permission entries, 24 component declarations), production/fixture
+graph equality, source policy digests and packaged AAB manifest comparison.
+The signed artifact record includes the inventory digest. Short release checks
+run the drift gate; Android CI retains only sanitized coordinates/inventory.
+The candidate command never updates the tracked baseline automatically.
+See [ADR 0015](../adr/0015-android-privacy-review-inventory.md),
+[focused boundary review](../security/m8c-boundary-review.md),
+[Data Safety draft](../release/data-safety-draft.md) and
+[permission draft](../release/permission-declarations.md). These are scoped
+preparation/evidence artifacts, not Play submission or a complete security audit.
+Current Make/CI results are recorded in the PR; operator policy/deletion URLs,
+audit/backup/SDK retention decisions, providers and physical devices remain open.
+The next slice is M8-D owner evidence and release handoff.
 
 ## M7-B acceptance and remaining evidence
 

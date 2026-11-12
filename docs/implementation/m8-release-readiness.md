@@ -20,29 +20,45 @@ battery and real Firebase delivery are still pending. Automatic arrival/stale
 alerts remain Planned, so none of those outcomes gates can be marked passed by
 M8 tooling work.
 
-## Current slice: M8-B
+## M8-B: merged and automated-verified
 
-Implemented on the feature branch: explicit production configuration/version
+Merged through [PR #18](https://github.com/QuocDuong16/anve/pull/18) as
+`67eaf03ec5715fa28b2557836ec6138b2e6e3d3d`: explicit production configuration/version
 and upload-key guard, an isolated minified signed-validation package, format/
 signature/certificate verification and a main-only manual distribution workflow.
 See [ADR 0014](../adr/0014-android-release-gates.md) and the
 [release procedure](../operations/android-release.md). Local `make quality-check` passed, including 306 Android JVM tests and the
-release configuration/resource gate. Exact-change signed AAB and emulator CI
-are tracked in [PR #18](https://github.com/QuocDuong16/anve/pull/18). Real signing credentials, environment policy,
+release configuration/resource gate. Exact-head Go/Android CI passed on
+`6d66037`, including signed AAB checks and 32 emulator tests; downloaded
+artifacts matched their digests and signature records. The CI test-merge tree
+matched the merged source tree. Real signing credentials, environment policy,
 provider/deployment checks and Play submission are external prerequisites.
+
+## Current slice: M8-C
+
+Implemented on the feature branch: a focused source-boundary review,
+[Data Safety draft](../release/data-safety-draft.md),
+[permission/declaration draft](../release/permission-declarations.md) and a
+versioned Android privacy review gate (ADR 0015). The initial resolved graphs
+match across production and validation: 207 modules, 14 merged permission
+entries and 24 component declarations. Client-key values/raw XML are excluded
+from the retained inventory. Short configuration checks compare source policy
+hashes and merged fields; signed AAB checks compare the packaged fields too.
+Current validation is recorded in this change's PR. These deliverables prepare
+owner review; they do not submit Play forms or close provider/device gates.
 
 ## Readiness inventory and next slices
 
 | Area | Current source evidence | Remaining exit evidence |
 | --- | --- | --- |
 | API observability | M8-A private process registry, bounded route/method/status labels and controlled HTTP logs | Deployment scrape/access/retention and incident checks; exact-change CI passed |
-| Authentication/privacy | Per-request sessions and store authorization, consent/deletion tests from M1–M7 | Focused release threat-boundary review; not established by the new metrics tests |
-| Dependency checks | Go vet/lint/govulncheck/race tests, pinned toolchain and Dependabot | Final release SHA checks; Android dependency/release review and external provider validation |
+| Authentication/privacy | Per-request sessions and store authorization, consent/deletion tests from M1–M7 | Scoped source review prepared in M8-C; wider security/SDK/deployment evidence remains open |
+| Dependency checks | Go vet/lint/govulncheck/race tests, pinned toolchain and Dependabot | M8-C resolves and reviews the Android SDK graph; final release SHA and external provider validation remain |
 | Android transport | Main network security config refuses cleartext; debug has a local development overlay | M8-B syntax gate implemented; testing against the actual HTTPS deployment pending |
 | Android release configuration | Explicit required HTTPS/client inputs, legacy-main-config refusal and isolated fixture variant | Fixture evidence tracked in PR #18; real deployment/client restrictions and integration checks remain |
 | Release identity/signing | Explicit versions and external-key/certificate guard; verified AAB plus digest/certificate record; main-only manual workflow | Fixture evidence tracked in PR #18; owner-managed keys/environment policy and Play version progression remain; real distribution has not run |
-| Permissions/backup | Manifest declares foreground/background location, location FGS and notifications; private app services; no app-defined receiver that auto-starts tracking. Backup/transfer rules exclude database/sharedpref/DataStore | Device behavior, disclosure/permission review and declarations checked against final package and current Play requirements |
-| Data inventory | Product privacy docs distinguish coordinates, selected audience, retention/deletion, audit and opaque push payloads | Data Safety draft reconciled with final dependencies/config, privacy policy/account deletion URLs and owner review |
+| Permissions/backup | Merged manifest inventory includes SDK biometric/boot/wake and guarded exports, in addition to app location/notification declarations; source backup rules exclude database/sharedpref/DataStore | Drafts and packaged field gate added; owner disclosure/video, signed runtime/device checks and release-date policy review pending |
+| Data inventory | M8-C draft maps first-party data, SDK identities/telemetry, deliberate sharing and retained audit/backup gaps | Owner-approved classifications, provider runtime/retention, public privacy/deletion URLs and Console submission |
 | Push/maps/auth providers | Source integration and fake/synthetic CI evidence exist | Restricted provider configuration, real sign-in/maps/push and recipient-revocation evidence |
 | Performance/error budget | HTTP measurements now have distinct semantics; device/production targets remain proposed | Representative measurements, agreed counting/window/thresholds and actual alert checks |
 
@@ -92,11 +108,13 @@ The Make target keeps its original defaults (all packages, count 1) while
 allowing focused repeated reproduction. Updated exact-head hosted results are
 recorded in the PR; the failed initial run is not described as a pass.
 
-## Next slice: M8-C review preparation
+## Next slice: M8-D owner evidence and release handoff
 
-Reconcile the final manifest and runtime dependencies with a focused
-auth/privacy threat-boundary review, Data Safety data inventory and location/
-notification/foreground-service disclosure and declaration drafts. Separate
-source/test evidence from real provider, deployment and physical-device
-evidence; keep owner policy URLs, retention decisions and store submission
-review explicit. No new UI or automatic journey behavior is implied.
+Supply and verify operator-owned privacy/deletion URLs and support handling,
+retention/backup/provider decisions, final age/distribution choices and the
+actual release environment/signing/provider configuration. Run a signed-app
+smoke and the physical-device/permission/video matrix with real restricted
+provider accounts, then reconcile the drafts against that evidence and the
+submission-date policies. The announced 2027-01-27 API 37 location requirement
+is tracked in the permission draft. No production credentials, public policy
+URLs, store publication or real-device results are invented by M8-C tooling.

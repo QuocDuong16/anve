@@ -12,6 +12,7 @@ import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
+import check_android_privacy as privacy
 
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID = ROOT / "apps/android"
@@ -19,6 +20,7 @@ PUBLIC = ("ANVE_API_URL", "ANVE_GOOGLE_WEB_CLIENT_ID", "ANVE_MAPS_API_KEY", "ANV
           "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID", "ANVE_VERSION_CODE", "ANVE_VERSION_NAME")
 SIGNING = ("ANVE_KEYSTORE_FILE", "ANVE_KEYSTORE_PASSWORD", "ANVE_KEY_ALIAS", "ANVE_KEY_PASSWORD", "ANVE_SIGNING_CERT_SHA256", "ANVE_KEYSTORE_TYPE")
 FLAGS = ("--no-daemon", "--no-configuration-cache", "--no-build-cache", "--console=plain")
+PRIVACY_TASKS = (":app:writeReleasePrivacyDependencies", ":app:writeReleaseValidationPrivacyDependencies")
 
 
 def redact(text, env):
@@ -112,10 +114,12 @@ def verify_bundle(bundle, variant, env):
     application = document.find("application")
     if application is None or application.get(android + "debuggable", "false") != "false":
         raise RuntimeError("AAB must not be debuggable")
+    privacy.check_bundle(manifest_text)
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     return {"sourceCommit": sha, "applicationId": expected_package, "versionCode": int(env["ANVE_VERSION_CODE"]),
             "versionName": expected_name, "variant": variant, "certificateSha256": pin,
-            "bundleSha256": hashlib.sha256(bundle.read_bytes()).hexdigest(), "signatureVerified": True, "bundletoolValidated": True}
+            "bundleSha256": hashlib.sha256(bundle.read_bytes()).hexdigest(), "signatureVerified": True, "bundletoolValidated": True,
+            "privacyInventorySha256": hashlib.sha256(privacy.BASELINE.read_bytes()).hexdigest(), "privacyManifestVerified": True}
 
 
 def negative_archive_checks(bundle, env, directory):
@@ -150,7 +154,7 @@ def publish_files(bundle, metadata, destination):
     print(f"Verified {metadata['variant']} AAB and digest/certificate manifest written to {destination}")
 
 
-def check(quick):
+def check(quick, *, candidate=False):
     env = fixture_environment()
     gradle(["test"], env, extra=("-p", "buildSrc"))
     output = gradle([":app:bundleRelease"], env, expected=1)
@@ -164,7 +168,8 @@ def check(quick):
                     "ANVE_FIREBASE_PROJECT_ID": "anve-release-validation", "ANVE_FIREBASE_API_KEY": "validation-client-value",
                     "ANVE_FIREBASE_SENDER_ID": "1234567890", "ANVE_VERSION_CODE": "2", "ANVE_VERSION_NAME": "0.3.0"})
         if quick:
-            gradle([":app:verifyReleaseValidationInputs", ":app:processReleaseValidationResources"], env)
+            gradle([":app:verifyReleaseValidationInputs", ":app:processReleaseValidationResources", *PRIVACY_TASKS], env)
+            privacy.check(candidate=candidate)
             print("Release configuration checks passed; no distribution AAB was produced.")
             return
         output = gradle([":app:bundleRelease"], env, expected=1)
@@ -185,7 +190,8 @@ def check(quick):
         output = gradle([":app:verifyReleaseValidationInputs"], wrong_pin, expected=1)
         if "ANVE_SIGNING_CERT_SHA256 does not match" not in output:
             raise RuntimeError("Wrong signing certificate was not rejected by the Gradle gate")
-        gradle([":app:bundleReleaseValidation"], env)
+        gradle([":app:bundleReleaseValidation", *PRIVACY_TASKS], env)
+        privacy.check()
         bundle = ANDROID / "app/build/outputs/bundle/releaseValidation/app-releaseValidation.aab"
         metadata = verify_bundle(bundle, "releaseValidation", env)
         negative_archive_checks(bundle, env, directory)
@@ -201,10 +207,11 @@ def distribution(output):
     before = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], cwd=ROOT).returncode:
         raise RuntimeError("Distribution requires a clean tracked source tree")
-    untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "--", "apps/android", "scripts/android_release.py", "packages/tooling/bundletool.json"], cwd=ROOT)
+    untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "--", "apps/android", "scripts/android_release.py", "scripts/check_android_privacy.py", "packages/tooling/bundletool.json", "packages/privacy"], cwd=ROOT)
     if untracked.strip():
         raise RuntimeError("Distribution requires all release build sources to be tracked")
-    gradle([":app:bundleRelease"], env)
+    gradle([":app:bundleRelease", *PRIVACY_TASKS], env)
+    privacy.check("release")
     bundle = ANDROID / "app/build/outputs/bundle/release/app-release.aab"
     metadata = verify_bundle(bundle, "release", env)
     if metadata["sourceCommit"] != before or subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], cwd=ROOT).returncode:
@@ -214,13 +221,13 @@ def distribution(output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("check", "config-check", "distribution"))
+    parser.add_argument("mode", choices=("check", "config-check", "review-candidate", "distribution"))
     parser.add_argument("--output")
     args = parser.parse_args()
     if args.mode == "distribution":
         distribution(args.output)
     else:
-        check(quick=args.mode == "config-check")
+        check(quick=args.mode in ("config-check", "review-candidate"), candidate=args.mode == "review-candidate")
 
 
 if __name__ == "__main__":
