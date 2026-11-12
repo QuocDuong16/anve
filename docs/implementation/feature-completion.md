@@ -14,7 +14,7 @@ multi-Circle và SSE/WebSocket không được tự coi là phạm vi đã chố
 | API, hàng đợi cảnh báo theo từng đợt, owner và người xem đã chọn | Implemented; provider thật chưa kiểm chứng |
 | Android DTO, kiểm tra lại quyền/episode và dedup push | Implemented; bảng tùy chọn B, xác nhận thủ công và nhãn đến nơi ước tính |
 | API xem trước lời mời, account binding; parser native link | Implemented; Intent cold/warm, inbox qua đăng nhập/xoay máy, sharesheet và xác nhận C |
-| Giao diện tùy chọn Journey và xem trước lời mời | Implemented; đã duyệt B/C và kế hoạch Compose qua chat, chờ CI/native finish review của UI mới |
+| Giao diện tùy chọn Journey và xem trước lời mời | Implemented; đã duyệt B/C và kế hoạch Compose qua chat; bằng chứng emulator/finish review được ghi theo revision tại PR #21 |
 
 Quyết định của owner: tự đến nơi tắt mặc định, bật theo từng chuyến; cảnh báo
 gửi cho chủ hành trình và những người xem đã chọn còn quyền. Cả hai tùy chọn
@@ -60,13 +60,36 @@ Controls là Compose thật, không nhúng mockup. Mặc định hai lựa chọ
 sai và có thể tự kết thúc hành trình, giữ xác nhận thủ công. Tests mới bao gồm
 admission/late-account response, single-submit/read-only reconciliation,
 controls và render sáng/tối/chữ lớn 1.3, URI cold/warm và rotation. APK test
-đã compile; kết quả emulator và independent finish review phải lấy trên CI
+đã compile; kết quả emulator và independent finish review phải gắn với
 đúng commit, được liên kết tại PR #21, không suy ra từ JVM/build local.
 
 Sau khi nối UI, `make quality-check` qua lại, bao gồm lint, JVM và release
 privacy/config guard với baseline đã đối chiếu. Unit tests có cả giữ nhóm đã
 được server xác nhận khi tải thành viên lỗi và chặn membership không khớp
-nhóm trong readback. Kết quả này chưa thay thế lượt emulator của UI mới.
+nhóm trong readback. Kết quả này không thay thế lượt emulator của UI mới.
+
+Lượt native đầu ở `33d7020` có 42 instrumentation tests: 41 qua, một lỗi
+ở harness URI cold-start. Log cho thấy Activity đã RESUMED nhưng
+ActivityScenario bỏ qua do app chủ động xóa URI sau khi đọc. `f0df797`
+thay harness bằng theo dõi vòng đời thực tế, giữ nguyên việc xóa URI;
+không tăng timeout hay bỏ assertion. Lượt này còn thêm kiểm tra owner share,
+native chooser và quyền member. PR ghi kết quả thay thế theo đúng head.
+
+Finish reviewer đã đọc 10 captures sáng/tối/chữ lớn ở lượt đầu. B giữ
+topology đã duyệt; các vùng diff lệch tọa độ do Material typography và vùng
+bấm native làm sheet cao hơn. C cần sửa nền tím mặc định thành semantic
+sand/ink, thêm lại metadata/account icons và divider. Bản sửa dùng native
+vectors, không thay theme chung hoặc đưa ảnh mẫu vào app. Verdict và captures
+sau sửa được ghi riêng tại PR, không gọi lượt đầu là pass toàn bộ UI.
+
+Build-phase chính thức vẫn ở `plates`: không có raster plate cần tạo,
+nhưng portal plan review chưa có receipt nên tool không advance. `hero`,
+`sections`, `motion`, `responsive`, `review` chưa được tool đóng; không
+giả lập chúng là pass. Phần native tương ứng được đối chiếu bằng Compose
+controls, các trạng thái tương tác, light/dark và font scale 1.3 trên emulator,
+rồi independent review. Các bước web-only HTML/CSS detector và hero animation
+không áp dụng cho extension này; motion dùng hành vi chuẩn của Material.
+Ngoại lệ duyệt chat chỉ thay portal, không thay kiểm thử hoặc native review.
 
 Review inventory xác nhận chỉ thêm entry VIEW/BROWSABLE của MainActivity và
 hash source manifest, không thêm quyền/SDK; xem

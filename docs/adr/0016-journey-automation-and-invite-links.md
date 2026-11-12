@@ -1,6 +1,6 @@
 # ADR 0016 — Explicit journey automation and invitation previews
 
-- **Status:** Accepted backend contract; Android exposure and comp approval are tracked in [feature completion](../implementation/feature-completion.md).
+- **Status:** Accepted; backend and native Android implementation, approved B/C comps and validation evidence are tracked in [feature completion](../implementation/feature-completion.md).
 - **Scope:** Extends ADR 0012. The owner approved automatic arrival being OFF by default and selected the journey owner plus currently authorized selected viewers as reminder recipients.
 
 ## Automatic arrival

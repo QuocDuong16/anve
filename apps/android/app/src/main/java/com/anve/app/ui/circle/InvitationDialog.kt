@@ -9,18 +9,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,6 +42,7 @@ fun InvitationDialog(state: InvitationUiState, online: Boolean, onDismiss: () ->
     val dark = colors.surface.luminance() < 0.5f
     val action = if (dark) colors.onSurface else colors.primary
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Tham gia nhóm?") },
+        containerColor = colors.surface, tonalElevation = 0.dp,
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()).testTag("invitation-details"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (state.loading) {
@@ -45,9 +51,9 @@ fun InvitationDialog(state: InvitationUiState, online: Boolean, onDismiss: () ->
                 }
                 state.preview?.let { preview ->
                     Text(preview.circleName, style = MaterialTheme.typography.headlineSmall)
-                    Text("Lời mời dùng một lần.")
+                    InvitationDetail(Icons.Default.Email, "Lời mời dùng một lần.")
                     val expiry = runCatching { DateTimeFormatter.ofPattern("dd/MM, HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(preview.expiresAt)) }.getOrDefault("Chưa đọc được thời hạn")
-                    Text("Hết hạn: $expiry")
+                    InvitationDetail(Icons.Default.DateRange, "Hết hạn: $expiry")
                 }
                 Surface(color = if (dark) colors.secondary else colors.secondaryContainer, contentColor = if (dark) colors.onSecondary else colors.onSecondaryContainer, shape = MaterialTheme.shapes.medium) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -55,7 +61,10 @@ fun InvitationDialog(state: InvitationUiState, online: Boolean, onDismiss: () ->
                         Text("Tham gia nhóm không tự bật chia sẻ vị trí.", Modifier.weight(1f))
                     }
                 }
-                if (state.accountLabel.isNotEmpty()) Text("Đang đăng nhập: ${state.accountLabel}")
+                if (state.accountLabel.isNotEmpty()) {
+                    HorizontalDivider(color = colors.onSurface.copy(alpha = 0.2f))
+                    InvitationDetail(Icons.Default.Person, "Đang đăng nhập: ${state.accountLabel}")
+                }
                 if (!online) Text("Mất mạng. Kết nối lại để kiểm tra hoặc xác nhận lời mời.")
                 state.error?.let { Text(it, color = colors.onSurface, style = MaterialTheme.typography.bodyMedium) }
                 if (state.busy) Text("Đang chờ máy chủ xác nhận…")
@@ -71,6 +80,14 @@ fun InvitationDialog(state: InvitationUiState, online: Boolean, onDismiss: () ->
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Để sau", color = action) } },
     )
+}
+
+@Composable
+private fun InvitationDetail(icon: ImageVector, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Icon(icon, contentDescription = null)
+        Text(text, Modifier.weight(1f))
+    }
 }
 
 @Preview
