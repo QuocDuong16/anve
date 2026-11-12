@@ -1,6 +1,5 @@
 package com.anve.app.ui.circle
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -104,9 +106,8 @@ fun CircleScreen(container: AppContainer) {
         onShareInvite = { invite -> scope.launch {
             try {
                 if (container.sessionStore.current()?.userId != owner) return@launch
-                val link = InviteLink.create(invite.code) ?: return@launch
-                val message = "Mời bạn tham gia gia đình trên AnVề:\n$link\nNếu link không mở, nhập mã: ${invite.code}\nTham gia không tự bật chia sẻ vị trí."
-                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, message), "Gửi lời mời gia đình"))
+                val chooser = invitationShareIntent(invite) ?: return@launch
+                context.startActivity(chooser)
                 shareError = null
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 shareError = "Không mở được trình chia sẻ. Bạn có thể gửi mã mời đang hiển thị."
@@ -201,7 +202,7 @@ fun CircleContent(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("circle-content"),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -449,7 +450,8 @@ private fun InviteRow(invite: InviteDto, onRevoke: () -> Unit, onShare: () -> Un
                 )
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onShare) { Text("Chia sẻ link mời") }
+                TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor =
+                    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary)) { Text("Chia sẻ link mời") }
                 TextButton(onClick = onRevoke) {
                 Text(
                     stringResource(R.string.circle_invite_revoke),

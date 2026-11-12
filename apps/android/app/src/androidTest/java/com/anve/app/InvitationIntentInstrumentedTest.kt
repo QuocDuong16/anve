@@ -3,13 +3,19 @@ package com.anve.app
 import android.content.Intent
 import android.net.Uri
 import android.os.SystemClock
-import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleCallback
+import androidx.test.runner.lifecycle.Stage
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -21,15 +27,36 @@ class InvitationIntentInstrumentedTest {
         app.container.invitationInbox.accountChanged(null)
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("anve://invite/ABCD234567"), app, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-            scenario.onActivity { activity ->
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val resumed = AtomicReference<CountDownLatch>(CountDownLatch(1))
+        val current = AtomicReference<MainActivity>()
+        val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+        // ActivityScenario matches the original URI against getIntent(); production
+        // deliberately clears that URI before CREATED to avoid retaining the secret.
+        val callback = ActivityLifecycleCallback { activity, stage ->
+            if (activity is MainActivity && stage == Stage.RESUMED) {
+                current.set(activity)
+                resumed.get().countDown()
+            }
+        }
+        instrumentation.runOnMainSync { monitor.addLifecycleCallback(callback) }
+        try {
+            app.startActivity(intent)
+            assertTrue("cold link activity resumes", resumed.get().await(5, TimeUnit.SECONDS))
+            instrumentation.runOnMainSync {
+                val activity = current.get()
                 assertNull(activity.intent.data)
                 assertEquals("ABCD234567", app.container.invitationInbox.invitation.value?.code)
                 assertNull(app.container.invitationInbox.invitation.value?.owner)
             }
             val original = app.container.invitationInbox.invitation.value!!.id
-            scenario.recreate()
-            scenario.onActivity { activity ->
+            val originalActivity = current.get()
+            resumed.set(CountDownLatch(1))
+            instrumentation.runOnMainSync { originalActivity.recreate() }
+            assertTrue("rotated link activity resumes", resumed.get().await(5, TimeUnit.SECONDS))
+            instrumentation.runOnMainSync {
+                val activity = current.get()
+                assertTrue(activity !== originalActivity)
                 assertNull(activity.intent.data)
                 assertEquals(original, app.container.invitationInbox.invitation.value?.id)
             }
@@ -41,12 +68,18 @@ class InvitationIntentInstrumentedTest {
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 SystemClock.sleep(20)
             }
-            scenario.onActivity { activity ->
+            instrumentation.runOnMainSync {
+                val activity = current.get()
                 assertEquals("ABCD234568", app.container.invitationInbox.invitation.value?.code)
                 assertNull(activity.intent.data)
             }
             assertNull(runBlocking { app.container.sessionStore.current() })
             app.container.invitationInbox.invitation.value?.let { app.container.invitationInbox.consume(it.id) }
+        } finally {
+            instrumentation.runOnMainSync {
+                monitor.removeLifecycleCallback(callback)
+                current.get()?.finish()
+            }
         }
     }
 
