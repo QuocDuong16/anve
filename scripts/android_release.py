@@ -13,6 +13,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 import check_android_privacy as privacy
+import android_signed_smoke as signed_smoke
 
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID = ROOT / "apps/android"
@@ -204,12 +205,15 @@ def check(quick, *, candidate=False):
                         expected=1, extra=("--init-script", str(init_script)))
         if "Review the newly introduced local-file SDK" not in output:
             raise RuntimeError("A local-file SDK was silently omitted from the privacy inventory")
-        gradle([":app:bundleReleaseValidation", *PRIVACY_TASKS], env)
+        gradle([":app:bundleReleaseValidation", ":app:assembleReleaseValidation", *PRIVACY_TASKS], env)
         privacy.check()
         bundle = ANDROID / "app/build/outputs/bundle/releaseValidation/app-releaseValidation.aab"
         metadata = verify_bundle(bundle, "releaseValidation", env)
         negative_archive_checks(bundle, env, directory)
         publish_files(bundle, metadata, ANDROID / "app/build/outputs/release-validation")
+        apk = ANDROID / "app/build/outputs/apk/releaseValidation/app-releaseValidation.apk"
+        apk_metadata = signed_smoke.verify_apk(apk, env["ANVE_SIGNING_CERT_SHA256"], env)
+        signed_smoke.publish(apk, apk_metadata, ANDROID / "app/build/outputs/signed-validation-apk")
         print("Release validation passed: isolated package, ephemeral key, format/signature/pin and tamper rejection.")
 
 
@@ -221,7 +225,7 @@ def distribution(output):
     before = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], cwd=ROOT).returncode:
         raise RuntimeError("Distribution requires a clean tracked source tree")
-    untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "--", "apps/android", "scripts/android_release.py", "scripts/check_android_privacy.py", "packages/tooling/bundletool.json", "packages/privacy"], cwd=ROOT)
+    untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "--", "apps/android", "scripts/android_release.py", "scripts/android_signed_smoke.py", "scripts/check_android_privacy.py", "packages/tooling/bundletool.json", "packages/privacy"], cwd=ROOT)
     if untracked.strip():
         raise RuntimeError("Distribution requires all release build sources to be tracked")
     gradle([":app:bundleRelease", *PRIVACY_TASKS], env)

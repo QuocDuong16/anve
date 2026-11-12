@@ -1,0 +1,95 @@
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import android_signed_smoke as smoke
+
+
+class SignedSmokeTests(unittest.TestCase):
+    def test_disposable_opt_in_is_required_before_any_command(self):
+        with patch.object(smoke, "command") as command, self.assertRaises(RuntimeError):
+            smoke.run_smoke(Path("fixture"), Path("result.json"), {})
+        command.assert_not_called()
+
+    def test_apk_refuses_wrong_signer_identity_debug_and_multiple_signers(self):
+        badging = f"package: name='{smoke.PACKAGE}' versionCode='2' versionName='0.3.0-validation'\n"
+        cert = f"Signer #1 certificate SHA-256 digest: {'a' * 64}\n"
+        smoke.parse_apk_identity(badging, cert, "a" * 64)
+        for changed_badging, changed_cert, pin in (
+            (badging.replace(smoke.PACKAGE, "com.anve.app"), cert, "a" * 64),
+            (badging.replace("versionCode='2'", "versionCode='3'"), cert, "a" * 64),
+            (badging.replace("0.3.0-validation", "0.3.0"), cert, "a" * 64),
+            (badging + "application-debuggable\n", cert, "a" * 64),
+            (badging, cert, "b" * 64),
+            (badging, cert + cert.replace("#1", "#2"), "a" * 64),
+            (badging, "", "a" * 64),
+        ):
+            with self.subTest(badging=changed_badging, cert=changed_cert), self.assertRaises(RuntimeError):
+                smoke.parse_apk_identity(changed_badging, changed_cert, pin)
+
+    def test_physical_offline_and_ambiguous_targets_are_refused(self):
+        for devices in ("", "phone123\tdevice", "emulator-5554\toffline", "emulator-5554\tdevice\nemulator-5556\tdevice"):
+            with self.subTest(devices=devices), self.assertRaises(RuntimeError):
+                smoke.select_emulator("List of devices attached\n" + devices)
+        self.assertEqual(smoke.select_emulator("emulator-5554\tdevice\nphone123\tdevice", "emulator-5554"), "emulator-5554")
+        with self.assertRaises(RuntimeError):
+            smoke.select_emulator("emulator-5554\tdevice", "phone123")
+
+    def test_artifact_record_is_recomputed_not_trusted(self):
+        record = {"certificateSha256": "a" * 64, "sourceCommit": "b" * 40, "apkSha256": "c" * 64}
+        with patch.object(smoke, "verify_apk", return_value=record):
+            self.assertEqual(smoke.verify_record(Path("fixture.apk"), record, {}), record)
+            for field in ("sourceCommit", "apkSha256", "certificateSha256"):
+                with self.subTest(field=field), self.assertRaises(RuntimeError):
+                    smoke.verify_record(Path("fixture.apk"), dict(record, **{field: "wrong"}), {})
+
+    def test_signin_requires_owned_nodes_and_rejects_dev_login(self):
+        expected = {"name": "AnVề", "unavailable": "Unavailable", "retry": "Retry", "dev": ("Dev",)}
+        nodes = ''.join(f'<node package="{smoke.PACKAGE}" text="{value}"/>' for value in ("AnVề", "Unavailable", "Retry"))
+        xml = f"<hierarchy>{nodes}</hierarchy>"
+        self.assertTrue(smoke.check_signin(xml, expected))
+        self.assertFalse(smoke.check_signin(xml.replace(smoke.PACKAGE, "other.package"), expected))
+        with self.assertRaises(RuntimeError):
+            smoke.check_signin(xml.replace("</hierarchy>", f'<node package="{smoke.PACKAGE}" text="Dev"/></hierarchy>'), expected)
+
+    def test_preflight_never_touches_existing_package_or_non_emulator(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "fixture.apk").write_bytes(b"fixture")
+            (directory / "fixture.json").write_text("{}")
+            for qemu, packages in (("0", ""), ("1", "package:" + smoke.PACKAGE)):
+                calls = []
+                def call(*args):
+                    calls.append(args)
+                    return qemu if "getprop" in args else packages
+                with patch.object(smoke, "verify_record", return_value={}), patch.object(smoke, "command", return_value="emulator-5554\tdevice"), patch.object(smoke.Smoke, "call", side_effect=call):
+                    with self.assertRaises(RuntimeError):
+                        smoke.run_smoke(directory, directory / "result.json", {"ANVE_SIGNED_SMOKE_DISPOSABLE": "1", "ANDROID_HOME": "/sdk"})
+                self.assertFalse(any("install" in args or "uninstall" in args or "force-stop" in args for args in calls))
+
+    def test_runtime_failure_still_cleans_and_records_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "fixture.apk").write_bytes(b"fixture")
+            (directory / "fixture.json").write_text("{}")
+            calls = []
+            def call(*args):
+                calls.append(args)
+                if args[:2] == ("shell", "getprop"):
+                    return "1"
+                if args[0] in ("install", "uninstall"):
+                    return "Success"
+                return ""
+            with patch.object(smoke, "verify_record", return_value={}), patch.object(smoke, "command", return_value="emulator-5554\tdevice"), patch.object(smoke.Smoke, "call", side_effect=call), patch.object(smoke.Smoke, "launch", side_effect=RuntimeError("fixture launch failure")):
+                with self.assertRaisesRegex(RuntimeError, "launch failure"):
+                    smoke.run_smoke(directory, directory / "result.json", {"ANVE_SIGNED_SMOKE_DISPOSABLE": "1", "ANDROID_HOME": "/sdk"})
+            report = json.loads((directory / "result.json").read_text())
+            self.assertFalse(report["success"])
+            self.assertTrue(report["cleanupPassed"])
+            self.assertIn(("uninstall", smoke.PACKAGE), calls)
+
+
+if __name__ == "__main__":
+    unittest.main()

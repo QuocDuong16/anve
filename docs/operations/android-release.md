@@ -36,6 +36,27 @@ Production packaging must also reject the synthetic endpoint, and configuration
 caching with signing inputs must be refused.
 The cached rejection graph must remain reusable after every signing input is
 replaced with invalid values: credentials must not be configuration-cache inputs.
+The full check also assembles a signed minified APK with the same temporary key.
+`apksigner` verifies its signature/pin and `aapt2` checks its isolated identity
+and non-debuggable status. Android CI uploads the APK/JSON separately as
+`anve-signed-validation-apk`; the AAB artifact remains AAB/JSON only.
+The `signed-smoke` job downloads that run's APK and rechecks its signature,
+digest, source commit and inventory before installing on a disposable API 35
+emulator. It checks unauthenticated startup, background/resume, process
+recreation, unavailable-provider sign-in and absence of active tracking, then
+cleans up the fixture. Retained results are sanitized JSON; raw UI XML/logcat
+are not artifacts. See [M8-D handoff](../release/m8d-owner-handoff.md).
+For a disposable local emulator only, after downloading that exact committed
+source's APK/record into a directory:
+
+```bash
+ANVE_SIGNED_SMOKE_DISPOSABLE=1 make android-signed-smoke SIGNED_SMOKE_ARTIFACT_DIR=/absolute/artifact/directory
+```
+
+It refuses physical/ambiguous/offline targets or an existing fixture install.
+Use `ANDROID_SERIAL=emulator-5554` to select among multiple connected targets;
+the QEMU check still applies. This is not a physical-device validation command.
+
 The validation AAB and JSON digest/certificate record are uploaded by Android CI;
 they are not the production app and cannot verify any provider integration.
 
@@ -76,6 +97,14 @@ from the app-signing certificate when Play App Signing is used: configure real
 OAuth/Maps/Firebase Android restrictions for the certificates that sign the
 installed app, including the Play app-signing certificate. Never put a server
 service-account credential into Android client configuration.
+
+The owner's chosen direction is **Google Play with Play App Signing**, with
+Google managing the app-signing key. An upload key is still needed for AABs
+submitted to Console; the pipeline's certificate pin is the upload certificate.
+Verify provider integration using a Play-installed test build and its app-signing
+certificate, separately from any APK sideloaded with the upload/fixture key.
+See [Android signing](https://developer.android.com/studio/publish/app-signing)
+and [Google client authentication](https://developers.google.com/android/guides/client-auth).
 
 Set the following environment variables/secrets in GitHub. The right column
 is the input name accepted by local `make android-distribution`.

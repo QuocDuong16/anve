@@ -34,9 +34,12 @@ artifacts matched their digests and signature records. The CI test-merge tree
 matched the merged source tree. Real signing credentials, environment policy,
 provider/deployment checks and Play submission are external prerequisites.
 
-## Current slice: M8-C
+## M8-C: merged and automated-verified
 
-Implemented on the feature branch: a focused source-boundary review,
+Merged through [PR #19](https://github.com/QuocDuong16/anve/pull/19) as
+`fdd46b8dddfbebbeb210228dec9f926653e2b508`, after all six exact-head checks
+passed on `637c4b1`, including 32 emulator tests and downloaded AAB/privacy
+artifact verification: a focused source-boundary review,
 [Data Safety draft](../release/data-safety-draft.md),
 [permission/declaration draft](../release/permission-declarations.md) and a
 versioned Android privacy review gate (ADR 0015). The initial resolved graphs
@@ -44,8 +47,19 @@ match across production and validation: 207 modules, 14 merged permission
 entries and 24 component declarations. Client-key values/raw XML are excluded
 from the retained inventory. Short configuration checks compare source policy
 hashes and merged fields; signed AAB checks compare the packaged fields too.
-Current validation is recorded in this change's PR. These deliverables prepare
+Validation is recorded in PR #19. These deliverables prepare
 owner review; they do not submit Play forms or close provider/device gates.
+
+## Current slice: M8-D
+
+The [owner handoff](../release/m8d-owner-handoff.md) records Nguyễn Võ Quốc Dương
+(NianD), the supplied support email/intended domain and the owner's Play App
+Signing direction. Privacy/deletion content is drafted; public pages, mailbox
+handling, retention/provider decisions and real release configuration remain
+pending. This slice adds an isolated signed/minified APK startup smoke on CI
+emulator, separate from debug instrumentation and actual Play/provider/device
+validation. Exact-change test results are recorded in its PR; implementation
+alone is not runtime evidence.
 
 ## Readiness inventory and next slices
 
@@ -108,9 +122,9 @@ The Make target keeps its original defaults (all packages, count 1) while
 allowing focused repeated reproduction. Updated exact-head hosted results are
 recorded in the PR; the failed initial run is not described as a pass.
 
-## Next slice: M8-D owner evidence and release handoff
+## Remaining M8-D owner evidence and release handoff
 
-Supply and verify operator-owned privacy/deletion URLs and support handling,
+Publish and verify the planned owner privacy/deletion URLs and support handling,
 retention/backup/provider decisions, final age/distribution choices and the
 actual release environment/signing/provider configuration. Run a signed-app
 smoke and the physical-device/permission/video matrix with real restricted
