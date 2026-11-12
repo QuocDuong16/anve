@@ -11,8 +11,8 @@
 	up down logs \
 	migrate-up migrate-down \
 	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-release android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
-	contracts-lint deps-lint \
+	android-sdk-check android-build android-test android-lint android-check android-release android-release-config-check android-release-check android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
+	contracts-lint deps-lint release-tooling-check \
 	quality-check
 
 ##@ Getting started
@@ -173,8 +173,17 @@ android-lint: android-sdk-check ## Run the Android lint checks
 android-check: android-sdk-check ## Run the Android lint, unit test and debug build checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 
-android-release: android-sdk-check ## Compile the minified release build (unsigned without a signing config)
-	cd $(ANDROID_DIR) && ./gradlew :app:assembleRelease
+android-release: android-sdk-check ## Build the guarded signed production release APK
+	cd $(ANDROID_DIR) && ./gradlew --no-daemon --no-configuration-cache --no-build-cache :app:assembleRelease
+
+android-release-config-check: android-sdk-check ## Verify release inputs and resource wiring using an ephemeral key
+	python3 scripts/android_release.py config-check
+
+android-release-check: android-sdk-check ## Verify a signed validation AAB and reject tampered/unsigned fixtures
+	python3 scripts/android_release.py check
+
+android-distribution: android-sdk-check ## Build and verify a signed production AAB from explicit environment inputs
+	python3 scripts/android_release.py distribution
 
 android-clean: ## Remove the Android build outputs
 	rm -rf $(ANDROID_DIR)/app/build $(ANDROID_DIR)/build $(ANDROID_DIR)/.gradle
@@ -184,13 +193,16 @@ contracts-lint: ## Validate the OpenAPI contract
 	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the OpenAPI contract." >&2; exit 1; }
 	python3 -c "import sys, yaml; yaml.safe_load(open('packages/api-contracts/openapi.yaml')); print('OpenAPI contract parses as YAML.')"
 
+release-tooling-check: ## Check the exact-commit distribution CI gate
+	python3 -m unittest discover -s scripts -p 'test_release_ci.py'
+
 ##@ Dependency automation
 deps-lint: ## Validate the Dependabot configuration against its schema
 	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the Dependabot configuration." >&2; exit 1; }
 	python3 scripts/check_dependabot.py
 
 ##@ Quality gate
-quality-check: toolchain-check server-check server-observability-smoke android-check contracts-lint deps-lint compose-lint ## Run the full CI quality gate
+quality-check: toolchain-check server-check server-observability-smoke android-check android-release-config-check release-tooling-check contracts-lint deps-lint compose-lint ## Run the full CI quality gate
 
 ##@ Cleanup
 clean: android-clean ## Remove all generated build outputs

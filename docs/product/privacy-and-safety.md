@@ -265,6 +265,15 @@ forwarded. Loopback không phải authentication: process tin cậy trên host v
 retention/access của collector và log là trách nhiệm deployment, chưa có kết quả
 production. Xem [ADR 0013](../adr/0013-private-http-observability.md).
 
+**Artifact Android (M8-B).** Cấu hình OAuth/Maps/Firebase phía client nằm trong
+app và cần giới hạn tại provider; không được chứa khóa service account hay
+credentials máy chủ. Khóa upload và mật khẩu dùng qua môi trường riêng, ở ngoài
+checkout, không đưa vào artifact hay Gradle configuration/build cache. Artifact
+CI thử dùng dữ liệu tổng hợp, package riêng và khóa tạm; workflow production
+chỉ xuất AAB đã kiểm chữ ký cùng bản ghi commit/digest/chứng thư, chưa phát hành
+store. Chính sách môi trường release và kiểm chứng provider/thiết bị là các
+điều kiện bên ngoài còn mở. Xem [quy trình release](../operations/android-release.md).
+
 ## 8. Giới hạn của các tính năng an toàn (phải phản ánh trong UI)
 
 | Tính năng | Giới hạn bắt buộc phải công bố |

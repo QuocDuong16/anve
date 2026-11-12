@@ -18,8 +18,10 @@ The API base URL is a BuildConfig field:
   prefer `adb reverse tcp:8080 tcp:8080` and
   `-PANVE_API_URL=http://127.0.0.1:8080` over exposing the dev server on the
   LAN (see the development sign-in section).
-- Release builds have **no default URL** that works: pass a real deployment
-  with `-PANVE_API_URL=...` when assembling release artifacts.
+- Production release tasks require explicit HTTPS API/client configuration,
+  versions and a verified upload signing key. Use `make android-distribution`
+  with environment inputs; see the [release procedure](../operations/android-release.md).
+  Debug properties do not provide production defaults.
 
 ## Development sign-in (no Google project yet)
 
@@ -109,7 +111,8 @@ available to your users (any normal Android device).
    closed, no fake verification).
 
 3. **App config**: copy the client ID into
-   `apps/android/app/src/main/res/values/config_local.xml` (gitignored):
+   `apps/android/app/src/debug/res/values/config_local.xml` (gitignored; create
+   the parent directory if needed):
 
    ```xml
    <resources>
@@ -119,8 +122,10 @@ available to your users (any normal Android device).
    </resources>
    ```
 
-   The placeholder in `values/config.xml` keeps the build green without
-   credentials; `GoogleCredentialSource.isConfigured` gates the button.
+   The placeholder in main `values/config.xml` keeps debug builds green without
+   credentials; `GoogleCredentialSource.isConfigured` gates the button. Release
+   obtains this resource from explicit `ANVE_GOOGLE_WEB_CLIENT_ID`; legacy main
+   `config_local.xml` must be moved to the debug source set before release work.
 
 4. The app uses Credential Manager (`androidx.credentials`) with
    `GetGoogleIdOption`; no `google-services.json` is needed because the
@@ -129,12 +134,12 @@ available to your users (any normal Android device).
 ## What is NOT configured by this repo
 
 - No real OAuth client ID is committed (by design — see ADR 0002).
-- `google-services.json` does not exist; it becomes relevant with FCM (M6),
-  not with sign-in.
+- `google-services.json` is not required: M6 initializes Firebase
+  programmatically from explicit client inputs (see the Firebase section).
 
 ## Google Maps for M4
 
-Map rendering is optional at build time. Without `ANVE_MAPS_API_KEY`, the app
+Map rendering is optional for debug builds. Without `ANVE_MAPS_API_KEY`, debug
 builds normally and the Live Map screen shows a setup message while sharing
 management and the rest of the app remain usable.
 
@@ -157,7 +162,7 @@ management and the rest of the app remain usable.
    network access to render tiles. API/build tests do not prove map rendering.
 
 See [ADR 0008](../adr/0008-m4-polling-confidence-and-map.md). A build with no
-key is valid for CI; do not call the Google Maps surface runtime-verified until
+key is valid for debug CI; signed validation uses synthetic inputs. Do not call the Google Maps surface runtime-verified until
 tiles and markers have been observed on an emulator or device.
 
 ## Testing
@@ -167,9 +172,12 @@ tiles and markers have been observed on an emulator or device.
   adaptive policy, sync engine, tracking coordinator).
 - `make android-build` — debug APK; install with `adb install -r
   apps/android/app/build/outputs/apk/debug/app-debug.apk`.
-- `make android-release` — minified release compile/APK (unsigned without a
-  release signing config). The mission gate requires release compile even
-  though distribution signing is M8 work.
+- `make android-release-check` — minified signed AAB under the isolated
+  validation package, ephemeral key and negative signature/tamper checks.
+- `make android-distribution` — guarded production signed AAB and verification
+  record; requires real external inputs and a clean committed checkout.
+- `make android-release` — guarded production signed APK, with the same
+  required release inputs. See the [release procedure](../operations/android-release.md).
 - Field validation on a real device is tracked as its own work item; a
   green CI build is not evidence of on-device behavior.
 

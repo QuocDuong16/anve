@@ -118,6 +118,22 @@ elif [[ "$workflow_platform" != "platforms;android-${toml_compile_sdk}."* ]]; th
     fail "ANDROID_PLATFORM '$workflow_platform' does not match compileSdk $toml_compile_sdk"
 fi
 
+# The manual distribution job must use the same SDK and command-line tools as
+# the regression workflow, with platform/build versions still sourced from TOML.
+workflow_cmdline="$(extract .github/workflows/android.yml 'CMDLINE_TOOLS_VERSION: "([^"]+)"')"
+for key in COMPILE_SDK BUILD_TOOLS ANDROID_PLATFORM CMDLINE_TOOLS_VERSION; do
+    case "$key" in
+        COMPILE_SDK) expected="$toml_compile_sdk" ;;
+        BUILD_TOOLS) expected="$toml_build_tools" ;;
+        ANDROID_PLATFORM) expected="$workflow_platform" ;;
+        CMDLINE_TOOLS_VERSION) expected="$workflow_cmdline" ;;
+    esac
+    release_value="$(extract .github/workflows/android-release.yml "$key: \"([^\"]+)\"")"
+    if [[ -z "$release_value" || -z "$expected" || "$release_value" != "$expected" ]]; then
+        fail "Android distribution $key pin disagrees with the regression toolchain"
+    fi
+done
+
 # ─── Report ──────────────────────────────────────────────────────────────────
 if ((${#violations[@]} > 0)); then
     echo "Toolchain version check failed:" >&2

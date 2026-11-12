@@ -1,0 +1,109 @@
+name: Android distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: Explicit versionCode greater than the last published build
+        required: true
+        type: string
+      version_name:
+        description: Three-part release version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: android-distribution
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: android-release
+    env:
+      COMPILE_SDK: "37"
+      BUILD_TOOLS: "37.0.0"
+      ANDROID_PLATFORM: "platforms;android-37.0"
+      CMDLINE_TOOLS_VERSION: "15859902"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Require successful CI for this exact main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/check_release_ci.py
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5
+        with:
+          version: 2026.9.15
+          install_args: java gradle
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          cmdline-tools-version: ${{ env.CMDLINE_TOOLS_VERSION }}
+          packages: platform-tools ${{ env.ANDROID_PLATFORM }} build-tools;${{ env.BUILD_TOOLS }}
+      - name: Verify pinned toolchain
+        run: make toolchain-check
+      - name: Use pinned Java
+        run: echo "JAVA_HOME=$(mise where java)" >> "$GITHUB_ENV"
+      - name: Materialize upload key outside the checkout
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          encoded = os.environ.get("KEYSTORE_BASE64", "")
+          if not encoded or len(encoded) > 1024 * 1024:
+              raise SystemExit("Upload keystore input is missing or too large")
+          directory = Path(os.environ["RUNNER_TEMP"]) / "anve-upload-key"
+          directory.mkdir(mode=0o700)
+          path = directory / "upload.keystore"
+          with path.open("xb") as output:
+              output.write(base64.b64decode(encoded, validate=True))
+          path.chmod(0o600)
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"ANVE_KEYSTORE_FILE={path}\n")
+          PY
+      - name: Build and verify signed distribution AAB
+        id: bundle
+        env:
+          ANVE_API_URL: ${{ vars.ANDROID_API_URL }}
+          ANVE_GOOGLE_WEB_CLIENT_ID: ${{ vars.ANDROID_GOOGLE_WEB_CLIENT_ID }}
+          ANVE_MAPS_API_KEY: ${{ secrets.ANDROID_MAPS_API_KEY }}
+          ANVE_FIREBASE_APP_ID: ${{ vars.ANDROID_FIREBASE_APP_ID }}
+          ANVE_FIREBASE_PROJECT_ID: ${{ vars.ANDROID_FIREBASE_PROJECT_ID }}
+          ANVE_FIREBASE_API_KEY: ${{ secrets.ANDROID_FIREBASE_API_KEY }}
+          ANVE_FIREBASE_SENDER_ID: ${{ vars.ANDROID_FIREBASE_SENDER_ID }}
+          ANVE_VERSION_CODE: ${{ inputs.version_code }}
+          ANVE_VERSION_NAME: ${{ inputs.version_name }}
+          ANVE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANVE_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+          ANVE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANVE_KEYSTORE_TYPE: ${{ vars.ANDROID_KEYSTORE_TYPE || 'PKCS12' }}
+          ANVE_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        run: python3 scripts/android_release.py distribution --output "$RUNNER_TEMP/anve-distribution-artifacts"
+      - name: Upload verified AAB and digest/certificate record
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: anve-distribution-${{ github.sha }}
+          path: ${{ steps.bundle.outputs.artifact_dir }}
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove upload key
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          directory = Path(os.environ["RUNNER_TEMP"]) / "anve-upload-key"
+          (directory / "upload.keystore").unlink(missing_ok=True)
+          if directory.exists():
+              directory.rmdir()
+          PY
+
