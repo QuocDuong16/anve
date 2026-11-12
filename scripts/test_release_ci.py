@@ -12,7 +12,7 @@ class ReleaseCiTests(unittest.TestCase):
         require_workflow({"workflow_runs": [self.run_record()]}, "a" * 40, "android.yml")
 
     def test_stale_wrong_or_incomplete_runs_cannot_authorize_release(self):
-        for update in ({"head_sha": "b" * 40}, {"head_branch": "feature"}, {"event": "pull_request"},
+        for update in ({"head_sha": "b" * 40}, {"head_branch": "feature"}, {"event": "pull_request"}, {"event": "workflow_dispatch"},
                        {"status": "in_progress"}, {"conclusion": "failure"}, {"conclusion": "cancelled"},
                        {"path": ".github/workflows/other.yml"}):
             with self.subTest(update=update), self.assertRaises(RuntimeError):

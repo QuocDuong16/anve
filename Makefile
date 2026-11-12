@@ -11,7 +11,7 @@
 	up down logs \
 	migrate-up migrate-down \
 	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-release android-release-config-check android-release-check android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
+	android-sdk-check android-build android-test android-lint android-check android-release android-release-config-check android-release-check android-signed-smoke android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint release-tooling-check \
 	quality-check
 
@@ -182,6 +182,9 @@ android-release-config-check: android-sdk-check ## Verify release inputs and res
 android-release-check: android-sdk-check ## Verify a signed validation AAB and reject tampered/unsigned fixtures
 	python3 scripts/android_release.py check
 
+android-signed-smoke: android-sdk-check ## Smoke-test the signed fixture APK on an explicitly disposable emulator
+	python3 scripts/android_signed_smoke.py --artifact-dir "$(SIGNED_SMOKE_ARTIFACT_DIR)"
+
 android-privacy-candidate: android-sdk-check ## Write a review candidate from merged manifest and resolved release SDKs
 	python3 scripts/android_release.py review-candidate
 
@@ -199,6 +202,7 @@ contracts-lint: ## Validate the OpenAPI contract
 release-tooling-check: ## Check the exact-commit distribution CI gate
 	python3 -m unittest discover -s scripts -p 'test_release_ci.py'
 	python3 -m unittest discover -s scripts -p 'test_android_privacy.py'
+	python3 -m unittest discover -s scripts -p 'test_android_signed_smoke.py'
 
 ##@ Dependency automation
 deps-lint: ## Validate the Dependabot configuration against its schema

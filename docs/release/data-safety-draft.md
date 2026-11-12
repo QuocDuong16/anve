@@ -71,7 +71,7 @@ traffic was captured in this phase.
 
 | Required decision/evidence | Current status |
 | --- | --- |
-| Public privacy-policy URL, operator identity/contact, hosting regions and subprocessors | Owner supplied/published evidence required; no placeholder URL is treated as live. |
+| Public privacy-policy URL, operator identity/contact, hosting regions and subprocessors | Owner Nguyễn Võ Quốc Dương (NianD), email nvqduong.dev@gmail.com and intended anve.niand.id.vn supplied; content drafted in M8-D. Public URL/hosting/region/subprocessor verification remains pending; see [handoff](m8d-owner-handoff.md). |
 | Public account-deletion request resource, identity verification and support handling | Required alongside in-app deletion under [Google's deletion guidance](https://support.google.com/googleplay/android-developer/answer/13327111). In-app Circle-owner refusal must have an understandable resolution; test the actual web request and completion path. |
 | Final categories/purposes, required/optional answers and sharing exceptions | Review every first-party and SDK row; no form has been submitted. |
 | Audit/fence/log/backup retention, legal justification, restore procedures and SDK identity deletion | Open. Existing cascade tests do not establish provider or backup erasure. |

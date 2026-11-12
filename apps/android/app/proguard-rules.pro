@@ -5,6 +5,9 @@
 # Moshi reflection (ADR 0003) inspects DTO metadata via kotlin-reflect; keep
 # the data classes and their constructors intact.
 -keep class com.anve.app.data.api.** { *; }
+# Persisted/legacy models are reflection entry points too, even when no
+# ordinary constructor call survives. Keep their JSON schema and metadata.
+-keep @com.squareup.moshi.JsonClass class com.anve.app.** { *; }
 -keep class com.anve.app.data.auth.StoredSession { *; }
 -keep class com.anve.app.data.journey.JourneyOperation { *; }
 -keep class com.anve.app.data.journey.JourneyAction { *; }
