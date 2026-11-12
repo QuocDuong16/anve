@@ -1,0 +1,1050 @@
+{
+  "tool": "comp-spec inspect-map",
+  "version": 1,
+  "referenceOnly": true,
+  "stateChanged": false,
+  "comp": ".impeccable/mocks/profile-and-email-invites/email-invite-b.png",
+  "compSize": {
+    "width": 928,
+    "height": 1695
+  },
+  "inputRegionCount": 16,
+  "regions": [
+    {
+      "id": "system-app-chrome",
+      "kind": "chrome",
+      "note": "Existing native app/system context, not a navigation redesign",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.1121
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 928,
+        "h": 190
+      },
+      "aspect": 4.8842,
+      "palette": [
+        {
+          "hex": "#083845",
+          "coverage": 0.9808
+        },
+        {
+          "hex": "#b0aeac",
+          "coverage": 0.0092
+        },
+        {
+          "hex": "#f7f8f8",
+          "coverage": 0.0089
+        },
+        {
+          "hex": "#517171",
+          "coverage": 0.0012
+        }
+      ],
+      "detail": {
+        "energy": 9.7906
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 1,
+      "cropPath": "region-1.png"
+    },
+    {
+      "id": "background-circle",
+      "kind": "chrome",
+      "note": "Dimmed existing Circle context, synthetic illustration labels not new navigation",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.0377,
+        "y": 0.1316,
+        "w": 0.9278,
+        "h": 0.1074
+      },
+      "px": {
+        "x": 35,
+        "y": 223,
+        "w": 861,
+        "h": 182
+      },
+      "aspect": 4.7308,
+      "palette": [
+        {
+          "hex": "#868686",
+          "coverage": 0.9446
+        },
+        {
+          "hex": "#706772",
+          "coverage": 0.0238
+        },
+        {
+          "hex": "#3a3b3c",
+          "coverage": 0.0125
+        },
+        {
+          "hex": "#0e0f13",
+          "coverage": 0.0125
+        },
+        {
+          "hex": "#212d3d",
+          "coverage": 0.0066
+        }
+      ],
+      "detail": {
+        "energy": 9.5168
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 2,
+      "cropPath": "region-2.png"
+    },
+    {
+      "id": "sheet",
+      "kind": "chrome",
+      "note": "Native creation bottom sheet sand/ink surface",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0.2389,
+        "w": 1,
+        "h": 0.7611
+      },
+      "px": {
+        "x": 0,
+        "y": 405,
+        "w": 928,
+        "h": 1290
+      },
+      "aspect": 0.7194,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.7795
+        },
+        {
+          "hex": "#f8e9ca",
+          "coverage": 0.0972
+        },
+        {
+          "hex": "#084b58",
+          "coverage": 0.0778
+        },
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.0317
+        },
+        {
+          "hex": "#c8c8cc",
+          "coverage": 0.0138
+        }
+      ],
+      "detail": {
+        "energy": 20.3352
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 3,
+      "cropPath": "region-3.png"
+    },
+    {
+      "id": "handle",
+      "kind": "chrome",
+      "note": "Native bottom sheet drag handle",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.4601,
+        "y": 0.2637,
+        "w": 0.0797,
+        "h": 0.0059
+      },
+      "px": {
+        "x": 427,
+        "y": 447,
+        "w": 74,
+        "h": 10
+      },
+      "aspect": 7.4,
+      "palette": [
+        {
+          "hex": "#365352",
+          "coverage": 0.69
+        },
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.29
+        },
+        {
+          "hex": "#b8b8b8",
+          "coverage": 0.02
+        }
+      ],
+      "detail": {
+        "energy": 17.9433
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 4,
+      "cropPath": "region-4.png"
+    },
+    {
+      "id": "invite-title",
+      "kind": "text",
+      "note": "Mời người thân — native headline",
+      "grid": null,
+      "box": {
+        "x": 0.0431,
+        "y": 0.2997,
+        "w": 0.819,
+        "h": 0.0372
+      },
+      "px": {
+        "x": 40,
+        "y": 508,
+        "w": 760,
+        "h": 63
+      },
+      "aspect": 12.0635,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.8728
+        },
+        {
+          "hex": "#18191c",
+          "coverage": 0.09
+        },
+        {
+          "hex": "#595959",
+          "coverage": 0.0153
+        },
+        {
+          "hex": "#929291",
+          "coverage": 0.0128
+        },
+        {
+          "hex": "#cac6c4",
+          "coverage": 0.0091
+        }
+      ],
+      "detail": {
+        "energy": 56.654
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 5,
+      "cropPath": "region-5.png"
+    },
+    {
+      "id": "mode-email",
+      "kind": "control",
+      "note": "Theo email — explicit native choice",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0431,
+        "y": 0.3605,
+        "w": 0.445,
+        "h": 0.0596
+      },
+      "px": {
+        "x": 40,
+        "y": 611,
+        "w": 413,
+        "h": 101
+      },
+      "aspect": 4.0891,
+      "palette": [
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.8863
+        },
+        {
+          "hex": "#ebf2f2",
+          "coverage": 0.0661
+        },
+        {
+          "hex": "#111619",
+          "coverage": 0.0207
+        },
+        {
+          "hex": "#0c4c54",
+          "coverage": 0.0183
+        },
+        {
+          "hex": "#546e71",
+          "coverage": 0.0087
+        }
+      ],
+      "detail": {
+        "energy": 18.7232
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 6,
+      "cropPath": "region-6.png"
+    },
+    {
+      "id": "mode-code",
+      "kind": "control",
+      "note": "Chỉ tạo link/mã — explicit native choice",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.5129,
+        "y": 0.3605,
+        "w": 0.4515,
+        "h": 0.0596
+      },
+      "px": {
+        "x": 476,
+        "y": 611,
+        "w": 419,
+        "h": 101
+      },
+      "aspect": 4.1485,
+      "palette": [
+        {
+          "hex": "#f8f7f7",
+          "coverage": 0.8973
+        },
+        {
+          "hex": "#d3cfd7",
+          "coverage": 0.05
+        },
+        {
+          "hex": "#17181e",
+          "coverage": 0.0283
+        },
+        {
+          "hex": "#4b5050",
+          "coverage": 0.0187
+        },
+        {
+          "hex": "#aaaaaa",
+          "coverage": 0.0057
+        }
+      ],
+      "detail": {
+        "energy": 27.4605
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 7,
+      "cropPath": "region-7.png"
+    },
+    {
+      "id": "email-frame",
+      "kind": "chrome",
+      "note": "Native outlined recipient email grouping",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.042,
+        "y": 0.4419,
+        "w": 0.9224,
+        "h": 0.1593
+      },
+      "px": {
+        "x": 39,
+        "y": 749,
+        "w": 856,
+        "h": 270
+      },
+      "aspect": 3.1704,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9347
+        },
+        {
+          "hex": "#c6c2c6",
+          "coverage": 0.0343
+        },
+        {
+          "hex": "#958d99",
+          "coverage": 0.0135
+        },
+        {
+          "hex": "#585561",
+          "coverage": 0.0117
+        },
+        {
+          "hex": "#084e58",
+          "coverage": 0.0059
+        }
+      ],
+      "detail": {
+        "energy": 20.7265
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 8,
+      "cropPath": "region-8.png"
+    },
+    {
+      "id": "email-label",
+      "kind": "text",
+      "note": "Email người nhận",
+      "grid": null,
+      "box": {
+        "x": 0.0733,
+        "y": 0.4596,
+        "w": 0.8405,
+        "h": 0.0236
+      },
+      "px": {
+        "x": 68,
+        "y": 779,
+        "w": 780,
+        "h": 40
+      },
+      "aspect": 19.5,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9162
+        },
+        {
+          "hex": "#0a5058",
+          "coverage": 0.0546
+        },
+        {
+          "hex": "#3c787b",
+          "coverage": 0.0157
+        },
+        {
+          "hex": "#8bafaf",
+          "coverage": 0.0135
+        }
+      ],
+      "detail": {
+        "energy": 32.2322
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 9,
+      "cropPath": "region-9.png"
+    },
+    {
+      "id": "email-input",
+      "kind": "control",
+      "note": "mai@example.test — synthetic native email field",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0744,
+        "y": 0.4914,
+        "w": 0.8621,
+        "h": 0.0602
+      },
+      "px": {
+        "x": 69,
+        "y": 833,
+        "w": 800,
+        "h": 102
+      },
+      "aspect": 7.8431,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9119
+        },
+        {
+          "hex": "#bbb9bb",
+          "coverage": 0.0327
+        },
+        {
+          "hex": "#9b92a0",
+          "coverage": 0.0318
+        },
+        {
+          "hex": "#16171b",
+          "coverage": 0.0195
+        },
+        {
+          "hex": "#666666",
+          "coverage": 0.0041
+        }
+      ],
+      "detail": {
+        "energy": 22.6244
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": true
+      },
+      "number": 10,
+      "cropPath": "region-10.png"
+    },
+    {
+      "id": "binding-helper",
+      "kind": "text",
+      "note": "Chỉ tài khoản có email này được tham gia.",
+      "grid": null,
+      "box": {
+        "x": 0.0733,
+        "y": 0.564,
+        "w": 0.8513,
+        "h": 0.0242
+      },
+      "px": {
+        "x": 68,
+        "y": 956,
+        "w": 790,
+        "h": 41
+      },
+      "aspect": 19.2683,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.865
+        },
+        {
+          "hex": "#595461",
+          "coverage": 0.0618
+        },
+        {
+          "hex": "#bebabc",
+          "coverage": 0.0428
+        },
+        {
+          "hex": "#8c878e",
+          "coverage": 0.0304
+        }
+      ],
+      "detail": {
+        "energy": 40.4748
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 11,
+      "cropPath": "region-11.png"
+    },
+    {
+      "id": "delivery-icon",
+      "kind": "control",
+      "note": "Native info vector, decorative",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0765,
+        "y": 0.6313,
+        "w": 0.0496,
+        "h": 0.0277
+      },
+      "px": {
+        "x": 71,
+        "y": 1070,
+        "w": 46,
+        "h": 47
+      },
+      "aspect": 0.9787,
+      "palette": [
+        {
+          "hex": "#f6f7f4",
+          "coverage": 0.6914
+        },
+        {
+          "hex": "#0b5059",
+          "coverage": 0.2227
+        },
+        {
+          "hex": "#55878c",
+          "coverage": 0.0469
+        },
+        {
+          "hex": "#a4c2c4",
+          "coverage": 0.0313
+        },
+        {
+          "hex": "#78a8a0",
+          "coverage": 0.0078
+        }
+      ],
+      "detail": {
+        "energy": 12.3541
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 12,
+      "cropPath": "region-12.png"
+    },
+    {
+      "id": "delivery-helper",
+      "kind": "text",
+      "note": "If account/notifications available, a notification may arrive; link remains available",
+      "grid": null,
+      "box": {
+        "x": 0.1606,
+        "y": 0.6283,
+        "w": 0.7694,
+        "h": 0.0649
+      },
+      "px": {
+        "x": 149,
+        "y": 1065,
+        "w": 714,
+        "h": 110
+      },
+      "aspect": 6.4909,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.8589
+        },
+        {
+          "hex": "#15181c",
+          "coverage": 0.0683
+        },
+        {
+          "hex": "#828280",
+          "coverage": 0.0304
+        },
+        {
+          "hex": "#434444",
+          "coverage": 0.0217
+        },
+        {
+          "hex": "#bab9b6",
+          "coverage": 0.0208
+        }
+      ],
+      "detail": {
+        "energy": 60.6906
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 13,
+      "cropPath": "region-13.png"
+    },
+    {
+      "id": "privacy-notice",
+      "kind": "control",
+      "note": "Native amber notice: no account enumeration, no automatic sharing",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0345,
+        "y": 0.7086,
+        "w": 0.931,
+        "h": 0.085
+      },
+      "px": {
+        "x": 32,
+        "y": 1201,
+        "w": 864,
+        "h": 144
+      },
+      "aspect": 6,
+      "palette": [
+        {
+          "hex": "#f8e8c9",
+          "coverage": 0.8959
+        },
+        {
+          "hex": "#884d0a",
+          "coverage": 0.0612
+        },
+        {
+          "hex": "#e7c995",
+          "coverage": 0.017
+        },
+        {
+          "hex": "#b1803e",
+          "coverage": 0.0153
+        },
+        {
+          "hex": "#f8f8f2",
+          "coverage": 0.0105
+        }
+      ],
+      "detail": {
+        "energy": 27.196
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 14,
+      "cropPath": "region-14.png"
+    },
+    {
+      "id": "expiry",
+      "kind": "text",
+      "note": "Lời mời dùng một lần · Hết hạn sau 48 giờ",
+      "grid": null,
+      "box": {
+        "x": 0.1121,
+        "y": 0.8224,
+        "w": 0.8351,
+        "h": 0.0254
+      },
+      "px": {
+        "x": 104,
+        "y": 1394,
+        "w": 775,
+        "h": 43
+      },
+      "aspect": 18.0233,
+      "palette": [
+        {
+          "hex": "#f7f7f6",
+          "coverage": 0.8668
+        },
+        {
+          "hex": "#737475",
+          "coverage": 0.0587
+        },
+        {
+          "hex": "#b2b0af",
+          "coverage": 0.0448
+        },
+        {
+          "hex": "#5c5b66",
+          "coverage": 0.0286
+        },
+        {
+          "hex": "#9890a0",
+          "coverage": 0.001
+        }
+      ],
+      "detail": {
+        "energy": 40.1536
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 15,
+      "cropPath": "region-15.png"
+    },
+    {
+      "id": "create",
+      "kind": "control",
+      "note": "Tạo lời mời — pinned native footer",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0356,
+        "y": 0.8791,
+        "w": 0.93,
+        "h": 0.0649
+      },
+      "px": {
+        "x": 33,
+        "y": 1490,
+        "w": 863,
+        "h": 110
+      },
+      "aspect": 7.8455,
+      "palette": [
+        {
+          "hex": "#084a58",
+          "coverage": 0.9278
+        },
+        {
+          "hex": "#f7f8f7",
+          "coverage": 0.0656
+        },
+        {
+          "hex": "#7fa9a9",
+          "coverage": 0.0026
+        },
+        {
+          "hex": "#b9d1d1",
+          "coverage": 0.0025
+        },
+        {
+          "hex": "#307070",
+          "coverage": 0.0015
+        }
+      ],
+      "detail": {
+        "energy": 16.6283
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 16,
+      "cropPath": "region-16.png"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region system-app-chrome: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region system-app-chrome: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region background-circle: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region background-circle: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region sheet: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region sheet: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region handle: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region mode-email: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region mode-code: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region email-frame: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region email-frame: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region email-input: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region delivery-icon: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region privacy-notice: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region create: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    }
+  ],
+  "overlaps": [
+    {
+      "a": "sheet",
+      "b": "handle",
+      "pixels": 740.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "invite-title",
+      "pixels": 47880.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "mode-email",
+      "pixels": 41713.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "mode-code",
+      "pixels": 42319.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "email-frame",
+      "pixels": 231120.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "email-label",
+      "pixels": 31200.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "email-input",
+      "pixels": 81600.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "binding-helper",
+      "pixels": 32390.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "delivery-icon",
+      "pixels": 2162.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "delivery-helper",
+      "pixels": 78540.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "privacy-notice",
+      "pixels": 124416.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "expiry",
+      "pixels": 33325.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "create",
+      "pixels": 94930.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "email-frame",
+      "b": "email-label",
+      "pixels": 31200.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "email-frame",
+      "b": "email-input",
+      "pixels": 81600.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "email-frame",
+      "b": "binding-helper",
+      "pixels": 32390.0,
+      "relationship": "container extent"
+    }
+  ],
+  "reviewGroups": {},
+  "uncoveredInkCells": [],
+  "comparisonSheets": []
+}

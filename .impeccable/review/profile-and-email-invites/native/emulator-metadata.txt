@@ -1,0 +1,6 @@
+4415d4fb2e4ceb7143f4273616a5b1bfcb29ef51
+Physical size: 842x1870
+Physical density: 327
+1.0
+Themes are fixture-controlled; dark-font130 tests set Android system font_scale=1.3 before Activity launch and restore it afterward.
+compose-* images are native app windows (SystemUI glyph layers excluded); dialog-* images capture the composed display.

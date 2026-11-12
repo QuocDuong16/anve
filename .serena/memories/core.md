@@ -3,9 +3,10 @@
 Monorepo for AnVề: an Android (Jetpack Compose) client backed by a Go HTTP
 API and PostgreSQL/PostGIS. Modular monorepo per ADR 0001 (`docs/adr/`):
 one repo, one pinned toolchain, but each app keeps its own build system and
-its own CI workflow. Phase: M0–M4 implemented. M4 is automated-verified but
-pending runtime/device validation; M3 has a runtime HTTP smoke test but is NOT
-field-validated on a device (battery/background/OEM); M5 is automated-verified; physical-device validation is pending. Engineering
+its own CI workflow. Authentication, Circle, tracking, Maps, History/Places,
+SOS, diagnostics and Safe Journey have source implementations; product docs
+record the exact verified scope. Automated and emulator checks do not prove
+real providers, GPS, battery or OEM behavior. Engineering
 session state lives in `docs/implementation/progress.md` — read it first when
 resuming work.
 

@@ -1,0 +1,102 @@
+{
+  "tool": "build-phase",
+  "version": 2,
+  "startedAt": "2026-11-12T17:16:02.130Z",
+  "comp": ".impeccable/mocks/profile-and-email-invites/avatar-b.png",
+  "direction": null,
+  "breakpoint": "842x1870",
+  "artifact": "apps/android/app/src/main/java/com/anve/app/ui/home/HomeScreen.kt",
+  "phase": "spec",
+  "phases": {
+    "comps": {
+      "status": "skipped",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [
+        {
+          "at": "2026-11-12T17:16:02.130Z",
+          "text": "started with an approved comp; the comp round happened before this state (surface round or manual)"
+        }
+      ],
+      "gate": null,
+      "forced": null
+    },
+    "spec": {
+      "status": "open",
+      "openedAt": "2026-11-12T17:16:02.130Z",
+      "closedAt": null,
+      "attempts": 2,
+      "notes": [
+        {
+          "at": "2026-11-12T17:48:47.243Z",
+          "text": "Current user selected B for both avatar and email creation, then answered tiếp nha after the concrete native production-plan exception request. Proceed under that affirmative chat approval: real Compose controls, runtime Photo Picker/API image content, no comp botanical image bundled, actual CI renders/reviewer required. Formal raster/plan tool gate remains pending; no static picture obligation, receipt or phase pass is fabricated."
+        }
+      ],
+      "gate": {
+        "ok": false,
+        "reasons": [
+          "region avatar-preview: the comp's artwork runs off its box on the left and right and top and bottom; widen the region's span so the box holds the whole shape with a margin (or set \"bleed\": true if the page really crops it there), then re-run comp-spec.mjs --regions"
+        ],
+        "at": "2026-11-12T18:26:52.670Z"
+      },
+      "forced": null
+    },
+    "plates": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "hero": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "sections": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "motion": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "responsive": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "review": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    }
+  },
+  "finish": null,
+  "sessionId": "01a1c8c8-2a1d-7cf0-9b52-71f090f1d038"
+}

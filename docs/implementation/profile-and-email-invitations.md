@@ -23,13 +23,11 @@ are illustrative; existing navigation is preserved. No mockup is an app asset.
 | Product journey/progress text | Contains obsolete splash-only/Planned statements and superseded privacy examples | Reconcile with source and ADRs without relabeling field evidence |
 | Multiple Circles, numeric confidence, server-push transport | Proposed | Do not silently add to MVP |
 
-The listed features now have source implementations on this branch. Local
-`make quality-check` and `make android-test-build` passed at `617c17f`, with
-328 JVM tests and zero failures/errors/skips. PostgreSQL race integration
-passed after migrations 0012/0013. Hosted checks and native renders/review are
-tracked by [PR #22](https://github.com/QuocDuong16/anve/pull/22), stacked on
-unmerged PR #21. Later refinements require exact-head revalidation; no provider
-or physical-device result is implied.
+The listed features now have source implementations on this branch, stacked
+on unmerged [PR #21](https://github.com/QuocDuong16/anve/pull/21).
+[PR #22](https://github.com/QuocDuong16/anve/pull/22) tracks this extension.
+Automated evidence below is tied to its exact source; no provider or
+physical-device result is implied.
 
 ## Profile photo boundary
 
@@ -97,18 +95,24 @@ public websites and Play distribution retain separate evidence boundaries.
 
 ## Current automated evidence
 
-`make quality-check` and `make android-test-build` passed locally after the
-contrast/image-retry refinement (`3245b57`); 328 JVM tests have zero failures,
-errors or skips. PostgreSQL race integration passed for both new migrations,
-avatar ownership/CAS/current membership and invitation binding/replay/private
-hide/quotas/current dispatch. All three Go CI jobs passed at this head in
-[run 43281016118](https://github.com/QuocDuong16/anve/actions/runs/43281016118).
-Android CI is still pending: the first app job at this head failed resolving
-many existing Maven dependencies before tests; artifacts and provider/device
-behavior are not inferred from local success. Final CI/native results replace
-this paragraph after inspection. Photo processing is additionally exercised
-at minSdk 26 and API 35 in Actions.
+At source `ca13b4fc717901e0735598cdad125206f831fa6b`, local
+`make quality-check` and `make android-test-build` passed: 330 JVM tests,
+zero failures/errors/skips. PostgreSQL race integration passed after both new
+migrations. All Go jobs passed in
+[run 43285537412](https://github.com/QuocDuong16/anve/actions/runs/43285537412).
+[Android run 43285537402](https://github.com/QuocDuong16/anve/actions/runs/43285537402)
+passed JVM/lint/build, 53 API 35 instrumentation tests, three API 26 photo tests,
+and signed minified fixture fresh launch/background resume/process recreation.
+Checkout `4415d4fb2e4ceb7143f4273616a5b1bfcb29ef51` is the PR merge commit;
+its tree equals the source head, with PR #21's head as the other parent.
 
+The AAB digest matches its signed validation record. The privacy inventory is
+byte-equal to the existing baseline. The signed fixture explicitly records
+`realProviderVerified=false` and `physicalDeviceVerified=false`. Native
+captures and review provenance are retained under
+`.impeccable/review/profile-and-email-invites/`. The formal Impeccable phase
+remains open under the documented native chat-plan exception; CI success
+and native review do not fabricate a formal gate receipt.
 
 Private photo/invitation HTTP calls share the existing authenticated session
 refresher but disable transport recovery/redirects and mark mutation bodies

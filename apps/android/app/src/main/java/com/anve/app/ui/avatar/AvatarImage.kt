@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -64,11 +63,14 @@ fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, 
 
 @Composable
 fun AvatarFrame(name: String, image: ImageBitmap?, modifier: Modifier = Modifier, overlay: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {}) {
-    Surface(modifier.clip(CircleShape), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
-        Box(contentAlignment = Alignment.Center) {
-            if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Text(name.take(1).uppercase().ifBlank { "?" }, style = MaterialTheme.typography.titleLarge)
-            overlay()
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Surface(Modifier.fillMaxSize(), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+            Box(contentAlignment = Alignment.Center) {
+                if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Text(name.take(1).uppercase().ifBlank { "?" }, style = MaterialTheme.typography.titleLarge)
+            }
         }
+        // Recovery controls retain their full target outside the photo's circular clip.
+        overlay()
     }
 }

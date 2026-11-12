@@ -1,0 +1,1045 @@
+{
+  "tool": "comp-spec inspect-map",
+  "version": 1,
+  "referenceOnly": true,
+  "stateChanged": false,
+  "comp": ".impeccable/mocks/profile-and-email-invites/avatar-b.png",
+  "compSize": {
+    "width": 928,
+    "height": 1695
+  },
+  "inputRegionCount": 16,
+  "regions": [
+    {
+      "id": "system-app-chrome",
+      "kind": "chrome",
+      "note": "Existing native system/app chrome; backdrop not a navigation redesign",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.105
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 928,
+        "h": 178
+      },
+      "aspect": 5.2135,
+      "palette": [
+        {
+          "hex": "#083847",
+          "coverage": 0.9603
+        },
+        {
+          "hex": "#2d5555",
+          "coverage": 0.0216
+        },
+        {
+          "hex": "#f4f5f5",
+          "coverage": 0.0103
+        },
+        {
+          "hex": "#d1cdcb",
+          "coverage": 0.0066
+        },
+        {
+          "hex": "#91a1a1",
+          "coverage": 0.0013
+        }
+      ],
+      "detail": {
+        "energy": 9.4547
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 1,
+      "cropPath": "region-1.png"
+    },
+    {
+      "id": "background-account",
+      "kind": "chrome",
+      "note": "Dimmed incumbent account context; synthetic menu content is out of scope",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0.105,
+        "w": 1,
+        "h": 0.1286
+      },
+      "px": {
+        "x": 0,
+        "y": 178,
+        "w": 928,
+        "h": 218
+      },
+      "aspect": 4.2569,
+      "palette": [
+        {
+          "hex": "#86837f",
+          "coverage": 0.9142
+        },
+        {
+          "hex": "#2c3b17",
+          "coverage": 0.0545
+        },
+        {
+          "hex": "#262b22",
+          "coverage": 0.0191
+        },
+        {
+          "hex": "#555752",
+          "coverage": 0.0082
+        },
+        {
+          "hex": "#425213",
+          "coverage": 0.004
+        }
+      ],
+      "detail": {
+        "energy": 6.6892
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 2,
+      "cropPath": "region-2.png"
+    },
+    {
+      "id": "background-avatar",
+      "kind": "image",
+      "note": "Current runtime user photo in existing profile; synthetic comp content not bundled",
+      "grid": null,
+      "box": {
+        "x": 0.0366,
+        "y": 0.1257,
+        "w": 0.1606,
+        "h": 0.0879
+      },
+      "px": {
+        "x": 34,
+        "y": 213,
+        "w": 149,
+        "h": 149
+      },
+      "aspect": 1,
+      "palette": [
+        {
+          "hex": "#2c3b18",
+          "coverage": 0.477
+        },
+        {
+          "hex": "#807d7a",
+          "coverage": 0.3161
+        },
+        {
+          "hex": "#272c19",
+          "coverage": 0.1087
+        },
+        {
+          "hex": "#425417",
+          "coverage": 0.0606
+        },
+        {
+          "hex": "#58614b",
+          "coverage": 0.0376
+        }
+      ],
+      "detail": {
+        "energy": 6.7154
+      },
+      "medium": "raster",
+      "plate": "assets/plates/background-avatar.png",
+      "text": null,
+      "number": 3,
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 0,
+        "totalPixels": 22201,
+        "remainingPixels": 22201,
+        "excludedFraction": 0.0,
+        "fullyExcluded": false,
+        "regions": [],
+        "ignoredContainers": [
+          "background-account"
+        ]
+      },
+      "cropPath": "region-3.png",
+      "referencePath": "reference-3.png"
+    },
+    {
+      "id": "background-name",
+      "kind": "text",
+      "note": "Synthetic existing account name An",
+      "grid": null,
+      "box": {
+        "x": 0.2425,
+        "y": 0.1552,
+        "w": 0.2694,
+        "h": 0.0324
+      },
+      "px": {
+        "x": 225,
+        "y": 263,
+        "w": 250,
+        "h": 55
+      },
+      "aspect": 4.5455,
+      "palette": [
+        {
+          "hex": "#84807e",
+          "coverage": 0.8734
+        },
+        {
+          "hex": "#282b2b",
+          "coverage": 0.067
+        },
+        {
+          "hex": "#575757",
+          "coverage": 0.0539
+        },
+        {
+          "hex": "#0d0d16",
+          "coverage": 0.0044
+        },
+        {
+          "hex": "#404838",
+          "coverage": 0.0013
+        }
+      ],
+      "detail": {
+        "energy": 14.1356
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 4,
+      "cropPath": "region-4.png"
+    },
+    {
+      "id": "background-email",
+      "kind": "text",
+      "note": "Synthetic account email an@example.test",
+      "grid": null,
+      "box": {
+        "x": 0.2425,
+        "y": 0.1864,
+        "w": 0.7004,
+        "h": 0.0324
+      },
+      "px": {
+        "x": 225,
+        "y": 316,
+        "w": 650,
+        "h": 55
+      },
+      "aspect": 11.8182,
+      "palette": [
+        {
+          "hex": "#86827e",
+          "coverage": 0.9766
+        },
+        {
+          "hex": "#2e2e2e",
+          "coverage": 0.0129
+        },
+        {
+          "hex": "#585858",
+          "coverage": 0.0105
+        }
+      ],
+      "detail": {
+        "energy": 4.5389
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 5,
+      "cropPath": "region-5.png"
+    },
+    {
+      "id": "background-profile-row",
+      "kind": "control",
+      "note": "Unchanged backdrop account controls; preserve actual existing navigation",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0377,
+        "y": 0.2336,
+        "w": 0.9278,
+        "h": 0.0749
+      },
+      "px": {
+        "x": 35,
+        "y": 396,
+        "w": 861,
+        "h": 127
+      },
+      "aspect": 6.7795,
+      "palette": [
+        {
+          "hex": "#827d7a",
+          "coverage": 0.9501
+        },
+        {
+          "hex": "#6f6878",
+          "coverage": 0.0252
+        },
+        {
+          "hex": "#0c1618",
+          "coverage": 0.0169
+        },
+        {
+          "hex": "#434a4a",
+          "coverage": 0.0078
+        }
+      ],
+      "detail": {
+        "energy": 6.7197
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 6,
+      "cropPath": "region-6.png"
+    },
+    {
+      "id": "background-settings-row",
+      "kind": "control",
+      "note": "Unchanged backdrop account controls; synthetic labels not added to app",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0377,
+        "y": 0.308,
+        "w": 0.9278,
+        "h": 0.0684
+      },
+      "px": {
+        "x": 35,
+        "y": 522,
+        "w": 861,
+        "h": 116
+      },
+      "aspect": 7.4224,
+      "palette": [
+        {
+          "hex": "#7a7978",
+          "coverage": 0.9543
+        },
+        {
+          "hex": "#e8e8e8",
+          "coverage": 0.0239
+        },
+        {
+          "hex": "#0c1618",
+          "coverage": 0.0135
+        },
+        {
+          "hex": "#333939",
+          "coverage": 0.0083
+        }
+      ],
+      "detail": {
+        "energy": 7.9089
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 7,
+      "cropPath": "region-7.png"
+    },
+    {
+      "id": "sheet",
+      "kind": "chrome",
+      "note": "Native modal sheet sand/ink surface",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0.3758,
+        "w": 1,
+        "h": 0.6242
+      },
+      "px": {
+        "x": 0,
+        "y": 637,
+        "w": 928,
+        "h": 1058
+      },
+      "aspect": 0.8771,
+      "palette": [
+        {
+          "hex": "#f8f8f1",
+          "coverage": 0.8283
+        },
+        {
+          "hex": "#085658",
+          "coverage": 0.0871
+        },
+        {
+          "hex": "#405a1f",
+          "coverage": 0.0618
+        },
+        {
+          "hex": "#5e7c26",
+          "coverage": 0.014
+        },
+        {
+          "hex": "#4a4d4d",
+          "coverage": 0.0089
+        }
+      ],
+      "detail": {
+        "energy": 16.9948
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "flags": [
+        {
+          "id": "painted-pixels",
+          "message": "Looks painted: 23 colours beyond its two main tones and soft shading across 57% of it. Drawn in code, this becomes a flat copy."
+        }
+      ],
+      "number": 8,
+      "cropPath": "region-8.png"
+    },
+    {
+      "id": "handle",
+      "kind": "chrome",
+      "note": "Native modal sheet drag handle",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.4623,
+        "y": 0.3953,
+        "w": 0.0754,
+        "h": 0.0053
+      },
+      "px": {
+        "x": 429,
+        "y": 670,
+        "w": 70,
+        "h": 9
+      },
+      "aspect": 7.7778,
+      "palette": [
+        {
+          "hex": "#4a5554",
+          "coverage": 0.9444
+        },
+        {
+          "hex": "#d0d0d0",
+          "coverage": 0.0278
+        },
+        {
+          "hex": "#f8f8f0",
+          "coverage": 0.0278
+        }
+      ],
+      "detail": {
+        "energy": 13.2268
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 9,
+      "cropPath": "region-9.png"
+    },
+    {
+      "id": "avatar-title",
+      "kind": "text",
+      "note": "Ảnh đại diện — native headline",
+      "grid": null,
+      "box": {
+        "x": 0.0453,
+        "y": 0.4324,
+        "w": 0.5711,
+        "h": 0.0383
+      },
+      "px": {
+        "x": 42,
+        "y": 733,
+        "w": 530,
+        "h": 65
+      },
+      "aspect": 8.1538,
+      "palette": [
+        {
+          "hex": "#f8f8f1",
+          "coverage": 0.835
+        },
+        {
+          "hex": "#0d1b1f",
+          "coverage": 0.1119
+        },
+        {
+          "hex": "#454e4e",
+          "coverage": 0.0242
+        },
+        {
+          "hex": "#acadac",
+          "coverage": 0.0168
+        },
+        {
+          "hex": "#7b807e",
+          "coverage": 0.0121
+        }
+      ],
+      "detail": {
+        "energy": 48.4783
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 10,
+      "cropPath": "region-10.png"
+    },
+    {
+      "id": "audience-helper",
+      "kind": "text",
+      "note": "Ảnh hiển thị với người trong nhóm.",
+      "grid": null,
+      "box": {
+        "x": 0.0453,
+        "y": 0.4785,
+        "w": 0.9052,
+        "h": 0.0265
+      },
+      "px": {
+        "x": 42,
+        "y": 811,
+        "w": 840,
+        "h": 45
+      },
+      "aspect": 18.6667,
+      "palette": [
+        {
+          "hex": "#f7f7f0",
+          "coverage": 0.8844
+        },
+        {
+          "hex": "#424040",
+          "coverage": 0.0721
+        },
+        {
+          "hex": "#7b7977",
+          "coverage": 0.0174
+        },
+        {
+          "hex": "#bfbbb8",
+          "coverage": 0.0165
+        },
+        {
+          "hex": "#98948c",
+          "coverage": 0.0096
+        }
+      ],
+      "detail": {
+        "energy": 45.9058
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 11,
+      "cropPath": "region-11.png"
+    },
+    {
+      "id": "avatar-preview",
+      "kind": "image",
+      "note": "Runtime selected user photo in native Image; comp botanical photo is synthetic sample only, not production artwork",
+      "grid": null,
+      "box": {
+        "x": 0.2608,
+        "y": 0.5097,
+        "w": 0.4784,
+        "h": 0.2478
+      },
+      "px": {
+        "x": 242,
+        "y": 864,
+        "w": 444,
+        "h": 420
+      },
+      "aspect": 1.0571,
+      "palette": [
+        {
+          "hex": "#f7f7ef",
+          "coverage": 0.5017
+        },
+        {
+          "hex": "#405a1e",
+          "coverage": 0.3389
+        },
+        {
+          "hex": "#5d7c25",
+          "coverage": 0.0901
+        },
+        {
+          "hex": "#839f5d",
+          "coverage": 0.0398
+        },
+        {
+          "hex": "#364726",
+          "coverage": 0.0295
+        }
+      ],
+      "detail": {
+        "energy": 12.8906
+      },
+      "medium": "raster",
+      "clipped": [
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ],
+      "plate": "assets/plates/avatar-preview.png",
+      "text": null,
+      "number": 12,
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 0,
+        "totalPixels": 186480,
+        "remainingPixels": 186480,
+        "excludedFraction": 0.0,
+        "fullyExcluded": false,
+        "regions": [],
+        "ignoredContainers": [
+          "sheet"
+        ]
+      },
+      "cropPath": "region-12.png",
+      "referencePath": "reference-12.png"
+    },
+    {
+      "id": "choose-photo",
+      "kind": "control",
+      "note": "Chọn ảnh khác — native picker action",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.055,
+        "y": 0.7658,
+        "w": 0.4407,
+        "h": 0.0596
+      },
+      "px": {
+        "x": 51,
+        "y": 1298,
+        "w": 409,
+        "h": 101
+      },
+      "aspect": 4.0495,
+      "palette": [
+        {
+          "hex": "#f6f5ef",
+          "coverage": 0.8845
+        },
+        {
+          "hex": "#b7b5bd",
+          "coverage": 0.0492
+        },
+        {
+          "hex": "#0d1a1d",
+          "coverage": 0.0298
+        },
+        {
+          "hex": "#495454",
+          "coverage": 0.0281
+        },
+        {
+          "hex": "#818989",
+          "coverage": 0.0084
+        }
+      ],
+      "detail": {
+        "energy": 33.1653
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 13,
+      "cropPath": "region-13.png"
+    },
+    {
+      "id": "remove-photo",
+      "kind": "control",
+      "note": "Xóa ảnh — explicit removal action",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.5226,
+        "y": 0.7658,
+        "w": 0.4246,
+        "h": 0.0596
+      },
+      "px": {
+        "x": 485,
+        "y": 1298,
+        "w": 394,
+        "h": 101
+      },
+      "aspect": 3.901,
+      "palette": [
+        {
+          "hex": "#f6f6ef",
+          "coverage": 0.9007
+        },
+        {
+          "hex": "#b9b8be",
+          "coverage": 0.0479
+        },
+        {
+          "hex": "#495151",
+          "coverage": 0.0285
+        },
+        {
+          "hex": "#0b191f",
+          "coverage": 0.016
+        },
+        {
+          "hex": "#848686",
+          "coverage": 0.007
+        }
+      ],
+      "detail": {
+        "energy": 23.772
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 14,
+      "cropPath": "region-14.png"
+    },
+    {
+      "id": "privacy-helper",
+      "kind": "text",
+      "note": "Chỉ ảnh bạn chọn được gửi lên AnVề.",
+      "grid": null,
+      "box": {
+        "x": 0.2306,
+        "y": 0.8478,
+        "w": 0.7112,
+        "h": 0.0236
+      },
+      "px": {
+        "x": 214,
+        "y": 1437,
+        "w": 660,
+        "h": 40
+      },
+      "aspect": 16.5,
+      "palette": [
+        {
+          "hex": "#f8f7f1",
+          "coverage": 0.8602
+        },
+        {
+          "hex": "#464545",
+          "coverage": 0.0767
+        },
+        {
+          "hex": "#878583",
+          "coverage": 0.04
+        },
+        {
+          "hex": "#bebcb5",
+          "coverage": 0.0231
+        }
+      ],
+      "detail": {
+        "energy": 56.5411
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 15,
+      "cropPath": "region-15.png"
+    },
+    {
+      "id": "save-photo",
+      "kind": "control",
+      "note": "Lưu ảnh — fixed reachable native footer",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0356,
+        "y": 0.8944,
+        "w": 0.93,
+        "h": 0.0625
+      },
+      "px": {
+        "x": 33,
+        "y": 1516,
+        "w": 863,
+        "h": 106
+      },
+      "aspect": 8.1415,
+      "palette": [
+        {
+          "hex": "#085658",
+          "coverage": 0.8797
+        },
+        {
+          "hex": "#f8f8f2",
+          "coverage": 0.0932
+        },
+        {
+          "hex": "#083848",
+          "coverage": 0.0242
+        },
+        {
+          "hex": "#a4bebe",
+          "coverage": 0.0016
+        },
+        {
+          "hex": "#589090",
+          "coverage": 0.0014
+        }
+      ],
+      "detail": {
+        "energy": 20.0115
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 16,
+      "cropPath": "region-16.png"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region system-app-chrome: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region system-app-chrome: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region background-account: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region background-account: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region background-profile-row: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region background-settings-row: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region sheet: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region sheet: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region handle: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region avatar-preview: the artwork runs off the box on the left and right and top and bottom (its ink reaches the edge over 35% of that side). Widen the region so the box holds the whole shape with a margin; a plate placed with object-fit: cover on this box would be cut there."
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region choose-photo: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region remove-photo: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region save-photo: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+    }
+  ],
+  "overlaps": [
+    {
+      "a": "background-account",
+      "b": "background-avatar",
+      "pixels": 22201.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "background-account",
+      "b": "background-name",
+      "pixels": 13750.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "background-account",
+      "b": "background-email",
+      "pixels": 35750.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "background-name",
+      "b": "background-email",
+      "pixels": 500.0,
+      "relationship": "overlapping elements"
+    },
+    {
+      "a": "background-profile-row",
+      "b": "background-settings-row",
+      "pixels": 861.0,
+      "relationship": "overlapping elements"
+    },
+    {
+      "a": "background-settings-row",
+      "b": "sheet",
+      "pixels": 861.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "handle",
+      "pixels": 630.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "avatar-title",
+      "pixels": 34450.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "audience-helper",
+      "pixels": 37800.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "avatar-preview",
+      "pixels": 186480.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "choose-photo",
+      "pixels": 41309.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "remove-photo",
+      "pixels": 39794.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "privacy-helper",
+      "pixels": 26400.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "sheet",
+      "b": "save-photo",
+      "pixels": 91478.0,
+      "relationship": "container extent"
+    }
+  ],
+  "reviewGroups": {},
+  "uncoveredInkCells": [],
+  "comparisonSheets": []
+}

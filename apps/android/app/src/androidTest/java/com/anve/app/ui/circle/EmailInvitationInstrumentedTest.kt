@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anve.app.data.api.ReceivedInvitationDto
 import com.anve.app.ui.captureNativeFixture
@@ -67,6 +68,12 @@ class EmailInvitationInstrumentedTest {
     }
     @Test fun receivedContextExposesInviterAndPrivateHideWithoutJoining() {
         var reviews = 0; var hides = 0
+        compose.runOnIdle {
+            WindowCompat.getInsetsController(compose.activity.window, compose.activity.window.decorView).apply {
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
+            }
+        }
         val state = PrivateInvitationsState(loading = false, received = listOf(ReceivedInvitationDto(
             "synthetic-invite", "synthetic-circle", "Nhà mình", "Mai", Instant.now().plusSeconds(3600).toString())))
         compose.setContent { AnVeTheme { Scaffold { insets ->

@@ -1,0 +1,192 @@
+{
+  "regions": [
+    {
+      "id": "system-app-chrome",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 928,
+        "h": 178
+      },
+      "note": "Existing native system/app chrome; backdrop not a navigation redesign",
+      "codeDrawn": true,
+      "container": true
+    },
+    {
+      "id": "background-account",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 178,
+        "w": 928,
+        "h": 218
+      },
+      "note": "Dimmed incumbent account context; synthetic menu content is out of scope",
+      "codeDrawn": true,
+      "container": true
+    },
+    {
+      "id": "background-avatar",
+      "kind": "image",
+      "pixelBox": {
+        "x": 34,
+        "y": 213,
+        "w": 149,
+        "h": 149
+      },
+      "note": "Current runtime user photo in existing profile; synthetic comp content not bundled"
+    },
+    {
+      "id": "background-name",
+      "kind": "text",
+      "pixelBox": {
+        "x": 225,
+        "y": 263,
+        "w": 250,
+        "h": 55
+      },
+      "note": "Synthetic existing account name An"
+    },
+    {
+      "id": "background-email",
+      "kind": "text",
+      "pixelBox": {
+        "x": 225,
+        "y": 316,
+        "w": 650,
+        "h": 55
+      },
+      "note": "Synthetic account email an@example.test"
+    },
+    {
+      "id": "background-profile-row",
+      "kind": "control",
+      "pixelBox": {
+        "x": 35,
+        "y": 396,
+        "w": 861,
+        "h": 127
+      },
+      "note": "Unchanged backdrop account controls; preserve actual existing navigation",
+      "codeDrawn": true
+    },
+    {
+      "id": "background-settings-row",
+      "kind": "control",
+      "pixelBox": {
+        "x": 35,
+        "y": 522,
+        "w": 861,
+        "h": 116
+      },
+      "note": "Unchanged backdrop account controls; synthetic labels not added to app",
+      "codeDrawn": true
+    },
+    {
+      "id": "sheet",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 637,
+        "w": 928,
+        "h": 1058
+      },
+      "note": "Native modal sheet sand/ink surface",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "handle",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 429,
+        "y": 670,
+        "w": 70,
+        "h": 9
+      },
+      "note": "Native modal sheet drag handle",
+      "codeDrawn": true
+    },
+    {
+      "id": "avatar-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 42,
+        "y": 733,
+        "w": 530,
+        "h": 65
+      },
+      "note": "Ảnh đại diện — native headline"
+    },
+    {
+      "id": "audience-helper",
+      "kind": "text",
+      "pixelBox": {
+        "x": 42,
+        "y": 811,
+        "w": 840,
+        "h": 45
+      },
+      "note": "Ảnh hiển thị với người trong nhóm."
+    },
+    {
+      "id": "avatar-preview",
+      "kind": "image",
+      "pixelBox": {
+        "x": 242,
+        "y": 864,
+        "w": 444,
+        "h": 420
+      },
+      "note": "Runtime selected user photo in native Image; comp botanical photo is synthetic sample only, not production artwork"
+    },
+    {
+      "id": "choose-photo",
+      "kind": "control",
+      "pixelBox": {
+        "x": 51,
+        "y": 1298,
+        "w": 409,
+        "h": 101
+      },
+      "note": "Chọn ảnh khác — native picker action",
+      "codeDrawn": true
+    },
+    {
+      "id": "remove-photo",
+      "kind": "control",
+      "pixelBox": {
+        "x": 485,
+        "y": 1298,
+        "w": 394,
+        "h": 101
+      },
+      "note": "Xóa ảnh — explicit removal action",
+      "codeDrawn": true
+    },
+    {
+      "id": "privacy-helper",
+      "kind": "text",
+      "pixelBox": {
+        "x": 214,
+        "y": 1437,
+        "w": 660,
+        "h": 40
+      },
+      "note": "Chỉ ảnh bạn chọn được gửi lên AnVề."
+    },
+    {
+      "id": "save-photo",
+      "kind": "control",
+      "pixelBox": {
+        "x": 33,
+        "y": 1516,
+        "w": 863,
+        "h": 106
+      },
+      "note": "Lưu ảnh — fixed reachable native footer",
+      "codeDrawn": true
+    }
+  ]
+}

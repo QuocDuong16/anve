@@ -1,0 +1,91 @@
+{
+  "captures": [
+    {
+      "file": "received-invitation-context.png",
+      "sha256": "c7c648b841c044a172a82dace5221e3382a36153004274e20460a254de80eb7b",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "email-invitation-unknown.png",
+      "sha256": "5d4ccb40241c71f4a5c59e98b8d826a78d0fbee9ce440975406ac34f0d838d73",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "email-invitation-link-mode.png",
+      "sha256": "188edc727ba7733a1c58df3e1e13f68940ec667020158ade9ba42cd11c29e062",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "email-invitation-light.png",
+      "sha256": "275c2c81053bd0bcd311e1e2c867fe91f1ba6bee6b11d0e01e79b1810a14aef5",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "email-invitation-dark-font130.png",
+      "sha256": "9a3d45494222043f8eb8c9604f1ee739ca2a328a6aaded6f05deb80a2d96fd36",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "avatar-unknown.png",
+      "sha256": "c8faaa18eff81080c9c5661372b8184c7ac4fe62660e2d95af50442862bd534a",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "avatar-removal-draft.png",
+      "sha256": "ccd15900791250f1b8b6337e84504a3f2254b29029629a18afebebc66299eb9e",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "avatar-preview-light.png",
+      "sha256": "faa8f6b7239d5c1af92066044905d6cfc64493f6d62acb363640719f162bf16a",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "avatar-preview-dark-font130.png",
+      "sha256": "fc859bd4f1b4d4a7940278c4f351f069eff2f859c7eb07344e17d01b64001abc",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "avatar-offline.png",
+      "sha256": "803d2c5a8cc09ccc51bf8d6084e67d32d1790d0ee6ffae0aa64c7ac332d63afb",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    },
+    {
+      "file": "avatar-image-error.png",
+      "sha256": "d8c91f282b9cce6a99e49282b25619a2dac4bc15b405a3f739e40283164977ac",
+      "origin": "GitHub Actions API35 native synthetic fixture",
+      "run": 43285537402,
+      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+    }
+  ],
+  "scope": "Synthetic Compose fixtures; real providers and physical devices not exercised",
+  "checkoutCommit": "4415d4fb2e4ceb7143f4273616a5b1bfcb29ef51",
+  "sourceTree": "d935366738a8d4c1cfd4dbae989e70867bee2b1b",
+  "tests": {
+    "api35": 53,
+    "api26": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}
