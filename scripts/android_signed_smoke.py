@@ -99,13 +99,29 @@ def select_emulator(devices, requested=None):
     return targets[0][0]
 
 
-def check_signin(xml, expected):
+def signin_probe(xml, expected):
     document = ET.fromstring(xml)
     nodes = [node for node in document.iter("node") if node.get("package") == PACKAGE]
     labels = {node.get(field, "") for node in nodes for field in ("text", "content-desc")}
-    if any(label in labels for label in expected["dev"]):
+    surfaces = {"app" if node.get("package") == PACKAGE else
+                "system" if node.get("package") == "com.android.systemui" else
+                "permission" if node.get("package") in ("com.android.permissioncontroller", "com.google.android.permissioncontroller") else
+                "launcher" if node.get("package") in ("com.android.launcher3", "com.google.android.apps.nexuslauncher") else "other"
+                for node in document.iter("node")}
+    return {"appNodeCount": len(nodes), "surfaces": sorted(surfaces),
+            "nameVisible": expected["name"] in labels,
+            "unavailableVisible": expected["unavailable"] in labels,
+            "retryVisible": expected["retry"] in labels,
+            "devLoginVisible": any(label in labels for label in expected["dev"]),
+            "unavailableInsideMergedLabel": any(expected["unavailable"] in label for label in labels),
+            "progressVisible": any(node.get("class") == "android.widget.ProgressBar" for node in nodes)}
+
+
+def check_signin(xml, expected):
+    probe = signin_probe(xml, expected)
+    if probe["devLoginVisible"]:
         raise RuntimeError("Development sign-in is exposed in the signed fixture")
-    return expected["name"] in labels and expected["unavailable"] in labels and expected["retry"] in labels
+    return all(probe[field] for field in ("nameVisible", "unavailableVisible", "retryVisible"))
 
 
 class Smoke:
@@ -113,6 +129,7 @@ class Smoke:
         sdk = env.get("ANDROID_HOME") or env.get("ANDROID_SDK_ROOT")
         self.adb = str(Path(sdk) / "platform-tools/adb")
         self.serial = serial
+        self.last_ui = {}
 
     def call(self, *args):
         return command([self.adb, "-s", self.serial, *args])
@@ -135,6 +152,7 @@ class Smoke:
                 raise RuntimeError("Signed fixture process stopped before sign-in")
             self.call("shell", "uiautomator", "dump", remote)
             xml = self.call("exec-out", "cat", remote)
+            self.last_ui = signin_probe(xml, expected)
             if check_signin(xml, expected):
                 return
             time.sleep(1)
@@ -176,11 +194,13 @@ def run_smoke(directory, output, env):
         if "Success" not in smoke.call("install", "--no-streaming", str(apks[0].resolve())):
             raise RuntimeError("Validation APK installation failed")
         smoke.launch()
+        report["stage"] = "fresh-launch"
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
         report["freshLaunch"] = True
         smoke.call("shell", "input", "keyevent", "KEYCODE_HOME")
         smoke.launch()
+        report["stage"] = "background-resume"
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
         report["backgroundResume"] = True
@@ -188,6 +208,7 @@ def run_smoke(directory, output, env):
         if smoke.pid():
             raise RuntimeError("Fixture process did not stop before recreation")
         smoke.launch()
+        report["stage"] = "process-recreation"
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
         report.update({"processRecreation": True, "trackingNotStarted": True, "success": True})
@@ -205,6 +226,7 @@ def run_smoke(directory, output, env):
             report.update({"success": False, "cleanupPassed": False})
             raise
         finally:
+            report["lastUiCheck"] = smoke.last_ui
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_text(json.dumps(report, indent=2) + "\n")
     print("Signed fixture passed fresh launch, background resume and process recreation on CI emulator.")

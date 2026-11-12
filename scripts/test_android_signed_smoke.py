@@ -63,6 +63,14 @@ class SignedSmokeTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             smoke.check_signin(xml.replace("</hierarchy>", f'<node package="{smoke.PACKAGE}" text="Dev"/></hierarchy>'), expected)
 
+    def test_probe_retains_only_allowlisted_flags_not_ui_content(self):
+        expected = {"name": "AnVề", "unavailable": "Unavailable", "retry": "Retry", "dev": ("Dev",)}
+        xml = f'<hierarchy><node package="{smoke.PACKAGE}" text="private-ui-content"/><node package="unlisted.private.package" text="other-private-content"/></hierarchy>'
+        probe = smoke.signin_probe(xml, expected)
+        self.assertEqual(probe["appNodeCount"], 1)
+        self.assertEqual(probe["surfaces"], ["app", "other"])
+        self.assertNotIn("private", json.dumps(probe))
+
     def test_preflight_never_touches_existing_package_or_non_emulator(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
