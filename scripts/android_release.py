@@ -190,6 +190,20 @@ def check(quick, *, candidate=False):
         output = gradle([":app:verifyReleaseValidationInputs"], wrong_pin, expected=1)
         if "ANVE_SIGNING_CERT_SHA256 does not match" not in output:
             raise RuntimeError("Wrong signing certificate was not rejected by the Gradle gate")
+        local_sdk = directory / "unreviewed.jar"
+        local_sdk.write_bytes(b"")
+        init_script = directory / "local-sdk.gradle"
+        init_script.write_text("""gradle.projectsEvaluated {
+    def app = gradle.rootProject.findProject(':app')
+    if (app != null) {
+        app.dependencies.add('implementation', app.files(System.getenv('ANVE_PRIVACY_FIXTURE_JAR')))
+    }
+}
+""")
+        output = gradle([PRIVACY_TASKS[0]], dict(env, ANVE_PRIVACY_FIXTURE_JAR=str(local_sdk)),
+                        expected=1, extra=("--init-script", str(init_script)))
+        if "Review the newly introduced local-file SDK" not in output:
+            raise RuntimeError("A local-file SDK was silently omitted from the privacy inventory")
         gradle([":app:bundleReleaseValidation", *PRIVACY_TASKS], env)
         privacy.check()
         bundle = ANDROID / "app/build/outputs/bundle/releaseValidation/app-releaseValidation.aab"

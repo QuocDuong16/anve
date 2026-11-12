@@ -1,5 +1,6 @@
 import com.anve.buildlogic.ReleaseInputs
 import com.anve.buildlogic.VerifyReleaseInputs
+import org.gradle.api.artifacts.FileCollectionDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult
 
@@ -216,6 +217,9 @@ androidComponents.onVariants { variant ->
     if (variant.name !in listOf("release", "releaseValidation")) return@onVariants
     val runtimeConfiguration = variant.runtimeConfiguration
     val modules = providers.provider {
+        check(runtimeConfiguration.allDependencies.none { it is FileCollectionDependency }) {
+            "Review the newly introduced local-file SDK before exporting release modules"
+        }
         val graph = runtimeConfiguration.incoming.resolutionResult
         check(graph.allDependencies.none { it is UnresolvedDependencyResult }) {
             "Cannot review an unresolved release dependency graph"

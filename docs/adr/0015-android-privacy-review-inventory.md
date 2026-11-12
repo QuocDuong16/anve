@@ -9,7 +9,8 @@ resolved production runtime graph, merged release manifest's allowlisted
 privacy fields and non-debug source manifest/XML policy digests. Resolve the
 production and isolated releaseValidation graphs through the Android variant
 API; require equality so a fixture-only graph cannot conceal a release SDK.
-Unresolved or unsupported project dependency graphs fail explicitly.
+Unresolved, local-file or unsupported project dependency graphs fail explicitly;
+local JARs must not silently disappear from the module-coordinate inventory.
 
 The shorter release configuration gate compares this inventory. The signed
 AAB gate also compares the packaged manifest fields and records the baseline
