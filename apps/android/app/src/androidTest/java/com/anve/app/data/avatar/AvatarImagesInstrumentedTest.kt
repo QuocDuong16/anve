@@ -26,7 +26,10 @@ class AvatarImagesInstrumentedTest {
             ExifInterface(file.path).apply {
                 setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_ROTATE_90.toString())
                 setAttribute(ExifInterface.TAG_USER_COMMENT, "synthetic-private-metadata")
-                setLatLong(10.0, 106.0)
+                setAttribute(ExifInterface.TAG_GPS_LATITUDE, "10/1,0/1,0/1")
+                setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, "N")
+                setAttribute(ExifInterface.TAG_GPS_LONGITUDE, "106/1,0/1,0/1")
+                setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, "E")
                 saveAttributes()
             }
             val bytes = preparePickedAvatar(context.contentResolver, Uri.fromFile(file))

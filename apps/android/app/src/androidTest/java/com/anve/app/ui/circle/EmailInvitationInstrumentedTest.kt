@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
@@ -35,6 +36,8 @@ class EmailInvitationInstrumentedTest {
             { state.value = state.value.copy(hours = it) }, { creates++ }, { checks++ }) } }
         compose.onNodeWithTag("invite-submit").assertIsNotEnabled()
         compose.onNodeWithTag("invite-email").performScrollTo().performTextInput("mai@example.test")
+        compose.onNodeWithTag("invite-email").performImeAction()
+        compose.waitForIdle()
         captureNativeFixture("email-invitation-light")
         compose.onNodeWithTag("invite-submit").performClick()
         compose.runOnIdle { assertEquals(1, creates); online.value = false }
