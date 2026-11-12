@@ -96,6 +96,25 @@ E/AndroidRuntime( 456): java.lang.SecurityException: unrelated
         self.assertEqual(probe["surfaces"], ["app", "other"])
         self.assertNotIn("private", json.dumps(probe))
 
+    def test_home_transition_waits_until_launcher_is_observed(self):
+        device = smoke.Smoke("emulator-5554", {"ANDROID_HOME": "/sdk"})
+        expected = {"name": "AnVề", "unavailable": "Unavailable", "retry": "Retry", "dev": ("Dev",)}
+        snapshots = iter((f'<hierarchy><node package="{smoke.PACKAGE}" text="AnVề"/></hierarchy>',
+                          '<hierarchy><node package="com.android.launcher3" text=""/></hierarchy>'))
+        def call(*args):
+            return next(snapshots) if args[0] == "exec-out" else ""
+        with patch.object(device, "call", side_effect=call), patch.object(smoke.time, "sleep"):
+            device.go_home(expected)
+        self.assertEqual(device.last_ui["surfaces"], ["launcher"])
+        self.assertEqual(device.last_ui["appNodeCount"], 0)
+
+    def test_home_transition_does_not_silently_accept_the_app(self):
+        device = smoke.Smoke("emulator-5554", {"ANDROID_HOME": "/sdk"})
+        device.last_ui = {"surfaces": ["app"], "appNodeCount": 1}
+        with patch.object(device, "call"), patch.object(device, "read_ui"), patch.object(smoke.time, "monotonic", side_effect=(0, 1, 16)), patch.object(smoke.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "Launcher"):
+                device.go_home({})
+
     def test_preflight_never_touches_existing_package_or_non_emulator(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)

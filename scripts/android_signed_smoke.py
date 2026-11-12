@@ -169,15 +169,31 @@ class Smoke:
         if not re.search(r"^Status: ok\s*$", output, re.M):
             raise RuntimeError("Signed fixture activity did not start successfully")
 
+    def read_ui(self, expected):
+        remote = "/data/local/tmp/anve-signed-smoke.xml"
+        self.call("shell", "uiautomator", "dump", remote)
+        xml = self.call("exec-out", "cat", remote)
+        self.last_ui = signin_probe(xml, expected)
+        return xml
+
+    def go_home(self, expected):
+        self.call("shell", "input", "keyevent", "KEYCODE_HOME")
+        # Input injection returns before the Home transition finishes. Starting
+        # the app immediately can lose to that still-pending transition.
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            self.read_ui(expected)
+            if "launcher" in self.last_ui["surfaces"] and self.last_ui["appNodeCount"] == 0:
+                return
+            time.sleep(0.25)
+        raise RuntimeError("Emulator did not reach Launcher before the resume check")
+
     def assert_signin(self, expected):
         deadline = time.monotonic() + 45
-        remote = "/data/local/tmp/anve-signed-smoke.xml"
         while time.monotonic() < deadline:
             if not self.pid():
                 raise RuntimeError("Signed fixture process stopped before sign-in")
-            self.call("shell", "uiautomator", "dump", remote)
-            xml = self.call("exec-out", "cat", remote)
-            self.last_ui = signin_probe(xml, expected)
+            xml = self.read_ui(expected)
             if check_signin(xml, expected):
                 return
             time.sleep(1)
@@ -236,17 +252,17 @@ def run_smoke(directory, output, env):
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
         report["freshLaunch"] = True
-        smoke.call("shell", "input", "keyevent", "KEYCODE_HOME")
-        smoke.launch()
         report["stage"] = "background-resume"
+        smoke.go_home(expected)
+        smoke.launch()
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
         report["backgroundResume"] = True
+        report["stage"] = "process-recreation"
         smoke.call("shell", "am", "force-stop", PACKAGE)
         if smoke.pid():
             raise RuntimeError("Fixture process did not stop before recreation")
         smoke.launch()
-        report["stage"] = "process-recreation"
         smoke.assert_signin(expected)
         smoke.assert_tracking_absent()
         report.update({"processRecreation": True, "trackingNotStarted": True, "success": True})

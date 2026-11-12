@@ -40,7 +40,8 @@ property. It refuses an existing fixture installation and never targets the
 production package. All device commands use the selected serial.
 
 The runtime scenarios are fresh launch to the unavailable-provider sign-in
-state, background/resume and force-stop/relaunch. Each checks sign-in content,
+state, background/resume (waiting for Launcher after Home before relaunching)
+and force-stop/relaunch. Each checks sign-in content,
 the absence of the development-login controls and no active tracking service.
 Cleanup removes the fixture even after a runtime failure. CI retains a small
 JSON result with digests, API/ABI, individual outcomes and cleanup status; failed

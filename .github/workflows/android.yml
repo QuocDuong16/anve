@@ -142,7 +142,7 @@ jobs:
 
   signed-smoke:
     if: ${{ !cancelled() && (needs.app.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.fixture_run_id != '')) }}
-    name: Signed minified fixture startup
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.fixture_run_id != '' && 'Signed fixture diagnosis (reused APK)' || 'Signed minified fixture startup' }}
     needs: app
     runs-on: ubuntu-latest
     timeout-minutes: 15
