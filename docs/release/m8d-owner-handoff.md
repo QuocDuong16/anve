@@ -42,7 +42,9 @@ The runtime scenarios are fresh launch to the unavailable-provider sign-in
 state, background/resume and force-stop/relaunch. Each checks sign-in content,
 the absence of the development-login controls and no active tracking service.
 Cleanup removes the fixture even after a runtime failure. CI retains a small
-JSON result with digests, API/ABI, individual outcomes and cleanup status; raw
+JSON result with digests, API/ABI, individual outcomes and cleanup status; failed
+Actions runs also retain a screenshot of the fresh unauthenticated synthetic
+fixture and allowlisted UI-presence flags for diagnosis. Raw
 UI XML/logcat are not artifacts. Tooling tests cover unexpected signers/identity,
 untrusted records, physical/ambiguous targets, existing app data and cleanup.
 

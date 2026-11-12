@@ -163,6 +163,17 @@ class Smoke:
         if re.search(r"ServiceRecord\{[^\n]*TrackingService", output):
             raise RuntimeError("Tracking service started without sign-in/consent")
 
+    def capture_failure(self, output):
+        # The Actions job provisions a fresh emulator and never authenticates.
+        # Retain its synthetic startup screen, not a dump of arbitrary UI data.
+        result = subprocess.run([self.adb, "-s", self.serial, "exec-out", "screencap", "-p"],
+                                capture_output=True, timeout=15)
+        if result.returncode or not result.stdout.startswith(b"\x89PNG\r\n\x1a\n"):
+            return False
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(result.stdout)
+        return True
+
 
 def run_smoke(directory, output, env):
     if env.get("ANVE_SIGNED_SMOKE_DISPOSABLE") != "1":
@@ -214,6 +225,11 @@ def run_smoke(directory, output, env):
         report.update({"processRecreation": True, "trackingNotStarted": True, "success": True})
     finally:
         try:
+            if not report["success"] and env.get("GITHUB_ACTIONS") == "true":
+                try:
+                    report["syntheticFailureCapture"] = smoke.capture_failure(output.with_name("failure.png"))
+                except (OSError, subprocess.TimeoutExpired):
+                    report["syntheticFailureCapture"] = False
             if installed:
                 smoke.call("shell", "am", "force-stop", PACKAGE)
                 if "Success" not in smoke.call("uninstall", PACKAGE):
