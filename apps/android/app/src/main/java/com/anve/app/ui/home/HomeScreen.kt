@@ -181,7 +181,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                HomeTab.CIRCLE -> CircleScreen(container = container, invitationId = selectedInvitation)
+                HomeTab.CIRCLE -> CircleScreen(container = container, invitationId = selectedInvitation, onInvitationConsumed = { selectedInvitation = null })
                 HomeTab.MAP -> LiveMapScreen(container = container)
                 HomeTab.HISTORY -> HistoryScreen(container = container)
                 HomeTab.PLACES -> PlacesScreen(container = container)

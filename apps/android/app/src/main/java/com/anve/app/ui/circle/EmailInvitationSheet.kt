@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.ui.theme.AnVeTheme
@@ -91,7 +92,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                                 color = if (dark) colors.onSurface else colors.primary)
                             OutlinedTextField(state.email, onEmail, placeholder = { Text("ten@example.com") },
                                 label = { Text("Email người được mời") }, singleLine = true, enabled = editable,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
                                 modifier = Modifier.fillMaxWidth().testTag("invite-email"))
                             Text("Chỉ tài khoản có email này được tham gia.", style = MaterialTheme.typography.bodyMedium)
                         }
@@ -127,7 +128,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                 if (!online) item { Text("Mất mạng. Cần kết nối để tạo lời mời hoặc kiểm tra kết quả.") }
                 state.error?.let { item { Text(it, color = colors.onSurface) } }
                 if (state.busy) item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CircularProgressIndicator(Modifier.size(24.dp)); Text("Đang chờ máy chủ xác nhận…")
+                    CircularProgressIndicator(Modifier.size(24.dp)); Text("Đang chờ máy chủ xác nhận. Đóng bảng không hủy thao tác đã gửi.")
                 } }
             }
             Spacer(Modifier.height(16.dp))

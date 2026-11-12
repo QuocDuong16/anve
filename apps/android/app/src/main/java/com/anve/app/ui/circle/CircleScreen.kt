@@ -65,7 +65,7 @@ import kotlinx.coroutines.launch
  * the UI only offers what the role allows.
  */
 @Composable
-fun CircleScreen(container: AppContainer, invitationId: String? = null) {
+fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvitationConsumed: () -> Unit = {}) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
@@ -96,7 +96,12 @@ fun CircleScreen(container: AppContainer, invitationId: String? = null) {
     val privateInvites by invitationsController.state.collectAsStateWithLifecycle()
     val tracking by container.trackingManager.status.collectAsStateWithLifecycle()
     DisposableEffect(invitationsController) { onDispose { invitationsController.dispose() } }
-    LaunchedEffect(owner, invitationId) { if (invitationId != null) invitationsController.review(invitationId) }
+    LaunchedEffect(owner, invitationId) {
+        if (invitationId != null) {
+            invitationsController.review(invitationId)
+            onInvitationConsumed()
+        }
+    }
 
     CircleContent(
         state = state.copy(error = shareError ?: state.error),

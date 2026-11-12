@@ -9,6 +9,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -23,15 +25,13 @@ class AvatarImagesInstrumentedTest {
             bitmap.eraseColor(Color.RED)
             for (x in 0..799) for (y in 300..599) bitmap.setPixel(x, y, Color.BLUE)
             file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it)) }
-            ExifInterface(file.path).apply {
-                setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_ROTATE_90.toString())
-                setAttribute(ExifInterface.TAG_USER_COMMENT, "synthetic-private-metadata")
-                setAttribute(ExifInterface.TAG_GPS_LATITUDE, "10/1,0/1,0/1")
-                setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, "N")
-                setAttribute(ExifInterface.TAG_GPS_LONGITUDE, "106/1,0/1,0/1")
-                setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, "E")
-                saveAttributes()
-            }
+            // Use a deterministic EXIF fixture rather than depending on the old
+            // platform writer, whose saveAttributes can reject generated JPEGs.
+            file.writeBytes(withSyntheticExif(file.readBytes()))
+            val original = file.inputStream().use { ExifInterface(it) }
+            assertEquals(ExifInterface.ORIENTATION_ROTATE_90, original.getAttributeInt(ExifInterface.TAG_ORIENTATION, 0))
+            assertEquals("synthetic-private-metadata", original.getAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION))
+            assertTrue(!original.getAttribute(ExifInterface.TAG_GPS_LATITUDE).isNullOrEmpty())
             val bytes = preparePickedAvatar(context.contentResolver, Uri.fromFile(file))
             assertTrue(bytes.size <= AvatarRepository.MAX_AVATAR_BYTES)
             val result = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
@@ -43,8 +43,10 @@ class AvatarImagesInstrumentedTest {
             } finally { result.recycle() }
             val exif = ExifInterface(bytes.inputStream())
             assertTrue(exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE).isNullOrEmpty())
-            assertTrue(exif.getAttribute(ExifInterface.TAG_USER_COMMENT).isNullOrEmpty())
-            assertEquals(ExifInterface.ORIENTATION_NORMAL, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
+            assertTrue(exif.getAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION).isNullOrEmpty())
+            // An absent orientation may be reported as UNDEFINED by Android.
+            assertTrue(exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
+                in setOf(ExifInterface.ORIENTATION_UNDEFINED, ExifInterface.ORIENTATION_NORMAL))
         } finally { bitmap.recycle(); file.delete() }
     }
     @Test fun malformedSelectionFailsWithoutUploadAndOversizedResponseIsNotDecoded() = runBlocking {
@@ -68,4 +70,26 @@ class AvatarImagesInstrumentedTest {
         assertTrue(intent.type == "image/*" || intent.type == null)
         assertTrue(!intent.getBooleanExtra(android.content.Intent.EXTRA_ALLOW_MULTIPLE, false))
     }
+    private fun withSyntheticExif(jpeg: ByteArray): ByteArray {
+        val description = "synthetic-private-metadata\u0000".toByteArray(Charsets.US_ASCII)
+        val descriptionOffset = 50 // TIFF header + three IFD0 entries + next-IFD pointer
+        val gpsOffset = descriptionOffset + description.size
+        val rationalsOffset = gpsOffset + 30
+        val tiff = ByteBuffer.allocate(rationalsOffset + 24).order(ByteOrder.LITTLE_ENDIAN)
+        tiff.put('I'.code.toByte()).put('I'.code.toByte()).putShort(42).putInt(8)
+        tiff.putShort(3)
+        tiff.putShort(0x010e).putShort(2).putInt(description.size).putInt(descriptionOffset)
+        tiff.putShort(0x0112).putShort(3).putInt(1).putShort(6).putShort(0)
+        tiff.putShort(0x8825.toShort()).putShort(4).putInt(1).putInt(gpsOffset)
+        tiff.putInt(0).put(description)
+        tiff.putShort(2)
+        tiff.putShort(1).putShort(2).putInt(2).put('N'.code.toByte()).put(0).putShort(0)
+        tiff.putShort(2).putShort(5).putInt(3).putInt(rationalsOffset).putInt(0)
+        tiff.putInt(10).putInt(1).putInt(0).putInt(1).putInt(0).putInt(1)
+        val payload = byteArrayOf(69, 120, 105, 102, 0, 0) + tiff.array()
+        val length = payload.size + 2
+        val marker = byteArrayOf(0xff.toByte(), 0xe1.toByte(), (length ushr 8).toByte(), length.toByte())
+        return jpeg.copyOfRange(0, 2) + marker + payload + jpeg.copyOfRange(2, jpeg.size)
+    }
+
 }
