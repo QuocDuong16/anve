@@ -14,6 +14,17 @@ make android-release-config-check
 make android-release-check
 ```
 
+M8-C also compares the resolved production/validation SDK graphs, allowlisted
+merged manifest fields and source manifest/XML policy digests with
+`packages/privacy/android-release-baseline.json`. The full AAB check compares
+the packaged manifest too; its JSON record adds `privacyInventorySha256` and
+`privacyManifestVerified`. These mean “matches the reviewed inventory,” not
+Play approval, SDK telemetry validation or a complete security audit. See
+[ADR 0015](../adr/0015-android-privacy-review-inventory.md),
+[the boundary review](../security/m8c-boundary-review.md),
+[Data Safety draft](../release/data-safety-draft.md) and
+[permission draft](../release/permission-declarations.md).
+
 The first runs build-logic tests, proves missing production inputs are refused
 and checks generated resource wiring. The second also builds a minified AAB
 with package **com.anve.app.releasevalidation**, a newly generated temporary
@@ -27,6 +38,24 @@ The cached rejection graph must remain reusable after every signing input is
 replaced with invalid values: credentials must not be configuration-cache inputs.
 The validation AAB and JSON digest/certificate record are uploaded by Android CI;
 they are not the production app and cannot verify any provider integration.
+
+CI separately retains `anve-privacy-review`: resolved-coordinate reports and a
+sanitized candidate, even when drift fails the build. It contains no raw
+manifest XML or client-key values. To review an intentional SDK, permission,
+component or source-policy change:
+
+```bash
+make android-privacy-candidate
+git diff --no-index packages/privacy/android-release-baseline.json apps/android/app/build/outputs/privacy-review/candidate.json
+```
+
+The candidate command builds resources with synthetic inputs and writes no
+production AAB. It never updates the tracked baseline. Review the diff,
+corresponding SDK guidance/data flows and declaration drafts; then update the
+baseline and relevant docs together in the same PR. A new manifest enum/type
+may also require an explicit parser mapping. Repeat the ordinary release gates.
+Do not bypass or automatically learn unexpected drift. The inventory includes
+module versions, so dependency-update PRs need this review too.
 
 `make quality-check` includes the shorter configuration check. Android CI runs
 the full signed-bundle check plus the existing debug and emulator suites.

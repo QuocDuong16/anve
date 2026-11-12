@@ -28,7 +28,7 @@
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A và M7-B bản thủ công Automated Verified; formal review, field validation và tính năng tự động chưa hoàn tất |
-| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A observability đã merge/CI xanh; M8-B release tooling Implemented trên PR #18; kiểm chứng ghi trong PR, field gates còn mở |
+| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A/M8-B đã merge/CI xanh; M8-C inventory và hồ sơ nháp Implemented trên nhánh, owner/field gates còn mở |
 
 ## M0 — Foundation
 
@@ -296,11 +296,19 @@ không ghi payload panic. Đây là công việc chuẩn bị song song; không 
 hạng mục thực địa M7 còn thiếu. Phạm vi, inventory và exit evidence nằm ở
 [M8 readiness](../implementation/m8-release-readiness.md).
 
-M8-B đã Implemented trên [PR #18](https://github.com/QuocDuong16/anve/pull/18):
+M8-B đã merge qua [PR #18](https://github.com/QuocDuong16/anve/pull/18)
+(`67eaf03`, exact-head CI xanh):
 cổng cấu hình/chữ ký Android, AAB kiểm chứng bằng khóa
 tạm với package riêng và workflow tạo AAB production thủ công từ main. Kiểm
 chứng provider, khóa thật, chính sách môi trường release và phát hành store
 vẫn còn mở; xem [quy trình release](../operations/android-release.md).
+
+M8-C bổ sung [rà soát ranh giới có phạm vi](../security/m8c-boundary-review.md),
+[bản nháp Data Safety](../release/data-safety-draft.md),
+[khai báo quyền](../release/permission-declarations.md) và cổng kiểm tra manifest
+đã merge, dependency graph production/bản thử và nguồn XML policy. Bản nháp chưa
+được nộp hay duyệt trên Play Console; CI không chứng minh SDK/provider, deployment
+hoặc thiết bị thật đã được kiểm chứng. M8-D tiếp nhận bằng chứng owner và release.
 
 **Scope:** hardening (security review, error budget, observability đầy đủ),
 chuẩn bị data safety form, permission declarations cho background location,

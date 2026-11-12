@@ -105,6 +105,15 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload sanitized privacy review inventory
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: anve-privacy-review
+          path: apps/android/app/build/outputs/privacy-review/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload the debug APK
         uses: actions/upload-artifact@v7
         with:

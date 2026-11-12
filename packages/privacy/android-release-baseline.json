@@ -1,0 +1,587 @@
+{
+  "manifest": {
+    "application": {
+      "allowBackup": "true",
+      "dataExtractionRulesPresent": true,
+      "debuggable": "false",
+      "fullBackupContentPresent": true,
+      "metadataNames": [
+        "com.google.android.geo.API_KEY",
+        "com.google.android.gms.version",
+        "firebase_messaging_auto_init_enabled"
+      ],
+      "networkSecurityConfigPresent": true,
+      "sdkFlags": {
+        "firebase_messaging_auto_init_enabled": "false"
+      },
+      "usesCleartextTraffic": null
+    },
+    "components": [
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "enabled": "true",
+        "exported": "false",
+        "kind": "activity",
+        "metadataNames": [],
+        "name": "androidx.credentials.playservices.controllers.identityauth.HiddenActivity"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "enabled": "true",
+        "exported": "false",
+        "kind": "activity",
+        "metadataNames": [],
+        "name": "androidx.credentials.playservices.controllers.identitycredentials.IdentityCredentialApiHiddenActivity"
+      },
+      {
+        "actions": [
+          "android.intent.action.MAIN"
+        ],
+        "categories": [
+          "android.intent.category.LAUNCHER"
+        ],
+        "dataFilters": [],
+        "exported": "true",
+        "kind": "activity",
+        "metadataNames": [],
+        "name": "com.anve.app.MainActivity"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "activity",
+        "metadataNames": [],
+        "name": "com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "activity",
+        "metadataNames": [],
+        "name": "com.google.android.gms.common.api.GoogleApiActivity"
+      },
+      {
+        "actions": [],
+        "authorities": "${applicationId}.androidx-startup",
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "provider",
+        "metadataNames": [
+          "androidx.emoji2.text.EmojiCompatInitializer",
+          "androidx.lifecycle.ProcessLifecycleInitializer",
+          "androidx.profileinstaller.ProfileInstallerInitializer",
+          "androidx.work.WorkManagerInitializer",
+          "com.google.maps.android.compose.utils.attribution.AttributionIdInitializer",
+          "com.google.maps.android.utils.attribution.AttributionIdInitializer",
+          "okhttp3.internal.platform.PlatformInitializer"
+        ],
+        "name": "androidx.startup.InitializationProvider"
+      },
+      {
+        "actions": [],
+        "authorities": "${applicationId}.firebaseinitprovider",
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "true",
+        "exported": "false",
+        "kind": "provider",
+        "metadataNames": [],
+        "name": "com.google.firebase.provider.FirebaseInitProvider"
+      },
+      {
+        "actions": [
+          "androidx.profileinstaller.action.BENCHMARK_OPERATION",
+          "androidx.profileinstaller.action.INSTALL_PROFILE",
+          "androidx.profileinstaller.action.SAVE_PROFILE",
+          "androidx.profileinstaller.action.SKIP_FILE"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "false",
+        "enabled": "true",
+        "exported": "true",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "androidx.profileinstaller.ProfileInstallReceiver",
+        "permission": "android.permission.DUMP"
+      },
+      {
+        "actions": [
+          "android.intent.action.BOOT_COMPLETED"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "false",
+        "enabled": "false",
+        "exported": "false",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "androidx.work.impl.background.systemalarm.RescheduleReceiver"
+      },
+      {
+        "actions": [
+          "androidx.work.diagnostics.REQUEST_DIAGNOSTICS"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "false",
+        "enabled": "true",
+        "exported": "true",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "androidx.work.impl.diagnostics.DiagnosticsReceiver",
+        "permission": "android.permission.DUMP"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "false",
+        "enabled": "true",
+        "exported": "false",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+      },
+      {
+        "actions": [
+          "com.google.android.c2dm.intent.RECEIVE"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "true",
+        "kind": "receiver",
+        "metadataNames": [
+          "com.google.android.gms.cloudmessaging.FINISHED_AFTER_HANDLED"
+        ],
+        "name": "com.google.firebase.iid.FirebaseInstanceIdReceiver",
+        "permission": "com.google.android.c2dm.permission.SEND"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "enabled": "true",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [
+          "androidx.credentials.CREDENTIAL_PROVIDER_KEY"
+        ],
+        "name": "androidx.credentials.playservices.CredentialProviderMetadataHolder"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "true",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "androidx.room.MultiInstanceInvalidationService"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "false",
+        "enabled": "@resource",
+        "exported": "true",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "androidx.work.impl.background.systemjob.SystemJobService",
+        "permission": "android.permission.BIND_JOB_SERVICE"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "false",
+        "enabled": "@resource",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "androidx.work.impl.foreground.SystemForegroundService"
+      },
+      {
+        "actions": [
+          "com.google.firebase.MESSAGING_EVENT"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.anve.app.data.sos.AnveFirebaseMessagingService"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "foregroundServiceType": 8,
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.anve.app.tracking.TrackingService"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [
+          "backend:com.google.android.datatransport.cct.CctBackendFactory"
+        ],
+        "name": "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService",
+        "permission": "android.permission.BIND_JOB_SERVICE"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "true",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.google.android.gms.auth.api.signin.RevocationBoundService",
+        "permission": "com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "true",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [
+          "com.google.firebase.components:com.google.firebase.FirebaseCommonKtxRegistrar",
+          "com.google.firebase.components:com.google.firebase.datatransport.TransportRegistrar",
+          "com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsKtxRegistrar",
+          "com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar",
+          "com.google.firebase.components:com.google.firebase.messaging.FirebaseMessagingKtxRegistrar",
+          "com.google.firebase.components:com.google.firebase.messaging.FirebaseMessagingRegistrar"
+        ],
+        "name": "com.google.firebase.components.ComponentDiscoveryService"
+      },
+      {
+        "actions": [
+          "com.google.firebase.MESSAGING_EVENT"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "directBootAware": "true",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.google.firebase.messaging.FirebaseMessagingService"
+      }
+    ],
+    "declaredPermissions": [
+      {
+        "kind": "permission",
+        "name": "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+        "protectionLevel": 2
+      }
+    ],
+    "permissions": [
+      {
+        "kind": "uses-permission",
+        "name": "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.ACCESS_BACKGROUND_LOCATION"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.ACCESS_COARSE_LOCATION"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.ACCESS_FINE_LOCATION"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.ACCESS_NETWORK_STATE"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.FOREGROUND_SERVICE"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.FOREGROUND_SERVICE_LOCATION"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.INTERNET"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.POST_NOTIFICATIONS"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.RECEIVE_BOOT_COMPLETED"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.USE_BIOMETRIC"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.USE_FINGERPRINT"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "android.permission.WAKE_LOCK"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "com.google.android.c2dm.permission.RECEIVE"
+      }
+    ]
+  },
+  "modules": [
+    "androidx.activity:activity-compose:1.13.0",
+    "androidx.activity:activity-ktx:1.13.0",
+    "androidx.activity:activity:1.13.0",
+    "androidx.annotation:annotation-experimental:1.5.0",
+    "androidx.annotation:annotation-jvm:1.10.0",
+    "androidx.annotation:annotation:1.10.0",
+    "androidx.appcompat:appcompat-resources:1.8.0",
+    "androidx.appcompat:appcompat:1.8.0",
+    "androidx.arch.core:core-common:2.2.0",
+    "androidx.arch.core:core-runtime:2.2.0",
+    "androidx.autofill:autofill:1.0.0",
+    "androidx.biometric:biometric:1.1.0",
+    "androidx.collection:collection-jvm:1.6.0",
+    "androidx.collection:collection-ktx:1.6.0",
+    "androidx.collection:collection:1.6.0",
+    "androidx.compose.animation:animation-android:1.12.1",
+    "androidx.compose.animation:animation-core-android:1.12.1",
+    "androidx.compose.animation:animation-core:1.12.1",
+    "androidx.compose.animation:animation:1.12.1",
+    "androidx.compose.foundation:foundation-android:1.12.1",
+    "androidx.compose.foundation:foundation-layout-android:1.12.1",
+    "androidx.compose.foundation:foundation-layout:1.12.1",
+    "androidx.compose.foundation:foundation:1.12.1",
+    "androidx.compose.material3:material3-android:1.4.0",
+    "androidx.compose.material3:material3:1.4.0",
+    "androidx.compose.material:material-icons-core-android:1.7.8",
+    "androidx.compose.material:material-icons-core:1.7.8",
+    "androidx.compose.material:material-icons-extended-android:1.7.8",
+    "androidx.compose.material:material-icons-extended:1.7.8",
+    "androidx.compose.material:material-ripple-android:1.12.1",
+    "androidx.compose.material:material-ripple:1.12.1",
+    "androidx.compose.runtime:runtime-android:1.12.1",
+    "androidx.compose.runtime:runtime-annotation-android:1.12.1",
+    "androidx.compose.runtime:runtime-annotation:1.12.1",
+    "androidx.compose.runtime:runtime-retain-android:1.12.1",
+    "androidx.compose.runtime:runtime-retain:1.12.1",
+    "androidx.compose.runtime:runtime-saveable-android:1.12.1",
+    "androidx.compose.runtime:runtime-saveable:1.12.1",
+    "androidx.compose.runtime:runtime:1.12.1",
+    "androidx.compose.ui:ui-android:1.12.1",
+    "androidx.compose.ui:ui-geometry-android:1.12.1",
+    "androidx.compose.ui:ui-geometry:1.12.1",
+    "androidx.compose.ui:ui-graphics-android:1.12.1",
+    "androidx.compose.ui:ui-graphics:1.12.1",
+    "androidx.compose.ui:ui-text-android:1.12.1",
+    "androidx.compose.ui:ui-text:1.12.1",
+    "androidx.compose.ui:ui-tooling-preview-android:1.12.1",
+    "androidx.compose.ui:ui-tooling-preview:1.12.1",
+    "androidx.compose.ui:ui-unit-android:1.12.1",
+    "androidx.compose.ui:ui-unit:1.12.1",
+    "androidx.compose.ui:ui-util-android:1.12.1",
+    "androidx.compose.ui:ui-util:1.12.1",
+    "androidx.compose.ui:ui:1.12.1",
+    "androidx.compose:compose-bom:2026.09.00",
+    "androidx.concurrent:concurrent-futures-ktx:1.1.0",
+    "androidx.concurrent:concurrent-futures:1.1.0",
+    "androidx.core:core-ktx:1.19.1",
+    "androidx.core:core-viewtree:1.0.0",
+    "androidx.core:core:1.19.1",
+    "androidx.credentials:credentials-play-services-auth:1.6.0",
+    "androidx.credentials:credentials:1.6.0",
+    "androidx.cursoradapter:cursoradapter:1.0.0",
+    "androidx.customview:customview-poolingcontainer:1.0.0",
+    "androidx.customview:customview:1.0.0",
+    "androidx.datastore:datastore-android:1.3.0",
+    "androidx.datastore:datastore-core-android:1.3.0",
+    "androidx.datastore:datastore-core-okio-jvm:1.3.0",
+    "androidx.datastore:datastore-core-okio:1.3.0",
+    "androidx.datastore:datastore-core:1.3.0",
+    "androidx.datastore:datastore-preferences-android:1.3.0",
+    "androidx.datastore:datastore-preferences-core-android:1.3.0",
+    "androidx.datastore:datastore-preferences-core:1.3.0",
+    "androidx.datastore:datastore-preferences-external-protobuf:1.3.0",
+    "androidx.datastore:datastore-preferences-proto:1.3.0",
+    "androidx.datastore:datastore-preferences:1.3.0",
+    "androidx.datastore:datastore:1.3.0",
+    "androidx.documentfile:documentfile:1.0.0",
+    "androidx.drawerlayout:drawerlayout:1.0.0",
+    "androidx.emoji2:emoji2-views-helper:1.4.0",
+    "androidx.emoji2:emoji2:1.4.0",
+    "androidx.fragment:fragment:1.5.7",
+    "androidx.graphics:graphics-path:1.0.1",
+    "androidx.interpolator:interpolator:1.0.0",
+    "androidx.legacy:legacy-support-core-utils:1.0.0",
+    "androidx.lifecycle:lifecycle-common-java8:2.11.0",
+    "androidx.lifecycle:lifecycle-common-jvm:2.11.0",
+    "androidx.lifecycle:lifecycle-common:2.11.0",
+    "androidx.lifecycle:lifecycle-livedata-core-ktx:2.11.0",
+    "androidx.lifecycle:lifecycle-livedata-core:2.11.0",
+    "androidx.lifecycle:lifecycle-livedata:2.11.0",
+    "androidx.lifecycle:lifecycle-process:2.11.0",
+    "androidx.lifecycle:lifecycle-runtime-android:2.11.0",
+    "androidx.lifecycle:lifecycle-runtime-compose-android:2.11.0",
+    "androidx.lifecycle:lifecycle-runtime-compose:2.11.0",
+    "androidx.lifecycle:lifecycle-runtime-ktx-android:2.11.0",
+    "androidx.lifecycle:lifecycle-runtime-ktx:2.11.0",
+    "androidx.lifecycle:lifecycle-runtime:2.11.0",
+    "androidx.lifecycle:lifecycle-service:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel-android:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel-compose-android:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.0",
+    "androidx.lifecycle:lifecycle-viewmodel:2.11.0",
+    "androidx.loader:loader:1.1.0",
+    "androidx.localbroadcastmanager:localbroadcastmanager:1.0.0",
+    "androidx.navigation:navigation-common-android:2.10.2",
+    "androidx.navigation:navigation-common:2.10.2",
+    "androidx.navigation:navigation-compose-android:2.10.2",
+    "androidx.navigation:navigation-compose:2.10.2",
+    "androidx.navigation:navigation-runtime-android:2.10.2",
+    "androidx.navigation:navigation-runtime:2.10.2",
+    "androidx.navigationevent:navigationevent-android:1.1.2",
+    "androidx.navigationevent:navigationevent-compose-android:1.1.2",
+    "androidx.navigationevent:navigationevent-compose:1.1.2",
+    "androidx.navigationevent:navigationevent:1.1.2",
+    "androidx.print:print:1.0.0",
+    "androidx.profileinstaller:profileinstaller:1.4.0",
+    "androidx.resourceinspection:resourceinspection-annotation:1.0.1",
+    "androidx.room:room-common-jvm:2.8.5",
+    "androidx.room:room-common:2.8.5",
+    "androidx.room:room-ktx:2.8.5",
+    "androidx.room:room-runtime-android:2.8.5",
+    "androidx.room:room-runtime:2.8.5",
+    "androidx.savedstate:savedstate-android:1.5.0",
+    "androidx.savedstate:savedstate-compose-android:1.5.0",
+    "androidx.savedstate:savedstate-compose:1.5.0",
+    "androidx.savedstate:savedstate-ktx:1.5.0",
+    "androidx.savedstate:savedstate:1.5.0",
+    "androidx.sqlite:sqlite-android:2.6.2",
+    "androidx.sqlite:sqlite-framework-android:2.6.2",
+    "androidx.sqlite:sqlite-framework:2.6.2",
+    "androidx.sqlite:sqlite:2.6.2",
+    "androidx.startup:startup-runtime:1.2.0",
+    "androidx.tracing:tracing-android:2.0.1",
+    "androidx.tracing:tracing-ktx:2.0.1",
+    "androidx.tracing:tracing:2.0.1",
+    "androidx.vectordrawable:vectordrawable-animated:1.1.0",
+    "androidx.vectordrawable:vectordrawable:1.1.0",
+    "androidx.versionedparcelable:versionedparcelable:1.1.1",
+    "androidx.viewpager:viewpager:1.0.0",
+    "androidx.window:window-core-android:1.5.0",
+    "androidx.window:window-core:1.5.0",
+    "androidx.window:window:1.5.0",
+    "androidx.work:work-runtime-ktx:2.12.0",
+    "androidx.work:work-runtime:2.12.0",
+    "com.google.android.datatransport:transport-api:5.0.0",
+    "com.google.android.datatransport:transport-backend-cct:5.0.0",
+    "com.google.android.datatransport:transport-runtime:5.0.0",
+    "com.google.android.gms:play-services-auth-api-phone:18.0.2",
+    "com.google.android.gms:play-services-auth-base:18.0.10",
+    "com.google.android.gms:play-services-auth-blockstore:16.4.0",
+    "com.google.android.gms:play-services-auth:21.1.1",
+    "com.google.android.gms:play-services-base:18.9.0",
+    "com.google.android.gms:play-services-basement:18.9.0",
+    "com.google.android.gms:play-services-cloud-messaging:17.4.0",
+    "com.google.android.gms:play-services-fido:21.0.0",
+    "com.google.android.gms:play-services-identity-credentials:16.0.0-alpha08",
+    "com.google.android.gms:play-services-location:21.4.0",
+    "com.google.android.gms:play-services-maps:20.0.0",
+    "com.google.android.gms:play-services-stats:17.0.2",
+    "com.google.android.gms:play-services-tasks:18.4.0",
+    "com.google.android.libraries.identity.googleid:googleid:1.2.1",
+    "com.google.errorprone:error_prone_annotations:2.26.0",
+    "com.google.firebase:firebase-annotations:18.0.0",
+    "com.google.firebase:firebase-bom:35.1.0",
+    "com.google.firebase:firebase-common:23.0.0",
+    "com.google.firebase:firebase-components:20.0.0",
+    "com.google.firebase:firebase-datatransport:21.0.0",
+    "com.google.firebase:firebase-encoders-json:19.0.0",
+    "com.google.firebase:firebase-encoders-proto:17.0.0",
+    "com.google.firebase:firebase-encoders:18.0.0",
+    "com.google.firebase:firebase-iid-interop:17.1.0",
+    "com.google.firebase:firebase-installations-interop:18.0.0",
+    "com.google.firebase:firebase-installations:20.0.0",
+    "com.google.firebase:firebase-measurement-connector:19.0.0",
+    "com.google.firebase:firebase-messaging:26.0.1",
+    "com.google.guava:listenablefuture:1.0",
+    "com.google.maps.android:android-maps-utils-core:6.0.0",
+    "com.google.maps.android:maps-compose:9.0.1",
+    "com.squareup.moshi:moshi-kotlin:1.15.2",
+    "com.squareup.moshi:moshi:1.15.2",
+    "com.squareup.okhttp3:okhttp-android:5.5.1",
+    "com.squareup.okhttp3:okhttp:5.5.1",
+    "com.squareup.okio:okio-jvm:3.18.1",
+    "com.squareup.okio:okio:3.18.1",
+    "com.squareup.retrofit2:converter-moshi:3.0.0",
+    "com.squareup.retrofit2:retrofit:3.0.0",
+    "javax.inject:javax.inject:1",
+    "org.jetbrains.kotlin:kotlin-reflect:1.8.21",
+    "org.jetbrains.kotlin:kotlin-stdlib-common:2.4.21",
+    "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.20",
+    "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.20",
+    "org.jetbrains.kotlin:kotlin-stdlib:2.4.21",
+    "org.jetbrains.kotlinx:atomicfu-jvm:0.28.0",
+    "org.jetbrains.kotlinx:atomicfu:0.28.0",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.11.0",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0",
+    "org.jetbrains.kotlinx:kotlinx-serialization-bom:1.7.3",
+    "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.7.3",
+    "org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3",
+    "org.jetbrains:annotations:23.0.0",
+    "org.jspecify:jspecify:1.0.0"
+  ],
+  "schemaVersion": 1,
+  "sourcePolicies": {
+    "apps/android/app/src/main/AndroidManifest.xml": "48286d98e7d8d0d44a5940d335ff43bc69bbb7a9d08be5d45b4f434b27a49a9f",
+    "apps/android/app/src/main/res/xml/backup_rules.xml": "bab9f708acc805a3b6bf536a6401488cef5f7e91580d4d744f87881e4d7a122a",
+    "apps/android/app/src/main/res/xml/data_extraction_rules.xml": "144681400e8ab3d4303178cc0c0c4534d607492d2d837a0911548c2d9237b653",
+    "apps/android/app/src/main/res/xml/network_security_config.xml": "b3f61bf098d093c46deb038573bc2376b59f15263385835f6561c65eea27c8f2"
+  }
+}

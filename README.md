@@ -184,6 +184,7 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 | Chạy API local | `make server-run` (port 8080) |
 | Build APK debug | `make android-build` |
 | Kiểm chứng AAB minified bằng khóa tạm, package riêng | `make android-release-check` |
+| Tạo candidate rà soát SDK/quyền/privacy | `make android-privacy-candidate` |
 | Build AAB production có ký và kiểm chứng | `make android-distribution` |
 | Build APK production có ký | `make android-release` |
 | Kiểm tra Go | `make server-check` |
@@ -196,6 +197,9 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 Các target production yêu cầu cấu hình, phiên bản và khóa upload riêng; xem
 [quy trình Android release](docs/operations/android-release.md). CI dùng package
 thử và khóa tạm, không chứng minh cấu hình provider thật hay phát hành store.
+Hồ sơ M8-C: [Data Safety nháp](docs/release/data-safety-draft.md),
+[khai báo quyền](docs/release/permission-declarations.md) và
+[rà soát ranh giới có phạm vi](docs/security/m8c-boundary-review.md).
 
 ### Cấu trúc repo
 

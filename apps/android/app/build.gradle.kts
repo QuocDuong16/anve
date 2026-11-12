@@ -1,5 +1,8 @@
 import com.anve.buildlogic.ReleaseInputs
 import com.anve.buildlogic.VerifyReleaseInputs
+import org.gradle.api.artifacts.FileCollectionDependency
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult
 
 plugins {
     alias(libs.plugins.android.application)
@@ -207,3 +210,35 @@ dependencies {
 // Attach guards to the real variant lifecycle, not only an optional wrapper.
 tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verifyRelease) }
 tasks.matching { it.name == "preReleaseValidationBuild" }.configureEach { dependsOn(verifyReleaseValidation) }
+
+// Resolve the production graph too: fixture-only dependencies must not hide a
+// new release SDK from the privacy review. Reports contain coordinates only.
+androidComponents.onVariants { variant ->
+    if (variant.name !in listOf("release", "releaseValidation")) return@onVariants
+    val runtimeConfiguration = variant.runtimeConfiguration
+    val modules = providers.provider {
+        check(runtimeConfiguration.allDependencies.none { it is FileCollectionDependency }) {
+            "Review the newly introduced local-file SDK before exporting release modules"
+        }
+        val graph = runtimeConfiguration.incoming.resolutionResult
+        check(graph.allDependencies.none { it is UnresolvedDependencyResult }) {
+            "Cannot review an unresolved release dependency graph"
+        }
+        graph.allComponents.filter { it.id != graph.rootComponent.get().id }.map { component ->
+            val id = component.id as? ModuleComponentIdentifier
+                ?: error("Review the newly introduced project dependency before exporting release SDKs")
+            "${id.group}:${id.module}:${id.version}"
+        }.distinct().sorted()
+    }
+    val report = layout.buildDirectory.file("outputs/privacy-review/${variant.name}-modules.txt")
+    tasks.register("write${variant.name.replaceFirstChar { it.uppercase() }}PrivacyDependencies") {
+        inputs.property("modules", modules)
+        outputs.file(report)
+        doLast {
+            report.get().asFile.apply {
+                parentFile.mkdirs()
+                writeText(modules.get().joinToString("\n", postfix = "\n"))
+            }
+        }
+    }
+}

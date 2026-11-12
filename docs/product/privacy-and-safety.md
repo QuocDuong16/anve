@@ -126,8 +126,8 @@ Quy tắc:
 
 - Location history có **thời hạn lưu tối đa** do sản phẩm đặt. M3 đặt mặc
   định **30 ngày kể từ thời điểm thiết bị ghi nhận**, cấu hình bằng
-  `LOCATION_RETENTION_DAYS` (1–365); đây là chính sách tạm thời trong khi
-  History (M5) đang triển khai UI chọn thời hạn từ 1–30 ngày, giới hạn bởi
+  `LOCATION_RETENTION_DAYS` (1–365); owner chọn thời hạn từ 1–30 ngày trong
+  History (M5 đã Implemented), giới hạn bởi
   cấu hình server. Cùng cửa sổ này là giới hạn upload
   bù: điểm cũ hơn bị từ chối thay vì lưu rồi xóa ngay.
 - Dữ liệu chờ đồng bộ (offline queue) trên thiết bị bị loại sau **7 ngày**
@@ -273,6 +273,17 @@ CI thử dùng dữ liệu tổng hợp, package riêng và khóa tạm; workflo
 chỉ xuất AAB đã kiểm chữ ký cùng bản ghi commit/digest/chứng thư, chưa phát hành
 store. Chính sách môi trường release và kiểm chứng provider/thiết bị là các
 điều kiện bên ngoài còn mở. Xem [quy trình release](../operations/android-release.md).
+
+**SDK và hồ sơ release (M8-C).** Inventory phải dùng dependency graph đã resolve
+và manifest đã merge: SDK có thể thêm quyền/component và dữ liệu riêng ngoài
+DTO của AnVề. Maps có định danh/metadata SDK; Firebase Messaging kéo theo
+Installations. Không suy ra “không thu thập dữ liệu” từ việc app không có quảng
+cáo, hoặc suy ra app đọc biometric chỉ từ quyền do SDK thêm. Hồ sơ
+[Data Safety](../release/data-safety-draft.md) và [quyền](../release/permission-declarations.md)
+là bản nháp chờ owner; còn thiếu URL privacy/xóa tài khoản, quyết định audit/
+backup/provider retention và bằng chứng runtime. Xóa account backend không được
+mô tả là xóa ngay mọi dữ liệu ở SDK, log hay backup. Cổng drift và digest inventory
+chỉ bảo vệ việc rà soát thay đổi, không thay thế các bằng chứng này.
 
 ## 8. Giới hạn của các tính năng an toàn (phải phản ánh trong UI)
 
