@@ -134,3 +134,13 @@ against account changes and newer review/hide actions. Bounded maintenance
 retires content/budgets while fences preserve replay protection. ADR 0017 and
 the profile/email implementation record describe privacy/retention and tests;
 source/CI fixtures do not establish real provider, backup erasure or device behavior.
+
+
+Photo/invitation repositories use `ApiFactory.privateMutations` around the
+existing authenticated client. The clone shares the same SessionInterceptor
+and refresh serialization, disables connection recovery/redirects and wraps
+mutation bodies (including empty DELETE) as one-shot. This also prevents
+OkHttp HTTP follow-ups such as 503 Retry-After:0, independently of controller
+readback logic. Do not create a second independent token refresher or assume
+retryOnConnectionFailure(false) alone disables every follow-up. A rejected
+401 can still use the existing explicit, expected-owner-bound refresh retry.

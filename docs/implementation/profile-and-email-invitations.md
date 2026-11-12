@@ -93,3 +93,26 @@ Impeccable finish review and documenter are required. Formal tool gates are
 recorded truthfully; old portal exceptions are not fabricated as receipts.
 Real Photo Picker/provider interoperability, FCM delivery, OEM/GPS/battery,
 public websites and Play distribution retain separate evidence boundaries.
+
+
+## Current automated evidence
+
+`make quality-check` and `make android-test-build` passed locally after the
+contrast/image-retry refinement (`3245b57`); 328 JVM tests have zero failures,
+errors or skips. PostgreSQL race integration passed for both new migrations,
+avatar ownership/CAS/current membership and invitation binding/replay/private
+hide/quotas/current dispatch. All three Go CI jobs passed at this head in
+[run 43281016118](https://github.com/QuocDuong16/anve/actions/runs/43281016118).
+Android CI is still pending: the first app job at this head failed resolving
+many existing Maven dependencies before tests; artifacts and provider/device
+behavior are not inferred from local success. Final CI/native results replace
+this paragraph after inspection. Photo processing is additionally exercised
+at minSdk 26 and API 35 in Actions.
+
+
+Private photo/invitation HTTP calls share the existing authenticated session
+refresher but disable transport recovery/redirects and mark mutation bodies
+one-shot, including empty DELETE. This blocks automatic 503 Retry-After:0
+follow-ups as well as connection replay. The existing explicit owner-bound
+401 refresh is safe after refused admission. MockWebServer tests verify one
+request for PUT/POST/DELETE under 503 and no forwarding on a 307 redirect.

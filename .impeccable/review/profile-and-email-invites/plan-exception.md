@@ -25,3 +25,13 @@ audience / preview / choose-remove / privacy / save; invite title / mode pair /
 email group+binding / delivery helper / privacy notice / expiry / create.
 Expiry opens a native menu for supported durations. Long text can reflow and
 body-scroll while the primary footer remains reachable.
+
+
+The email comp has a separately measured spec (16 regions, no authored raster
+assets) and passed the spec measurement gate. Its formal component-plan
+session remains awaiting-review: `component-review serve` explicitly returned
+“no reviewer can open a browser in this session; the review stays pending.”
+The tool refuses finish because plates/hero/sections/motion/responsive are
+not formally closed. The user's current chat exception permits continuing
+native implementation/review, without turning any pending gate into a pass.
+Avatar's separate archived spec/state preserve its runtime-photo diagnostic.

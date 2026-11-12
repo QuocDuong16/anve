@@ -694,7 +694,8 @@ trừ khi người dùng chọn rõ ràng.
 ## 13. Notifications
 
 > Trạng thái: **Implemented — Automated Verified** cho SOS, Place Alert và
-> lifecycle Journey với fake provider; FCM thật chưa được kiểm chứng.
+> lifecycle Journey với fake provider; nhánh profile/email bổ sung invitation
+> với kiểm thử store/dispatch, CI native theo PR #22. FCM thật chưa được kiểm chứng.
 
 **Mục đích.** Firebase Cloud Messaging là kênh push notification chính, dùng
 cho các sự kiện hợp lệ:
