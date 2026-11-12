@@ -114,7 +114,7 @@ def source_policies():
     for variant in ("main", "release", "releaseValidation"):
         source = ANDROID / "src" / variant
         paths.extend(source.glob("AndroidManifest.xml"))
-        paths.extend(source.glob("res/xml/*.xml"))
+        paths.extend(source.glob("res/xml*/*.xml"))
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(paths)}
 
 

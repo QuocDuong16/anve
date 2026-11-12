@@ -3,8 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from check_android_privacy import manifest_inventory, read_modules, require_review
+from check_android_privacy import manifest_inventory, read_modules, require_review, source_policies
 
 
 def manifest(package="com.anve.app"):
@@ -84,6 +85,28 @@ class AndroidPrivacyTests(unittest.TestCase):
                 path.write_text(value)
                 with self.subTest(value=value), self.assertRaises(ValueError):
                     read_modules(path)
+
+    def test_qualified_policy_overlays_are_included_and_debug_is_excluded(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            app = root / "app"
+            for relative in ("main/res/xml/network_security_config.xml", "debug/res/xml/network_security_config.xml"):
+                path = app / "src" / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("<policy/>")
+            with patch("check_android_privacy.ROOT", root), patch("check_android_privacy.ANDROID", app):
+                before = source_policies()
+                overlay = app / "src/release/res/xml-v31/network_security_config.xml"
+                overlay.parent.mkdir(parents=True)
+                overlay.write_text("<changed-policy/>")
+                after = source_policies()
+                self.assertEqual(len(before), 1)
+                self.assertEqual(len(after), 2)
+                self.assertIn("app/src/release/res/xml-v31/network_security_config.xml", after)
+                actual, reviewed = self.inventory(), self.inventory()
+                actual["sourcePolicies"], reviewed["sourcePolicies"] = after, before
+                with self.assertRaises(ValueError):
+                    require_review(actual, reviewed)
 
 
 if __name__ == "__main__":
