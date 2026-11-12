@@ -56,6 +56,16 @@ or physical-device permissions/GPS/battery. The debug instrumentation suite
 remains separate. Current local/hosted results belong in this change's PR;
 the existence of this procedure is not a successful test run.
 
+The first signed-runtime runs exposed a real shrinker regression: startup
+constructs Moshi's legacy pending-revocation adapter, but R8 removed/merged
+that private model's constructor and fields. The sanitized crash trace points
+from `DataStoreSessionStorage` through Moshi during `Application.onCreate`;
+the mapping/usage outputs confirm the removed schema. The app now keeps its
+`@JsonClass` models (including legacy formats) for reflective serialization,
+and explicitly marks the SOS state enum. This preserves persisted JSON names
+without disabling minification. Passing JVM/build/debug tests alone did not
+exercise this boundary; signed startup must pass after the fix.
+
 Manual diagnostic dispatches can reuse a previous run's synthetic APK with an
 explicit artifact source commit; the report keeps `smokeRunnerCommit` separately.
 They skip rebuild/debug jobs and are never release-gate evidence. Normal PR/main

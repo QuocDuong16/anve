@@ -21,6 +21,7 @@ private val Context.sosDataStore: DataStore<Preferences> by preferencesDataStore
 private const val MAX_SOS_OUTBOX = 20
 
 /** UNKNOWN means a request may have committed; it is not a success claim. */
+@JsonClass(generateAdapter = false)
 enum class SosLocalState { QUEUED, SENDING, UNKNOWN, CONFIRMED, CANCEL_REQUESTED, CANCELLED, RESOLVED, EXPIRED, SERVER_EXPIRED }
 
 @JsonClass(generateAdapter = false)
