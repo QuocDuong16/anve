@@ -49,9 +49,13 @@ def sdk_tool(name, env):
 
 
 def parse_apk_identity(badging, certificates, pin):
-    matches = re.findall(r"^Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F:]+)$", certificates, re.M)
+    # Build tools can print certificates per scheme (e.g. "V2 Signer:").
+    # Use the verifier's explicit signer count and require every certificate
+    # it prints to have the expected identity, including across schemes.
+    count = re.findall(r"^Number of signers: (\d+)\s*$", certificates, re.M)
+    matches = re.findall(r"^.+ certificate SHA-256 digest: ([0-9a-fA-F:]+)$", certificates, re.M)
     pin = pin.replace(":", "").lower()
-    if not re.fullmatch(r"[0-9a-f]{64}", pin) or len(matches) != 1 or matches[0].replace(":", "").lower() != pin:
+    if not re.fullmatch(r"[0-9a-f]{64}", pin) or count != ["1"] or not matches or any(value.replace(":", "").lower() != pin for value in matches):
         raise RuntimeError("APK signing certificate does not match the single expected signer")
     identities = re.findall(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']*)'", badging, re.M)
     if identities != [(PACKAGE, "2", "0.3.0-validation")] or re.search(r"^application-debuggable(?:\s|$)", badging, re.M):
@@ -60,7 +64,7 @@ def parse_apk_identity(badging, certificates, pin):
 
 
 def verify_apk(apk, pin, env):
-    certificates = command([sdk_tool("apksigner", env), "verify", "--print-certs", apk], env=env)
+    certificates = command([sdk_tool("apksigner", env), "verify", "--verbose", "--print-certs", apk], env=env)
     badging = command([sdk_tool("aapt2", env), "dump", "badging", apk], env=env)
     identity = parse_apk_identity(badging, certificates, pin)
     return {**identity, "sourceCommit": source_commit(), "apkSha256": digest(apk),

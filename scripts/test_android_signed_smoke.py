@@ -15,7 +15,7 @@ class SignedSmokeTests(unittest.TestCase):
 
     def test_apk_refuses_wrong_signer_identity_debug_and_multiple_signers(self):
         badging = f"package: name='{smoke.PACKAGE}' versionCode='2' versionName='0.3.0-validation'\n"
-        cert = f"Signer #1 certificate SHA-256 digest: {'a' * 64}\n"
+        cert = f"Number of signers: 1\nSigner #1 certificate SHA-256 digest: {'a' * 64}\n"
         smoke.parse_apk_identity(badging, cert, "a" * 64)
         for changed_badging, changed_cert, pin in (
             (badging.replace(smoke.PACKAGE, "com.anve.app"), cert, "a" * 64),
@@ -23,11 +23,20 @@ class SignedSmokeTests(unittest.TestCase):
             (badging.replace("0.3.0-validation", "0.3.0"), cert, "a" * 64),
             (badging + "application-debuggable\n", cert, "a" * 64),
             (badging, cert, "b" * 64),
-            (badging, cert + cert.replace("#1", "#2"), "a" * 64),
+            (badging, cert.replace("signers: 1", "signers: 2") + f"Signer #2 certificate SHA-256 digest: {'a' * 64}\n", "a" * 64),
+            (badging, cert.replace("Number of signers: 1\n", ""), "a" * 64),
             (badging, "", "a" * 64),
         ):
             with self.subTest(badging=changed_badging, cert=changed_cert), self.assertRaises(RuntimeError):
                 smoke.parse_apk_identity(changed_badging, changed_cert, pin)
+
+    def test_sdk_scheme_labels_still_require_the_one_pinned_signer(self):
+        badging = f"package: name='{smoke.PACKAGE}' versionCode='2' versionName='0.3.0-validation'\n"
+        cert = f"Number of signers: 1\nV2 Signer: certificate SHA-256 digest: {'a' * 64}\n"
+        smoke.parse_apk_identity(badging, cert, "a" * 64)
+        smoke.parse_apk_identity(badging, cert + f"V3 Signer: certificate SHA-256 digest: {'a' * 64}\n", "a" * 64)
+        with self.assertRaises(RuntimeError):
+            smoke.parse_apk_identity(badging, cert + f"V3 Signer: certificate SHA-256 digest: {'b' * 64}\n", "a" * 64)
 
     def test_physical_offline_and_ambiguous_targets_are_refused(self):
         for devices in ("", "phone123\tdevice", "emulator-5554\toffline", "emulator-5554\tdevice\nemulator-5556\tdevice"):

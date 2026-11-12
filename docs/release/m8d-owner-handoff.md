@@ -43,7 +43,7 @@ state, background/resume and force-stop/relaunch. Each checks sign-in content,
 the absence of the development-login controls and no active tracking service.
 Cleanup removes the fixture even after a runtime failure. CI retains a small
 JSON result with digests, API/ABI, individual outcomes and cleanup status; raw
-UI XML/logcat are not artifacts. Tooling tests cover invalid signatures/identity,
+UI XML/logcat are not artifacts. Tooling tests cover unexpected signers/identity,
 untrusted records, physical/ambiguous targets, existing app data and cleanup.
 
 This is **synthetic signed-fixture emulator evidence**. It does not exercise
