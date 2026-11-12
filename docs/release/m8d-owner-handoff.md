@@ -14,6 +14,7 @@ The owner supplied these public details in the implementation conversation:
 | Support/deletion-request email | nvqduong.dev@gmail.com | Mailbox delivery and request handling have not been exercised |
 | Intended web domain | anve.niand.id.vn | Planned domain; DNS, hosting and TLS not verified |
 | Distribution/signing direction | Google Play with Play App Signing | Console enrollment, upload key and actual signing fingerprints remain pending |
+| API/provider readiness | Owner confirmed no HTTPS API or Google Cloud/Firebase project yet | Follow the [first-real-test setup guide](../operations/first-real-test.vi.md); no real provider validation claimed |
 
 Proposed public routes: `https://anve.niand.id.vn/privacy` and
 `https://anve.niand.id.vn/delete-account`. These are **planned URLs**, not
@@ -44,7 +45,8 @@ the absence of the development-login controls and no active tracking service.
 Cleanup removes the fixture even after a runtime failure. CI retains a small
 JSON result with digests, API/ABI, individual outcomes and cleanup status; failed
 Actions runs also retain a screenshot of the fresh unauthenticated synthetic
-fixture and allowlisted UI-presence flags for diagnosis. Raw
+fixture, allowlisted UI-presence flags and exception types/static stack frames
+for diagnosis. Raw exception messages,
 UI XML/logcat are not artifacts. Tooling tests cover unexpected signers/identity,
 untrusted records, physical/ambiguous targets, existing app data and cleanup.
 
@@ -53,6 +55,11 @@ Google login, Maps, Firebase delivery, authenticated features, actual Play signi
 or physical-device permissions/GPS/battery. The debug instrumentation suite
 remains separate. Current local/hosted results belong in this change's PR;
 the existence of this procedure is not a successful test run.
+
+Manual diagnostic dispatches can reuse a previous run's synthetic APK with an
+explicit artifact source commit; the report keeps `smokeRunnerCommit` separately.
+They skip rebuild/debug jobs and are never release-gate evidence. Normal PR/main
+runs bind to their current source and still execute the full workflow.
 
 ## Play App Signing handoff
 

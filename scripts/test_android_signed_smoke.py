@@ -54,6 +54,31 @@ class SignedSmokeTests(unittest.TestCase):
                 with self.subTest(field=field), self.assertRaises(RuntimeError):
                     smoke.verify_record(Path("fixture.apk"), dict(record, **{field: "wrong"}), {})
 
+    def test_old_fixture_source_requires_manual_explicit_source(self):
+        actual = {"certificateSha256": "a" * 64, "sourceCommit": "b" * 40}
+        old = dict(actual, sourceCommit="c" * 40)
+        with patch.object(smoke, "verify_apk", side_effect=lambda *args: dict(actual)):
+            for env in ({}, {"ANVE_SIGNED_SMOKE_SOURCE_COMMIT": "c" * 40}, {"GITHUB_EVENT_NAME": "pull_request", "ANVE_SIGNED_SMOKE_SOURCE_COMMIT": "c" * 40}):
+                with self.subTest(env=env), self.assertRaises(RuntimeError):
+                    smoke.verify_record(Path("fixture.apk"), old, env)
+            self.assertEqual(smoke.verify_record(Path("fixture.apk"), old, {"GITHUB_EVENT_NAME": "workflow_dispatch", "ANVE_SIGNED_SMOKE_SOURCE_COMMIT": "c" * 40}), old)
+
+    def test_crash_probe_excludes_messages_and_foreign_processes(self):
+        log = f'''E/AndroidRuntime( 123): FATAL EXCEPTION: main
+E/AndroidRuntime( 123): Process: {smoke.PACKAGE}, PID: 123
+E/AndroidRuntime( 123): java.lang.RuntimeException: private-account-value
+E/AndroidRuntime( 123): Caused by: java.lang.IllegalStateException: private-token-value
+E/AndroidRuntime( 123):     at com.anve.app.MainActivity.onCreate(MainActivity.kt:22)
+E/AndroidRuntime( 456): Process: other.package, PID: 456
+E/AndroidRuntime( 456): java.lang.SecurityException: unrelated
+'''
+        probe = smoke.crash_probe(log)
+        self.assertTrue(probe["ownedCrashFound"])
+        self.assertEqual(probe["exceptionTypes"], ["java.lang.RuntimeException", "java.lang.IllegalStateException"])
+        self.assertEqual(probe["frames"], [{"method": "com.anve.app.MainActivity.onCreate", "line": 22}])
+        self.assertNotIn("private", json.dumps(probe))
+        self.assertNotIn("SecurityException", json.dumps(probe))
+
     def test_signin_requires_owned_nodes_and_rejects_dev_login(self):
         expected = {"name": "AnVề", "unavailable": "Unavailable", "retry": "Retry", "dev": ("Dev",)}
         nodes = ''.join(f'<node package="{smoke.PACKAGE}" text="{value}"/>' for value in ("AnVề", "Unavailable", "Retry"))
@@ -99,7 +124,7 @@ class SignedSmokeTests(unittest.TestCase):
                 if args[0] in ("install", "uninstall"):
                     return "Success"
                 return ""
-            with patch.object(smoke, "verify_record", return_value={}), patch.object(smoke, "command", return_value="emulator-5554\tdevice"), patch.object(smoke.Smoke, "call", side_effect=call), patch.object(smoke.Smoke, "launch", side_effect=RuntimeError("fixture launch failure")):
+            with patch.object(smoke, "source_commit", return_value="a" * 40), patch.object(smoke, "verify_record", return_value={}), patch.object(smoke, "command", return_value="emulator-5554\tdevice"), patch.object(smoke.Smoke, "call", side_effect=call), patch.object(smoke.Smoke, "launch", side_effect=RuntimeError("fixture launch failure")):
                 with self.assertRaisesRegex(RuntimeError, "launch failure"):
                     smoke.run_smoke(directory, directory / "result.json", {"ANVE_SIGNED_SMOKE_DISPOSABLE": "1", "ANDROID_HOME": "/sdk"})
             report = json.loads((directory / "result.json").read_text())

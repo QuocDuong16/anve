@@ -5,6 +5,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      fixture_run_id:
+        description: "Optional previous run's synthetic APK artifact, for diagnosis only"
+        type: string
+        default: ""
+      fixture_source_commit:
+        description: "Full sourceCommit from that APK's JSON; required when reusing a fixture"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -15,6 +24,7 @@ concurrency:
 
 jobs:
   app:
+    if: github.event_name != 'workflow_dispatch' || inputs.fixture_run_id == ''
     name: Build and test
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -131,13 +141,18 @@ jobs:
           retention-days: 14
 
   signed-smoke:
+    if: ${{ !cancelled() && (needs.app.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.fixture_run_id != '')) }}
     name: Signed minified fixture startup
     needs: app
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
     env:
       ANVE_SIGNED_SMOKE_DISPOSABLE: "1"
       SIGNED_SMOKE_ARTIFACT_DIR: ${{ github.workspace }}/signed-validation-apk
+      ANVE_SIGNED_SMOKE_SOURCE_COMMIT: ${{ inputs.fixture_source_commit }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -158,6 +173,8 @@ jobs:
         with:
           name: anve-signed-validation-apk
           path: ${{ env.SIGNED_SMOKE_ARTIFACT_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.fixture_run_id || github.run_id }}
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -183,6 +200,7 @@ jobs:
           retention-days: 7
 
   emulator:
+    if: github.event_name != 'workflow_dispatch' || inputs.fixture_run_id == ''
     name: Emulator lifecycle, history, places, diagnostics and journeys UI
     runs-on: ubuntu-latest
     timeout-minutes: 30

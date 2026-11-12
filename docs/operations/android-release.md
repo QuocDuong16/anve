@@ -57,6 +57,19 @@ It refuses physical/ambiguous/offline targets or an existing fixture install.
 Use `ANDROID_SERIAL=emulator-5554` to select among multiple connected targets;
 the QEMU check still applies. This is not a physical-device validation command.
 
+For startup diagnosis, the Android workflow can be dispatched manually with
+`fixture_run_id` pointing to a previous run's synthetic APK artifact and
+`fixture_source_commit` set to the full `sourceCommit` in that artifact's JSON
+(the CI test-merge commit, not automatically the PR head). This skips rebuilding
+and the debug suite, while preserving APK signature/digest/identity/inventory
+checks. The result records the artifact source and `smokeRunnerCommit`
+separately. The source override is refused outside `workflow_dispatch`.
+Ordinary PR/main runs still require the current checkout's exact source and run
+all jobs. A diagnostic dispatch cannot satisfy the production release gate,
+which requires successful exact-main **push** workflows. Failed synthetic CI
+startup runs retain allowlisted UI flags, exception types/static stack frames
+and a failure screenshot, never raw exception messages, XML or logcat.
+
 The validation AAB and JSON digest/certificate record are uploaded by Android CI;
 they are not the production app and cannot verify any provider integration.
 

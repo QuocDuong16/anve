@@ -84,10 +84,35 @@ def publish(apk, metadata, destination):
 
 
 def verify_record(apk, metadata, env):
+    expected_source = env.get("ANVE_SIGNED_SMOKE_SOURCE_COMMIT")
+    if expected_source and (env.get("GITHUB_EVENT_NAME") != "workflow_dispatch" or not re.fullmatch(r"[0-9a-f]{40}", expected_source)):
+        raise RuntimeError("Reusing a fixture requires a manual Actions run and an explicit full source commit")
     actual = verify_apk(apk, metadata.get("certificateSha256", ""), env)
+    if expected_source:
+        actual["sourceCommit"] = expected_source
     if metadata != actual:
         raise RuntimeError("APK record differs from the installed artifact, source or privacy inventory")
     return actual
+
+
+def crash_probe(log):
+    entries = []
+    for line in log.splitlines():
+        match = re.match(r"^[EF]/AndroidRuntime\(\s*(\d+)\):\s?(.*)$", line)
+        if match:
+            entries.append((match[1], match[2]))
+    owners = {pid for pid, value in entries if value.startswith(f"Process: {PACKAGE}, PID:")}
+    types, frames = [], []
+    for pid, value in entries:
+        if pid not in owners:
+            continue
+        exception = re.match(r"^(?:Caused by: )?([\w.$]+(?:Exception|Error))(?::|$)", value.strip())
+        frame = re.match(r"^at ([\w.$<>]+)\([^():]*(?::(\d+))?\)", value.strip())
+        if exception and exception[1] not in types:
+            types.append(exception[1])
+        if frame:
+            frames.append({"method": frame[1], "line": int(frame[2]) if frame[2] else None})
+    return {"ownedCrashFound": bool(owners), "exceptionTypes": types[:12], "frames": frames[:40]}
 
 
 def select_emulator(devices, requested=None):
@@ -184,6 +209,7 @@ def run_smoke(directory, output, env):
         raise RuntimeError("Expected exactly one APK and its matching verification record")
     metadata = json.loads(records[0].read_text())
     report = verify_record(apks[0], metadata, env)
+    report["smokeRunnerCommit"] = source_commit()
     sdk = env.get("ANDROID_HOME") or env.get("ANDROID_SDK_ROOT")
     adb = Path(sdk) / "platform-tools/adb"
     serial = select_emulator(command([adb, "devices"]), env.get("ANDROID_SERIAL"))
@@ -200,6 +226,7 @@ def run_smoke(directory, output, env):
                    "apiLevel": smoke.call("shell", "getprop", "ro.build.version.sdk").strip(),
                    "abi": smoke.call("shell", "getprop", "ro.product.cpu.abi").strip()})
     try:
+        smoke.call("logcat", "-b", "crash", "-c")
         # Mark before installation so a timeout also attempts fixture cleanup.
         installed = True
         if "Success" not in smoke.call("install", "--no-streaming", str(apks[0].resolve())):
@@ -226,6 +253,10 @@ def run_smoke(directory, output, env):
     finally:
         try:
             if not report["success"] and env.get("GITHUB_ACTIONS") == "true":
+                try:
+                    report["crash"] = crash_probe(smoke.call("logcat", "-b", "crash", "-d", "-v", "brief"))
+                except (OSError, RuntimeError, subprocess.TimeoutExpired):
+                    report["crash"] = {"available": False}
                 try:
                     report["syntheticFailureCapture"] = smoke.capture_failure(output.with_name("failure.png"))
                 except (OSError, subprocess.TimeoutExpired):
