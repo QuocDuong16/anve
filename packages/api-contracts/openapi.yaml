@@ -569,6 +569,88 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/me/avatar:
+    parameters:
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getMyAvatarState
+      summary: Read the current profile-photo revision and operation
+      security: [{bearerAuth: []}]
+      tags: [me]
+      responses:
+        "200":
+          description: Owner-only metadata, including a tombstone revision after removal; no-store.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AvatarState"}
+        "401": {description: Invalid session or expected owner.}
+    put:
+      operationId: replaceMyAvatar
+      summary: Explicitly replace the authenticated user's profile photo
+      description: |
+        Accepts bounded JPEG/PNG input up to 1 MiB and 1024x1024 pixels.
+        Decodes/crops/re-encodes to a 256x256 opaque JPEG without source
+        metadata, at most 128 KiB. One current image is stored; old bytes
+        are replaced transactionally. Only the owner may mutate. Expected
+        revision is compare-and-set; unknown outcomes use metadata readback
+        of the operation UUID and are never automatically replayed.
+      security: [{bearerAuth: []}]
+      tags: [me]
+      parameters:
+        - {in: header, name: X-Anve-Operation-ID, required: true, schema: {type: string, format: uuid}}
+        - {in: header, name: X-Anve-Expected-Revision, required: true, schema: {type: integer, format: int64, minimum: 0}}
+      requestBody:
+        required: true
+        content:
+          image/jpeg: {schema: {type: string, format: binary}}
+          image/png: {schema: {type: string, format: binary}}
+      responses:
+        "200":
+          description: Confirmed current metadata; imageId identifies this current image, not a public capability.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AvatarState"}
+        "400": {description: Invalid operation/revision or image (AVATAR_INVALID).}
+        "401": {description: Invalid session or expected owner.}
+        "409": {description: Revision changed (AVATAR_REVISION_CONFLICT); read current metadata before a new explicit action.}
+        "413": {description: Compressed request exceeds 1 MiB.}
+        "429": {description: Bounded upload/normalization capacity unavailable; no mutation admitted.}
+    delete:
+      operationId: removeMyAvatar
+      summary: Remove the current profile photo, retaining a CAS tombstone
+      security: [{bearerAuth: []}]
+      tags: [me]
+      parameters:
+        - {in: header, name: X-Anve-Operation-ID, required: true, schema: {type: string, format: uuid}}
+        - {in: header, name: X-Anve-Expected-Revision, required: true, schema: {type: integer, format: int64, minimum: 0}}
+      responses:
+        "200":
+          description: Confirmed metadata with no imageId; prior image URLs no longer read.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AvatarState"}
+        "400": {description: Invalid operation/revision.}
+        "401": {description: Invalid session or expected owner.}
+        "409": {description: Revision changed (AVATAR_REVISION_CONFLICT).}
+
+  /api/v1/avatars/{userId}/{imageId}:
+    get:
+      operationId: getAuthorizedAvatar
+      summary: Read only a current profile image of self or a current Circle member
+      security: [{bearerAuth: []}]
+      tags: [me]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: userId, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: imageId, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current sanitized image only. Cache-Control no-store/private and nosniff; never publicly cacheable.
+          content:
+            image/jpeg: {schema: {type: string, format: binary}}
+        "401": {description: Invalid session or expected owner.}
+        "404": {description: Image absent/replaced/removed, user absent, or no current shared Circle; indistinguishable.}
+
   /api/v1/me:
     get:
       operationId: getMe
@@ -1678,6 +1760,129 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/circles/{circleId}/invitations:
+    post:
+      operationId: createPrivateInvitation
+      summary: Create a fenced one-use invitation with optional email binding
+      security: [{bearerAuth: []}]
+      tags: [circles]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: circleId, required: true, schema: {type: string, format: uuid}}
+      description: |
+        Owner-only. EMAIL binds preview/redemption to the normalized signed-in
+        email and may enqueue an opaque notification for an already-registered
+        recipient. LINK retains the ordinary bearer-code flow. The response
+        never exposes account existence, token/device presence, notification
+        acceptance/delivery or receiver-private dismissal. HTTP 201/200 depends
+        only on creation/replay, never recipient registration. A per-owner
+        creation budget and receiver-digest notification budget bound abuse;
+        exhausting the recipient budget does not change the create response.
+        UUID fences prevent retired IDs from being recreated after revocation,
+        expiry, redemption or group removal. Unknown results read back this
+        request ID; clients do not automatically create another invitation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreatePrivateInvitationRequest"}
+      responses:
+        "201":
+          description: Invitation created; notification delivery is not asserted.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Invite"}
+        "200":
+          description: Identical existing creation replay; no duplicate audit or notification work.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Invite"}
+        "400": {description: Invalid mode/email/UUID/expiry or strict JSON input.}
+        "401": {description: Invalid session or expected owner.}
+        "403": {description: Current owner role required.}
+        "404": {description: No current membership in this Circle.}
+        "409": {description: UUID already retired or bound to different inputs.}
+        "429": {description: Sender creation budget exhausted; independent of recipient registration.}
+
+  /api/v1/circles/{circleId}/invitations/{requestId}:
+    get:
+      operationId: readPrivateInvitationCreation
+      summary: Owner-bound readback for an uncertain invitation creation
+      security: [{bearerAuth: []}]
+      tags: [circles]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: circleId, required: true, schema: {type: string, format: uuid}}
+        - {in: path, name: requestId, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current owner-created invitation; no-store, no recipient/account/push status.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Invite"}
+        "401": {description: Invalid session or expected owner.}
+        "404": {description: Creation absent/unavailable or caller not current owner.}
+
+  /api/v1/me/invitations:
+    get:
+      operationId: listReceivedInvitations
+      summary: Read at most 20 live invitations addressed to the authenticated email
+      security: [{bearerAuth: []}]
+      tags: [circles]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: No-store bounded inbox; code absent until an authorized detail read.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invitations]
+                properties:
+                  invitations:
+                    type: array
+                    maxItems: 20
+                    items: {$ref: "#/components/schemas/ReceivedInvitation"}
+        "401": {description: Invalid session or expected owner.}
+
+  /api/v1/me/invitations/{inviteId}:
+    parameters:
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      - {in: path, name: inviteId, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getReceivedInvitation
+      summary: Reauthorize an invitation before displaying notification or explicit confirmation
+      security: [{bearerAuth: []}]
+      tags: [circles]
+      responses:
+        "200":
+          description: No-store detail and one-use code for this matching authenticated recipient only; never auto-redeem.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/ReceivedInvitation"}
+                  - type: object
+                    required: [code]
+                    properties:
+                      code: {type: string, description: Memory-only capability; never put into push/log/saved state.}
+        "401": {description: Invalid session or expected owner.}
+        "404": {description: Wrong recipient, hidden/revoked/used/expired invitation or unavailable owner/group; indistinguishable.}
+    delete:
+      operationId: hideReceivedInvitation
+      summary: Hide an addressed invitation privately for this recipient
+      description: |
+        Suppresses this recipient's future invitation notification work. Does
+        not join a group or report dismissal to the sender. An explicit later
+        code/link remains subject to ordinary email-bound preview/redemption.
+      security: [{bearerAuth: []}]
+      tags: [circles]
+      responses:
+        "204": {description: Hidden for this authenticated recipient, or already hidden.}
+        "401": {description: Invalid session or expected owner.}
+        "404": {description: No matching recipient invitation.}
+
   /api/v1/circles/{circleId}/invites:
     post:
       operationId: createInvite
@@ -2518,6 +2723,14 @@ components:
             - $ref: "#/components/schemas/Membership"
           nullable: true
 
+    AvatarState:
+      type: object
+      required: [revision]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        operationId: {type: string, format: uuid, description: Latest committed owner operation, including removal; absent before any mutation.}
+        imageId: {type: string, format: uuid, description: Current image only; absent for an empty/tombstone state.}
+
     Member:
       type: object
       required: [userId, displayName, role, joinedAt]
@@ -2527,6 +2740,10 @@ components:
           format: uuid
         displayName:
           type: string
+        avatarId:
+          type: string
+          format: uuid
+          description: Current image identifier; the protected avatar endpoint still checks current membership.
         role:
           type: string
           enum: [owner, member]
@@ -2565,6 +2782,31 @@ components:
         createdAt:
           type: string
           format: date-time
+
+        recipientRestricted:
+          type: boolean
+          default: false
+          description: True only for email-bound invites; no email/account-existence or push outcome is exposed.
+
+    CreatePrivateInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId, mode]
+      properties:
+        requestId: {type: string, format: uuid}
+        mode: {type: string, enum: [EMAIL, LINK]}
+        recipientEmail: {type: string, format: email, maxLength: 254, description: Required for EMAIL; forbidden for LINK. Never logged or echoed as a lookup result.}
+        expiresInHours: {type: integer, minimum: 1, maximum: 168, default: 48}
+
+    ReceivedInvitation:
+      type: object
+      required: [id, circleId, circleName, inviterDisplayName, expiresAt]
+      properties:
+        id: {type: string, format: uuid}
+        circleId: {type: string, format: uuid}
+        circleName: {type: string}
+        inviterDisplayName: {type: string}
+        expiresAt: {type: string, format: date-time}
 
     InvitePreview:
       type: object

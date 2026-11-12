@@ -351,3 +351,34 @@ Mỗi điều khiển privacy ở trên phải tồn tại ở **cả hai** tầ
   tuyên bố "mọi dữ liệu đã mã hóa".
 
 Nếu một điều khiển chỉ tồn tại ở một tầng, nó **chưa hoàn thành**.
+
+
+## 10. Avatar và lời mời email (ADR 0017)
+
+Ảnh thư viện chỉ được đọc qua Photo Picker cho lựa chọn cụ thể, không thêm
+quyền đọc toàn bộ ảnh. Preview/URI/ảnh gốc không vào state lưu trên đĩa hoặc
+queue; upload chỉ sau Lưu. API giới hạn 1 MiB, JPEG/PNG tối đa 1024×1024 rồi
+chuẩn hóa JPEG 256×256 tối đa 128 KiB, loại metadata. Chỉ ảnh ID hiện tại được
+đọc bởi self hoặc thành viên hiện tại cùng Circle, với session còn hiệu lực;
+ảnh không có URL công khai hoặc disk cache. Replace/remove xóa bytes cũ trong
+DB; revision tombstone chống write trễ. Account deletion cascade không đồng
+nghĩa xóa ngay WAL/backup hoặc ảnh người khác đã chụp lại.
+
+Email người nhận được chuẩn hóa và ràng buộc bằng SHA-256 digest, vẫn là dữ
+liệu cá nhân giả danh. Không lưu email nhập vào trong invite/audit/payload.
+Response chủ nhóm không cho biết email có tài khoản/token, đã được FCM chấp
+nhận hay người nhận đã ẩn. Hộp thư/chi tiết/preview/redeem kiểm tra email hiện
+tại, trạng thái lời mời và quyền; nhận tín hiệu không tham gia hoặc bật GPS.
+Ẩn chỉ riêng người nhận và chặn dispatch tiếp theo, không lộ trạng thái cho
+người gửi. FCM chỉ UUID + CIRCLE_INVITE, priority normal; không email/tên/mã.
+
+Tạo tối đa 20 lời mời/24h mỗi chủ nhóm qua endpoint mới; ngân sách thông báo
+3 lần/ngày UTC cho digest đích chỉ ảnh hưởng nội bộ, áp dụng cả email chưa
+đăng ký. Budget được dọn theo batch sau ngày trước đó; nội dung invite dọn
+7 ngày sau expires_at. Creation fence không chứa mã/email và tồn tại đến khi
+xóa tài khoản, kể cả khi giải tán nhóm, để không phục hồi request cũ. Outbox
+chỉ chọn tài khoản đã có khi tạo, không hứa FCM hồi tố cho tài khoản mới;
+hộp thư vẫn thấy lời mời còn hiệu lực khi email khớp. Dispatch kiểm tra lại
+owner, email, hạn dùng/thu hồi/đã dùng/ẩn và session/token hiện tại, dùng retry
+có backoff. FCM chấp nhận không chứng minh giao nhận; tín hiệu đã gửi không
+thể thu hồi. Retention backup/audit/provider vẫn cần quyết định vận hành.

@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/avatars"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
@@ -52,6 +53,24 @@ func writeNoContent(w http.ResponseWriter) {
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	body := errorBody{RequestID: middleware.GetReqID(r.Context())}
 	switch {
+	case errors.Is(err, circles.ErrInvitationConflict):
+		body.Code, body.Message = "INVITATION_REQUEST_CONFLICT", "The invitation request conflicts or is no longer active."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, circles.ErrInvitationBudget):
+		body.Code, body.Message = "RATE_LIMITED", "Too many invitations. Try again later."
+		writeJSON(w, http.StatusTooManyRequests, body)
+	case errors.Is(err, avatars.ErrInvalid):
+		body.Code, body.Message = "AVATAR_INVALID", "Invalid avatar image, operation or revision."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, avatars.ErrConflict):
+		body.Code, body.Message = "AVATAR_REVISION_CONFLICT", "The avatar changed; read current metadata before a new action."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, avatars.ErrNotFound):
+		body.Code, body.Message = "NOT_FOUND", "Resource not found."
+		writeJSON(w, http.StatusNotFound, body)
+	case errors.Is(err, avatars.ErrBusy):
+		body.Code, body.Message = "RATE_LIMITED", "Avatar processing capacity is busy."
+		writeJSON(w, http.StatusTooManyRequests, body)
 	case errors.Is(err, journeys.ErrInvalid):
 		body.Code, body.Message = "JOURNEY_INVALID", "Invalid journey or selected audience."
 		writeJSON(w, http.StatusBadRequest, body)

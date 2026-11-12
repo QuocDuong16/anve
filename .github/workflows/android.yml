@@ -201,7 +201,7 @@ jobs:
 
   emulator:
     if: github.event_name != 'workflow_dispatch' || inputs.fixture_run_id == ''
-    name: Emulator lifecycle, journeys, invitation links and native UI
+    name: Emulator lifecycle, journeys, invitations, photos and native UI
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -246,5 +246,52 @@ jobs:
             apps/android/app/build/outputs/androidTest-results/connected/
             apps/android/app/build/reports/androidTests/connected/
             apps/android/app/build/outputs/ui-validation/
+          if-no-files-found: warn
+          retention-days: 14
+
+
+  avatar-compatibility:
+    if: github.event_name != 'workflow_dispatch' || inputs.fixture_run_id == ''
+    name: Android 8 photo processing compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up mise
+        uses: jdx/mise-action@v5
+        with:
+          version: 2026.9.15
+          install_args: java gradle
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: "15859902"
+          packages: platform-tools platforms;android-37.0 build-tools;37.0.0
+      - name: Use pinned JDK
+        run: echo "JAVA_HOME=$(mise where java)" >> "$GITHUB_ENV"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise sampled decoder, EXIF removal and picker contract at minSdk
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 26
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
+          script: make android-instrumentation ANDROID_TEST_GRADLE_ARGS=-Pandroid.testInstrumentationRunnerArguments.class=com.anve.app.data.avatar.AvatarImagesInstrumentedTest
+      - name: Upload minimum-version photo test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-avatar-compatibility-results
+          path: |
+            apps/android/app/build/outputs/androidTest-results/connected/
+            apps/android/app/build/reports/androidTests/connected/
           if-no-files-found: warn
           retention-days: 14

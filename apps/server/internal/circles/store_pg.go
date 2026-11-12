@@ -186,9 +186,10 @@ func (s *PGStore) ListMembers(ctx context.Context, userID, circleID uuid.UUID) (
 		return nil, err
 	}
 	rows, err := s.pool.Query(ctx,
-		`SELECT m.user_id, u.display_name, m.role, m.joined_at
+		`SELECT m.user_id, u.display_name, m.role, m.joined_at, a.image_id
 		   FROM memberships m
 		   JOIN users u ON u.id = m.user_id
+		   LEFT JOIN profile_avatars a ON a.user_id=m.user_id
 		  WHERE m.circle_id = $1
 		  ORDER BY m.joined_at`, circleID)
 	if err != nil {
@@ -199,7 +200,7 @@ func (s *PGStore) ListMembers(ctx context.Context, userID, circleID uuid.UUID) (
 	var out []Member
 	for rows.Next() {
 		var m Member
-		if err := rows.Scan(&m.UserID, &m.DisplayName, &m.Role, &m.JoinedAt); err != nil {
+		if err := rows.Scan(&m.UserID, &m.DisplayName, &m.Role, &m.JoinedAt, &m.AvatarID); err != nil {
 			return nil, fmt.Errorf("scan member: %w", err)
 		}
 		out = append(out, m)
@@ -393,7 +394,7 @@ func (s *PGStore) ListInvites(ctx context.Context, userID, circleID uuid.UUID) (
 		return nil, ErrForbidden
 	}
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, circle_id, created_by, code, expires_at, created_at
+		`SELECT id, circle_id, created_by, code, expires_at, created_at, recipient_email_hash IS NOT NULL
 		   FROM invites
 		  WHERE circle_id = $1 AND revoked_at IS NULL AND used_at IS NULL
 		    AND expires_at > now()
@@ -406,7 +407,7 @@ func (s *PGStore) ListInvites(ctx context.Context, userID, circleID uuid.UUID) (
 	var out []Invite
 	for rows.Next() {
 		var i Invite
-		if err := rows.Scan(&i.ID, &i.CircleID, &i.CreatedBy, &i.Code, &i.ExpiresAt, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.CircleID, &i.CreatedBy, &i.Code, &i.ExpiresAt, &i.CreatedAt, &i.RecipientRestricted); err != nil {
 			return nil, fmt.Errorf("scan invite: %w", err)
 		}
 		out = append(out, i)
@@ -456,7 +457,7 @@ func (s *PGStore) PreviewInvite(ctx context.Context, userID uuid.UUID, code stri
 	var preview InvitePreview
 	err := s.pool.QueryRow(ctx, `SELECT c.id,c.name,i.expires_at FROM invites i JOIN circles c ON c.id=i.circle_id
  WHERE i.code=$1 AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>clock_timestamp()
- AND EXISTS(SELECT 1 FROM users WHERE id=$2)`, code, userID).Scan(&preview.CircleID, &preview.CircleName, &preview.ExpiresAt)
+ AND EXISTS(SELECT 1 FROM users WHERE id=$2 AND (i.recipient_email_hash IS NULL OR i.recipient_email_hash=sha256(convert_to(lower(trim(email)),'UTF8'))))`, code, userID).Scan(&preview.CircleID, &preview.CircleName, &preview.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return InvitePreview{}, ErrInviteUnavailable
 	}
@@ -490,19 +491,19 @@ func (s *PGStore) redeemInvite(ctx context.Context, userID uuid.UUID, code strin
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := lockUser(ctx, tx, userID); err != nil {
+		return Circle{}, Membership{}, err
+	}
 	var inviteID, circleID uuid.UUID
-	err = tx.QueryRow(ctx,
-		`SELECT id, circle_id FROM invites
-		  WHERE code = $1 AND revoked_at IS NULL AND used_at IS NULL AND expires_at > now()
-		  FOR UPDATE`, code).Scan(&inviteID, &circleID)
+	err = tx.QueryRow(ctx, `SELECT i.id,i.circle_id FROM invites i
+    WHERE i.code=$1 AND i.revoked_at IS NULL AND i.used_at IS NULL AND i.expires_at>clock_timestamp()
+    AND EXISTS(SELECT 1 FROM users WHERE id=$2 AND (i.recipient_email_hash IS NULL OR i.recipient_email_hash=sha256(convert_to(lower(trim(email)),'UTF8'))))
+    FOR UPDATE OF i`, code, userID).Scan(&inviteID, &circleID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Circle{}, Membership{}, ErrInviteUnavailable
 	}
 	if err != nil {
 		return Circle{}, Membership{}, fmt.Errorf("lookup invite: %w", err)
-	}
-	if err := lockUser(ctx, tx, userID); err != nil {
-		return Circle{}, Membership{}, err
 	}
 
 	// One active circle per user (MVP): the unique index is the backstop,

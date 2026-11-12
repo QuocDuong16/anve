@@ -31,10 +31,11 @@ type circleMembershipBody struct {
 }
 
 type memberBody struct {
-	UserID      string `json:"userId"`
-	DisplayName string `json:"displayName"`
-	Role        string `json:"role"`
-	JoinedAt    string `json:"joinedAt"`
+	UserID      string     `json:"userId"`
+	DisplayName string     `json:"displayName"`
+	AvatarID    *uuid.UUID `json:"avatarId,omitempty"`
+	Role        string     `json:"role"`
+	JoinedAt    string     `json:"joinedAt"`
 }
 
 type memberListBody struct {
@@ -42,12 +43,13 @@ type memberListBody struct {
 }
 
 type inviteBody struct {
-	ID        string `json:"id"`
-	CircleID  string `json:"circleId"`
-	Code      string `json:"code"`
-	CreatedBy string `json:"createdBy"`
-	ExpiresAt string `json:"expiresAt"`
-	CreatedAt string `json:"createdAt"`
+	RecipientRestricted bool   `json:"recipientRestricted,omitempty"`
+	ID                  string `json:"id"`
+	CircleID            string `json:"circleId"`
+	Code                string `json:"code"`
+	CreatedBy           string `json:"createdBy"`
+	ExpiresAt           string `json:"expiresAt"`
+	CreatedAt           string `json:"createdAt"`
 }
 
 type inviteListBody struct {
@@ -178,7 +180,8 @@ func listMembersHandler(svc *circles.Service) http.HandlerFunc {
 		for _, m := range members {
 			out = append(out, memberBody{
 				UserID: m.UserID.String(), DisplayName: m.DisplayName,
-				Role: m.Role, JoinedAt: m.JoinedAt.UTC().Format(timeFormat),
+				AvatarID: m.AvatarID,
+				Role:     m.Role, JoinedAt: m.JoinedAt.UTC().Format(timeFormat),
 			})
 		}
 		writeJSON(w, http.StatusOK, memberListBody{Members: out})
@@ -273,7 +276,7 @@ func listInvitesHandler(svc *circles.Service) http.HandlerFunc {
 		out := make([]inviteBody, 0, len(invites))
 		for _, i := range invites {
 			out = append(out, inviteBody{
-				ID: i.ID.String(), CircleID: i.CircleID.String(), Code: i.Code,
+				RecipientRestricted: i.RecipientRestricted, ID: i.ID.String(), CircleID: i.CircleID.String(), Code: i.Code,
 				CreatedBy: i.CreatedBy.String(),
 				ExpiresAt: i.ExpiresAt.UTC().Format(timeFormat),
 				CreatedAt: i.CreatedAt.UTC().Format(timeFormat),

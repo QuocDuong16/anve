@@ -109,6 +109,10 @@ class AppContainer(application: Application) {
 
     val circleRepository: CircleRepository = CircleRepository(api = authApi)
 
+    val privateInvitationRepository = com.anve.app.data.circles.PrivateInvitationRepository(authApi, sessionStore)
+
+    val avatarRepository = com.anve.app.data.avatar.AvatarRepository(authApi, sessionStore)
+
     val historyRepository = com.anve.app.data.location.HistoryRepository(authApi)
 
     /** Location read API calls are screen-scoped; this repository stores no coordinates. */

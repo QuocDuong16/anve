@@ -68,3 +68,19 @@ func TestFCMStaleEpisodeIsOpaqueAndStrictlyValidated(t *testing.T) {
 		require.Error(t, f.Send(context.Background(), "fake-token", signal))
 	}
 }
+
+func TestInvitationSignalIsNormalPriorityAndOpaque(t *testing.T) {
+	var payload map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	gateway := &FCM{client: server.Client(), endpoint: server.URL}
+	id := uuid.New()
+	require.NoError(t, gateway.Send(context.Background(), "fake-token", Signal{EventID: id, Kind: "CIRCLE_INVITE"}))
+	message := payload["message"].(map[string]any)
+	require.Equal(t, map[string]any{"eventId": id.String(), "kind": "CIRCLE_INVITE"}, message["data"])
+	require.Equal(t, "normal", message["android"].(map[string]any)["priority"])
+	require.NotContains(t, message, "notification")
+}

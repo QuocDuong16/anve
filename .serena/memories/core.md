@@ -98,3 +98,39 @@ has a "Product context & source of truth" section pointing to the same documents
 - Read `mem:suggested_commands` for the make-based daily workflow and tool invocation rules.
 - Read `mem:conventions` for Go/Kotlin style and repo-wide rules (contract-first, migrations, commits).
 - Read `mem:task_completion` for the gates a change must pass before it is done.
+
+
+## Profile photos and private addressed invitations
+
+`internal/avatars` owns bounded JPEG/PNG normalization and an authenticated
+current-image resource; profile bytes have no public URL. Reads require self
+or current common Circle membership. Mutations lock the current account and
+login, use expected revision plus operation UUID, and retain a revision row
+after removal; stale/uncertain writes cannot revive a deleted image. Roster
+DTOs expose only the current image ID. Android `data/avatar` and `ui/avatar`
+use the system single-image Photo Picker, in-memory crop/resize (including
+sampled/EXIF-compatible decoding on older supported Android), explicit Save
+and read-only metadata reconciliation. No broad media permission, durable
+photo queue or disk image cache; generated mockup photos are never app assets.
+
+`circles.InvitationStore` is separate from the legacy Circle Store interface.
+New creation binds request UUID, account, Circle and input fingerprint;
+retired fences survive dissolution until account deletion. Email mode stores
+only a normalized recipient digest, and private authenticated inbox/detail,
+code preview and redemption enforce the binding. No account-existence,
+notification outcome or receiver-private hide status appears in sender DTOs.
+The internal per-target notification budget must never change sender response
+shape/status. Legacy unaddressed codes remain compatible and one-use.
+
+Invitation dispatch locks current accounts, invitation, creator membership,
+recipient binding/private-hide status and current session/token before FCM.
+Only recipients registered at creation are queued; future matching accounts
+can still find a live invitation in the private inbox. CIRCLE_INVITE is an
+opaque normal-priority signal, with a separate nonurgent Android channel.
+Push tap reauthorizes the detail and enters existing explicit confirmation;
+it never redeems or starts sharing. Creation unknowns use owner-bound GET
+readback without automatically repeating POST. Inbox refreshes are fenced
+against account changes and newer review/hide actions. Bounded maintenance
+retires content/budgets while fences preserve replay protection. ADR 0017 and
+the profile/email implementation record describe privacy/retention and tests;
+source/CI fixtures do not establish real provider, backup erasure or device behavior.

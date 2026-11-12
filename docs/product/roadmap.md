@@ -27,8 +27,8 @@
 | [M4 — Live Map](#m4--live-map-realtime-location-confidence-engine) | Live Map, authorized latest locations, near-realtime polling, confidence | Implemented — Automated Verified; Pending Runtime/Device Validation |
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
-| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A và M7-B bản thủ công Automated Verified; formal review, field validation và tính năng tự động chưa hoàn tất |
-| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A/M8-B/M8-C đã merge/CI xanh; M8-D đang làm hồ sơ owner và signed-fixture runtime, public/provider/field gates còn mở |
+| [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A/M7-B và phần tự động có automated evidence (PR #21 chưa merge); formal portal/field validation còn mở |
+| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A/M8-B/M8-C đã merge/CI xanh; M8-D merged PR #20; hồ sơ owner và signed-fixture runtime có evidence,, public/provider/field gates còn mở |
 
 ## M0 — Foundation
 
@@ -340,3 +340,14 @@ tuyên bố kết quả duyệt — kết quả thuộc về quá trình review 
 - **Server-push realtime** (SSE/WebSocket) — M4 MVP dùng conditional polling;
   chỉ xem xét push nếu request volume hoặc latency đo được cần transport khác
   theo [ADR 0008](../adr/0008-m4-polling-confidence-and-map.md).
+
+
+### Profile/email extension
+
+Nhánh hiện tại bổ sung các yêu cầu avatar và thông báo lời mời còn thiếu,
+không tạo milestone mới: hai bảng B đã được duyệt, native Compose thật,
+API owner/session-bound, hộp thư riêng và ràng buộc email khi dùng mã. Xem
+[implementation/evidence](../implementation/profile-and-email-invitations.md).
+Public resources, production providers/signing, physical GPS/pin/OEM và full
+security/Play review vẫn là các cổng nghiệm thu riêng; không phải tính năng
+có thể đánh dấu hoàn tất bằng việc build app.

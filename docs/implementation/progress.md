@@ -6,7 +6,7 @@
 > always names the evidence. Never mark a milestone done from documentation
 > alone.
 
-Last updated: 2026-11-12 (M8-C merged; M8-D owner handoff and signed runtime smoke).
+Last updated: 2026-11-13 (profile/email implementation; PR #21 remains unmerged).
 
 ## Current milestone
 
@@ -27,13 +27,25 @@ emulator); physical-device validation and formal Impeccable review remain open.*
 **M7-B Safe Journey first release: Implemented — Automated Verified** on the
 main (`5773724`, merged PR #16; main Go/Android CI passed, 32 emulator tests). Native
 correction review and documenter are complete; user approved the final render
-and completion with the formal portal pending. Automatic arrival/stale alerts
-remain Planned. **M8-A HTTP observability is merged and automated-verified**
+and completion with the formal portal pending. Automatic arrival/stale alerts and invitation links are implemented and
+automated-verified on PR #21 at `4b02f07` (43 emulator tests), still unmerged.
+The current stacked branch adds profile photos and email invitations; see
+[its evidence record](profile-and-email-invitations.md). **M8-A HTTP observability is merged and automated-verified**
 (PR #17, `6ecf1d2`, main Go/Android CI passed). **M8-B Android release gates are
 merged (`67eaf03`, PR #18; exact-head CI passed)**; **M8-C merged (`fdd46b8`,
 PR #19; six exact-head checks passed)** with scoped release/privacy review and
 a versioned Android inventory gate. M8-D prepares owner content and a signed
 fixture runtime smoke; release readiness and remaining M7 field evidence stay separate.
+
+## Profile photos and addressed invitations
+
+Current branch `codex/profile-and-email-invitations` extends PR #21 without
+merging it. Photo Picker/preview/save/remove and authorized roster photos;
+email-bound codes, private inbox, generic normal-priority FCM and explicit
+existing join confirmation have source implementations. Local server checks,
+PostgreSQL integration, Android JVM/lint/build and exact-head CI/native evidence
+are recorded in [the slice record](profile-and-email-invitations.md). Do not
+infer hosted CI success or real-provider validation from this status paragraph.
 
 ## Milestones
 
@@ -41,13 +53,13 @@ fixture runtime smoke; release readiness and remaining M7 field evidence stay se
 | --- | --- | --- |
 | M0 Foundation | Implemented — Verified | CI + Compose smoke test at `de54074`. |
 | M1 Auth & privacy | Implemented — Verified (server, JVM-level) | See evidence below; Google path needs real OAuth client (external), on-device run pending. |
-| M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; invite deep-link pending. |
+| M2 Family Circle | Implemented — Verified (server+client) | Authorization matrix tests in CI; Deep links/preview confirmed in PR #21; profile/email extension on current branch. |
 | M3 Location Engine | Implemented — Automated Verified | Server + Android + runtime HTTP smoke; field validation pending (battery/background/OEM). |
 | M4 Live Map | Implemented — Automated Verified; Pending Runtime/Device Validation | Explicit temporal grants, latest read API, conditional polling, Android map/sharing UI |
 | M5 History & Places | Implemented — Automated Verified; device validation pending | Go/Android CI and emulator passed on `f127d48`. |
 | M6 SOS & FCM | Implemented — Automated Verified | Fake provider and prior emulator CI; real Firebase/physical device pending. |
-| M7 Journey & diagnostics | M7-A and M7-B Automated Verified | M7-A merged in `6d3cb01`. M7-B `bcde472`: Go/Android CI, 306 JVM and 32 emulator tests pass; native render approved, formal completion explicitly waived by user, field evidence pending. Automatic arrival/stale alerts remain Planned. |
-| M8 Release hardening | M8-A/M8-B/M8-C merged — Automated Verified; M8-D in progress | Owner details and content drafts; signed fixture runtime smoke added on branch; public/provider/field gates remain open. |
+| M7 Journey & diagnostics | M7-A and M7-B Automated Verified | M7-A merged in `6d3cb01`. M7-B `bcde472`: Go/Android CI, 306 JVM and 32 emulator tests pass; native render approved, formal completion explicitly waived by user, field evidence pending. Automatic arrival/stale extension passed PR #21 CI at `4b02f07` (43 emulator tests); unmerged, field thresholds pending. |
+| M8 Release hardening | M8-A/M8-B/M8-C merged — Automated Verified; M8-D in progress | Owner details and content drafts; signed fixture runtime smoke merged through PR #20; public/provider/field gates remain open. |
 
 ## M8-A/M8-B/M8-C acceptance and M8-D implementation
 
@@ -87,13 +99,13 @@ M8-C merged via PR #19 as `fdd46b8`, after all six checks passed on `637c4b1`.
 Downloaded evidence included 32 emulator tests/30 synthetic captures, the
 reviewed inventory and both 207-module graphs, and the verified AAB/record.
 
-M8-D adds an isolated signed/minified APK runtime smoke in a separate CI job
+M8-D merged through PR #20 (`a8a49f2`) and adds an isolated signed/minified APK runtime smoke in a separate CI job
 with source/digest/signature readback, disposable-emulator guards and cleanup.
 It covers unauthenticated startup/background/recreation without provider
 credentials. Owner-supplied identity, email, intended domain and Play App
 Signing direction are recorded in [the handoff](../release/m8d-owner-handoff.md),
 with privacy/deletion content drafts and the remaining external evidence.
-Local/hosted results for this slice are recorded in its PR; full M8-D remains
+Local/hosted results for M8-D are recorded in PR #20; full M8-D remains
 pending public resources, owner operational decisions, providers and devices.
 
 ## M7-B acceptance and remaining evidence

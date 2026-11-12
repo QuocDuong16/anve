@@ -25,6 +25,8 @@ import (
 const (
 	ActionSignIn                                = "auth.signin"
 	ActionDevSignIn                             = "auth.dev_signin"
+	ActionAvatarChanged                         = "profile.avatar.changed"
+	ActionAvatarRemoved                         = "profile.avatar.removed"
 	ActionSignOut                               = "auth.signout"
 	ActionSessionRevoked                        = "auth.session_revoked"
 	ActionDeviceRevoked                         = "auth.device_revoked"

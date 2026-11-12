@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/avatars"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
@@ -48,6 +49,8 @@ type Deps struct {
 
 	Version        string
 	Auth           *auth.Service
+	Avatars        *avatars.Store
+	Invitations    *circles.InvitationStore
 	Circles        *circles.Service
 	Locations      *locations.Service
 	LocationAccess *locationaccess.Service
@@ -140,6 +143,21 @@ func NewRouter(deps Deps) chi.Router {
 			private.Use(RequireAuth(svc))
 
 			private.Post("/auth/signout", signOutHandler(svc))
+			if deps.Invitations != nil {
+				limiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
+				private.With(RateLimit(limiter)).Post("/circles/{circleId}/invitations", privateInvitationCreate(deps.Invitations))
+				private.Get("/circles/{circleId}/invitations/{requestId}", privateInvitationReadback(deps.Invitations))
+				private.Get("/me/invitations", receivedInvitations(deps.Invitations))
+				private.Get("/me/invitations/{inviteId}", receivedInvitationDetail(deps.Invitations))
+				private.With(RateLimit(limiter)).Delete("/me/invitations/{inviteId}", receivedInvitationDetail(deps.Invitations))
+			}
+			if deps.Avatars != nil {
+				limiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
+				private.Get("/me/avatar", avatarStateHandler(deps.Avatars))
+				private.With(RateLimit(limiter)).Put("/me/avatar", avatarMutationHandler(deps.Avatars))
+				private.With(RateLimit(limiter)).Delete("/me/avatar", avatarMutationHandler(deps.Avatars))
+				private.Get("/avatars/{userId}/{imageId}", avatarImageHandler(deps.Avatars))
+			}
 			if deps.Journeys != nil {
 				limiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
 				private.With(RateLimit(limiter)).Get("/journeys", journeyCollection(deps.Journeys))
