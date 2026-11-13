@@ -106,7 +106,7 @@ def verify_bundle(bundle, variant, env):
         symbol_entries = [
             entry for entry in archive.infolist()
             if entry.filename.startswith("BUNDLE-METADATA/com.android.tools.build.debugsymbols/")
-            and entry.filename.endswith(".sym")
+            and entry.filename.endswith((".dbg", ".sym"))
         ]
     if not symbol_entries or any(entry.file_size <= 0 for entry in symbol_entries):
         raise RuntimeError("AAB is missing non-empty native debug symbols")
