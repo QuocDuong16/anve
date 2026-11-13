@@ -1,4 +1,11 @@
 {$API_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy api:8080
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8080
+	}
+	@health path /healthz /readyz
+	handle @health {
+		reverse_proxy api:8080
+	}
 }

@@ -20,15 +20,17 @@ còn nháp không được mô tả là đã công khai hoặc đã được Goo
 
 Owner chọn nơi đặt máy chủ, vùng dữ liệu và cách vận hành/backup. Cần một
 dịch vụ chạy Go API, PostgreSQL hỗ trợ PostGIS và HTTPS với chứng thư hợp lệ.
-Website dự kiến ở `anve.niand.id.vn`; có thể dùng một hostname API riêng,
-ví dụ `api.anve.niand.id.vn`, **sau khi owner chọn và cấu hình DNS/TLS**.
-Không có bản ghi DNS hoặc hạ tầng production nào được tạo bởi hướng dẫn này.
+Có thể dùng chung hostname `anve.niand.id.vn`; Caddy chuyển tiếp `/api/*`,
+`/healthz` và `/readyz` vào Go API. `API_DOMAIN` chỉ nhận hostname, không có
+scheme hoặc path. Android đặt `ANVE_API_URL=https://anve.niand.id.vn`; các
+endpoint đã có tiền tố `/api/v1`. Không có bản ghi DNS hoặc hạ tầng production
+nào được tạo bởi hướng dẫn này.
 
 Các giá trị production được giữ trong `.env.prod` trên máy chủ:
 
 | Input | Thiết lập cần có |
 | --- | --- |
-| `API_DOMAIN` | Hostname API trỏ DNS tới server; Caddy cấp/gia hạn TLS |
+| `API_DOMAIN` | Hostname `anve.niand.id.vn` trỏ DNS tới server; Caddy cấp/gia hạn TLS và route `/api/*` |
 | `HTTP_PORT`, `HTTPS_PORT` | Cổng host trong dải 24xxx; mặc định `24080`, `24443` |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Tài khoản database riêng; mật khẩu 64 ký tự hex được sinh ngẫu nhiên. Compose tạo `DATABASE_URL` nội bộ. |
 | `ENVIRONMENT`, `LISTEN_ADDR`, `AUTH_DEV_LOGIN_ENABLED` | `production`, `0.0.0.0:8080`, `false`; Make guard từ chối giá trị khác |
@@ -64,6 +66,8 @@ make docker-up         # build, migrate, bật API và Caddy/HTTPS
 localhost. Production chỉ publish Caddy trên `24080/24443`; API và Postgres
 không có cổng host, Postgres nằm trên Docker network nội bộ. Caddy tự xin/gia
 hạn chứng thư khi DNS, firewall và chuyển tiếp cổng công khai đúng.
+`LISTEN_ADDR=0.0.0.0:8080` là cổng bên trong container API, nơi Caddy gọi tới;
+`24080/24443` là cổng host của Caddy. Không cần đổi API listener sang `24080`.
 `make docker-down` dừng dịch vụ nhưng giữ volume dữ liệu. Không dùng
 `make docker-clean-dev` với mục đích xóa dữ liệu
 production.
