@@ -166,7 +166,8 @@ emulator URL are never substitutes for explicit production inputs.
 3. Download the verified AAB and adjacent JSON record. Compare source commit,
    package/version, bundle SHA-256, upload-certificate fingerprint and the
    `nativeDebugSymbolsVerified` record with the intended release. The verifier
-   requires non-empty AGP native-symbol entries in the AAB; the digest-pinned
+   requires non-empty AGP native-symbol entries (`.dbg` or `.sym`) under the
+   AAB's debug-symbol metadata; the digest-pinned
    bundletool validates its format, and Java JAR verification consumes every
    content entry and requires the pinned signer. The JSON is a build record,
    **not an attestation or a reproducibility claim**.
