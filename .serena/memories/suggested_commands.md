@@ -12,7 +12,7 @@ Everything goes through the Makefile from the repo root; `make help` is the defa
 
 - `make docker-up-dev` (alias `up-dev`) — build & start local PostgreSQL/PostGIS + API; API on `http://localhost:8080`, `GET /healthz`.
 - `make docker-down-dev` / `docker-logs-dev` (aliases `down-dev` / `logs-dev`); `make docker-clean-dev` also deletes only development volumes.
-- Production: copy `env.prod.example` to private `env.prod`, configure DNS/OAuth/secrets, then `make docker-config` and `make docker-up`; `make docker-down` preserves production volumes.
+- Production: copy `.env.prod.example` to private `.env.prod`, configure DNS/OAuth/secrets, then `make docker-config` and `make docker-up`; `make docker-down` preserves production volumes.
 - `make migrate-up-dev` / `migrate-down-dev` — apply pending migrations / roll back the last development migration (runs the migrator inside Docker; no local DB access needed). Production migrations run as part of `make docker-up`.
 - `make server-run` — run the API locally via `go run ./cmd/api` from `apps/server` (works without a DB; uses `.env` values).
 - `make android-build` — debug APK at `apps/android/app/build/outputs/apk/debug/app-debug.apk` (requires `ANDROID_HOME`).

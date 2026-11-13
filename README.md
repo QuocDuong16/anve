@@ -114,7 +114,7 @@ API key do nhà phát triển cấu hình theo `docs/implementation/setup-androi
 
 `make docker-up-dev` chỉ publish cổng API và PostgreSQL trên `127.0.0.1`; máy
 khác trong LAN không truy cập được. `make docker-up` dành cho production, đọc
-`env.prod`, chạy migrations và đưa API qua HTTPS bằng Caddy. Xem
+`.env.prod`, chạy migrations và đưa API qua HTTPS bằng Caddy. Xem
 [`docs/operations/first-real-test.vi.md`](docs/operations/first-real-test.vi.md)
 để chuẩn bị DNS, OAuth và máy chủ. Chạy API trực tiếp (không Docker) mặc định bind
 `127.0.0.1:8080`. Development login chỉ mount khi

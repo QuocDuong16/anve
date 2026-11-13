@@ -20,9 +20,9 @@ services:
     image: postgis/postgis:17-3.6@sha256:d7053f57b0d62c427ffbf412208b6625317124d62eebf40672e990fea81e9d53
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in env.prod}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env.prod}
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in env.prod}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env.prod}
       POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     volumes:
@@ -46,7 +46,7 @@ services:
     command: ["up"]
     restart: "no"
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in env.prod}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env.prod}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in env.prod}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in .env.prod}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env.prod}?sslmode=disable
       MIGRATIONS_DIR: /migrations
     volumes:
       - ./infra/migrations:/migrations:ro
@@ -65,10 +65,10 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      LISTEN_ADDR: ${LISTEN_ADDR:?Set LISTEN_ADDR in env.prod}
-      ENVIRONMENT: ${ENVIRONMENT:?Set ENVIRONMENT=production in env.prod}
-      DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in env.prod}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env.prod}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in env.prod}?sslmode=disable
-      AUTH_GOOGLE_CLIENT_ID: ${AUTH_GOOGLE_CLIENT_ID:?Set AUTH_GOOGLE_CLIENT_ID in env.prod}
+      LISTEN_ADDR: ${LISTEN_ADDR:?Set LISTEN_ADDR in .env.prod}
+      ENVIRONMENT: ${ENVIRONMENT:?Set ENVIRONMENT=production in .env.prod}
+      DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in .env.prod}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env.prod}?sslmode=disable
+      AUTH_GOOGLE_CLIENT_ID: ${AUTH_GOOGLE_CLIENT_ID:?Set AUTH_GOOGLE_CLIENT_ID in .env.prod}
       AUTH_DEV_LOGIN_ENABLED: ${AUTH_DEV_LOGIN_ENABLED:-false}
       FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/fcm-credentials.json
@@ -96,7 +96,7 @@ services:
     image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
     restart: unless-stopped
     environment:
-      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in env.prod}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env.prod}
     ports:
       - "${HTTP_PORT:-24080}:80"
       - "${HTTPS_PORT:-24443}:443"

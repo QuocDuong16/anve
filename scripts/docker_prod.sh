@@ -3,19 +3,19 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-env_file=env.prod
+env_file=.env.prod
 compose_file=infra/docker/docker-compose.prod.yml
 
 if [[ ! -f "$env_file" ]]; then
 	cat >&2 <<'EOF'
-Production configuration is missing. Copy env.prod.example to env.prod,
-set the production values, and restrict it with: chmod 600 env.prod
+Production configuration is missing. Copy .env.prod.example to .env.prod,
+set the production values, and restrict it with: chmod 600 .env.prod
 EOF
 	exit 1
 fi
 
 if [[ ! -r "$env_file" ]]; then
-	echo "env.prod must be readable by the deployment user." >&2
+	echo ".env.prod must be readable by the deployment user." >&2
 	exit 1
 fi
 
@@ -28,7 +28,7 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 if stat.S_IMODE(path.stat().st_mode) & 0o077:
-    print("env.prod permissions are too open; run chmod 600 env.prod.", file=sys.stderr)
+    print(".env.prod permissions are too open; run chmod 600 .env.prod.", file=sys.stderr)
     raise SystemExit(1)
 
 values = {}
@@ -38,7 +38,7 @@ for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(),
         continue
     key, separator, value = line.partition("=")
     if not separator or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key.strip()):
-        print(f"Invalid env.prod syntax on line {line_number}.", file=sys.stderr)
+        print(f"Invalid .env.prod syntax on line {line_number}.", file=sys.stderr)
         raise SystemExit(1)
     value = value.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
@@ -52,7 +52,7 @@ required = (
 )
 missing = [name for name in required if not values.get(name)]
 if missing:
-    print("Set required values in env.prod: " + ", ".join(missing), file=sys.stderr)
+    print("Set required values in .env.prod: " + ", ".join(missing), file=sys.stderr)
     raise SystemExit(1)
 
 domain = values["API_DOMAIN"]
@@ -110,7 +110,7 @@ case "$command" in
 esac
 
 # Make imports .env for development and exports those variables. Remove app
-# settings from that environment so env.prod is always authoritative here.
+# settings from that environment so .env.prod is always authoritative here.
 unset_vars=(
 	API_PORT API_DOMAIN AUTH_DEV_LOGIN_ALLOW_NETWORK AUTH_DEV_LOGIN_ALLOWED_CIDRS
 	AUTH_DEV_LOGIN_ENABLED AUTH_GOOGLE_CLIENT_ID COMPOSE_PROJECT_NAME DATABASE_URL

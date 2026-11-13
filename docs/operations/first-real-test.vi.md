@@ -24,7 +24,7 @@ Website dự kiến ở `anve.niand.id.vn`; có thể dùng một hostname API r
 ví dụ `api.anve.niand.id.vn`, **sau khi owner chọn và cấu hình DNS/TLS**.
 Không có bản ghi DNS hoặc hạ tầng production nào được tạo bởi hướng dẫn này.
 
-Các giá trị production được giữ trong `env.prod` trên máy chủ:
+Các giá trị production được giữ trong `.env.prod` trên máy chủ:
 
 | Input | Thiết lập cần có |
 | --- | --- |
@@ -53,9 +53,9 @@ Sao chép cấu hình mẫu,
 điền OAuth Web client ID và mật khẩu database, rồi khóa quyền đọc file:
 
 ```bash
-cp env.prod.example env.prod
-openssl rand -hex 32  # đặt kết quả vào POSTGRES_PASSWORD trong env.prod
-chmod 600 env.prod
+cp .env.prod.example .env.prod
+openssl rand -hex 32  # đặt kết quả vào POSTGRES_PASSWORD trong .env.prod
+chmod 600 .env.prod
 make docker-config     # kiểm tra cấu hình, không in secret
 make docker-up         # build, migrate, bật API và Caddy/HTTPS
 ```
@@ -68,7 +68,7 @@ hạn chứng thư khi DNS, firewall và chuyển tiếp cổng công khai đún
 `make docker-clean-dev` với mục đích xóa dữ liệu
 production.
 
-FCM có thể để trống trong `env.prod` khi chưa cấu hình Firebase; push sẽ không
+FCM có thể để trống trong `.env.prod` khi chưa cấu hình Firebase; push sẽ không
 hoạt động. Khi bật FCM, đặt project ID và đường dẫn tới credential file nằm
 ngoài checkout. Vì API chạy bằng user không đặc quyền trong container, đặt
 file trong thư mục riêng (`chmod 700`) và file JSON chỉ đọc (`chmod 444`);

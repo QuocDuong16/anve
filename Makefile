@@ -43,7 +43,7 @@ toolchain-check: ## Verify the repository toolchain pins are consistent
 DOCKER_COMPOSE = docker compose --project-directory . -f infra/docker/docker-compose.yml
 DEV_COMPOSE = $(DOCKER_COMPOSE)
 
-docker-up: ## Deploy production API, PostgreSQL/PostGIS and HTTPS ingress from env.prod
+docker-up: ## Deploy production API, PostgreSQL/PostGIS and HTTPS ingress from .env.prod
 	bash scripts/docker_prod.sh up
 
 docker-down: ## Stop the production stack without deleting persistent data

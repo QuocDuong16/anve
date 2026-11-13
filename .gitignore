@@ -1,6 +1,6 @@
 # Local environment
 .env
-env.prod
+.env.prod
 
 # Go
 bin/
