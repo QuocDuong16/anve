@@ -28,7 +28,7 @@ import com.anve.app.data.journey.JourneyOperation
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
-import com.anve.app.ui.diagnostics.SystemFontScaleRule
+import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
 import java.io.File
 import java.time.Instant
@@ -36,14 +36,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TestRule
 
 /** Synthetic UI fixtures verify controls and rendering, not GPS or Firebase. */
 class JourneyScreenInstrumentedTest {
-    @get:Rule(order = 0)
-    val systemFontScale: TestRule = SystemFontScaleRule("darkLargeTextPreservesArrivalDialogAndEndAction", 1.3f)
-
-    @get:Rule(order = 1)
+    @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val now = Instant.now()
@@ -120,8 +116,7 @@ class JourneyScreenInstrumentedTest {
     }
 
     @Test fun darkLargeTextPreservesArrivalDialogAndEndAction() {
-        assertEquals(1.3f, InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale, 0.01f)
-        compose.setContent { AnVeTheme(darkTheme = true) { JourneyContent(state, tracking) } }
+        compose.setContent { LargeFontScale { AnVeTheme(darkTheme = true) { JourneyContent(state, tracking) } } }
         capture("active-dark-font130")
         scrollTo("Kết thúc hành trình")
         compose.onNode(hasText("Kết thúc hành trình") and hasClickAction()).assertIsDisplayed()

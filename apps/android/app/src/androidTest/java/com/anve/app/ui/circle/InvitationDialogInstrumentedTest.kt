@@ -9,21 +9,17 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.test.platform.app.InstrumentationRegistry
 import com.anve.app.data.api.InvitePreviewDto
 import com.anve.app.ui.captureNativeFixture
-import com.anve.app.ui.diagnostics.SystemFontScaleRule
+import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
 import java.time.Instant
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TestRule
 
 class InvitationDialogInstrumentedTest {
-    @get:Rule(order = 0) val systemFontScale: TestRule = SystemFontScaleRule("darkLargeTextRetainsLongGroupAndExplicitConfirmation", 1.3f)
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val ready = InvitationUiState(loading = false, preview = InvitePreviewDto("synthetic-circle", "Nhà mình", Instant.now().plusSeconds(3600).toString()),
         accountLabel = "An · an@example.test")
 
@@ -69,8 +65,7 @@ class InvitationDialogInstrumentedTest {
     @Test fun darkLargeTextRetainsLongGroupAndExplicitConfirmation() {
         val name = "Gia đình An và Mai cùng những người thân yêu"
         var joins = 0
-        compose.setContent { AnVeTheme(darkTheme = true) { InvitationDialog(ready.copy(preview = ready.preview!!.copy(circleName = name)), true, {}, { joins++ }, {}, {}) } }
-        assertTrue(InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale >= 1.29f)
+        compose.setContent { LargeFontScale { AnVeTheme(darkTheme = true) { InvitationDialog(ready.copy(preview = ready.preview!!.copy(circleName = name)), true, {}, { joins++ }, {}, {}) } } }
         compose.onNodeWithText(name).assertIsDisplayed()
         compose.waitForIdle()
         captureNativeFixture("invitation-preview-dark-font130")

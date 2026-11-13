@@ -164,10 +164,12 @@ emulator URL are never substitutes for explicit production inputs.
    signing passwords. The key is removed by an `always()` cleanup step and is
    absent from the artifact upload paths.
 3. Download the verified AAB and adjacent JSON record. Compare source commit,
-   package/version, bundle SHA-256 and upload-certificate fingerprint with the
-   intended release. The digest-pinned bundletool validates the format; Java
-   JAR verification consumes every content entry and requires the pinned signer.
-   The JSON is a build record, **not an attestation or a reproducibility claim**.
+   package/version, bundle SHA-256, upload-certificate fingerprint and the
+   `nativeDebugSymbolsVerified` record with the intended release. The verifier
+   requires non-empty AGP native-symbol entries in the AAB; the digest-pinned
+   bundletool validates its format, and Java JAR verification consumes every
+   content entry and requires the pinned signer. The JSON is a build record,
+   **not an attestation or a reproducibility claim**.
 4. Archive the release record under the owner's retention policy; Actions
    artifacts expire after seven days. Complete provider, physical-device,
    privacy/Data Safety and permission-declaration evidence before any separate
@@ -176,11 +178,12 @@ emulator URL are never substitutes for explicit production inputs.
 ### Follow-up from the first internal test
 
 Play Console warned that release version code 1 contains native code but has
-no native debug symbols. Before building the next distribution version,
-configure the Android release build to produce native debug symbols, include
-them in the AAB or upload the matching symbols file to Play Console, and verify
-that Play Console accepts them for that version. This improves native crash
-and ANR stack traces; the warning did not block the first internal-test release.
+no native debug symbols. Android release builds now configure AGP to include
+`FULL` native debug symbols in the AAB. Upload the AAB for the next version as
+usual; Play Console should ingest the matching symbols from that bundle. Verify
+the Console accepts them for the new version. `FULL` includes function names,
+source files and line numbers in native crash/ANR traces. The warning did not
+block the first internal-test release.
 
 For an authorized local build, inject the right-column inputs through a secret
 manager or private environment, then run `make android-distribution` from a

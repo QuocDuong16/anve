@@ -17,21 +17,17 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.WindowCompat
-import androidx.test.platform.app.InstrumentationRegistry
 import com.anve.app.data.api.ReceivedInvitationDto
 import com.anve.app.ui.captureNativeFixture
-import com.anve.app.ui.diagnostics.SystemFontScaleRule
+import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
 import java.time.Instant
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TestRule
 
 class EmailInvitationInstrumentedTest {
-    @get:Rule(order = 0) val systemFontScale: TestRule = SystemFontScaleRule("darkLargeTextKeepsEmailAndExpiryAccessible", 1.3f)
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     @Test fun emailLinkModesAndUnknownCreationHaveExplicitActions() {
         val state = mutableStateOf(PrivateInvitationsState(open = true))
         val online = mutableStateOf(true)
@@ -57,9 +53,8 @@ class EmailInvitationInstrumentedTest {
         captureNativeFixture("email-invitation-link-mode")
     }
     @Test fun darkLargeTextKeepsEmailAndExpiryAccessible() {
-        compose.setContent { AnVeTheme(darkTheme = true) { EmailInvitationSheet(PrivateInvitationsState(open = true,
-            email = "mai@example.test"), true, {}, {}, {}, {}, {}, {}) } }
-        assertTrue(InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale >= 1.29f)
+        compose.setContent { LargeFontScale { AnVeTheme(darkTheme = true) { EmailInvitationSheet(PrivateInvitationsState(open = true,
+            email = "mai@example.test"), true, {}, {}, {}, {}, {}, {}) } } }
         compose.onNodeWithTag("invite-submit").assertIsDisplayed()
         compose.onNodeWithTag("invite-email").performScrollTo().assertIsDisplayed()
         captureNativeFixture("email-invitation-dark-font130")

@@ -16,23 +16,19 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
-import androidx.test.platform.app.InstrumentationRegistry
 import com.anve.app.data.api.AvatarStateDto
 import com.anve.app.data.avatar.AvatarGateway
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import com.anve.app.ui.captureNativeFixture
-import com.anve.app.ui.diagnostics.SystemFontScaleRule
+import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TestRule
 
 class AvatarSheetInstrumentedTest {
-    @get:Rule(order = 0) val systemFontScale: TestRule = SystemFontScaleRule("darkLargeTextKeepsControlsReachable", 1.3f)
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val ready = AvatarUiState(open = true, loading = false, metadata = AvatarStateDto(0), selection = byteArrayOf(1))
     private val bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888).apply {
         eraseColor(Color.rgb(18, 87, 92))
@@ -106,10 +102,9 @@ class AvatarSheetInstrumentedTest {
     }
 
     @Test fun darkLargeTextKeepsControlsReachable() {
-        compose.setContent { AnVeTheme(darkTheme = true) { AvatarSheet(ready, true, {}, {}, {}, {}, {}, {}) {
+        compose.setContent { LargeFontScale { AnVeTheme(darkTheme = true) { AvatarSheet(ready, true, {}, {}, {}, {}, {}, {}) {
             AvatarFrame("An", bitmap, Modifier.size(160.dp))
-        } } }
-        assertTrue(InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale >= 1.29f)
+        } } } }
         compose.onNodeWithTag("avatar-save").assertIsDisplayed()
         compose.onNodeWithTag("avatar-choose").performScrollTo().assertIsDisplayed()
         captureNativeFixture("avatar-preview-dark-font130")

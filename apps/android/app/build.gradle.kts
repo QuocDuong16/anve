@@ -102,6 +102,9 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(releaseSettings.getValue("ANVE_API_URL")))
             resValue("string", "anve_google_server_client_id", releaseSettings.getValue("ANVE_GOOGLE_WEB_CLIENT_ID"))
             buildConfigField("String", "MAPS_API_KEY", ReleaseInputs.javaString(releaseSettings.getValue("ANVE_MAPS_API_KEY")))

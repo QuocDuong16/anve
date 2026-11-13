@@ -13,26 +13,22 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.espresso.Espresso.pressBack
-import androidx.test.platform.app.InstrumentationRegistry
 import com.anve.app.data.api.JourneyDestinationDto
 import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.captureNativeFixture
-import com.anve.app.ui.diagnostics.SystemFontScaleRule
+import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TestRule
 
 class JourneyAutomationInstrumentedTest {
-    @get:Rule(order = 0) val systemFontScale: TestRule = SystemFontScaleRule("optionsDarkLargeTextKeepsThresholdAndApplyReachable", 1.3f)
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val now = Instant.now()
     private val form = JourneyUiState(owner = "owner", loading = false, consentEnabled = true,
         places = listOf(PlaceDto("home", "owner", "circle", "Nhà", 21.0, 105.0, 100.0, now.toString(), now.toString())),
@@ -76,8 +72,7 @@ class JourneyAutomationInstrumentedTest {
 
     @Test fun optionsDarkLargeTextKeepsThresholdAndApplyReachable() {
         var applied: Pair<Boolean, Int>? = null
-        compose.setContent { AnVeTheme(darkTheme = true) { JourneyOptionsSheet(false, 10, {}, { automatic, stale -> applied = automatic to stale }) } }
-        assertTrue(InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale >= 1.29f)
+        compose.setContent { LargeFontScale { AnVeTheme(darkTheme = true) { JourneyOptionsSheet(false, 10, {}, { automatic, stale -> applied = automatic to stale }) } } }
         compose.onNodeWithTag("automatic-arrival").assertIsOff()
         compose.onNodeWithTag("stale-reminder").assertIsOn()
         compose.waitForIdle()
