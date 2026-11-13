@@ -156,7 +156,11 @@ with the same platform probe quirk accounted for; empty/default reader output
 alone is not evidence that metadata was stripped.
 
 
+## Google sign-in UI ownership
+
+The sign-in ViewModel owns the entire explicit attempt, including Credential Manager and backend token exchange, with a single-flight busy state. Provider cancellation must produce neutral incomplete-sign-in feedback: Credential Manager can report configuration/authorization failures as cancellation too. Coroutine lifecycle cancellation remains cancellation. Never log ID tokens, credential bundles or provider exception messages. Play-installed OAuth Android clients use the Play app-signing certificate SHA-1, independently of the upload certificate pin.
+
 ## Android CI and release details
 
 - Compose tests for large text scope `DeviceConfigurationOverride.FontScale` to the content under test; avoid shell-mutation of device-global `font_scale`, which can fail to propagate into the app process on emulator CI.
-- Release AABs configure AGP `FULL` native symbols. The release verifier requires non-empty `.sym` entries under `BUNDLE-METADATA/com.android.tools.build.debugsymbols/` and records verification/count alongside the bundle digest.
+- Release AABs configure AGP `FULL` native symbols. The release verifier requires non-empty `.dbg` or `.sym` entries under `BUNDLE-METADATA/com.android.tools.build.debugsymbols/` and records verification/count alongside the bundle digest.

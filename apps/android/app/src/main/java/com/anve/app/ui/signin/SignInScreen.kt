@@ -29,12 +29,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,7 +51,6 @@ import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.theme.AnVeTheme
-import kotlinx.coroutines.launch
 
 
 /**
@@ -71,8 +72,8 @@ fun SignInScreen(
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val notice by container.sessionNotices.notice.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val genericSignInError = stringResource(R.string.signin_generic_error)
+    val incompleteSignIn = stringResource(R.string.signin_google_incomplete)
 
     LaunchedEffect(state) {
         if (state is SignInUiState.SignedIn) onSignedIn()
@@ -91,19 +92,13 @@ fun SignInScreen(
                 viewModel.reportError("Không mở được trình đăng nhập trên màn hình này.")
                 return@SignInContent
             }
-            scope.launch {
-                val result = GoogleCredentialSource(activity).fetchIdToken()
-                result.fold(
-                    onSuccess = { viewModel.signInWithGoogleToken(it) },
-                    onFailure = { cause ->
-                        // Cancelling the account sheet is a normal exit, not
-                        // an error the user needs to hear about.
-                        if (cause !is GetCredentialCancellationException) {
-                            viewModel.reportError(genericSignInError)
-                        }
-                    },
-                )
-            }
+            viewModel.signInWithGoogle(
+                fetchIdToken = { GoogleCredentialSource(activity).fetchIdToken() },
+                credentialError = { cause ->
+                    // Providers also use cancellation for authorization/configuration failures.
+                    if (cause is GetCredentialCancellationException) incompleteSignIn else genericSignInError
+                },
+            )
         },
         onDevSignIn = { viewModel.signInDev(it) },
         onRetry = viewModel::refreshConfig,
@@ -170,7 +165,7 @@ fun SignInContent(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         ),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
                     ) {
                         Text(
                             text = error,
@@ -183,6 +178,8 @@ fun SignInContent(
 
                 if (busy) {
                     CircularProgressIndicator(Modifier.size(28.dp))
+                    Text(stringResource(R.string.signin_in_progress), style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                     Spacer(Modifier.height(16.dp))
                 }
 
