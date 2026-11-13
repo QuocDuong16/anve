@@ -63,6 +63,7 @@ android {
     // Pinned explicitly: AGP would otherwise pick its own default, which CI
     // would then have to guess when installing the Android SDK.
     buildToolsVersion = libs.versions.buildTools.get()
+    ndkVersion = libs.versions.ndk.get()
 
     defaultConfig {
         applicationId = "com.anve.app"
