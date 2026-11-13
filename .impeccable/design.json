@@ -143,6 +143,22 @@
           "oklch(0.84 0.01476 192.27)",
           "oklch(0.95 0.00830 192.27)"
         ]
+      },
+      "teal-300": {
+        "role": "primary",
+        "displayName": "Teal 300"
+      },
+      "amber-800": {
+        "role": "secondary",
+        "displayName": "Amber 800"
+      },
+      "ink-800": {
+        "role": "neutral",
+        "displayName": "Ink 800"
+      },
+      "ink-700": {
+        "role": "neutral",
+        "displayName": "Ink 700"
       }
     },
     "typographyMeta": {

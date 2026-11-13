@@ -5,12 +5,16 @@ colors:
   teal-900: "#00363A"
   teal-700: "#00505A"
   teal-400: "#2A8C95"
+  teal-300: "#50B3B2"
   teal-100: "#B9E4E8"
+  amber-800: "#65471F"
   amber-600: "#D98E32"
   amber-300: "#F2C48A"
   sand-50: "#FBF7F0"
   sand-200: "#EDE3D2"
   ink-900: "#11201F"
+  ink-800: "#1B2D2C"
+  ink-700: "#283C3B"
   ink-600: "#3C4F4E"
 typography:
   headline:
@@ -82,13 +86,13 @@ Sand provides warm light surfaces; ink provides text and dark surfaces. The dark
 
 | Material role | Light palette token | Dark palette token |
 | --- | --- | --- |
-| `primary` | `teal-700` | `teal-400` |
+| `primary` | `teal-700` | `teal-300` |
 | `onPrimary` | `sand-50` | `teal-900` |
 | `primaryContainer` | `teal-100` | `teal-700` |
 | `onPrimaryContainer` | `teal-900` | `teal-100` |
 | `secondary` | `amber-600` | `amber-300` |
-| `onSecondary` | `sand-50` | `ink-900` |
-| `secondaryContainer` | `amber-300` | `amber-600` |
+| `onSecondary` | `ink-900` | `ink-900` |
+| `secondaryContainer` | `amber-300` | `amber-800` |
 | `onSecondaryContainer` | `ink-900` | `sand-50` |
 | `background` | `sand-50` | `ink-900` |
 | `onBackground` | `ink-900` | `sand-50` |
@@ -97,7 +101,13 @@ Sand provides warm light surfaces; ink provides text and dark surfaces. The dark
 | `surfaceVariant` | `sand-200` | `ink-600` |
 | `onSurfaceVariant` | `ink-600` | `sand-200` |
 
-Roles omitted by `Theme.kt`, including error, outline, tertiary and additional surface containers, inherit the installed Material 3 defaults. No bespoke values are asserted for them. `AnVeTheme` follows system dark mode by default and leaves dynamic color disabled unless explicitly requested.
+Surface containers use the sand ramp in light mode and the ink ramp in dark mode, including `ink-800` and `ink-700` for elevated dark surfaces. Roles omitted by `Theme.kt`, including error, outline and tertiary, inherit the installed Material 3 defaults. No bespoke values are asserted for them. `AnVeTheme` follows system dark mode by default and leaves dynamic color disabled unless explicitly requested.
+
+The brand splash uses the theme surface as its canvas and semantic primary text
+for the wordmark; it does not place text over a changing gradient. The
+light/dark semantic foreground-container pairs are covered by
+`ThemeContrastTest` at 4.5:1 for body text. Dark teal and amber container roles
+are adjusted to keep readable text while retaining the existing brand hues.
 
 **The Paired Roles Rule.** Choose a container and its corresponding content role together; verify the resulting pair in both themes. A role name alone is not proof of contrast.
 

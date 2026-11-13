@@ -4,8 +4,11 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,10 +16,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -56,9 +70,8 @@ import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 private const val MAX_GAP_SECONDS = 900L
 private const val MAX_ACCURACY_METERS = 100.0
@@ -141,113 +154,229 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
     var selectedId by remember(state.owner, state.member, state.date) { mutableStateOf<String?>(null) }
     val selected = state.points.firstOrNull { it.eventId == selectedId }
     var deletionScope by remember(state.owner) { mutableStateOf<DeletionScope?>(null) }
+    var showActions by remember { mutableStateOf(false) }
     val camera = key(state.owner) { rememberCameraPositionState() }
     var mapLoaded by remember(state.owner) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val member = state.member ?: return
-    val gapStarts = remember(state.points) { historySegments(state.points).drop(1).mapNotNull { it.firstOrNull()?.eventId }.toSet() }
-    LaunchedEffect(state.owner, member, state.date, state.points.isEmpty(), mapLoaded) {
-        if (mapLoaded && state.points.isEmpty()) {
-            camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 1f))
-        }
+    val gapStarts = remember(state.points) {
+        historySegments(state.points).drop(1).mapNotNull { it.firstOrNull()?.eventId }.toSet()
     }
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Lịch sử vị trí", style = MaterialTheme.typography.headlineSmall)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { FilterChip(selected = member == state.owner, onClick = { vm.select(state.owner!!, state.date) }, label = { Text("Của tôi") }, enabled = !state.mutationPending) }
-            items(state.members, key = { it.ownerId }) { person ->
-                FilterChip(selected = member == person.ownerId, onClick = { vm.select(person.ownerId, state.date) }, label = { Text(person.displayName) }, enabled = !state.mutationPending)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { vm.select(member, state.date.minusDays(1)) }, enabled = !state.mutationPending) { Text("Ngày trước") }
-            TextButton(onClick = {
-                DatePickerDialog(context, { _, year, month, day ->
-                    vm.select(member, LocalDate.of(year, month + 1, day))
-                }, state.date.year, state.date.monthValue - 1, state.date.dayOfMonth).apply {
-                    datePicker.maxDate = System.currentTimeMillis()
-                    show()
+    LaunchedEffect(state.owner, member, state.date, state.points.isEmpty(), mapLoaded) {
+        if (mapLoaded && state.points.isEmpty()) camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 1f))
+    }
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Lịch sử vị trí", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                Row {
+                    IconButton(onClick = vm::refresh, enabled = !state.loading && !state.mutationPending) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Làm mới")
+                    }
+                    if (state.member == state.owner) Box {
+                        IconButton(onClick = { showActions = true }, enabled = !state.mutationPending) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Thao tác lịch sử")
+                        }
+                        DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
+                            if (state.member == state.owner) {
+                                DropdownMenuItem(
+                                    text = { Text("Xóa khoảng giờ") },
+                                    onClick = { showActions = false; deletionScope = DeletionScope.RANGE },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Xóa ngày này") },
+                                    onClick = { showActions = false; deletionScope = DeletionScope.DAY },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Xóa toàn bộ lịch sử") },
+                                    onClick = { showActions = false; deletionScope = DeletionScope.ALL },
+                                )
+                            }
+                        }
+                    }
                 }
-            }, enabled = !state.mutationPending) { Text(state.date.toString()) }
-            OutlinedButton(onClick = { vm.select(member, state.date.plusDays(1)) }, enabled = !state.mutationPending && state.date < LocalDate.now()) { Text("Ngày sau") }
+            }
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item {
-                OutlinedButton(onClick = {
-                    TimePickerDialog(context, { _, hour, minute -> vm.selectTimes(hour * 60 + minute, state.endMinute) },
-                        state.startMinute / 60, state.startMinute % 60, true).show()
-                }, enabled = !state.mutationPending) { Text("Từ ${formatMinute(state.startMinute)}") }
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
+                    FilterChip(
+                        selected = member == state.owner,
+                        onClick = { state.owner?.let { vm.select(it, state.date) } },
+                        label = { Text("Của tôi") },
+                        enabled = !state.mutationPending,
+                    )
+                }
+                items(state.members, key = { it.ownerId }) { person ->
+                    FilterChip(
+                        selected = member == person.ownerId,
+                        onClick = { vm.select(person.ownerId, state.date) },
+                        label = { Text(person.displayName) },
+                        enabled = !state.mutationPending,
+                    )
+                }
             }
-            item {
-                OutlinedButton(onClick = {
-                    val initial = minOf(state.endMinute, 1439)
-                    TimePickerDialog(context, { _, hour, minute -> vm.selectTimes(state.startMinute, hour * 60 + minute) },
-                        initial / 60, initial % 60, true).show()
-                }, enabled = !state.mutationPending) { Text("Đến ${formatMinute(state.endMinute)}") }
+        }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = { vm.select(member, state.date.minusDays(1)) },
+                            enabled = !state.mutationPending,
+                        ) { Icon(Icons.Default.ChevronLeft, contentDescription = "Ngày trước") }
+                        TextButton(onClick = {
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, day -> vm.select(member, LocalDate.of(year, month + 1, day)) },
+                                state.date.year,
+                                state.date.monthValue - 1,
+                                state.date.dayOfMonth,
+                            ).apply {
+                                datePicker.maxDate = System.currentTimeMillis()
+                                show()
+                            }
+                        }, enabled = !state.mutationPending, modifier = Modifier.weight(1f)) { Text(state.date.toString()) }
+                        IconButton(
+                            onClick = { vm.select(member, state.date.plusDays(1)) },
+                            enabled = !state.mutationPending && state.date < LocalDate.now(),
+                        ) { Icon(Icons.Default.ChevronRight, contentDescription = "Ngày sau") }
+                    }
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            OutlinedButton(onClick = {
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute -> vm.selectTimes(hour * 60 + minute, state.endMinute) },
+                                    state.startMinute / 60,
+                                    state.startMinute % 60,
+                                    true,
+                                ).show()
+                            }, enabled = !state.mutationPending) { Text("Từ ${formatMinute(state.startMinute)}") }
+                        }
+                        item {
+                            OutlinedButton(onClick = {
+                                val initial = minOf(state.endMinute, 1439)
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute -> vm.selectTimes(state.startMinute, hour * 60 + minute) },
+                                    initial / 60,
+                                    initial % 60,
+                                    true,
+                                ).show()
+                            }, enabled = !state.mutationPending) { Text("Đến ${formatMinute(state.endMinute)}") }
+                        }
+                        item {
+                            TextButton(onClick = { vm.selectTimes(0, 1440) }, enabled = !state.mutationPending) {
+                                Text("Cả ngày")
+                            }
+                        }
+                    }
+                }
             }
-            item { TextButton(onClick = { vm.selectTimes(0, 1440) }, enabled = !state.mutationPending) { Text("Cả ngày") } }
         }
         if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-            GoogleMap(modifier = Modifier.fillMaxWidth().height(220.dp), cameraPositionState = camera, onMapLoaded = { mapLoaded = true }) {
-                historySegments(state.points).filter { it.size > 1 }.forEach { segment ->
-                    Polyline(points = segment.map { LatLng(it.latitude, it.longitude) })
-                }
-                selected?.takeIf {
-                    it.latitude.isFinite() && it.longitude.isFinite() &&
-                        it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0
-                }?.let { point ->
-                    val marker = remember(point.eventId, point.latitude, point.longitude) {
-                        MarkerState(position = LatLng(point.latitude, point.longitude))
+            item {
+                GoogleMap(
+                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    cameraPositionState = camera,
+                    onMapLoaded = { mapLoaded = true },
+                ) {
+                    historySegments(state.points).filter { it.size > 1 }.forEach { segment ->
+                        Polyline(points = segment.map { LatLng(it.latitude, it.longitude) })
                     }
-                    Marker(state = marker, title = point.recordedAt)
+                    selected?.takeIf {
+                        it.latitude.isFinite() && it.longitude.isFinite() &&
+                            it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0
+                    }?.let { point ->
+                        val marker = remember(point.eventId, point.latitude, point.longitude) {
+                            MarkerState(position = LatLng(point.latitude, point.longitude))
+                        }
+                        Marker(state = marker, title = point.recordedAt)
+                    }
                 }
+                TextButton(onClick = {
+                    val point = selected ?: state.points.lastOrNull()
+                    if (mapLoaded && point != null && point.latitude in -90.0..90.0 && point.longitude in -180.0..180.0) {
+                        scope.launch {
+                            camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), 14f))
+                        }
+                    }
+                }, enabled = mapLoaded && state.points.isNotEmpty()) { Text("Đưa bản đồ tới điểm đã chọn") }
             }
-            TextButton(onClick = {
-                val point = selected ?: state.points.lastOrNull()
-                if (mapLoaded && point != null && point.latitude in -90.0..90.0 && point.longitude in -180.0..180.0) {
-                    scope.launch { camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), 14f)) }
-                }
-            }) { Text("Đưa bản đồ tới điểm đã chọn") }
-        } else Text("Bản đồ chưa được cấu hình; lịch sử vẫn hiển thị bên dưới.")
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (state.loading || state.mutationPending) CircularProgressIndicator()
-        if (state.points.isEmpty() && !state.loading && state.error == null && !state.mutationPending) Text("Không có điểm lịch sử trong ngày này.")
-        LazyColumn(Modifier.weight(1f)) {
-            items(state.points, key = { it.eventId }) { point ->
-                val text = runCatching { DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.parse(point.recordedAt)) }.getOrDefault(point.recordedAt)
-                val gap = if (point.eventId in gapStarts) "Gián đoạn · " else ""
-                val delayed = if (point.backfill) " · đồng bộ trễ" else ""
-                val mock = if (point.isMock) " · nguồn mô phỏng" else ""
-                Text("$gap$text · ±${point.horizontalAccuracyMeters.toInt()} m$delayed$mock", Modifier.fillMaxWidth().clickable { selectedId = point.eventId }.padding(12.dp))
-            }
-            if (state.nextCursor != null) item { TextButton(onClick = vm::next, enabled = !state.loading) { Text("Trang tiếp theo") } }
+        } else {
+            item { Text("Bản đồ chưa được cấu hình; lịch sử vẫn hiển thị bên dưới.") }
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { TextButton(onClick = vm::refresh, enabled = !state.loading && !state.mutationPending) { Text("Kiểm tra lại") } }
-            if (state.member == state.owner) {
-                item { TextButton(onClick = { deletionScope = DeletionScope.RANGE }, enabled = !state.mutationPending) { Text("Xóa khoảng giờ") } }
-                item { TextButton(onClick = { deletionScope = DeletionScope.DAY }, enabled = !state.mutationPending) { Text("Xóa ngày") } }
-                item { TextButton(onClick = { deletionScope = DeletionScope.ALL }, enabled = !state.mutationPending) { Text("Xóa tất cả") } }
+        state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+        if (state.loading || state.mutationPending) item { CircularProgressIndicator() }
+        if (state.points.isEmpty() && !state.loading && state.error == null && !state.mutationPending) {
+            item { Text("Không có điểm lịch sử trong ngày này.", modifier = Modifier.padding(vertical = 12.dp)) }
+        }
+        items(state.points, key = { it.eventId }) { point ->
+            val time = runCatching {
+                DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.parse(point.recordedAt))
+            }.getOrDefault(point.recordedAt)
+            val gap = if (point.eventId in gapStarts) "Gián đoạn · " else ""
+            val delayed = if (point.backfill) " · đồng bộ trễ" else ""
+            val mock = if (point.isMock) " · nguồn mô phỏng" else ""
+            Text(
+                "$gap$time · ±${point.horizontalAccuracyMeters.toInt()} m$delayed$mock",
+                Modifier.fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
+                    .clickable { selectedId = point.eventId }
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                color = if (point.eventId == selectedId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        if (state.nextCursor != null) {
+            item {
+                TextButton(onClick = vm::next, enabled = !state.loading) { Text("Trang tiếp theo") }
             }
         }
         if (state.member == state.owner) {
-            Text("Thời hạn lưu: ${state.effectiveRetentionDays ?: state.retentionDays ?: "—"} ngày")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1, 7, 30).forEach { days ->
-                    FilterChip(selected = state.retentionDays == days, onClick = { vm.changeRetention(days) }, enabled = !state.mutationPending && state.retentionDays != null, label = { Text("$days ngày") })
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Thời hạn lưu", style = MaterialTheme.typography.titleSmall)
+                        Text("${state.effectiveRetentionDays ?: state.retentionDays ?: "—"} ngày")
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(listOf(1, 7, 30)) { days ->
+                                FilterChip(
+                                    selected = state.retentionDays == days,
+                                    onClick = { vm.changeRetention(days) },
+                                    enabled = !state.mutationPending && state.retentionDays != null,
+                                    label = { Text("$days ngày") },
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
+        item { Spacer(Modifier.height(80.dp)) }
     }
     deletionScope?.let { scope ->
-        AlertDialog(onDismissRequest = { deletionScope = null }, title = { Text("Xóa lịch sử?") },
-            text = { Text((when (scope) {
-                DeletionScope.ALL -> "Xóa lịch sử đến lúc này."
-                DeletionScope.DAY -> "Xóa lịch sử ngày đã chọn."
-                DeletionScope.RANGE -> "Xóa lịch sử trong khoảng giờ đã chọn."
-            }) + " Để bảo vệ quyền riêng tư, các điểm chưa đồng bộ trên thiết bị khác có thể bị bỏ, kể cả điểm mới ghi khi thiết bị offline.") },
-            confirmButton = { Button(onClick = { deletionScope = null; vm.delete(scope == DeletionScope.ALL, scope == DeletionScope.RANGE) }) { Text("Xóa") } },
-            dismissButton = { TextButton(onClick = { deletionScope = null }) { Text("Hủy") } })
+        AlertDialog(
+            onDismissRequest = { deletionScope = null },
+            title = { Text("Xóa lịch sử?") },
+            text = {
+                Text((when (scope) {
+                    DeletionScope.ALL -> "Xóa lịch sử đến lúc này."
+                    DeletionScope.DAY -> "Xóa lịch sử ngày đã chọn."
+                    DeletionScope.RANGE -> "Xóa lịch sử trong khoảng giờ đã chọn."
+                }) + " Để bảo vệ quyền riêng tư, các điểm chưa đồng bộ trên thiết bị khác có thể bị bỏ, kể cả điểm mới ghi khi thiết bị offline.")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    deletionScope = null
+                    vm.delete(scope == DeletionScope.ALL, scope == DeletionScope.RANGE)
+                }) { Text("Xóa") }
+            },
+            dismissButton = { TextButton(onClick = { deletionScope = null }) { Text("Hủy") } },
+        )
     }
 }

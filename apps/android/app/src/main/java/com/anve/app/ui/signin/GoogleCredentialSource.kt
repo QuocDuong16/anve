@@ -6,7 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.anve.app.R
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 
@@ -33,9 +33,7 @@ class GoogleCredentialSource(private val activity: Activity) {
             return Result.failure(GoogleSignInUnavailableError)
         }
         return runCatching {
-            val option = GetGoogleIdOption.Builder()
-                .setServerClientId(serverClientId)
-                .setFilterByAuthorizedAccounts(false)
+            val option = GetSignInWithGoogleOption.Builder(serverClientId)
                 .build()
             val request = GetCredentialRequest.Builder()
                 .addCredentialOption(option)

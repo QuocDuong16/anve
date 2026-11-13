@@ -7,8 +7,10 @@ import androidx.compose.ui.graphics.Color
 val Teal900 = Color(0xFF00363A)
 val Teal700 = Color(0xFF00505A)
 val Teal400 = Color(0xFF2A8C95)
+val Teal300 = Color(0xFF50B3B2)
 val Teal100 = Color(0xFFB9E4E8)
 
+val Amber800 = Color(0xFF65471F)
 val Amber600 = Color(0xFFD98E32)
 val Amber300 = Color(0xFFF2C48A)
 
@@ -16,4 +18,6 @@ val Sand50 = Color(0xFFFBF7F0)
 val Sand200 = Color(0xFFEDE3D2)
 
 val Ink900 = Color(0xFF11201F)
+val Ink800 = Color(0xFF1B2D2C)
+val Ink700 = Color(0xFF283C3B)
 val Ink600 = Color(0xFF3C4F4E)

@@ -7,6 +7,7 @@
     <!-- Sign-in -->
     <string name="signin_google">Đăng nhập bằng Google</string>
     <string name="signin_google_caption">Tài khoản Google của bạn chỉ dùng để đăng nhập; AnVề không lấy gì khác.</string>
+    <string name="signin_generic_error">Đăng nhập chưa thành công. Vui lòng thử lại.</string>
     <string name="signin_google_unavailable">Đăng nhập Google chưa sẵn sàng trên máy chủ hoặc trên bản cài này. Kiểm tra kết nối tới máy chủ, hoặc xem hướng dẫn cấu hình.</string>
     <string name="signin_retry">Thử lại</string>
     <string name="signin_dev_title">Đăng nhập phát triển (chỉ máy chủ dev)</string>
@@ -20,6 +21,9 @@
 
     <!-- Home / account -->
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
+    <string name="home_quick_settings_title">Cài đặt chia sẻ</string>
+    <string name="sos_open">Mở SOS</string>
+    <string name="action_back">Quay lại</string>
     <string name="action_retry">Thử lại</string>
     <string name="action_rename">Đổi tên</string>
     <string name="action_save">Lưu</string>

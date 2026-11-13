@@ -69,7 +69,7 @@ fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvita
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
-        Text("Đang kiểm tra phiên đăng nhập. Mở mục Cá nhân nếu chưa tải được.", Modifier.padding(24.dp))
+        Text("Đang kiểm tra phiên đăng nhập. Mở Tài khoản nếu chưa tải được.", Modifier.padding(24.dp))
         return
     }
     val viewModel: CircleViewModel = viewModel(
