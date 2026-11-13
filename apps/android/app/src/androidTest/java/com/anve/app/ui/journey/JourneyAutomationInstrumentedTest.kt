@@ -12,7 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.Espresso.pressBackUnconditionally
 import com.anve.app.data.api.JourneyDestinationDto
 import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.PlaceDto
@@ -61,7 +61,7 @@ class JourneyAutomationInstrumentedTest {
         openOptions()
         compose.onNodeWithTag("automatic-arrival").performClick()
         compose.onNodeWithTag("stale-reminder").performClick()
-        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        pressBackUnconditionally()
         compose.waitForIdle()
         openOptions()
         compose.onNodeWithTag("automatic-arrival").assertIsOff()
