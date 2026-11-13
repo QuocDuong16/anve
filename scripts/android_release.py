@@ -102,6 +102,14 @@ def verify_signature(bundle, pin, env, *, expected=0):
 def verify_bundle(bundle, variant, env):
     pin = env["ANVE_SIGNING_CERT_SHA256"].replace(":", "").lower()
     verify_signature(bundle, pin, env)
+    with zipfile.ZipFile(bundle) as archive:
+        symbol_entries = [
+            entry for entry in archive.infolist()
+            if entry.filename.startswith("BUNDLE-METADATA/com.android.tools.build.debugsymbols/")
+            and entry.filename.endswith(".sym")
+        ]
+    if not symbol_entries or any(entry.file_size <= 0 for entry in symbol_entries):
+        raise RuntimeError("AAB is missing non-empty native debug symbols")
     tool = bundletool(env)
     run([*tool, "validate", f"--bundle={bundle}"], env)
     # The XML contains client configuration. Parse it in memory, never echo it.
@@ -120,6 +128,7 @@ def verify_bundle(bundle, variant, env):
     return {"sourceCommit": sha, "applicationId": expected_package, "versionCode": int(env["ANVE_VERSION_CODE"]),
             "versionName": expected_name, "variant": variant, "certificateSha256": pin,
             "bundleSha256": hashlib.sha256(bundle.read_bytes()).hexdigest(), "signatureVerified": True, "bundletoolValidated": True,
+            "nativeDebugSymbolsVerified": True, "nativeDebugSymbolEntryCount": len(symbol_entries),
             "privacyInventorySha256": hashlib.sha256(privacy.BASELINE.read_bytes()).hexdigest(), "privacyManifestVerified": True}
 
 

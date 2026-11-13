@@ -154,3 +154,9 @@ The instrumentation regression verifies a small JPEG has real rotation/GPS/
 description tags, checks oriented output pixels and reads normalized metadata
 with the same platform probe quirk accounted for; empty/default reader output
 alone is not evidence that metadata was stripped.
+
+
+## Android CI and release details
+
+- Compose tests for large text scope `DeviceConfigurationOverride.FontScale` to the content under test; avoid shell-mutation of device-global `font_scale`, which can fail to propagate into the app process on emulator CI.
+- Release AABs configure AGP `FULL` native symbols. The release verifier requires non-empty `.sym` entries under `BUNDLE-METADATA/com.android.tools.build.debugsymbols/` and records verification/count alongside the bundle digest.

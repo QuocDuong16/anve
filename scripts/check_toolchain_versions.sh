@@ -93,6 +93,8 @@ toml_build_tools="$(extract apps/android/gradle/libs.versions.toml 'buildTools =
 workflow_compile_sdk="$(extract .github/workflows/android.yml 'COMPILE_SDK: "([^"]+)"')"
 workflow_build_tools="$(extract .github/workflows/android.yml 'BUILD_TOOLS: "([^"]+)"')"
 workflow_platform="$(extract .github/workflows/android.yml 'ANDROID_PLATFORM: "([^"]+)"')"
+toml_ndk="$(extract apps/android/gradle/libs.versions.toml 'ndk = "([^"]+)"')"
+workflow_ndk="$(extract .github/workflows/android.yml 'ANDROID_NDK: "ndk;([^"]+)"')"
 
 if [[ -z "$toml_compile_sdk" ]]; then
     fail 'apps/android/gradle/libs.versions.toml: missing compileSdk pin'
@@ -100,6 +102,18 @@ elif [[ -z "$workflow_compile_sdk" ]]; then
     fail '.github/workflows/android.yml: missing COMPILE_SDK pin'
 elif [[ "$toml_compile_sdk" != "$workflow_compile_sdk" ]]; then
     fail "compileSdk pins disagree: libs.versions.toml=$toml_compile_sdk android.yml=$workflow_compile_sdk"
+fi
+
+if [[ -z "$toml_ndk" ]]; then
+    fail 'apps/android/gradle/libs.versions.toml: missing NDK pin'
+elif ! grep -Eq '^\s*ndkVersion = libs\.versions\.ndk\.get\(\)$' apps/android/app/build.gradle.kts; then
+    fail 'apps/android/app/build.gradle.kts: missing ndkVersion pin'
+fi
+
+if [[ -z "$workflow_ndk" ]]; then
+    fail '.github/workflows/android.yml: missing ANDROID_NDK pin'
+elif [[ "$toml_ndk" != "$workflow_ndk" ]]; then
+    fail "NDK pins disagree: libs.versions.toml=$toml_ndk android.yml=$workflow_ndk"
 fi
 
 if [[ -z "$toml_build_tools" ]]; then
@@ -121,11 +135,12 @@ fi
 # The manual distribution job must use the same SDK and command-line tools as
 # the regression workflow, with platform/build versions still sourced from TOML.
 workflow_cmdline="$(extract .github/workflows/android.yml 'CMDLINE_TOOLS_VERSION: "([^"]+)"')"
-for key in COMPILE_SDK BUILD_TOOLS ANDROID_PLATFORM CMDLINE_TOOLS_VERSION; do
+for key in COMPILE_SDK BUILD_TOOLS ANDROID_PLATFORM ANDROID_NDK CMDLINE_TOOLS_VERSION; do
     case "$key" in
         COMPILE_SDK) expected="$toml_compile_sdk" ;;
         BUILD_TOOLS) expected="$toml_build_tools" ;;
         ANDROID_PLATFORM) expected="$workflow_platform" ;;
+        ANDROID_NDK) expected="ndk;$toml_ndk" ;;
         CMDLINE_TOOLS_VERSION) expected="$workflow_cmdline" ;;
     esac
     release_value="$(extract .github/workflows/android-release.yml "$key: \"([^\"]+)\"")"

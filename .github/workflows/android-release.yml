@@ -30,6 +30,7 @@ jobs:
       COMPILE_SDK: "37"
       BUILD_TOOLS: "37.0.0"
       ANDROID_PLATFORM: "platforms;android-37.0"
+      ANDROID_NDK: "ndk;28.2.13676358"
       CMDLINE_TOOLS_VERSION: "15859902"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -46,7 +47,7 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
         with:
           cmdline-tools-version: ${{ env.CMDLINE_TOOLS_VERSION }}
-          packages: platform-tools ${{ env.ANDROID_PLATFORM }} build-tools;${{ env.BUILD_TOOLS }}
+          packages: platform-tools ${{ env.ANDROID_PLATFORM }} build-tools;${{ env.BUILD_TOOLS }} ${{ env.ANDROID_NDK }}
       - name: Verify pinned toolchain
         run: make toolchain-check
       - name: Use pinned Java

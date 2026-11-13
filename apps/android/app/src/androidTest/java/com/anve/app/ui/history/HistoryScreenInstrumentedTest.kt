@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Surface
 import com.anve.app.ui.captureNativeFixture
-import com.anve.app.ui.diagnostics.SystemFontScaleRule
+import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anve.app.data.api.HistoryRetentionDto
@@ -27,8 +27,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class HistoryScreenInstrumentedTest {
-    @get:Rule(order = 0) val fontScale: org.junit.rules.TestRule = SystemFontScaleRule("darkLayoutAtLargeFont", 1.3f)
-    @get:Rule(order = 1) val compose = createComposeRule()
+    @get:Rule val compose = createComposeRule()
 
     @Test
     fun historyDateNavigationDoesNotNeedMapsKeyOrNetwork() {
@@ -64,7 +63,9 @@ class HistoryScreenInstrumentedTest {
         val vm = HistoryViewModel(FakeHistory())
         compose.setContent {
             val state by vm.state.collectAsState()
-            AnVeTheme(darkTheme = dark) { Surface(Modifier.systemBarsPadding()) { HistoryContent(state, vm) } }
+            LargeFontScale(enabled = dark) {
+                AnVeTheme(darkTheme = dark) { Surface(Modifier.systemBarsPadding()) { HistoryContent(state, vm) } }
+            }
         }
         compose.runOnIdle { vm.activate("owner") }
         compose.onNodeWithText("Lịch sử vị trí").assertIsDisplayed()

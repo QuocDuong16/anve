@@ -28,13 +28,9 @@ import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TestRule
 
 class DiagnosticsScreenInstrumentedTest {
-    @get:Rule(order = 0)
-    val systemFontScale: TestRule = SystemFontScaleRule("enlargedTextAndDarkThemeKeepActionsReachable", 1.3f)
-
-    @get:Rule(order = 1)
+    @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val state = DiagnosticsUiState(
@@ -81,13 +77,14 @@ class DiagnosticsScreenInstrumentedTest {
 
     @Test
     fun enlargedTextAndDarkThemeKeepActionsReachable() {
-        assertEquals(1.3f, InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale, 0.01f)
         val show = mutableStateOf(false)
         val report = safeDiagnosticsReport(state.status, state.details, "synthetic-debug", 35, 1_000_000)
         compose.setContent {
-            AnVeTheme(darkTheme = true) {
-                DiagnosticsContent(state, 1_000_000, {}, {}, {}, { show.value = true })
-                if (show.value) DiagnosticsExportReview(report, { show.value = false }, {})
+            LargeFontScale {
+                AnVeTheme(darkTheme = true) {
+                    DiagnosticsContent(state, 1_000_000, {}, {}, {}, { show.value = true })
+                    if (show.value) DiagnosticsExportReview(report, { show.value = false }, {})
+                }
             }
         }
         scrollTo("Mở cài đặt mạng")
