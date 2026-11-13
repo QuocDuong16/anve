@@ -22,6 +22,7 @@
     <!-- Home / account -->
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
     <string name="home_quick_settings_title">Cài đặt chia sẻ</string>
+    <string name="sos_open">Mở SOS</string>
     <string name="action_back">Quay lại</string>
     <string name="action_retry">Thử lại</string>
     <string name="action_rename">Đổi tên</string>

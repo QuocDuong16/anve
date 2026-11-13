@@ -18,4 +18,6 @@ val Sand50 = Color(0xFFFBF7F0)
 val Sand200 = Color(0xFFEDE3D2)
 
 val Ink900 = Color(0xFF11201F)
+val Ink800 = Color(0xFF1B2D2C)
+val Ink700 = Color(0xFF283C3B)
 val Ink600 = Color(0xFF3C4F4E)

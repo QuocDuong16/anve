@@ -10,23 +10,29 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.anve.app.AnVeApplication
 import com.anve.app.ui.home.HomeScreen
+import com.anve.app.ui.diagnostics.SystemFontScaleRule
 import com.anve.app.ui.theme.AnVeTheme
 import org.junit.Rule
 import org.junit.Test
 
 /** Exercises navigation without a session; it does not send an SOS or request GPS. */
 class HomeNavigationInstrumentedTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val fontScale: org.junit.rules.TestRule = SystemFontScaleRule("darkNavigationAtLargeFont", 1.3f)
+    @get:Rule(order = 1) val compose = createComposeRule()
 
-    @Test fun fourTabsAndSecondaryScreensHaveReturnRoutes() {
+    @Test fun fourTabsAndSecondaryScreensHaveReturnRoutes() = exerciseNavigation(false)
+    @Test fun darkNavigationAtLargeFont() = exerciseNavigation(true)
+
+    private fun exerciseNavigation(dark: Boolean) {
         val container = ApplicationProvider.getApplicationContext<AnVeApplication>().container
-        compose.setContent { AnVeTheme { HomeScreen(container) } }
+        compose.setContent { AnVeTheme(darkTheme = dark) { HomeScreen(container) } }
         compose.onAllNodes(isSelectable()).assertCountEquals(4)
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
+        captureNativeFixture("navigation-${if (dark) "dark-font130" else "light"}")
         compose.onNodeWithText("Tài khoản").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
-        compose.onNodeWithText("SOS").performClick()
+        compose.onNodeWithContentDescription("Mở SOS").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
     }

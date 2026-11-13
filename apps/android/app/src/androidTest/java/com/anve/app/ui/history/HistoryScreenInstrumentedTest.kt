@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Surface
 import com.anve.app.ui.captureNativeFixture
 import com.anve.app.ui.diagnostics.SystemFontScaleRule
@@ -62,7 +64,7 @@ class HistoryScreenInstrumentedTest {
         val vm = HistoryViewModel(FakeHistory())
         compose.setContent {
             val state by vm.state.collectAsState()
-            AnVeTheme(darkTheme = dark) { Surface { HistoryContent(state, vm) } }
+            AnVeTheme(darkTheme = dark) { Surface(Modifier.systemBarsPadding()) { HistoryContent(state, vm) } }
         }
         compose.runOnIdle { vm.activate("owner") }
         compose.onNodeWithText("Lịch sử vị trí").assertIsDisplayed()

@@ -151,6 +151,14 @@
       "amber-800": {
         "role": "secondary",
         "displayName": "Amber 800"
+      },
+      "ink-800": {
+        "role": "neutral",
+        "displayName": "Ink 800"
+      },
+      "ink-700": {
+        "role": "neutral",
+        "displayName": "Ink 700"
       }
     },
     "typographyMeta": {

@@ -37,7 +37,9 @@ internal class SystemFontScaleRule(private val testMethod: String, private val s
         }
     }
 
-    private fun fontScale() = InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale
+    // Instrumentation contexts can retain resources from a finished Activity.
+    // The application context follows the process configuration across launches.
+    private fun fontScale() = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext.resources.configuration.fontScale
 
     private fun awaitScale(expected: Float) {
         val deadline = SystemClock.elapsedRealtime() + 5_000

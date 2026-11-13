@@ -174,6 +174,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         DiagnosticsScreen(container = container, onBack = { showDiagnostics = false })
         return
     }
+    val sosOpenLabel = stringResource(R.string.sos_open)
     val returnFromSecondaryPage = {
         secondaryPage = if (secondaryPage == HomeSecondaryPage.SOS) sosReturnPage else null
         sosReturnPage = null
@@ -227,6 +228,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         floatingActionButton = {
             if (secondaryPage != HomeSecondaryPage.SOS) {
                 ExtendedFloatingActionButton(
+                    modifier = Modifier.semantics { contentDescription = sosOpenLabel },
                     onClick = {
                         sosReturnPage = secondaryPage
                         selectedSos = null

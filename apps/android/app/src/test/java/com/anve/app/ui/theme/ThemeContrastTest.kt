@@ -24,6 +24,9 @@ class ThemeContrastTest {
             "secondary" to (scheme.secondary to scheme.onSecondary),
             "secondaryContainer" to (scheme.secondaryContainer to scheme.onSecondaryContainer),
             "surface" to (scheme.surface to scheme.onSurface),
+            "surfaceContainerLow" to (scheme.surfaceContainerLow to scheme.onSurface),
+            "surfaceContainerHigh" to (scheme.surfaceContainerHigh to scheme.onSurface),
+            "surfaceContainerHighest" to (scheme.surfaceContainerHighest to scheme.onSurface),
             "surfaceVariant" to (scheme.surfaceVariant to scheme.onSurfaceVariant),
         ).forEach { (role, colors) ->
             val ratio = contrastRatio(colors.first, colors.second)
