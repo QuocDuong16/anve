@@ -3,9 +3,10 @@
 Monorepo for AnVề: an Android (Jetpack Compose) client backed by a Go HTTP
 API and PostgreSQL/PostGIS. Modular monorepo per ADR 0001 (`docs/adr/`):
 one repo, one pinned toolchain, but each app keeps its own build system and
-its own CI workflow. Phase: M0–M4 implemented. M4 is automated-verified but
-pending runtime/device validation; M3 has a runtime HTTP smoke test but is NOT
-field-validated on a device (battery/background/OEM); M5 is automated-verified; physical-device validation is pending. Engineering
+its own CI workflow. Authentication, Circle, tracking, Maps, History/Places,
+SOS, diagnostics and Safe Journey have source implementations; product docs
+record the exact verified scope. Automated and emulator checks do not prove
+real providers, GPS, battery or OEM behavior. Engineering
 session state lives in `docs/implementation/progress.md` — read it first when
 resuming work.
 
@@ -98,3 +99,58 @@ has a "Product context & source of truth" section pointing to the same documents
 - Read `mem:suggested_commands` for the make-based daily workflow and tool invocation rules.
 - Read `mem:conventions` for Go/Kotlin style and repo-wide rules (contract-first, migrations, commits).
 - Read `mem:task_completion` for the gates a change must pass before it is done.
+
+
+## Profile photos and private addressed invitations
+
+`internal/avatars` owns bounded JPEG/PNG normalization and an authenticated
+current-image resource; profile bytes have no public URL. Reads require self
+or current common Circle membership. Mutations lock the current account and
+login, use expected revision plus operation UUID, and retain a revision row
+after removal; stale/uncertain writes cannot revive a deleted image. Roster
+DTOs expose only the current image ID. Android `data/avatar` and `ui/avatar`
+use the system single-image Photo Picker, in-memory crop/resize (including
+sampled/EXIF-compatible decoding on older supported Android), explicit Save
+and read-only metadata reconciliation. No broad media permission, durable
+photo queue or disk image cache; generated mockup photos are never app assets.
+
+`circles.InvitationStore` is separate from the legacy Circle Store interface.
+New creation binds request UUID, account, Circle and input fingerprint;
+retired fences survive dissolution until account deletion. Email mode stores
+only a normalized recipient digest, and private authenticated inbox/detail,
+code preview and redemption enforce the binding. No account-existence,
+notification outcome or receiver-private hide status appears in sender DTOs.
+The internal per-target notification budget must never change sender response
+shape/status. Legacy unaddressed codes remain compatible and one-use.
+
+Invitation dispatch locks current accounts, invitation, creator membership,
+recipient binding/private-hide status and current session/token before FCM.
+Only recipients registered at creation are queued; future matching accounts
+can still find a live invitation in the private inbox. CIRCLE_INVITE is an
+opaque normal-priority signal, with a separate nonurgent Android channel.
+Push tap reauthorizes the detail and enters existing explicit confirmation;
+it never redeems or starts sharing. Creation unknowns use owner-bound GET
+readback without automatically repeating POST. Inbox refreshes are fenced
+against account changes and newer review/hide actions. Bounded maintenance
+retires content/budgets while fences preserve replay protection. ADR 0017 and
+the profile/email implementation record describe privacy/retention and tests;
+source/CI fixtures do not establish real provider, backup erasure or device behavior.
+
+
+Photo/invitation repositories use `ApiFactory.privateMutations` around the
+existing authenticated client. The clone shares the same SessionInterceptor
+and refresh serialization, disables connection recovery/redirects and wraps
+mutation bodies (including empty DELETE) as one-shot. This also prevents
+OkHttp HTTP follow-ups such as 503 Retry-After:0, independently of controller
+readback logic. Do not create a second independent token refresher or assume
+retryOnConnectionFailure(false) alone disables every follow-up. A rejected
+401 can still use the existing explicit, expected-owner-bound refresh retry.
+
+
+The platform EXIF reader on Android 8 silently skips valid JPEGs shorter
+than its fixed signature probe. Legacy avatar decoding pads only the metadata
+reader, never the image/upload, to preserve EXIF orientation for small photos.
+The instrumentation regression verifies a small JPEG has real rotation/GPS/
+description tags, checks oriented output pixels and reads normalized metadata
+with the same platform probe quirk accounted for; empty/default reader output
+alone is not evidence that metadata was stripped.

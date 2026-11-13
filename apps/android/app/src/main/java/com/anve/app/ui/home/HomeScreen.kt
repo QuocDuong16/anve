@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import com.anve.app.ui.diagnostics.DiagnosticsScreen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,12 +45,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
@@ -70,6 +75,8 @@ import com.anve.app.data.api.UserDto
 import com.anve.app.data.sos.IncomingPush
 import com.anve.app.data.sos.pushDestination
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.avatar.AvatarEditorHost
+import com.anve.app.ui.avatar.AvatarImage
 import com.anve.app.ui.tracking.TrackingScreen
 import com.anve.app.ui.map.LiveMapScreen
 import com.anve.app.ui.history.HistoryScreen
@@ -101,6 +108,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     var showDiagnostics by remember { mutableStateOf(false) }
     var showJourneys by remember { mutableStateOf(false) }
     var selectedJourney by remember { mutableStateOf<String?>(null) }
+    var selectedInvitation by remember { mutableStateOf<String?>(null) }
     var selectedSos by remember { mutableStateOf<String?>(null) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
@@ -116,6 +124,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         showJourneys = false
         selectedJourney = null
         selectedSos = null
+        selectedInvitation = null
         tab = HomeTab.CIRCLE
     }
     LaunchedEffect(incomingPush, session?.userId) {
@@ -127,7 +136,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             showJourneys = destination.kind in com.anve.app.data.sos.JOURNEY_PUSH_KINDS
             selectedJourney = if (showJourneys) destination.eventId else null
             selectedSos = if (destination.kind == "SOS") destination.eventId else null
-            tab = if (destination.kind == "SOS") HomeTab.SOS else HomeTab.PLACES
+            selectedInvitation = if (destination.kind == "CIRCLE_INVITE") destination.eventId else null
+            tab = when (destination.kind) { "SOS" -> HomeTab.SOS; "CIRCLE_INVITE" -> HomeTab.CIRCLE; else -> HomeTab.PLACES }
         }
         onPushConsumed()
     }
@@ -171,7 +181,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                HomeTab.CIRCLE -> CircleScreen(container = container)
+                HomeTab.CIRCLE -> CircleScreen(container = container, invitationId = selectedInvitation, onInvitationConsumed = { selectedInvitation = null })
                 HomeTab.MAP -> LiveMapScreen(container = container)
                 HomeTab.HISTORY -> HistoryScreen(container = container)
                 HomeTab.PLACES -> PlacesScreen(container = container)
@@ -185,24 +195,45 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
 
 @Composable
 private fun AccountContent(container: AppContainer) {
+    val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
+    val owner = session?.userId
+    if (owner == null) {
+        Text("Đang kiểm tra tài khoản…", Modifier.padding(16.dp))
+        return
+    }
     val viewModel: HomeViewModel = viewModel(
+        key = "account-$owner",
         factory = HomeViewModel.factory(container.authRepository, container.trackingManager),
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    var showRenameDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showSignOutDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember(owner) { mutableStateOf(false) }
+    var showDeleteDialog by remember(owner) { mutableStateOf(false) }
+    var showSignOutDialog by remember(owner) { mutableStateOf(false) }
+    val visible = if (state.user == null || state.user?.id == owner) state else state.copy(user = null, loading = true)
 
+    AvatarEditorHost(container, owner, visible.user?.displayName.orEmpty()) { avatarController, avatar ->
     HomeContent(
-        state = state,
+        state = visible,
         onToggleSharing = viewModel::setLocationSharing,
         onRename = { showRenameDialog = true },
         onRevokeDevice = viewModel::revokeDevice,
         onSignOut = { showSignOutDialog = true },
         onDeleteAccount = { showDeleteDialog = true },
         onRetry = viewModel::refresh,
+        avatarMessage = avatar.message,
+        avatarContent = {
+            Box(Modifier.size(64.dp).clickable(role = Role.Button, onClick = avatarController::open)
+                .semantics { contentDescription = "Đổi ảnh đại diện" }) {
+                AvatarImage(owner, owner, avatar.metadata?.imageId, visible.user?.displayName.orEmpty(), container.avatarRepository, Modifier.size(64.dp))
+                Surface(Modifier.align(Alignment.BottomEnd), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                    Icon(Icons.Default.Edit, null, Modifier.padding(4.dp).size(16.dp))
+                }
+            }
+        },
     )
+    }
 
     if (showRenameDialog) {
         RenameDialog(
@@ -243,6 +274,8 @@ fun HomeContent(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onRetry: () -> Unit,
+    avatarContent: (@Composable () -> Unit)? = null,
+    avatarMessage: String? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
@@ -286,7 +319,8 @@ fun HomeContent(
                     )
                 }
             }
-            item { ProfileCard(user = user, onRename = onRename) }
+            item { ProfileCard(user = user, onRename = onRename, avatarContent = avatarContent) }
+            avatarMessage?.let { message -> item { Text(message, style = MaterialTheme.typography.bodyMedium) } }
             item {
                 ConsentCard(
                     user = user,
@@ -335,13 +369,13 @@ fun HomeContent(
 }
 
 @Composable
-private fun ProfileCard(user: UserDto, onRename: () -> Unit) {
+private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Composable () -> Unit)? = null) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
+            if (avatarContent != null) avatarContent() else Box(
                 modifier = Modifier
                     .size(48.dp)
                     .background(

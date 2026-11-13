@@ -1,0 +1,41 @@
+{
+  "applicationId": "com.anve.app.releasevalidation",
+  "versionCode": 2,
+  "versionName": "0.3.0-validation",
+  "certificateSha256": "28be2bb2fa1f5885d92e4bf79329fe2a06d339031c714c8d667a4d03bd7f20e2",
+  "sourceCommit": "4415d4fb2e4ceb7143f4273616a5b1bfcb29ef51",
+  "apkSha256": "166b39e3cdb601fe22531e54f621bc69e217155defb74d484d66e9d10f396b61",
+  "privacyInventorySha256": "0c48902f606bc8077c995a3df094e4b5a85ab14b29dc5c981300152db721c07a",
+  "variant": "releaseValidation",
+  "signatureVerified": true,
+  "evidenceTier": "ci-emulator-synthetic-signed-validation",
+  "smokeRunnerCommit": "4415d4fb2e4ceb7143f4273616a5b1bfcb29ef51",
+  "success": true,
+  "realProviderVerified": false,
+  "physicalDeviceVerified": false,
+  "apiLevel": "35",
+  "abi": "x86_64",
+  "stage": "process-recreation",
+  "freshLaunch": true,
+  "backgroundResume": true,
+  "crash": {
+    "ownedCrashFound": false,
+    "exceptionTypes": [],
+    "frames": []
+  },
+  "processRecreation": true,
+  "trackingNotStarted": true,
+  "cleanupPassed": true,
+  "lastUiCheck": {
+    "appNodeCount": 16,
+    "surfaces": [
+      "app"
+    ],
+    "nameVisible": true,
+    "unavailableVisible": true,
+    "retryVisible": true,
+    "devLoginVisible": false,
+    "unavailableInsideMergedLabel": true,
+    "progressVisible": false
+  }
+}

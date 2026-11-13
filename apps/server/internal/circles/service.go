@@ -61,18 +61,20 @@ type Membership struct {
 type Member struct {
 	UserID      uuid.UUID
 	DisplayName string
+	AvatarID    *uuid.UUID
 	Role        string
 	JoinedAt    time.Time
 }
 
 // Invite is a single-use join code.
 type Invite struct {
-	ID        uuid.UUID
-	CircleID  uuid.UUID
-	CreatedBy uuid.UUID
-	Code      string
-	ExpiresAt time.Time
-	CreatedAt time.Time
+	RecipientRestricted bool
+	ID                  uuid.UUID
+	CircleID            uuid.UUID
+	CreatedBy           uuid.UUID
+	Code                string
+	ExpiresAt           time.Time
+	CreatedAt           time.Time
 }
 
 // InvitePreview exposes no member identities or sharing information.

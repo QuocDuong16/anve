@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/avatars"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
@@ -61,6 +62,8 @@ func run() error {
 	)
 
 	var authService *auth.Service
+	var avatarStore *avatars.Store
+	var invitationStore *circles.InvitationStore
 	var circlesService *circles.Service
 	var locationsService *locations.Service
 	var locationAccessService *locationaccess.Service
@@ -107,6 +110,8 @@ func run() error {
 
 		store := auth.NewPGStore(pool)
 		authService = auth.NewService(store, verifier, cfg.AuthDevLoginEnabled)
+		avatarStore = avatars.NewStore(pool)
+		invitationStore = circles.NewInvitationStore(pool)
 		circlesService = circles.NewService(circles.NewPGStore(pool))
 		locationStore = locations.NewPGStore(pool)
 		placeStore = places.NewStore(pool, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
@@ -145,6 +150,8 @@ func run() error {
 			Logger:                  logger,
 			Version:                 cfg.Version,
 			Auth:                    authService,
+			Avatars:                 avatarStore,
+			Invitations:             invitationStore,
 			Circles:                 circlesService,
 			Locations:               locationsService,
 			LocationAccess:          locationAccessService,
@@ -180,6 +187,9 @@ func run() error {
 	}
 	if journeyStore != nil {
 		go journeys.RunWorker(ctx, journeyStore, pushGateway, logger.With("component", "journeys"))
+	}
+	if invitationStore != nil {
+		go circles.RunInvitationWorker(ctx, invitationStore, pushGateway, logger.With("component", "invitations"))
 	}
 	if pushGateway != nil {
 		go sos.RunDispatchWorker(ctx, sosStore, pushGateway, logger.With("component", "sos-notifications"))

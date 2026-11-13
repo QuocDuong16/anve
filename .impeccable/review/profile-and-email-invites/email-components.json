@@ -1,0 +1,285 @@
+{
+  "schemaVersion": 3,
+  "stage": "components",
+  "id": "components",
+  "title": "Plan and asset review · apps/android/app/src/main/java/com/anve/app/ui/circle/EmailInvitationSheet.kt",
+  "comp": {
+    "path": ".impeccable/mocks/profile-and-email-invites/email-invite-b.png",
+    "width": 928,
+    "height": 1695
+  },
+  "specSha256": "9aaa43257350a7f6a2a63c232a940a3ad75923c3dad0487a2e84c87541919fb7",
+  "components": [
+    {
+      "id": "system-app-chrome",
+      "name": "System app chrome",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.1121
+      },
+      "note": "Existing native app/system context, not a navigation redesign",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "background-circle",
+      "name": "Background circle",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.0377,
+        "y": 0.1316,
+        "w": 0.9278,
+        "h": 0.1074
+      },
+      "note": "Dimmed existing Circle context, synthetic illustration labels not new navigation",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "sheet",
+      "name": "Sheet",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0,
+        "y": 0.2389,
+        "w": 1,
+        "h": 0.7611
+      },
+      "note": "Native creation bottom sheet sand/ink surface",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "handle",
+      "name": "Handle",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.4601,
+        "y": 0.2637,
+        "w": 0.0797,
+        "h": 0.0059
+      },
+      "note": "Native bottom sheet drag handle",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "mode-email",
+      "name": "Mode email",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0431,
+        "y": 0.3605,
+        "w": 0.445,
+        "h": 0.0596
+      },
+      "note": "Theo email — explicit native choice",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "mode-code",
+      "name": "Mode code",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.5129,
+        "y": 0.3605,
+        "w": 0.4515,
+        "h": 0.0596
+      },
+      "note": "Chỉ tạo link/mã — explicit native choice",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "email-frame",
+      "name": "Email frame",
+      "kind": "chrome",
+      "role": "plan",
+      "box": {
+        "x": 0.042,
+        "y": 0.4419,
+        "w": 0.9224,
+        "h": 0.1593
+      },
+      "note": "Native outlined recipient email grouping",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "email-input",
+      "name": "Email input",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0744,
+        "y": 0.4914,
+        "w": 0.8621,
+        "h": 0.0602
+      },
+      "note": "mai@example.test — synthetic native email field",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "delivery-icon",
+      "name": "Delivery icon",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0765,
+        "y": 0.6313,
+        "w": 0.0496,
+        "h": 0.0277
+      },
+      "note": "Native info vector, decorative",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "privacy-notice",
+      "name": "Privacy notice",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0345,
+        "y": 0.7086,
+        "w": 0.931,
+        "h": 0.085
+      },
+      "note": "Native amber notice: no account enumeration, no automatic sharing",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    },
+    {
+      "id": "create",
+      "name": "Create",
+      "kind": "control",
+      "role": "plan",
+      "box": {
+        "x": 0.0356,
+        "y": 0.8791,
+        "w": 0.93,
+        "h": 0.0649
+      },
+      "note": "Tạo lời mời — pinned native footer",
+      "medium": "code",
+      "preview": {
+        "kind": "comp-crop"
+      },
+      "codeDrawn": true,
+      "dependencies": []
+    }
+  ],
+  "codeRegions": [
+    {
+      "id": "invite-title",
+      "name": "Invite title",
+      "kind": "text",
+      "box": {
+        "x": 0.0431,
+        "y": 0.2997,
+        "w": 0.819,
+        "h": 0.0372
+      },
+      "note": "Mời người thân — native headline"
+    },
+    {
+      "id": "email-label",
+      "name": "Email label",
+      "kind": "text",
+      "box": {
+        "x": 0.0733,
+        "y": 0.4596,
+        "w": 0.8405,
+        "h": 0.0236
+      },
+      "note": "Email người nhận"
+    },
+    {
+      "id": "binding-helper",
+      "name": "Binding helper",
+      "kind": "text",
+      "box": {
+        "x": 0.0733,
+        "y": 0.564,
+        "w": 0.8513,
+        "h": 0.0242
+      },
+      "note": "Chỉ tài khoản có email này được tham gia."
+    },
+    {
+      "id": "delivery-helper",
+      "name": "Delivery helper",
+      "kind": "text",
+      "box": {
+        "x": 0.1606,
+        "y": 0.6283,
+        "w": 0.7694,
+        "h": 0.0649
+      },
+      "note": "If account/notifications available, a notification may arrive; link remains available"
+    },
+    {
+      "id": "expiry",
+      "name": "Expiry",
+      "kind": "text",
+      "box": {
+        "x": 0.1121,
+        "y": 0.8224,
+        "w": 0.8351,
+        "h": 0.0254
+      },
+      "note": "Lời mời dùng một lần · Hết hạn sau 48 giờ"
+    }
+  ]
+}

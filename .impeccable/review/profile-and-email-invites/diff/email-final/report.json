@@ -1,0 +1,632 @@
+{
+  "tool": "comp-diff",
+  "version": 1,
+  "createdAt": "2026-11-12T19:12:16.169Z",
+  "label": "email-invitation-light",
+  "comp": ".impeccable/mocks/profile-and-email-invites/email-invite-b.png",
+  "build": ".impeccable/review/profile-and-email-invites/native/email-invitation-light.png",
+  "spec": ".impeccable/review/profile-and-email-invites/email-spec.json",
+  "compSize": "928x1695",
+  "buildSize": "842x1870",
+  "align": "top",
+  "overall": 0.5579,
+  "verdict": "drift",
+  "scores": {
+    "overall": 0.5579,
+    "structure": 0.5327,
+    "color": 0.6785,
+    "colorIntersection": 0.5217,
+    "paletteMatch": 0.7629,
+    "detail": 0.2822,
+    "detailRaw": 0.3968,
+    "detailAdded": 0.2292,
+    "bands": 0.875
+  },
+  "palette": {
+    "comp": [
+      {
+        "hex": "#f8f8f7",
+        "coverage": 0.5923
+      },
+      {
+        "hex": "#083d4b",
+        "coverage": 0.1619
+      },
+      {
+        "hex": "#858483",
+        "coverage": 0.1354
+      },
+      {
+        "hex": "#f8e9ca",
+        "coverage": 0.0729
+      },
+      {
+        "hex": "#b8e8e8",
+        "coverage": 0.024
+      },
+      {
+        "hex": "#0a5455",
+        "coverage": 0.0135
+      }
+    ],
+    "build": [
+      {
+        "hex": "#f8f8f7",
+        "coverage": 0.492
+      },
+      {
+        "hex": "#a8a8a8",
+        "coverage": 0.3975
+      },
+      {
+        "hex": "#f8c888",
+        "coverage": 0.069
+      },
+      {
+        "hex": "#b8e8e8",
+        "coverage": 0.026
+      },
+      {
+        "hex": "#192a22",
+        "coverage": 0.0097
+      },
+      {
+        "hex": "#085858",
+        "coverage": 0.0058
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "system-app-chrome",
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 0.1121,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.3314,
+        "structure": 0.4281,
+        "color": 0.1691,
+        "colorIntersection": 0.0127,
+        "paletteMatch": 0.2533,
+        "detail": 0.1371,
+        "detailRaw": 0.2048,
+        "detailAdded": 0.1354,
+        "bands": 0.7
+      },
+      "verdict": "contradicted",
+      "inkBox": {
+        "comp": {
+          "x": 39,
+          "y": 13,
+          "w": 848,
+          "h": 124
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 928,
+          "h": 59
+        }
+      }
+    },
+    {
+      "id": "background-circle",
+      "x": 0.0377,
+      "y": 0.1316,
+      "w": 0.9278,
+      "h": 0.1074,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.4093,
+        "structure": 0.7838,
+        "color": 0.2997,
+        "colorIntersection": 0.0007,
+        "paletteMatch": 0.4608,
+        "detail": 0,
+        "detailRaw": 0,
+        "detailAdded": 0,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 16,
+          "y": 50,
+          "w": 826,
+          "h": 132
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "sheet",
+      "x": 0,
+      "y": 0.2389,
+      "w": 1,
+      "h": 0.7611,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.6075,
+        "structure": 0.5313,
+        "color": 0.8062,
+        "colorIntersection": 0.6691,
+        "paletteMatch": 0.8801,
+        "detail": 0.3269,
+        "detailRaw": 0.4675,
+        "detailAdded": 0.2813,
+        "bands": 0.9217
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 928,
+          "h": 1269
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 928,
+          "h": 1262
+        }
+      }
+    },
+    {
+      "id": "handle",
+      "x": 0.4601,
+      "y": 0.2637,
+      "w": 0.0797,
+      "h": 0.0059,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.2984,
+        "structure": 0.6718,
+        "color": 0.0099,
+        "colorIntersection": 0,
+        "paletteMatch": 0.0153,
+        "detail": 0.003,
+        "detailRaw": 0.003,
+        "detailAdded": 0,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 74,
+          "h": 10
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "invite-title",
+      "x": 0.0431,
+      "y": 0.2997,
+      "w": 0.819,
+      "h": 0.0372,
+      "kind": "text",
+      "score": {
+        "overall": 0.4099,
+        "structure": 0.7349,
+        "color": 0.0097,
+        "colorIntersection": 0.0028,
+        "paletteMatch": 0.0134,
+        "detail": 0,
+        "detailRaw": 0,
+        "detailAdded": 0,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 4,
+          "y": 3,
+          "w": 362,
+          "h": 53
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "mode-email",
+      "x": 0.0431,
+      "y": 0.3605,
+      "w": 0.445,
+      "h": 0.0596,
+      "kind": "control",
+      "score": {
+        "overall": 0.4279,
+        "structure": 0.7534,
+        "color": 0.2212,
+        "colorIntersection": 0.0321,
+        "paletteMatch": 0.323,
+        "detail": 0.0572,
+        "detailRaw": 0.0832,
+        "detailAdded": 0.0521,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 30,
+          "y": 28,
+          "w": 233,
+          "h": 42
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 413,
+          "h": 101
+        }
+      }
+    },
+    {
+      "id": "mode-code",
+      "x": 0.5129,
+      "y": 0.3605,
+      "w": 0.4515,
+      "h": 0.0596,
+      "kind": "control",
+      "score": {
+        "overall": 0.592,
+        "structure": 0.6781,
+        "color": 0.7822,
+        "colorIntersection": 0.5296,
+        "paletteMatch": 0.9183,
+        "detail": 0.0653,
+        "detailRaw": 0.0757,
+        "detailAdded": 0.0208,
+        "bands": 0.2857
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 1,
+          "w": 411,
+          "h": 99
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 419,
+          "h": 101
+        }
+      }
+    },
+    {
+      "id": "email-frame",
+      "x": 0.042,
+      "y": 0.4419,
+      "w": 0.9224,
+      "h": 0.1593,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.5415,
+        "structure": 0.502,
+        "color": 0.8925,
+        "colorIntersection": 0.7756,
+        "paletteMatch": 0.9555,
+        "detail": 0.125,
+        "detailRaw": 0.2657,
+        "detailAdded": 0.2813,
+        "bands": 0.7429
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 850,
+          "h": 270
+        },
+        "build": {
+          "x": 1,
+          "y": 33,
+          "w": 852,
+          "h": 203
+        }
+      }
+    },
+    {
+      "id": "email-label",
+      "x": 0.0733,
+      "y": 0.4596,
+      "w": 0.8405,
+      "h": 0.0236,
+      "kind": "text",
+      "score": {
+        "overall": 0.6794,
+        "structure": 0.7653,
+        "color": 0.9114,
+        "colorIntersection": 0.8576,
+        "paletteMatch": 0.9403,
+        "detail": 0.4592,
+        "detailRaw": 0.579,
+        "detailAdded": 0.2396,
+        "bands": 0
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 5,
+          "y": 0,
+          "w": 256,
+          "h": 33
+        },
+        "build": {
+          "x": 0,
+          "y": 3,
+          "w": 328,
+          "h": 37
+        }
+      }
+    },
+    {
+      "id": "email-input",
+      "x": 0.0744,
+      "y": 0.4914,
+      "w": 0.8621,
+      "h": 0.0602,
+      "kind": "control",
+      "score": {
+        "overall": 0.596,
+        "structure": 0.6505,
+        "color": 0.8666,
+        "colorIntersection": 0.7085,
+        "paletteMatch": 0.9517,
+        "detail": 0,
+        "detailRaw": 0.0477,
+        "detailAdded": 0.25,
+        "bands": 0.2533
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 791,
+          "h": 102
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 800,
+          "h": 102
+        }
+      }
+    },
+    {
+      "id": "binding-helper",
+      "x": 0.0733,
+      "y": 0.564,
+      "w": 0.8513,
+      "h": 0.0242,
+      "kind": "text",
+      "score": {
+        "overall": 0.6804,
+        "structure": 0.9661,
+        "color": 0.7894,
+        "colorIntersection": 0.6227,
+        "paletteMatch": 0.8792,
+        "detail": 0,
+        "detailRaw": 0.0523,
+        "detailAdded": 0.1458,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 4,
+          "y": 0,
+          "w": 542,
+          "h": 29
+        },
+        "build": {
+          "x": 409,
+          "y": 0,
+          "w": 381,
+          "h": 29
+        }
+      }
+    },
+    {
+      "id": "delivery-icon",
+      "x": 0.0765,
+      "y": 0.6313,
+      "w": 0.0496,
+      "h": 0.0277,
+      "kind": "control",
+      "score": {
+        "overall": 0.5648,
+        "structure": 0.5307,
+        "color": 0.812,
+        "colorIntersection": 0.6322,
+        "paletteMatch": 0.9088,
+        "detail": 0.2087,
+        "detailRaw": 0.2452,
+        "detailAdded": 0.0729,
+        "bands": 0.5
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 0,
+          "w": 44,
+          "h": 44
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 46,
+          "h": 12
+        }
+      }
+    },
+    {
+      "id": "delivery-helper",
+      "x": 0.1606,
+      "y": 0.6283,
+      "w": 0.7694,
+      "h": 0.0649,
+      "kind": "text",
+      "score": {
+        "overall": 0.505,
+        "structure": 0.4834,
+        "color": 0.801,
+        "colorIntersection": 0.7235,
+        "paletteMatch": 0.8427,
+        "detail": 0.2139,
+        "detailRaw": 0.2452,
+        "detailAdded": 0.0625,
+        "bands": 0.31
+      },
+      "verdict": "contradicted",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 3,
+          "w": 686,
+          "h": 75
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 714,
+          "h": 110
+        }
+      }
+    },
+    {
+      "id": "privacy-notice",
+      "x": 0.0345,
+      "y": 0.7086,
+      "w": 0.931,
+      "h": 0.085,
+      "kind": "control",
+      "score": {
+        "overall": 0.4185,
+        "structure": 0.6608,
+        "color": 0.1818,
+        "colorIntersection": 0.0114,
+        "paletteMatch": 0.2735,
+        "detail": 0.2877,
+        "detailRaw": 0.5012,
+        "detailAdded": 0.4271,
+        "bands": 0.4933
+      },
+      "verdict": "contradicted",
+      "inkBox": {
+        "comp": {
+          "x": 40,
+          "y": 33,
+          "w": 758,
+          "h": 73
+        },
+        "build": {
+          "x": 5,
+          "y": 0,
+          "w": 854,
+          "h": 144
+        }
+      }
+    },
+    {
+      "id": "expiry",
+      "x": 0.1121,
+      "y": 0.8224,
+      "w": 0.8351,
+      "h": 0.0254,
+      "kind": "text",
+      "score": {
+        "overall": 0.6448,
+        "structure": 0.6747,
+        "color": 0.9179,
+        "colorIntersection": 0.8497,
+        "paletteMatch": 0.9547,
+        "detail": 0.3666,
+        "detailRaw": 0.5697,
+        "detailAdded": 0.4063,
+        "bands": 0.23
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 0,
+          "w": 568,
+          "h": 32
+        },
+        "build": {
+          "x": 16,
+          "y": 0,
+          "w": 731,
+          "h": 43
+        }
+      }
+    },
+    {
+      "id": "create",
+      "x": 0.0356,
+      "y": 0.8791,
+      "w": 0.93,
+      "h": 0.0649,
+      "kind": "control",
+      "score": {
+        "overall": 0.2382,
+        "structure": 0.3513,
+        "color": 0.2288,
+        "colorIntersection": 0.054,
+        "paletteMatch": 0.3229,
+        "detail": 0,
+        "detailRaw": 0.1226,
+        "detailAdded": 0.2813,
+        "bands": 0.6
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 863,
+          "h": 110
+        },
+        "build": {
+          "x": 49,
+          "y": 0,
+          "w": 692,
+          "h": 110
+        }
+      }
+    }
+  ],
+  "files": {
+    "sideBySide": "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/side-by-side.png",
+    "heatmap": "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/heatmap.png",
+    "regionFiles": [
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/system-app-chrome.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/background-circle.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/sheet.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/handle.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/invite-title.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/mode-email.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/mode-code.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/email-frame.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/email-label.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/email-input.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/binding-helper.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/delivery-icon.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/delivery-helper.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/privacy-notice.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/expiry.png",
+      "/home/niand/Workspace/anve/.impeccable/review/profile-and-email-invites/diff/email-final/regions/create.png"
+    ]
+  }
+}

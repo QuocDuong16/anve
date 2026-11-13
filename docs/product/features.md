@@ -84,6 +84,12 @@ Trạng thái của từng chức năng được ghi tại đầu mục tương 
 AnVề: ai thuộc cùng nhóm, ai được xem ai, và sự đồng ý của từng người được ghi
 nhận thế nào.
 
+Avatar và lời mời theo email đã có source trên nhánh profile/email: Photo
+Picker → preview → Lưu/xóa; ảnh hiện tại chỉ self/thành viên cùng nhóm được
+đọc. Lời mời email có hộp thư riêng, FCM dạng tín hiệu và xác nhận tham gia
+riêng. Bằng chứng kiểm thử/phạm vi chưa xác minh ở
+[implementation record](../implementation/profile-and-email-invitations.md).
+
 **User story.** *Là một thành viên gia đình, tôi muốn tạo một nhóm gồm những
 người thân và mỗi người tự quyết định tham gia, để cả nhóm nhìn thấy nhau một
 cách có sự đồng ý, không ai bị đưa vào một cách âm thầm.*
@@ -105,9 +111,9 @@ cách có sự đồng ý, không ai bị đưa vào một cách âm thầm.*
 danh sách thành viên. Rời nhóm: menu cài đặt cá nhân → “Rời nhóm” → xác nhận →
 quyền chia sẻ của người đó với nhóm chấm dứt.
 
-**Dữ liệu (conceptual — chưa có schema).** Circle, Membership (member, vai trò,
-trạng thái tham gia), Invite (code, hạn dùng, số lần dùng), liên kết User ↔
-Device ↔ phiên đăng nhập. Chi tiết thuật ngữ ở [`glossary.md`](glossary.md).
+**Dữ liệu.** Circle, Membership, Invite một lần có hạn dùng và liên kết User ↔
+Device ↔ phiên đăng nhập đã có schema; phần mở rộng thêm avatar revision và
+lời mời ràng buộc digest email. Chi tiết thuật ngữ ở [`glossary.md`](glossary.md).
 
 **Business rules.**
 
@@ -131,7 +137,7 @@ rời nhóm (cần quy định chuyển giao hoặc giải tán nhóm); thành v
 thiết bị khỏi tài khoản của chính họ.
 
 **Phụ thuộc.** Authentication và device identity (M1); authorization model;
-notifications cho lời mời (M6 cho kênh FCM — MVP có thể dùng invite link trực tiếp).
+notifications cho lời mời (kênh FCM và hộp thư riêng; link/mã vẫn dùng được độc lập).
 
 **Acceptance criteria (mức sản phẩm).** Không ai xuất hiện trong một Circle khi
 chưa tự chấp nhận; mọi quyền đọc dữ liệu đều bắt nguồn từ một lần đồng ý còn
@@ -576,13 +582,10 @@ không bao giờ hứa “báo cảnh sát thay bạn”.
 
 ## 11. Safe Journey
 
-> Trạng thái: **Implemented — Automated Verified (M7-B)** trên nhánh triển
-> khai tại `bcde472` (Go/Android CI, 32 emulator tests), bản native đã được
-> duyệt qua tin nhắn theo ngoại lệ của người dùng. Phạm vi review được
-> ghi riêng tại [progress](../implementation/progress.md). Arrival tự động và
-> cảnh báo ngừng cập nhật, UI tùy chọn từng chuyến và luồng link mời đã có
-> **Implemented** trên nhánh PR #21; CI/native review của phần mở rộng và
-> field validation được ghi riêng, xem
+> Trạng thái: **Implemented — Automated Verified** cho bản thủ công và phần
+> mở rộng tự đến nơi/nhắc thiếu cập nhật trên PR #21 tại `4b02f07` (Go/Android
+> CI và 43 emulator tests). PR #21 chưa merge; native finish review đã xong,
+> formal portal và kiểm chứng thực địa còn mở. Xem
 > [feature completion](../implementation/feature-completion.md).
 
 **Mục đích.** Tính năng khác biệt: người dùng chủ động bắt đầu một hành trình
@@ -691,7 +694,8 @@ trừ khi người dùng chọn rõ ràng.
 ## 13. Notifications
 
 > Trạng thái: **Implemented — Automated Verified** cho SOS, Place Alert và
-> lifecycle Journey với fake provider; FCM thật chưa được kiểm chứng.
+> lifecycle Journey với fake provider; nhánh profile/email bổ sung invitation
+> với kiểm thử store/dispatch, CI native theo PR #22. FCM thật chưa được kiểm chứng.
 
 **Mục đích.** Firebase Cloud Messaging là kênh push notification chính, dùng
 cho các sự kiện hợp lệ:
@@ -702,9 +706,11 @@ cho các sự kiện hợp lệ:
 - Safe Journey events (bắt đầu, hoàn tất, cảnh báo).
 - Những sự kiện an toàn hợp lệ khác.
 
-M6 triển khai SOS và Place Alerts; M7-B bổ sung lifecycle Journey. Invitation
-dùng chia sẻ mã/link chủ động, chưa có FCM invitation. Cảnh báo thiếu cập nhật
-của phần mở rộng được theo dõi tại feature-completion.md.
+M6 triển khai SOS và Place Alerts; M7-B bổ sung lifecycle Journey và cảnh báo
+thiếu cập nhật theo episode. Nhánh profile/email bổ sung CIRCLE_INVITE (priority
+normal), hộp thư riêng và kiểm tra quyền trước khi hiển thị. Tín hiệu không
+chứa tên/email/mã mời. Không có cam kết giao nhận Firebase thật từ CI fixture.
+Xem [profile/email](../implementation/profile-and-email-invitations.md).
 
 **Ràng buộc kiến trúc.** **Không sử dụng FCM để truyền GPS liên tục.** M3
 ingestion và M4 authorized latest-location snapshots đi qua HTTPS. M4 dùng

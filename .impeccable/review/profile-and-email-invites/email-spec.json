@@ -1,0 +1,1079 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-11-12T18:27:12.795Z",
+  "comp": ".impeccable/mocks/profile-and-email-invites/email-invite-b.png",
+  "warnings": [
+    "region system-app-chrome: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region system-app-chrome: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region background-circle: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region background-circle: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region sheet: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region sheet: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region handle: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region mode-email: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region mode-code: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region email-frame: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region email-frame: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region email-input: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region delivery-icon: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region privacy-notice: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region create: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)"
+  ],
+  "uncoveredInkCells": [],
+  "compSize": {
+    "width": 928,
+    "height": 1695
+  },
+  "aspect": 0.5475,
+  "orientation": "portrait",
+  "palette": [
+    {
+      "hex": "#f8f8f7",
+      "coverage": 0.6004
+    },
+    {
+      "hex": "#083d4b",
+      "coverage": 0.1641
+    },
+    {
+      "hex": "#858483",
+      "coverage": 0.1373
+    },
+    {
+      "hex": "#f8e9ca",
+      "coverage": 0.0738
+    },
+    {
+      "hex": "#b8e8e8",
+      "coverage": 0.0244
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.0085,
+      "strength": 0.2332
+    },
+    {
+      "y": 0.1111,
+      "strength": 0.9603
+    },
+    {
+      "y": 0.2393,
+      "strength": 1
+    },
+    {
+      "y": 0.3248,
+      "strength": 0.3506
+    },
+    {
+      "y": 0.3846,
+      "strength": 0.3427
+    },
+    {
+      "y": 0.4957,
+      "strength": 0.342
+    },
+    {
+      "y": 0.5171,
+      "strength": 0.2831
+    },
+    {
+      "y": 0.547,
+      "strength": 0.2648
+    },
+    {
+      "y": 0.5684,
+      "strength": 0.3893
+    },
+    {
+      "y": 0.6453,
+      "strength": 0.5869
+    },
+    {
+      "y": 0.6709,
+      "strength": 0.6485
+    },
+    {
+      "y": 0.7094,
+      "strength": 0.234
+    },
+    {
+      "y": 0.7436,
+      "strength": 0.6607
+    },
+    {
+      "y": 0.7692,
+      "strength": 0.2754
+    },
+    {
+      "y": 0.8376,
+      "strength": 0.3848
+    },
+    {
+      "y": 0.8803,
+      "strength": 1
+    },
+    {
+      "y": 0.9444,
+      "strength": 1
+    },
+    {
+      "y": 0.9872,
+      "strength": 0.5281
+    }
+  ],
+  "regions": [
+    {
+      "id": "system-app-chrome",
+      "kind": "chrome",
+      "note": "Existing native app/system context, not a navigation redesign",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.1121
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 928,
+        "h": 190
+      },
+      "aspect": 4.8842,
+      "palette": [
+        {
+          "hex": "#083845",
+          "coverage": 0.9808
+        },
+        {
+          "hex": "#b0aeac",
+          "coverage": 0.0092
+        },
+        {
+          "hex": "#f7f8f8",
+          "coverage": 0.0089
+        },
+        {
+          "hex": "#517171",
+          "coverage": 0.0012
+        }
+      ],
+      "detail": {
+        "energy": 9.7906
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "background-circle",
+      "kind": "chrome",
+      "note": "Dimmed existing Circle context, synthetic illustration labels not new navigation",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.0377,
+        "y": 0.1316,
+        "w": 0.9278,
+        "h": 0.1074
+      },
+      "px": {
+        "x": 35,
+        "y": 223,
+        "w": 861,
+        "h": 182
+      },
+      "aspect": 4.7308,
+      "palette": [
+        {
+          "hex": "#868686",
+          "coverage": 0.9446
+        },
+        {
+          "hex": "#706772",
+          "coverage": 0.0238
+        },
+        {
+          "hex": "#3a3b3c",
+          "coverage": 0.0125
+        },
+        {
+          "hex": "#0e0f13",
+          "coverage": 0.0125
+        },
+        {
+          "hex": "#212d3d",
+          "coverage": 0.0066
+        }
+      ],
+      "detail": {
+        "energy": 9.5168
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "sheet",
+      "kind": "chrome",
+      "note": "Native creation bottom sheet sand/ink surface",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0.2389,
+        "w": 1,
+        "h": 0.7611
+      },
+      "px": {
+        "x": 0,
+        "y": 405,
+        "w": 928,
+        "h": 1290
+      },
+      "aspect": 0.7194,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.7795
+        },
+        {
+          "hex": "#f8e9ca",
+          "coverage": 0.0972
+        },
+        {
+          "hex": "#084b58",
+          "coverage": 0.0778
+        },
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.0317
+        },
+        {
+          "hex": "#c8c8cc",
+          "coverage": 0.0138
+        }
+      ],
+      "detail": {
+        "energy": 20.3352
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    },
+    {
+      "id": "handle",
+      "kind": "chrome",
+      "note": "Native bottom sheet drag handle",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.4601,
+        "y": 0.2637,
+        "w": 0.0797,
+        "h": 0.0059
+      },
+      "px": {
+        "x": 427,
+        "y": 447,
+        "w": 74,
+        "h": 10
+      },
+      "aspect": 7.4,
+      "palette": [
+        {
+          "hex": "#365352",
+          "coverage": 0.69
+        },
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.29
+        },
+        {
+          "hex": "#b8b8b8",
+          "coverage": 0.02
+        }
+      ],
+      "detail": {
+        "energy": 17.9433
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "invite-title",
+      "kind": "text",
+      "note": "Mời người thân — native headline",
+      "grid": null,
+      "box": {
+        "x": 0.0431,
+        "y": 0.2997,
+        "w": 0.819,
+        "h": 0.0372
+      },
+      "px": {
+        "x": 40,
+        "y": 508,
+        "w": 760,
+        "h": 63
+      },
+      "aspect": 12.0635,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.8728
+        },
+        {
+          "hex": "#18191c",
+          "coverage": 0.09
+        },
+        {
+          "hex": "#595959",
+          "coverage": 0.0153
+        },
+        {
+          "hex": "#929291",
+          "coverage": 0.0128
+        },
+        {
+          "hex": "#cac6c4",
+          "coverage": 0.0091
+        }
+      ],
+      "detail": {
+        "energy": 56.654
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 12,
+          "capHeightPx": 39.3,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6103,
+          "advTall": 0.6103,
+          "advX": 0.6103,
+          "gap": 0.1271,
+          "xRatio": 0.7195,
+          "stemW": 0.1624,
+          "contrast": 1.1845,
+          "serif": 1.0009,
+          "densTall": 0.5117,
+          "densX": 0.5605,
+          "weight": 0.5117
+        },
+        "widthClass": "normal",
+        "weightClass": "medium",
+        "chosen": {
+          "family": "Pontano Sans",
+          "weight": 700,
+          "fontSizePx": 55,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 14,
+            "capHeightPx": 39,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.5897,
+            "advTall": 0.4615,
+            "advX": 0.641,
+            "gap": 0.1282,
+            "xRatio": 0.7179,
+            "stemW": 0.1547,
+            "contrast": 1.1432,
+            "serif": 1,
+            "densTall": 0.5048,
+            "densX": 0.5503,
+            "weight": 0.5048
+          },
+          "stamp": "8e4a1fc4e944"
+        }
+      }
+    },
+    {
+      "id": "mode-email",
+      "kind": "control",
+      "note": "Theo email — explicit native choice",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0431,
+        "y": 0.3605,
+        "w": 0.445,
+        "h": 0.0596
+      },
+      "px": {
+        "x": 40,
+        "y": 611,
+        "w": 413,
+        "h": 101
+      },
+      "aspect": 4.0891,
+      "palette": [
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.8863
+        },
+        {
+          "hex": "#ebf2f2",
+          "coverage": 0.0661
+        },
+        {
+          "hex": "#111619",
+          "coverage": 0.0207
+        },
+        {
+          "hex": "#0c4c54",
+          "coverage": 0.0183
+        },
+        {
+          "hex": "#546e71",
+          "coverage": 0.0087
+        }
+      ],
+      "detail": {
+        "energy": 18.7232
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "mode-code",
+      "kind": "control",
+      "note": "Chỉ tạo link/mã — explicit native choice",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.5129,
+        "y": 0.3605,
+        "w": 0.4515,
+        "h": 0.0596
+      },
+      "px": {
+        "x": 476,
+        "y": 611,
+        "w": 419,
+        "h": 101
+      },
+      "aspect": 4.1485,
+      "palette": [
+        {
+          "hex": "#f8f7f7",
+          "coverage": 0.8973
+        },
+        {
+          "hex": "#d3cfd7",
+          "coverage": 0.05
+        },
+        {
+          "hex": "#17181e",
+          "coverage": 0.0283
+        },
+        {
+          "hex": "#4b5050",
+          "coverage": 0.0187
+        },
+        {
+          "hex": "#aaaaaa",
+          "coverage": 0.0057
+        }
+      ],
+      "detail": {
+        "energy": 27.4605
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "email-frame",
+      "kind": "chrome",
+      "note": "Native outlined recipient email grouping",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.042,
+        "y": 0.4419,
+        "w": 0.9224,
+        "h": 0.1593
+      },
+      "px": {
+        "x": 39,
+        "y": 749,
+        "w": 856,
+        "h": 270
+      },
+      "aspect": 3.1704,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9347
+        },
+        {
+          "hex": "#c6c2c6",
+          "coverage": 0.0343
+        },
+        {
+          "hex": "#958d99",
+          "coverage": 0.0135
+        },
+        {
+          "hex": "#585561",
+          "coverage": 0.0117
+        },
+        {
+          "hex": "#084e58",
+          "coverage": 0.0059
+        }
+      ],
+      "detail": {
+        "energy": 20.7265
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": true
+      }
+    },
+    {
+      "id": "email-label",
+      "kind": "text",
+      "note": "Email người nhận",
+      "grid": null,
+      "box": {
+        "x": 0.0733,
+        "y": 0.4596,
+        "w": 0.8405,
+        "h": 0.0236
+      },
+      "px": {
+        "x": 68,
+        "y": 779,
+        "w": 780,
+        "h": 40
+      },
+      "aspect": 19.5,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9162
+        },
+        {
+          "hex": "#0a5058",
+          "coverage": 0.0546
+        },
+        {
+          "hex": "#3c787b",
+          "coverage": 0.0157
+        },
+        {
+          "hex": "#8bafaf",
+          "coverage": 0.0135
+        }
+      ],
+      "detail": {
+        "energy": 32.2322
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 13,
+          "capHeightPx": 24.7,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6486,
+          "advTall": 0.4054,
+          "advX": 0.6486,
+          "gap": 0.1216,
+          "xRatio": 0.7024,
+          "stemW": 0.1788,
+          "contrast": 1.2387,
+          "serif": 0.9277,
+          "densTall": 0.6916,
+          "densX": 0.6206,
+          "weight": 0.6916
+        },
+        "widthClass": "normal",
+        "weightClass": "black"
+      }
+    },
+    {
+      "id": "email-input",
+      "kind": "control",
+      "note": "mai@example.test — synthetic native email field",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0744,
+        "y": 0.4914,
+        "w": 0.8621,
+        "h": 0.0602
+      },
+      "px": {
+        "x": 69,
+        "y": 833,
+        "w": 800,
+        "h": 102
+      },
+      "aspect": 7.8431,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9119
+        },
+        {
+          "hex": "#bbb9bb",
+          "coverage": 0.0327
+        },
+        {
+          "hex": "#9b92a0",
+          "coverage": 0.0318
+        },
+        {
+          "hex": "#16171b",
+          "coverage": 0.0195
+        },
+        {
+          "hex": "#666666",
+          "coverage": 0.0041
+        }
+      ],
+      "detail": {
+        "energy": 22.6244
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": true
+      }
+    },
+    {
+      "id": "binding-helper",
+      "kind": "text",
+      "note": "Chỉ tài khoản có email này được tham gia.",
+      "grid": null,
+      "box": {
+        "x": 0.0733,
+        "y": 0.564,
+        "w": 0.8513,
+        "h": 0.0242
+      },
+      "px": {
+        "x": 68,
+        "y": 956,
+        "w": 790,
+        "h": 41
+      },
+      "aspect": 19.2683,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.865
+        },
+        {
+          "hex": "#595461",
+          "coverage": 0.0618
+        },
+        {
+          "hex": "#bebabc",
+          "coverage": 0.0428
+        },
+        {
+          "hex": "#8c878e",
+          "coverage": 0.0304
+        }
+      ],
+      "detail": {
+        "energy": 40.4748
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 31,
+          "capHeightPx": 22.6,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.574,
+          "advTall": 0.574,
+          "advX": 0.5961,
+          "gap": 0.1325,
+          "xRatio": 0.6996,
+          "stemW": 0.1416,
+          "contrast": 1.1518,
+          "serif": 0.9675,
+          "densTall": 0.4898,
+          "densX": 0.5402,
+          "weight": 0.4898
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "delivery-icon",
+      "kind": "control",
+      "note": "Native info vector, decorative",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0765,
+        "y": 0.6313,
+        "w": 0.0496,
+        "h": 0.0277
+      },
+      "px": {
+        "x": 71,
+        "y": 1070,
+        "w": 46,
+        "h": 47
+      },
+      "aspect": 0.9787,
+      "palette": [
+        {
+          "hex": "#f6f7f4",
+          "coverage": 0.6914
+        },
+        {
+          "hex": "#0b5059",
+          "coverage": 0.2227
+        },
+        {
+          "hex": "#55878c",
+          "coverage": 0.0469
+        },
+        {
+          "hex": "#a4c2c4",
+          "coverage": 0.0313
+        },
+        {
+          "hex": "#78a8a0",
+          "coverage": 0.0078
+        }
+      ],
+      "detail": {
+        "energy": 12.3541
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "delivery-helper",
+      "kind": "text",
+      "note": "If account/notifications available, a notification may arrive; link remains available",
+      "grid": null,
+      "box": {
+        "x": 0.1606,
+        "y": 0.6283,
+        "w": 0.7694,
+        "h": 0.0649
+      },
+      "px": {
+        "x": 149,
+        "y": 1065,
+        "w": 714,
+        "h": 110
+      },
+      "aspect": 6.4909,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.8589
+        },
+        {
+          "hex": "#15181c",
+          "coverage": 0.0683
+        },
+        {
+          "hex": "#828280",
+          "coverage": 0.0304
+        },
+        {
+          "hex": "#434444",
+          "coverage": 0.0217
+        },
+        {
+          "hex": "#bab9b6",
+          "coverage": 0.0208
+        }
+      ],
+      "detail": {
+        "energy": 60.6906
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 64,
+          "capHeightPx": 26.7,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5283,
+          "advTall": 0.5283,
+          "advX": 0.5191,
+          "gap": 0.1483,
+          "xRatio": 0.6417,
+          "stemW": 0.1165,
+          "contrast": 1.1496,
+          "serif": 0.9761,
+          "densTall": 0.411,
+          "densX": 0.4944,
+          "weight": 0.411
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "privacy-notice",
+      "kind": "control",
+      "note": "Native amber notice: no account enumeration, no automatic sharing",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0345,
+        "y": 0.7086,
+        "w": 0.931,
+        "h": 0.085
+      },
+      "px": {
+        "x": 32,
+        "y": 1201,
+        "w": 864,
+        "h": 144
+      },
+      "aspect": 6,
+      "palette": [
+        {
+          "hex": "#f8e8c9",
+          "coverage": 0.8959
+        },
+        {
+          "hex": "#884d0a",
+          "coverage": 0.0612
+        },
+        {
+          "hex": "#e7c995",
+          "coverage": 0.017
+        },
+        {
+          "hex": "#b1803e",
+          "coverage": 0.0153
+        },
+        {
+          "hex": "#f8f8f2",
+          "coverage": 0.0105
+        }
+      ],
+      "detail": {
+        "energy": 27.196
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "expiry",
+      "kind": "text",
+      "note": "Lời mời dùng một lần · Hết hạn sau 48 giờ",
+      "grid": null,
+      "box": {
+        "x": 0.1121,
+        "y": 0.8224,
+        "w": 0.8351,
+        "h": 0.0254
+      },
+      "px": {
+        "x": 104,
+        "y": 1394,
+        "w": 775,
+        "h": 43
+      },
+      "aspect": 18.0233,
+      "palette": [
+        {
+          "hex": "#f7f7f6",
+          "coverage": 0.8668
+        },
+        {
+          "hex": "#737475",
+          "coverage": 0.0587
+        },
+        {
+          "hex": "#b2b0af",
+          "coverage": 0.0448
+        },
+        {
+          "hex": "#5c5b66",
+          "coverage": 0.0286
+        },
+        {
+          "hex": "#9890a0",
+          "coverage": 0.001
+        }
+      ],
+      "detail": {
+        "energy": 40.1536
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 28,
+          "capHeightPx": 25.5,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.548,
+          "advTall": 0.548,
+          "advX": 0.5089,
+          "gap": 0.1566,
+          "xRatio": 0.6394,
+          "stemW": 0.1255,
+          "contrast": 1.1542,
+          "serif": 0.5094,
+          "densTall": 0.4357,
+          "densX": 0.5252,
+          "weight": 0.4357
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "create",
+      "kind": "control",
+      "note": "Tạo lời mời — pinned native footer",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0356,
+        "y": 0.8791,
+        "w": 0.93,
+        "h": 0.0649
+      },
+      "px": {
+        "x": 33,
+        "y": 1490,
+        "w": 863,
+        "h": 110
+      },
+      "aspect": 7.8455,
+      "palette": [
+        {
+          "hex": "#084a58",
+          "coverage": 0.9278
+        },
+        {
+          "hex": "#f7f8f7",
+          "coverage": 0.0656
+        },
+        {
+          "hex": "#7fa9a9",
+          "coverage": 0.0026
+        },
+        {
+          "hex": "#b9d1d1",
+          "coverage": 0.0025
+        },
+        {
+          "hex": "#307070",
+          "coverage": 0.0015
+        }
+      ],
+      "detail": {
+        "energy": 16.6283
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    }
+  ],
+  "compSha256": "2f4093d2c0ad730ebc4240786a6266234ef597fbb86d0e8a9517e462334416e2",
+  "regionsSource": {
+    "path": ".impeccable/review/profile-and-email-invites/email-invite-regions.json",
+    "sha256": "91060bcd6022cd8564ee089677cfb2c0c799fcd6fae2fbc8f22e041d4eaa9811"
+  }
+}

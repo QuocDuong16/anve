@@ -34,6 +34,7 @@ import kotlinx.coroutines.CancellationException
 class PushEventRepository(private val api: AnveApi) {
     suspend fun authorized(owner: String, kind: String, id: String, episode: Int = 0): Boolean = try {
         when (kind) {
+            "CIRCLE_INVITE" -> api.receivedInvitation(owner, id).orThrow().let { it.id == id && Instant.parse(it.expiresAt).isAfter(Instant.now()) }
             "SOS" -> api.getSos(owner, id).orThrow().let { it.state == "ACTIVE" && it.acknowledgedAt == null }
             "PLACE" -> api.placeEvent(owner, id).orThrow().id == id
             else -> if (kind in JOURNEY_PUSH_KINDS) authorizedJourneySignal(api.journey(owner, id).orThrow(), kind, id, episode) else false
@@ -89,17 +90,20 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
             if (prefs.contains(key)) return Result.success()
             val id = ((hash[0].toInt() and 255) shl 24) or ((hash[1].toInt() and 255) shl 16) or
                 ((hash[2].toInt() and 255) shl 8) or (hash[3].toInt() and 255)
+            val invitation = kind == "CIRCLE_INVITE"
+            val channelId = if (invitation) "anve_invitations" else "anve_events"
             if (Build.VERSION.SDK_INT >= 26) {
-                val channel = NotificationChannel("anve_events", "Sự kiện gia đình", NotificationManager.IMPORTANCE_HIGH)
+                val channel = NotificationChannel(channelId, if (invitation) "Lời mời gia đình" else "Sự kiện gia đình",
+                    if (invitation) NotificationManager.IMPORTANCE_DEFAULT else NotificationManager.IMPORTANCE_HIGH)
                 applicationContext.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
             }
             val intent = Intent(applicationContext, MainActivity::class.java)
                 .putExtra("anve_event_kind", kind).putExtra("anve_event_id", eventId).putExtra("anve_event_owner", owner)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             val pending = PendingIntent.getActivity(applicationContext, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val notification = NotificationCompat.Builder(applicationContext, "anve_events")
+            val notification = NotificationCompat.Builder(applicationContext, channelId)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(when { kind == "SOS" -> "Có yêu cầu hỗ trợ"; kind == "JOURNEY_STALE" -> "Hành trình chưa có cập nhật mới"; kind in JOURNEY_PUSH_KINDS -> "Có cập nhật hành trình"; else -> "Có sự kiện địa điểm" })
+                .setContentTitle(when { invitation -> "Có lời mời gia đình"; kind == "SOS" -> "Có yêu cầu hỗ trợ"; kind == "JOURNEY_STALE" -> "Hành trình chưa có cập nhật mới"; kind in JOURNEY_PUSH_KINDS -> "Có cập nhật hành trình"; else -> "Có sự kiện địa điểm" })
                 .setContentText(if (kind == "JOURNEY_STALE") "Hãy liên hệ. Mở AnVề để kiểm tra trạng thái hiện tại." else "Mở AnVề để xem thông tin được phép.")
                 .setContentIntent(pending).setAutoCancel(true).build()
             manager.notify(id, notification)

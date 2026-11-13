@@ -1,0 +1,195 @@
+{
+  "regions": [
+    {
+      "id": "system-app-chrome",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 928,
+        "h": 190
+      },
+      "note": "Existing native app/system context, not a navigation redesign",
+      "codeDrawn": true,
+      "container": true
+    },
+    {
+      "id": "background-circle",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 35,
+        "y": 223,
+        "w": 861,
+        "h": 182
+      },
+      "note": "Dimmed existing Circle context, synthetic illustration labels not new navigation",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "sheet",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 405,
+        "w": 928,
+        "h": 1290
+      },
+      "note": "Native creation bottom sheet sand/ink surface",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "handle",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 427,
+        "y": 447,
+        "w": 74,
+        "h": 10
+      },
+      "note": "Native bottom sheet drag handle",
+      "codeDrawn": true
+    },
+    {
+      "id": "invite-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 40,
+        "y": 508,
+        "w": 760,
+        "h": 63
+      },
+      "note": "Mời người thân — native headline"
+    },
+    {
+      "id": "mode-email",
+      "kind": "control",
+      "pixelBox": {
+        "x": 40,
+        "y": 611,
+        "w": 413,
+        "h": 101
+      },
+      "note": "Theo email — explicit native choice",
+      "codeDrawn": true
+    },
+    {
+      "id": "mode-code",
+      "kind": "control",
+      "pixelBox": {
+        "x": 476,
+        "y": 611,
+        "w": 419,
+        "h": 101
+      },
+      "note": "Chỉ tạo link/mã — explicit native choice",
+      "codeDrawn": true
+    },
+    {
+      "id": "email-frame",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 39,
+        "y": 749,
+        "w": 856,
+        "h": 270
+      },
+      "note": "Native outlined recipient email grouping",
+      "container": true,
+      "codeDrawn": true
+    },
+    {
+      "id": "email-label",
+      "kind": "text",
+      "pixelBox": {
+        "x": 68,
+        "y": 779,
+        "w": 780,
+        "h": 40
+      },
+      "note": "Email người nhận"
+    },
+    {
+      "id": "email-input",
+      "kind": "control",
+      "pixelBox": {
+        "x": 69,
+        "y": 833,
+        "w": 800,
+        "h": 102
+      },
+      "note": "mai@example.test — synthetic native email field",
+      "codeDrawn": true
+    },
+    {
+      "id": "binding-helper",
+      "kind": "text",
+      "pixelBox": {
+        "x": 68,
+        "y": 956,
+        "w": 790,
+        "h": 41
+      },
+      "note": "Chỉ tài khoản có email này được tham gia."
+    },
+    {
+      "id": "delivery-icon",
+      "kind": "control",
+      "pixelBox": {
+        "x": 71,
+        "y": 1070,
+        "w": 46,
+        "h": 47
+      },
+      "note": "Native info vector, decorative",
+      "codeDrawn": true
+    },
+    {
+      "id": "delivery-helper",
+      "kind": "text",
+      "pixelBox": {
+        "x": 149,
+        "y": 1065,
+        "w": 714,
+        "h": 110
+      },
+      "note": "If account/notifications available, a notification may arrive; link remains available"
+    },
+    {
+      "id": "privacy-notice",
+      "kind": "control",
+      "pixelBox": {
+        "x": 32,
+        "y": 1201,
+        "w": 864,
+        "h": 144
+      },
+      "note": "Native amber notice: no account enumeration, no automatic sharing",
+      "codeDrawn": true
+    },
+    {
+      "id": "expiry",
+      "kind": "text",
+      "pixelBox": {
+        "x": 104,
+        "y": 1394,
+        "w": 775,
+        "h": 43
+      },
+      "note": "Lời mời dùng một lần · Hết hạn sau 48 giờ"
+    },
+    {
+      "id": "create",
+      "kind": "control",
+      "pixelBox": {
+        "x": 33,
+        "y": 1490,
+        "w": 863,
+        "h": 110
+      },
+      "note": "Tạo lời mời — pinned native footer",
+      "codeDrawn": true
+    }
+  ]
+}

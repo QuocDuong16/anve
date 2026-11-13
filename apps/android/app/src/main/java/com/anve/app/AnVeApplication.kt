@@ -81,12 +81,18 @@ class AppContainer(application: Application) {
         ApiFactory.retrofit(BuildConfig.API_BASE_URL, ApiFactory.okHttp(passThroughInterceptor)),
     )
 
+    private val authenticatedClient = ApiFactory.okHttp(SessionInterceptor(sessionStore, plainApi))
+
     /** Session-aware client: bearer header, one refresh-retry on 401. */
     private val authApi: AnveApi = ApiFactory.api(
         ApiFactory.retrofit(
             BuildConfig.API_BASE_URL,
-            ApiFactory.okHttp(SessionInterceptor(sessionStore, plainApi)),
+            authenticatedClient,
         ),
+    )
+
+    private val profileApi: AnveApi = ApiFactory.api(
+        ApiFactory.retrofit(BuildConfig.API_BASE_URL, ApiFactory.privateMutations(authenticatedClient)),
     )
 
     /**
@@ -108,6 +114,10 @@ class AppContainer(application: Application) {
     )
 
     val circleRepository: CircleRepository = CircleRepository(api = authApi)
+
+    val privateInvitationRepository = com.anve.app.data.circles.PrivateInvitationRepository(profileApi, sessionStore)
+
+    val avatarRepository = com.anve.app.data.avatar.AvatarRepository(profileApi, sessionStore)
 
     val historyRepository = com.anve.app.data.location.HistoryRepository(authApi)
 

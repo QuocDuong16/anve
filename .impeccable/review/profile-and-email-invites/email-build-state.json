@@ -1,0 +1,107 @@
+{
+  "tool": "build-phase",
+  "version": 2,
+  "startedAt": "2026-11-12T18:27:09.773Z",
+  "comp": ".impeccable/mocks/profile-and-email-invites/email-invite-b.png",
+  "direction": null,
+  "breakpoint": "842x1870",
+  "artifact": "apps/android/app/src/main/java/com/anve/app/ui/circle/EmailInvitationSheet.kt",
+  "phase": "plates",
+  "phases": {
+    "comps": {
+      "status": "skipped",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [
+        {
+          "at": "2026-11-12T18:27:09.773Z",
+          "text": "started with an approved comp; the comp round happened before this state (surface round or manual)"
+        }
+      ],
+      "gate": null,
+      "forced": null
+    },
+    "spec": {
+      "status": "closed",
+      "openedAt": "2026-11-12T18:27:09.773Z",
+      "closedAt": "2026-11-12T18:29:17.586Z",
+      "attempts": 1,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "16 regions, 0 plates, 5 text regions measured",
+        "at": "2026-11-12T18:29:17.585Z"
+      },
+      "forced": null
+    },
+    "plates": {
+      "status": "open",
+      "openedAt": "2026-11-12T18:29:17.586Z",
+      "closedAt": null,
+      "attempts": 1,
+      "notes": [
+        {
+          "at": "2026-11-12T18:29:17.721Z",
+          "text": "User approved B email sheet and B avatar sheet, and answered tiếp nha to the current scoped native plan exception. Preserve runtime user photo, native Material type and insets, 48dp controls and font reflow. Formal plan gate remains pending; no fabricated receipt or forced pass. Independent CI renders and native review are still required."
+        }
+      ],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "no plates owed",
+        "at": "2026-11-12T18:29:26.987Z"
+      },
+      "forced": null
+    },
+    "hero": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "sections": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "motion": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "responsive": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "review": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    }
+  },
+  "finish": null,
+  "sessionId": "01a1c8c8-2a1d-7cf0-9b52-71f090f1d038",
+  "plates": {}
+}

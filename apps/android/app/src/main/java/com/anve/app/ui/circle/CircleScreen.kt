@@ -28,6 +28,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +65,7 @@ import kotlinx.coroutines.launch
  * the UI only offers what the role allows.
  */
 @Composable
-fun CircleScreen(container: AppContainer) {
+fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvitationConsumed: () -> Unit = {}) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
@@ -82,9 +84,31 @@ fun CircleScreen(container: AppContainer) {
     var shareError by remember(owner) { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val invitationsController = remember(owner) {
+        PrivateInvitationsController(owner, container.sessionStore, container.privateInvitationRepository, scope,
+            onCreated = viewModel::refresh, onReview = { code ->
+                if (container.sessionStore.current()?.userId == owner) {
+                    container.invitationInbox.accountChanged(owner)
+                    container.invitationInbox.offer(InviteLink.create(code).orEmpty())
+                }
+            })
+    }
+    val privateInvites by invitationsController.state.collectAsStateWithLifecycle()
+    val tracking by container.trackingManager.status.collectAsStateWithLifecycle()
+    DisposableEffect(invitationsController) { onDispose { invitationsController.dispose() } }
+    LaunchedEffect(owner, invitationId) {
+        if (invitationId != null) {
+            invitationsController.review(invitationId)
+            onInvitationConsumed()
+        }
+    }
 
     CircleContent(
         state = state.copy(error = shareError ?: state.error),
+        memberAvatar = { member ->
+            com.anve.app.ui.avatar.AvatarImage(owner, member.userId, member.avatarId, member.displayName,
+                container.avatarRepository, Modifier.size(40.dp))
+        },
         onCreate = viewModel::create,
         onJoin = { code -> scope.launch {
             try {
@@ -96,7 +120,9 @@ fun CircleScreen(container: AppContainer) {
                 shareError = "Chưa kiểm tra được tài khoản. Mở lại lời mời khi phiên đăng nhập sẵn sàng."
             }
         } },
-        onCreateInvite = viewModel::createInvite,
+        onCreateInvite = invitationsController::open,
+        receivedContent = { ReceivedInvitations(privateInvites, invitationsController::refresh,
+            { invitationsController.review(it) }, { invitationsController.review(it, hide = true) }) },
         onRevokeInvite = viewModel::revokeInvite,
         onRemoveMember = { removeTarget = it },
         onLeave = {
@@ -114,7 +140,12 @@ fun CircleScreen(container: AppContainer) {
             }
         } },
     )
+    if (privateInvites.open) EmailInvitationSheet(privateInvites, tracking.online, invitationsController::dismiss,
+        invitationsController::mode, invitationsController::email, invitationsController::hours,
+        { invitationsController.create(state.circle?.id?.takeIf { state.isOwner }, tracking.online) },
+        { invitationsController.checkAgain(tracking.online) })
     InvitationHost(container, owner, onJoined = { joined ->
+        invitationsController.refresh()
         if (joined != null) viewModel.acceptJoined(owner, joined) else viewModel.refresh()
     })
 
@@ -186,6 +217,8 @@ fun CircleContent(
     onLeave: () -> Unit,
     onRetry: () -> Unit,
     onShareInvite: (InviteDto) -> Unit = {},
+    memberAvatar: (@Composable (MemberDto) -> Unit)? = null,
+    receivedContent: (@Composable () -> Unit)? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
@@ -197,7 +230,7 @@ fun CircleContent(
 
         val circle = state.circle
         if (circle == null) {
-            CircleSetup(onCreate = onCreate, onJoin = onJoin, busy = state.busy, error = state.error)
+            CircleSetup(onCreate = onCreate, onJoin = onJoin, busy = state.busy, error = state.error, receivedContent = receivedContent)
             return@Surface
         }
 
@@ -219,6 +252,7 @@ fun CircleContent(
                     )
                 }
             }
+            if (receivedContent != null) item { receivedContent() }
             item { CircleHeaderCard(name = circle.name, isOwner = state.isOwner, onLeave = onLeave) }
             item {
                 Text(
@@ -229,6 +263,7 @@ fun CircleContent(
             items(state.members, key = { it.userId }) { member ->
                 MemberRow(
                     member = member,
+                    avatar = memberAvatar?.let { { it(member) } },
                     canRemove = state.isOwner && member.role != "owner",
                     onRemove = { onRemoveMember(member) },
                 )
@@ -259,6 +294,7 @@ private fun CircleSetup(
     onJoin: (String) -> Unit,
     busy: Boolean,
     error: String?,
+    receivedContent: (@Composable () -> Unit)? = null,
 ) {
     var circleName by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
@@ -268,6 +304,7 @@ private fun CircleSetup(
         contentPadding = PaddingValues(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (receivedContent != null) item { receivedContent() }
         item {
             Text(
                 text = stringResource(R.string.circle_setup_title),
@@ -383,13 +420,13 @@ private fun CircleHeaderCard(name: String, isOwner: Boolean, onLeave: () -> Unit
 }
 
 @Composable
-private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Unit) {
+private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Unit, avatar: (@Composable () -> Unit)? = null) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
+            if (avatar != null) avatar() else Box(
                 modifier = Modifier
                     .size(40.dp)
                     .background(

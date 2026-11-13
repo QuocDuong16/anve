@@ -352,6 +352,7 @@ data class MemberDto(
     @Json(name = "displayName") val displayName: String,
     @Json(name = "role") val role: String,
     @Json(name = "joinedAt") val joinedAt: String,
+    @Json(name = "avatarId") val avatarId: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -367,6 +368,7 @@ data class InviteDto(
     @Json(name = "createdBy") val createdBy: String,
     @Json(name = "expiresAt") val expiresAt: String,
     @Json(name = "createdAt") val createdAt: String,
+    val recipientRestricted: Boolean = false,
 )
 
 @JsonClass(generateAdapter = false)

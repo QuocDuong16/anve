@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư AnVề — bản nháp nội dung
 
-**Chưa công bố.** Chuẩn bị ngày 12/11/2026 theo mã nguồn và hồ sơ M8-C.
+**Chưa công bố.** Cập nhật ngày 13/11/2026 cho avatar và lời mời email; hồ sơ M8-C và quyết định vận hành vẫn cần rà soát.
 Các quyết định vận hành ở cuối tài liệu phải được chốt trước khi dùng làm
 chính sách công khai. URL dự kiến: `https://anve.niand.id.vn/privacy`.
 
@@ -16,6 +16,12 @@ AnVề giúp các thành viên gia đình tự nguyện chia sẻ vị trí và 
 Ứng dụng xử lý thông tin đăng nhập Google, tên hiển thị, email và định danh
 tài khoản; thông tin thiết bị/phiên đăng nhập và mã nhận thông báo để quản lý
 truy cập, bảo vệ tài khoản và gửi thông báo bạn lựa chọn.
+
+Bạn có thể chọn một ảnh từ thư viện qua trình chọn ảnh hệ thống. Chỉ sau khi
+bấm Lưu, ảnh đã cắt/thu nhỏ mới được gửi lên AnVề; máy chủ chuẩn hóa ảnh để
+loại metadata. Ảnh hiện tại hiển thị với chính bạn và thành viên hiện tại
+cùng nhóm, không qua đường dẫn ảnh công khai. Bạn có thể thay hoặc xóa ảnh;
+ứng dụng không yêu cầu đọc toàn bộ thư viện và không tải ảnh hồ sơ Google.
 
 Khi bạn chủ động bật theo dõi và cấp quyền cần thiết, ứng dụng thu thập vị
 trí, thời điểm, độ chính xác và thông tin chuyển động có sẵn để cập nhật vị
@@ -49,6 +55,14 @@ Chia sẻ link/mã mời là hành động chủ động qua ứng dụng bạn 
 hoặc kết thúc tiến trình sẽ làm mất lời mời đang chờ. Không ghi mã mời vào
 báo cáo chẩn đoán hoặc trạng thái Activity lưu trên đĩa.
 
+Chủ nhóm cũng có thể tạo lời mời ràng buộc email. Máy chủ lưu digest email
+đã chuẩn hóa để giới hạn tài khoản được mở và dùng mã; digest vẫn là dữ liệu
+cá nhân. Người nhận thấy tên nhóm/người mời và thời hạn trong hộp thư riêng,
+rồi tự xác nhận tham gia. Email này không dùng để gửi thư. Người gửi không
+được biết email đã đăng ký, thiết bị có nhận thông báo hay việc bạn ẩn lời
+mời. Bạn có thể ẩn lời mời với riêng mình; thông báo tiếp theo cho lời mời
+đó bị chặn, còn mã có thể vẫn hiệu lực cho đúng tài khoản đến hết hạn.
+
 Tắt chia sẻ dừng thu thập trên thiết bị này và xóa các điểm chưa gửi. Khi mất
 mạng, app hiển thị trạng thái chờ xác nhận từ máy chủ; không coi thao tác đó
 là máy chủ đã nhận. Dữ liệu đã được người xem nhận, lưu hoặc chụp lại không
@@ -73,6 +87,13 @@ ngày. Cấu hình máy chủ hiện mặc định giữ lịch sử vị trí 3
 thực tế phụ thuộc thiết lập lưu trữ được áp dụng khi triển khai. Địa điểm
 đã lưu và các dữ liệu tính năng khác có vòng đời riêng, không mặc nhiên dùng
 cùng thời hạn với lịch sử vị trí.
+
+Thay/xóa ảnh xóa bytes ảnh trước đó trong dữ liệu vận hành; revision kỹ thuật
+còn lại để chặn thao tác cũ. Nội dung lời mời được dọn theo batch 7 ngày sau
+hạn dùng; hàng rào ID/input hash giữ đến khi xóa tài khoản để không tạo lại
+yêu cầu đã hết hiệu lực. Ngân sách chống lạm dụng thông báo giữ digest của
+ngày UTC hiện tại/trước đó, được dọn theo batch. Việc xóa dữ liệu vận hành
+không cam kết xóa ngay WAL, nhật ký, bản sao lưu hay ảnh người khác đã lưu.
 
 Ứng dụng cung cấp xóa lịch sử và xóa tài khoản. Xóa tài khoản xóa tài khoản
 và dữ liệu vận hành phụ thuộc trong cơ sở dữ liệu; bản ghi kiểm toán có thể

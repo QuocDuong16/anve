@@ -67,7 +67,7 @@ func validProject(project string) bool {
 // Send returns nil only when FCM accepted the request. Unknown failures must
 // be retried with a stable event ID; clients must also deduplicate display.
 func (f *FCM) Send(ctx context.Context, token string, signal Signal) error {
-	validKind := signal.Kind == "SOS" || signal.Kind == "PLACE" || signal.Kind == "JOURNEY_ACTIVE" || signal.Kind == "JOURNEY_ARRIVED" || signal.Kind == "JOURNEY_ENDED" || signal.Kind == "JOURNEY_CANCELLED" || signal.Kind == "JOURNEY_EXPIRED" || signal.Kind == "JOURNEY_STALE"
+	validKind := signal.Kind == "CIRCLE_INVITE" || signal.Kind == "SOS" || signal.Kind == "PLACE" || signal.Kind == "JOURNEY_ACTIVE" || signal.Kind == "JOURNEY_ARRIVED" || signal.Kind == "JOURNEY_ENDED" || signal.Kind == "JOURNEY_CANCELLED" || signal.Kind == "JOURNEY_EXPIRED" || signal.Kind == "JOURNEY_STALE"
 	if token == "" || signal.EventID == uuid.Nil || !validKind || (signal.Kind == "JOURNEY_STALE" && signal.Episode <= 0) || (signal.Kind != "JOURNEY_STALE" && signal.Episode != 0) {
 		return errors.New("invalid push request")
 	}
@@ -75,9 +75,13 @@ func (f *FCM) Send(ctx context.Context, token string, signal Signal) error {
 	if signal.Kind == "JOURNEY_STALE" {
 		data["episode"] = strconv.Itoa(signal.Episode)
 	}
+	priority := "high"
+	if signal.Kind == "CIRCLE_INVITE" {
+		priority = "normal"
+	}
 	body, err := json.Marshal(map[string]any{"message": map[string]any{
 		"token": token, "data": data,
-		"android": map[string]any{"priority": "high", "ttl": "3600s"},
+		"android": map[string]any{"priority": priority, "ttl": "3600s"},
 	}})
 	if err != nil {
 		return fmt.Errorf("encode push request: %w", err)

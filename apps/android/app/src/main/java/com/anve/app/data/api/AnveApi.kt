@@ -11,6 +11,9 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 
 /**
  * The AnVề HTTP surface, mirroring packages/api-contracts/openapi.yaml.
@@ -18,6 +21,39 @@ import retrofit2.http.Query
  * structured API errors (envelope present) from transport failures.
  */
 interface AnveApi {
+    @POST("api/v1/circles/{circle}/invitations")
+    suspend fun createPrivateInvitation(@Header("X-Anve-Expected-Owner") owner: String, @Path("circle") circle: String,
+        @Body body: PrivateInvitationRequestDto): Response<InviteDto>
+
+    @GET("api/v1/circles/{circle}/invitations/{id}")
+    suspend fun createdPrivateInvitation(@Header("X-Anve-Expected-Owner") owner: String, @Path("circle") circle: String,
+        @Path("id") id: String): Response<InviteDto>
+
+    @GET("api/v1/me/invitations")
+    suspend fun receivedInvitations(@Header("X-Anve-Expected-Owner") owner: String): Response<ReceivedInvitationsDto>
+
+    @GET("api/v1/me/invitations/{id}")
+    suspend fun receivedInvitation(@Header("X-Anve-Expected-Owner") owner: String, @Path("id") id: String): Response<ReceivedInvitationDto>
+
+    @DELETE("api/v1/me/invitations/{id}")
+    suspend fun hideReceivedInvitation(@Header("X-Anve-Expected-Owner") owner: String, @Path("id") id: String): Response<Unit>
+
+    @GET("api/v1/me/avatar")
+    suspend fun avatarState(@Header("X-Anve-Expected-Owner") owner: String): Response<AvatarStateDto>
+
+    @PUT("api/v1/me/avatar")
+    suspend fun replaceAvatar(@Header("X-Anve-Expected-Owner") owner: String, @Header("X-Anve-Operation-ID") operation: String,
+        @Header("X-Anve-Expected-Revision") revision: Long, @Body image: RequestBody): Response<AvatarStateDto>
+
+    @DELETE("api/v1/me/avatar")
+    suspend fun removeAvatar(@Header("X-Anve-Expected-Owner") owner: String, @Header("X-Anve-Operation-ID") operation: String,
+        @Header("X-Anve-Expected-Revision") revision: Long): Response<AvatarStateDto>
+
+    @Streaming
+    @GET("api/v1/avatars/{subject}/{image}")
+    suspend fun avatarImage(@Header("X-Anve-Expected-Owner") owner: String, @Path("subject") subject: String,
+        @Path("image") image: String): Response<ResponseBody>
+
     @GET("api/v1/journeys")
     suspend fun journeys(@Header("X-Anve-Expected-Owner") owner: String): Response<JourneysDto>
 

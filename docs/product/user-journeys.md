@@ -1,200 +1,111 @@
 # User journeys — AnVề
 
-> Tài liệu này mô tả **hành trình người dùng mục tiêu** của AnVề. Toàn bộ các
-> journey dưới đây là **Planned** (xem [`overview.md`](overview.md#7-phân-loại-trạng-thái-status-taxonomy)):
-> chỉ splash screen là đã tồn tại trong source. Chi tiết yêu cầu chức năng của
-> từng bước nằm ở [`features.md`](features.md); tài liệu này tập trung vào trải
-> nghiệm end-to-end và các nhánh thất bại mà thiết kế phải xử lý.
+Các luồng dưới đây đối chiếu với source hiện tại. M1–M7 có triển khai và
+bằng chứng tự động theo [progress](../implementation/progress.md); kiểm thử
+emulator/fixture không chứng minh OAuth, Maps, FCM, GPS hay pin trên thiết bị
+thật. Avatar và lời mời email của nhánh hiện tại được theo dõi riêng ở
+[profile and email invitations](../implementation/profile-and-email-invitations.md).
+Mở app, link hay thông báo không tự bật theo dõi hoặc tham gia nhóm.
 
-## Mục lục
+## 1. Onboarding và cấp quyền
 
-1. [Onboarding & cấp quyền](#1-onboarding--cấp-quyền)
-2. [Tạo Family Circle](#2-tạo-family-circle)
-3. [Tham gia Family Circle](#3-tham-gia-family-circle)
-4. [Bật chia sẻ vị trí và xem Live Map](#4-bật-chia-sẻ-vị-trí-và-xem-live-map)
-5. [Tạm dừng và dừng chia sẻ](#5-tạm-dừng-và-dừng-chia-sẻ)
-6. [Place Alerts](#6-place-alerts)
-7. [SOS](#7-sos)
-8. [Safe Journey](#8-safe-journey)
+1. Mở app, đăng nhập Google bằng Credential Manager; API xác minh ID token.
+   Dev login chỉ dành cho môi trường phát triển được cho phép.
+2. Tạo/tham gia nhóm mà chưa cần cấp vị trí. Có thể sửa tên trong Cá nhân.
+3. Khi chủ động dùng thu thập vị trí, đọc giải thích rồi cấp quyền Android
+   theo từng bước. Vị trí nền không được xin ngay lúc khởi động app.
+4. Từ chối/thu hồi quyền không khóa các tính năng không cần vị trí. Màn Vị trí
+   và Chẩn đoán chỉ ra bước cần xử lý; không tự bật consent hay GPS.
 
----
+Avatar: mở ảnh trong Cá nhân → chọn một ảnh bằng Photo Picker → xem trước →
+bấm Lưu. Chọn ảnh và đóng bảng chưa gửi dữ liệu. Xóa ảnh cũng cần bấm Lưu;
+lỗi mạng chưa rõ kết quả được kiểm tra bằng đọc metadata, không tự tải lên lại.
 
-## 1. Onboarding & cấp quyền
+## 2. Tạo nhóm và mời người thân
 
-**Nhân vật:** người dùng mới cài AnVề.
-**Điều kiện trước:** chưa có tài khoản.
-**Milestone:** M1 (authentication) + M3 (location permissions).
+1. Tạo nhóm bằng tên; chủ nhóm ban đầu là thành viên duy nhất.
+2. Chủ động mở Tạo lời mời; chọn email hoặc chỉ tạo mã/liên kết và thời hạn.
+3. Mã/liên kết được chia sẻ qua Android sharesheet khi người dùng chọn.
+   Email là ràng buộc tài khoản nhận, không phải thư gửi qua email.
+4. Máy chủ luôn trả cùng kiểu kết quả cho email đã/chưa đăng ký; không cho
+   người gửi xem trạng thái nhận thông báo hay việc người nhận ẩn lời mời.
+5. Chỉ người tự xác nhận tham gia mới xuất hiện trong danh sách thành viên.
 
-1. Cài ứng dụng, mở lần đầu → thấy splash screen với wordmark và tagline
-   (bước duy nhất đã Implemented).
-2. Đăng ký/đăng nhập (phương thức xác thực cụ thể là quyết định mở —
-   [`../architecture/overview.md`](../architecture/overview.md#7-các-quyết-định-kỹ-thuật-chưa-chốt)).
-3. Ứng dụng giải thích *vì sao* cần vị trí (trước khi xin quyền hệ thống) —
-   transparency-first, không xin quyền ngay lúc mở app lần đầu.
-4. Cấp `ACCESS_FINE_LOCATION` (khi bật chia sẻ lần đầu mới xin
-   `ACCESS_BACKGROUND_LOCATION`, theo quy trình nhiều bước của Android).
-5. Hoàn tất hồ sơ hiển thị (tên hiển thị cho người thân thấy).
+MVP giới hạn một Circle mỗi tài khoản. Quyền chủ nhóm chỉ quản lý nhóm,
+không cấp quyền xem vị trí hay điều khiển thiết bị của thành viên khác.
 
-**Nhánh thất bại:** từ chối quyền → ứng dụng vẫn dùng được phần không cần vị
-trí, kèm hướng dẫn bật lại; quyền bị thu hồi ở System Settings → ứng dụng phát
-hiện qua Diagnostics và thể hiện trạng thái, không tự xin lại liên tục.
+## 3. Nhận và xác nhận lời mời
 
-## 2. Tạo Family Circle
+1. Mở `anve://invite/<code>` hoặc nhập mã, đăng nhập nếu cần. Link tùy chỉnh
+   không phải HTTPS App Link đã được xác minh.
+2. Với lời mời email, xem nhóm, tên người mời và thời hạn trong mục Nhóm.
+   FCM chỉ gợi ý mở luồng này; chi tiết được đọc lại với tài khoản hiện tại.
+3. Bấm Xem lời mời → hộp thoại C đã duyệt cho thấy nhóm, tài khoản đang dùng,
+   thời hạn và việc tham gia không tự bật chia sẻ vị trí.
+4. Bấm Tham gia nhóm để redeem một lần; Để sau chỉ đóng hộp thoại.
+   Ẩn với tôi là lựa chọn riêng trong hộp thư; không thu hồi mã toàn cục.
 
-**Nhân vật:** người thành lập nhóm gia đình.
-**Milestone:** M2.
+Email không khớp, hết hạn, đã dùng, bị thu hồi hoặc nhóm đã giải tán không
+cho phép tham gia. Đã ở nhóm khác thì bị chặn, không tự rời nhóm cũ.
+Thao tác chưa rõ kết quả chỉ đọc lại để xác nhận. Đổi tài khoản xóa trạng thái
+riêng và không dùng response cũ để tham gia với tài khoản mới.
 
-1. Chọn “Tạo nhóm gia đình” → đặt tên nhóm.
-2. Hệ thống tạo Circle và invite code/link.
-3. Chia sẻ link qua SMS/Zalo/… cho người thân.
-4. Xem danh sách thành viên: hiện tại chỉ có mình; người mới xuất hiện khi họ
-   tự chấp nhận.
-5. Quản lý nhóm: xem thành viên, mời thêm, (tùy vai trò) mời lại invite hết hạn.
+## 4. Bật chia sẻ, chọn người xem và Live Map
 
-**Ràng buộc xuyên suốt:** việc tạo nhóm **không** bật chia sẻ vị trí cho ai;
-mỗi thành viên tự bật của riêng mình. Người tạo nhóm không có quyền ẩn nào
-trên thiết bị của người khác.
+1. Chủ thể bật chia sẻ và bắt đầu thu thập ở màn Vị trí sau các bước consent,
+   quyền hệ thống và kiểm tra phiên. Foreground service có thông báo liên tục.
+2. Chọn từng người được xem; membership tự nó không cấp quyền vị trí.
+3. Người xem mở bản đồ; chỉ các quyền còn hiệu lực mới có snapshot. Tên,
+   thời điểm, accuracy và Fresh/Delayed/Stale/Unknown phân biệt dữ liệu cũ.
+4. Conditional HTTPS polling chỉ hoạt động khi màn bản đồ ở foreground.
+   Không suy ra thiết bị nguồn offline hay một người gặp nạn từ tuổi dữ liệu.
 
-**Nhánh thất bại:** invite link hết hạn → gửi lại; người được mời từ chối →
-không có gì được ghi nhận ngoài hành động từ chối.
+Điểm thu thập hợp lệ có thể chờ mạng trong hàng đợi giới hạn. Xem được vị trí
+trong fixture không chứng minh Google Maps hoặc GPS thật hoạt động.
 
-## 3. Tham gia Family Circle
+## 5. Tạm dừng, dừng và thu hồi
 
-**Nhân vật:** người thân được mời.
-**Milestone:** M2.
+Tạm dừng thu thập cục bộ và tắt chia sẻ trên máy chủ là các điều khiển riêng,
+có trạng thái rõ ở màn Vị trí. OFF dừng thu thập và xóa các điểm chưa gửi;
+không gửi bù queue cũ sau khi tắt. Khi offline, app ghi rõ máy chủ chưa xác
+nhận. Thu hồi từng người xem/rời nhóm chấm dứt quyền; cấp lại hoặc tham gia
+lại không phục hồi các lựa chọn temporal cũ. Không thể thu hồi dữ liệu người
+khác đã xem hoặc chụp lại. Xem các ADR về consent/capture generation.
 
-1. Nhận invite link/code.
-2. Mở link (deep link) hoặc nhập code trong app.
-3. Xem **rõ ràng** nhóm là gì, ai tạo, tham gia nghĩa là gì — trước khi quyết định.
-4. Chọn “Tham gia” → xuất hiện trong danh sách thành viên.
-5. Từ lúc này mới có thể bật chia sẻ vị trí của chính mình cho nhóm.
+## 6. Places và cảnh báo địa điểm
 
-**Nhánh thất bại:** chưa có tài khoản → onboarding chạy trước; nhóm đã giải tán
-→ thông báo rõ; người dùng đã ở một Circle khác (giới hạn MVP một-Circle) →
-giải thích và hướng dẫn.
-
-## 4. Bật chia sẻ vị trí và xem Live Map
-
-**Nhân vật:** người chia sẻ (con/bố mẹ) và người xem.
-**Milestone:** M3–M4.
-
-**Phía người chia sẻ:**
-
-1. Bật “Chia sẻ vị trí” → xác nhận → Android hiển thị persistent notification
-   của foreground service.
-2. Location Engine bắt đầu theo trạng thái di chuyển (đứng yên thì ít cập nhật,
-   di chuyển thì dày hơn).
-3. Bất cứ lúc nào cũng có thể tạm dừng hoặc tắt hẳn.
-
-**Phía người xem:**
-
-1. Mở tab bản đồ → thấy marker của những người **đang** chia sẻ.
-2. Mỗi marker kèm tên, thời điểm ghi nhận, accuracy và Fresh/Delayed/Stale/
-   Unknown. AnVề chưa kết luận thiết bị nguồn offline nếu chưa có presence
-   signal (xem [Confidence Engine](features.md#5-location-confidence-engine)).
-3. Chạm vào một người → camera tập trung theo yêu cầu; conditional polling
-   cập nhật snapshot khi màn hình bản đồ ở foreground.
-4. Người mất mạng hiển thị last known location **có nhãn tuổi dữ liệu** —
-   không được nhìn như live location.
-
-**Nhánh thất bại:** người xem mất mạng → bản đồ hiện dữ liệu cuối cùng kèm
-thời điểm, rõ ràng là dữ liệu cũ; người chia sẻ mất mạng → các điểm được queue
-(sync bù khi có mạng, hành trình không đứt).
-
-## 5. Tạm dừng và dừng chia sẻ
-
-**Nhân vật:** người đang chia sẻ.
-**Milestone:** M2–M3 (control), M4 (hiển thị ở người xem).
-
-1. Mở control chia sẻ (nút lớn, luôn thấy được trạng thái hiện tại).
-2. Chọn “Tạm dừng” (nghỉ tạm, định kỳ) hoặc “Dừng chia sẻ” (chấm dứt).
-3. Ứng dụng dừng thu thập; backend chấm dứt phân phát.
-4. Người xem thấy trạng thái thay đổi (marker biến mất hoặc hiển thị
-   “đã dừng chia sẻ”) — được backend đảm bảo, không phụ thuộc UI người chia sẻ.
-
-**Ràng buộc:** đây phải là thao tác dễ tìm, không bị chôn trong settings —
-quyền thu hồi phải nhanh ít nhất bằng quyền cấp.
-
-**Nhánh cần xử lý:** dừng chia sẻ khi còn dữ liệu chờ đồng bộ — dữ liệu của
-khoảng thời gian **đã** chia sẻ vẫn được gửi bù; dữ liệu sau khi dừng không sinh
-ra (quy tắc ở [Offline Sync](features.md#7-offline-sync)).
-
-## 6. Place Alerts
-
-**Nhân vật:** phụ huynh (tạo địa điểm + nhận thông báo) và thành viên di chuyển.
-**Milestone:** M5.
-
-1. Phụ huynh tạo địa điểm “Trường học”: chọn tọa độ, bán kính vùng, chọn người
-   áp dụng (ai đang chia sẻ) và người nhận thông báo.
-2. Con đi học qua vùng → hệ thống phát hiện sự kiện đến (Android Geofencing API
-   + server-side verification khi cần).
-3. Phụ huynh nhận thông báo: “Con đã đến trường lúc 7h12” — event time, dù
-   thông báo có thể đến chậm hơn vài phút.
-
-**Chống nhiễu bắt buộc:** không lặp thông báo khi đậu xe sát ranh giới;
-hysteresis/dwell time xử lý GPS jitter.
-
-**Nhánh thất bại:** thiết bị của người di chuyển offline lúc qua vùng → sự kiện
-được phát hiện muộn hơn khi sync bù, event time vẫn giữ nguyên; người nhận
-offline → thông báo theo cơ chế FCM (có thể đến khi thiết bị online lại).
+Chủ thể tạo địa điểm/bán kính, bật theo dõi cho chính mình và chọn người nhận
+đang có quyền. Quyền chủ nhóm không cho bật theo dõi thay người khác.
+Máy chủ đánh giá các mẫu hợp lệ bằng hysteresis/dwell và bằng chứng giới hạn;
+không có Android Geofencing API trong bản hiện tại. Mạng chậm có thể làm
+phát hiện/thông báo chậm. FCM không chứa tọa độ; mở sự kiện phải kiểm tra quyền
+lại. Ngưỡng GPS/jitter và độ tin cậy ngoài thực địa vẫn cần kiểm chứng.
 
 ## 7. SOS
 
-**Nhân vật:** người gặp nguy hiểm (gửi) và người thân (nhận).
-**Milestone:** M6.
+Giữ nút và xác nhận → chọn người nhận hợp lệ → tạo sự kiện. SOS hiện không
+đính kèm tọa độ và không tự bật GPS. Queue có owner/ID fence khi offline;
+UI phân biệt chờ gửi, máy chủ ghi nhận, provider chấp nhận và người nhận
+xác nhận. Nhận FCM chỉ có ID/loại sự kiện; app đọc lại thông tin được phép.
+Provider acceptance không chứng minh thiết bị đã nhận hoặc người thân đã đọc.
+SOS không thay thế dịch vụ cấp cứu và không hứa tự gọi lực lượng hỗ trợ.
 
-**Người gửi:**
+## 8. Hành trình
 
-1. Mở SOS → cơ chế chống chạm nhầm (giữ nút + xác nhận).
-2. Xác nhận → sự kiện được ghi vào backend kèm vị trí và thời gian hiện có.
-3. Thấy trạng thái rõ ba mốc: đã gửi → dịch vụ push đã chấp nhận → người nhận
-   đã xác nhận.
-4. Mất mạng → sự kiện nằm trong queue, gửi khi có kết nối; trạng thái phản ánh
-   điều đó, không giả vờ đã gửi.
+1. Chọn địa điểm đã lưu, thời hạn và từng người còn quyền xem vị trí. Cần mạng
+   khi bắt đầu và thu thập đã được bật riêng. Mỗi tài khoản chỉ một chuyến active.
+2. Bảng tùy chọn B cho bật tự đến nơi và nhắc thiếu cập nhật từng chuyến;
+   cả hai mặc định tắt. Chỉ dùng vị trí đã được phép thu thập.
+3. Trong chuyến, tiến trình là tuổi/accuracy/khoảng cách đường chim bay;
+   không phải ETA, tuyến đường hay tỷ lệ hoàn thành.
+4. Bấm Đã đến nơi và xác nhận; hoặc kết thúc/hủy riêng. Nếu chủ động bật tự
+   nhận diện, server cần đủ mẫu đạt điều kiện và ghi “Đến nơi tự động — ước tính”.
+5. Nhắc thiếu cập nhật gửi cho chủ chuyến và người xem đã chọn còn quyền,
+   với nội dung hãy liên hệ; không suy diễn tai nạn. Mỗi episode được phân biệt.
 
-**Người nhận:**
-
-1. Nhận thông báo FCM ưu tiên cao với chi tiết SOS.
-2. Mở app → thấy vị trí và thời điểm của người gửi.
-3. Bấm “Đã nhận biết” → mốc acknowledge được ghi nhận cho người gửi và các
-   người nhận khác thấy.
-
-**Ranh giới cam kết:** SOS là kênh báo cho người thân, **không** thay thế dịch
-vụ cấp cứu 113/115/114 — app nói rõ điều này ngay trong luồng SOS.
-
-## 8. Safe Journey
-
-**Nhân vật:** người đi về muộn (chủ hành trình) và người thân được chọn.
-**Milestone:** M7 — có thể lùi sau MVP.
-
-**Bản đầu M7-B (Automated Verified tại `bcde472`; native đã duyệt, field còn mở):** chọn địa điểm đã lưu và người đã có
-quyền xem vị trí; bắt đầu cần mạng và thu thập đã được bật riêng ở màn Vị trí.
-Người dùng chọn thời hạn tối đa 8 giờ, chủ động bấm “Đã đến nơi” hoặc kết thúc
-mà chưa xác nhận đến đích. Ngưỡng GPS/cảnh báo tự động dưới đây vẫn là mục tiêu
-Planned, không phải hành vi đã được xác minh. Khi mất mạng hoặc request chưa
-rõ kết quả, app giữ thao tác theo owner và đọc lại/fence cùng ID; không tạo ID
-mới hay tuyên bố máy chủ đã ghi nhận. Push bản đầu là thông báo sự kiện chung
-sau khi kiểm tra quyền; payload chỉ có UUID/kind, không chứa tên/đích/tọa độ.
-Provider acceptance không chứng minh người theo dõi đã nhận hoặc đọc. Copy cá
-nhân hóa và cảnh báo tự động trong luồng mục tiêu dưới đây chưa được triển
-khai đầy đủ. Xem ADR 0012.
-
-1. Người dùng bắt đầu hành trình: chọn điểm đến (hoặc dùng địa điểm đã có),
-   chọn người thân được theo dõi hành trình này.
-2. Những người được chọn nhận thông báo “An đã bắt đầu hành trình về nhà”.
-3. Trong lúc hành trình: cập nhật tiến trình được ưu tiên hơn thông thường
-   (Location Engine ở trạng thái JOURNEY).
-4. Đến nơi → hành trình hoàn tất → thông báo “đã về đến nhà” cho người theo dõi.
-5. Nếu hành trình ngừng cập nhật bất thường → người theo dõi nhận cảnh báo theo
-   quy tắc đã kiểm chứng, với ngôn ngữ thận trọng: “hành trình ngừng cập nhật —
-   hãy liên hệ”, **không** suy diễn tai nạn.
-
-**Nhánh thất bại:** quên kết thúc hành trình → auto-expire theo chính sách;
-mất mạng giữa đường → sync bù, người theo dõi thấy dữ liệu cũ kèm nhãn tuổi;
-người dùng hủy hành trình → thông báo hủy cho người theo dõi.
-
----
-
-*Các journey trên là khung trải nghiệm mục tiêu dùng để lập kế hoạch triển khai
-và review UX; khi một milestone được hiện thực, journey tương ứng phải được đối
-chiếu và cập nhật theo những gì code thực sự làm.*
+Ưu tiên JOURNEY bị giới hạn và cần đọc lại quyền; không tự phục hồi GPS sau
+process death/reboot. Kết thúc dừng ưu tiên JOURNEY; chia sẻ thông thường vẫn
+theo lựa chọn riêng. Quên kết thúc thì hết hạn; mất quyền chặn đọc/dispatch.
+Tạo/hủy không rõ kết quả giữ cùng ID để đọc lại/fence, không tự tạo bản mới.
+Tự đến nơi và cảnh báo thiếu cập nhật có kiểm thử tự động tại PR #21, nhưng
+ngưỡng thực địa, GPS, pin/OEM và Firebase thật vẫn chưa được xác minh.

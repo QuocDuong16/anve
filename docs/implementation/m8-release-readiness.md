@@ -17,7 +17,8 @@ and emulator suites. No production deployment or UI change is implied.
 M7-B is merged as `5773724`; main Go/Android CI passed after merge. Manual native
 approval and its formal-tool exception remain scoped to M7-B. M7 device/OEM/GPS,
 battery and real Firebase delivery are still pending. Automatic arrival/stale
-alerts remain Planned, so none of those outcomes gates can be marked passed by
+alerts have source and automated evidence in unmerged PR #21, while their field
+thresholds remain unverified; none of those outcomes gates can be marked passed by
 M8 tooling work.
 
 ## M8-B: merged and automated-verified
