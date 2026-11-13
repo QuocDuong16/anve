@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.1"
 ndk = "28.2.13676358"
 # AGP 9 depends on the Kotlin Gradle plugin at runtime and needs at least
 # 2.2.10. The Compose compiler plugin is a separate artifact that has to
