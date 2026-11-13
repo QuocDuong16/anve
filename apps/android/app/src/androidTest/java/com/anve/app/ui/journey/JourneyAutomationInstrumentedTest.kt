@@ -61,7 +61,7 @@ class JourneyAutomationInstrumentedTest {
         openOptions()
         compose.onNodeWithTag("automatic-arrival").performClick()
         compose.onNodeWithTag("stale-reminder").performClick()
-        pressBack()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
         openOptions()
         compose.onNodeWithTag("automatic-arrival").assertIsOff()
