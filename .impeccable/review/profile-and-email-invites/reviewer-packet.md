@@ -69,3 +69,10 @@ No HTML/CSS detector ran because this is native Compose.
 Report the shipped finish-reviewer's five contract sections and disposition;
 write only finish-review.md in this directory. Do not edit source or global
 system files. Name any required correction or invalid capture explicitly.
+
+
+Post-review correction: verdict.md scores both findings resolved using the
+two replacement captures bound individually to 17b0fcd/run43289266521.
+Other nine captures remain ca13. The fix-list ship does not change the initial
+whole-surface review record or formal PLATES status. See evidence.md and
+current PR checks for exact-source automated outcomes.

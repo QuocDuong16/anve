@@ -128,3 +128,18 @@ only the metadata reader, not image pixels or uploads. The regression fixture
 is explicitly smaller than the probe, has independently verified orientation,
 GPS and description tags, and checks oriented output colors and stripped tags.
 This is a compatibility fix in production decoding, not a skipped assertion.
+
+
+## Native review follow-up
+
+Correction `17b0fcd` keeps the retry control outside the circular image clip
+and gives the received-context fixture contrasting system icons. Both named
+hosted tests passed and replacement captures were reviewed independently;
+the reviewer scored both findings resolved. This verdict covers that fix list,
+not a new whole-surface approval. Local full quality and instrumentation
+compilation passed again. Its API35 run initially had a pre-Activity OS font
+scale setup failure (52/53); all other jobs passed. No assertion/timeout was
+weakened, and the exact-source job was rerun. The current PR checks and body
+record final-head validation, while retained evidence keeps its own source.
+The formal finish command still refuses at PLATES under the documented native
+exception; no receipt or numerical comp pass is claimed.

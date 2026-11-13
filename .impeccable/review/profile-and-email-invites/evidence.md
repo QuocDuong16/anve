@@ -62,3 +62,26 @@ Gradle interruptions were retried to an actual full quality pass.
 Photo Picker/provider interoperability, OAuth/Maps/Firebase delivery, selected
 share-app delivery, backup erasure, public HTTPS/App Links, Play production
 signing/distribution or publication. Formal completion is a separate open gate.
+
+
+## Correction review record
+
+At 17b0fcdb45fdaf66017cf602db59ac724f473cbe, local full quality and test-APK
+compilation passed (330 JVM tests, zero failures/errors/skips). Go run
+43289266440 passed all jobs. Android run 43289266521 initially passed build,
+API26 and signed smoke; API35 passed 52/53. The failure was
+SystemFontScaleRule.awaitScale before the email dark test Activity/render,
+not a failed layout assertion. Exact-source failed-job rerun was requested;
+no assertion or timeout was changed. Latest PR checks carry the final result.
+
+Both named correction tests passed, and their new captures replaced
+avatar-image-error.png and received-invitation-context.png. The manifest
+records their 17b0fcd source separately from the nine unchanged ca13 captures.
+Fresh reviewer verdict.md scored both material findings resolved; its ship
+covers that fix list only. DESIGN.md and sidecar remain unchanged.
+
+After that verdict, build-phase finish --disposition ship was attempted and
+refused because plates/hero/sections/motion/responsive are not closed (phase
+plates). This is an open formal gate, not a failed CI check or an invented
+approval. The scoped user native-plan exception remains the authorization
+for implementation and native review.

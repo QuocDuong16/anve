@@ -2,10 +2,12 @@
   "captures": [
     {
       "file": "received-invitation-context.png",
-      "sha256": "c7c648b841c044a172a82dace5221e3382a36153004274e20460a254de80eb7b",
+      "sha256": "2d658c6a71cb4b8586c3ec5015395358e4000e88fc26d9acae7cd97756f54204",
       "origin": "GitHub Actions API35 native synthetic fixture",
-      "run": 43285537402,
-      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+      "run": 43289266521,
+      "head": "17b0fcdb45fdaf66017cf602db59ac724f473cbe",
+      "attempt": 1,
+      "scope": "This named test passed; overall run had unrelated pre-UI OS font-scale setup failure"
     },
     {
       "file": "email-invitation-unknown.png",
@@ -72,13 +74,15 @@
     },
     {
       "file": "avatar-image-error.png",
-      "sha256": "d8c91f282b9cce6a99e49282b25619a2dac4bc15b405a3f739e40283164977ac",
+      "sha256": "2f9a2222a84355c2cfce8fc18af357b43daf0a732ac0205fac897c29eec7cf17",
       "origin": "GitHub Actions API35 native synthetic fixture",
-      "run": 43285537402,
-      "head": "ca13b4fc717901e0735598cdad125206f831fa6b"
+      "run": 43289266521,
+      "head": "17b0fcdb45fdaf66017cf602db59ac724f473cbe",
+      "attempt": 1,
+      "scope": "This named test passed; overall run had unrelated pre-UI OS font-scale setup failure"
     }
   ],
-  "scope": "Synthetic Compose fixtures; real providers and physical devices not exercised",
+  "scope": "Mixed-source synthetic fixtures: per-capture source/run binding; two correction captures from 17b0fcd, other nine from ca13. No production host/provider/device proof.",
   "checkoutCommit": "4415d4fb2e4ceb7143f4273616a5b1bfcb29ef51",
   "sourceTree": "d935366738a8d4c1cfd4dbae989e70867bee2b1b",
   "tests": {
