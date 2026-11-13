@@ -109,12 +109,21 @@ case "$command" in
 	*) echo "Usage: $0 {up|down|logs|config}" >&2; exit 2 ;;
 esac
 
+build_version=""
+if [[ "$command" == up ]]; then
+	if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+		echo "Production deployment needs a Git checkout to record the API build version." >&2
+		exit 1
+	fi
+	build_version="$(git describe --tags --always --dirty)"
+fi
+
 # Make imports .env for development and exports those variables. Remove app
 # settings from that environment so .env.prod is always authoritative here.
 unset_vars=(
 	API_PORT API_DOMAIN AUTH_DEV_LOGIN_ALLOW_NETWORK AUTH_DEV_LOGIN_ALLOWED_CIDRS
 	AUTH_DEV_LOGIN_ENABLED AUTH_GOOGLE_CLIENT_ID COMPOSE_PROJECT_NAME DATABASE_URL
-	ENVIRONMENT FCM_CREDENTIALS_FILE FCM_PROJECT_ID LISTEN_ADDR LOCATION_RETENTION_DAYS
+	ANVE_BUILD_VERSION ENVIRONMENT FCM_CREDENTIALS_FILE FCM_PROJECT_ID LISTEN_ADDR LOCATION_RETENTION_DAYS
 	HTTP_PORT POSTGRES_DB POSTGRES_PASSWORD POSTGRES_PORT POSTGRES_USER TZ
 )
 unset_args=()
@@ -123,7 +132,7 @@ for name in "${unset_vars[@]}"; do
 done
 
 compose() {
-	env "${unset_args[@]}" docker compose \
+	env "${unset_args[@]}" ANVE_BUILD_VERSION="$build_version" docker compose \
 		--project-directory . \
 		--env-file "$env_file" \
 		--project-name anve-prod \
@@ -132,6 +141,7 @@ compose() {
 
 case "$command" in
 	up)
+		echo "Building production API version: $build_version"
 		compose build --pull
 		compose up -d --force-recreate --remove-orphans
 		compose ps

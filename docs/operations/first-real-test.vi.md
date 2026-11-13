@@ -63,6 +63,9 @@ make docker-up         # build, migrate, bật API và Caddy HTTP origin
 localhost. Production chỉ publish Caddy HTTP trên host port `24080`; API và
 Postgres không có cổng host, Postgres nằm trên Docker network nội bộ. Cloudflare
 Tunnel giữ URL public HTTPS trong khi kết nối origin tới Caddy bằng HTTP.
+Khi deploy production, Make lấy version từ Git tag gần nhất hoặc commit hiện
+tại (thêm `-dirty` nếu working tree có thay đổi); vì vậy `/healthz` không còn
+dùng mặc định `dev`.
 `LISTEN_ADDR=0.0.0.0:8080` là cổng bên trong container API, nơi Caddy gọi tới;
 `24080` là cổng host của Caddy. Không cần đổi API listener sang `24080`.
 `make docker-down` dừng dịch vụ nhưng giữ volume dữ liệu. Không dùng
