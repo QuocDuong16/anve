@@ -234,6 +234,7 @@ func NewRouter(deps Deps) chi.Router {
 					c.Get("/{circleId}/invites", listInvitesHandler(circleSvc))
 				})
 				private.Route("/invites", func(inv chi.Router) {
+					inv.Post("/preview", previewInviteHandler(circleSvc))
 					inv.Delete("/{inviteId}", revokeInviteHandler(circleSvc))
 					inv.Post("/redeem", redeemInviteHandler(circleSvc))
 				})

@@ -1,6 +1,8 @@
 package journeys
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"math"
 	"testing"
 	"time"
@@ -20,6 +22,8 @@ func TestJourneyInputBounds(t *testing.T) {
 		{"no-time", func(r *CreateRequest) { r.PreparedAt = time.Time{} }},
 		{"too-short", func(r *CreateRequest) { r.DurationMinutes = 14 }},
 		{"too-long", func(r *CreateRequest) { r.DurationMinutes = 481 }},
+		{"unsupported-stale-threshold", func(r *CreateRequest) { r.StaleAfterMinutes = 1 }},
+		{"negative-stale-threshold", func(r *CreateRequest) { r.StaleAfterMinutes = -5 }},
 		{"empty", func(r *CreateRequest) { r.RecipientIDs = nil }},
 		{"duplicate", func(r *CreateRequest) { r.RecipientIDs = []uuid.UUID{viewer, viewer} }},
 		{"self", func(r *CreateRequest) { r.RecipientIDs = []uuid.UUID{owner} }},
@@ -38,4 +42,26 @@ func TestJourneyInputBounds(t *testing.T) {
 	}
 	_, _, err := validate(base, owner)
 	require.NoError(t, err, "valid zero coordinates are accepted")
+}
+
+func TestLegacyManualRequestHashSurvivesAutomationUpgrade(t *testing.T) {
+	owner := uuid.New()
+	in := CreateRequest{JourneyID: uuid.New(), PreparedAt: time.Now().UTC(), DurationMinutes: 120, Destination: Destination{Label: "Nhà", Latitude: 0, Longitude: 0}, RecipientIDs: []uuid.UUID{uuid.New()}}
+	// This is the pre-automation wire shape, including its canonical field order.
+	legacy := struct {
+		JourneyID       uuid.UUID   `json:"journeyId"`
+		PreparedAt      time.Time   `json:"preparedAt"`
+		DurationMinutes int         `json:"durationMinutes"`
+		Destination     Destination `json:"destination"`
+		RecipientIDs    []uuid.UUID `json:"recipientIds"`
+	}{in.JourneyID, in.PreparedAt, in.DurationMinutes, in.Destination, in.RecipientIDs}
+	data, err := json.Marshal(legacy)
+	require.NoError(t, err)
+	_, hash, err := validate(in, owner)
+	require.NoError(t, err)
+	require.Equal(t, sha256.Sum256(data), hash)
+	in.AutomaticArrival = true
+	_, changed, err := validate(in, owner)
+	require.NoError(t, err)
+	require.NotEqual(t, hash, changed, "changing opt-in after admission is not an idempotent replay")
 }

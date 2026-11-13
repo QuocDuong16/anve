@@ -39,12 +39,17 @@
       },
       {
         "actions": [
-          "android.intent.action.MAIN"
+          "android.intent.action.MAIN",
+          "android.intent.action.VIEW"
         ],
         "categories": [
+          "android.intent.category.BROWSABLE",
+          "android.intent.category.DEFAULT",
           "android.intent.category.LAUNCHER"
         ],
-        "dataFilters": [],
+        "dataFilters": [
+          "5c1f763cf32c6e7d3545f36d2eabfd4cee88c3b41f6bdc5f9b9e6bcb8ad03fba"
+        ],
         "exported": "true",
         "kind": "activity",
         "metadataNames": [],
@@ -579,7 +584,7 @@
   ],
   "schemaVersion": 1,
   "sourcePolicies": {
-    "apps/android/app/src/main/AndroidManifest.xml": "48286d98e7d8d0d44a5940d335ff43bc69bbb7a9d08be5d45b4f434b27a49a9f",
+    "apps/android/app/src/main/AndroidManifest.xml": "619d9d681ee43bf42f78874c22575ee0f104c482f6cfe9f6b0566f08cfd2bf6c",
     "apps/android/app/src/main/res/xml/backup_rules.xml": "bab9f708acc805a3b6bf536a6401488cef5f7e91580d4d744f87881e4d7a122a",
     "apps/android/app/src/main/res/xml/data_extraction_rules.xml": "144681400e8ab3d4303178cc0c0c4534d607492d2d837a0911548c2d9237b653",
     "apps/android/app/src/main/res/xml/network_security_config.xml": "b3f61bf098d093c46deb038573bc2376b59f15263385835f6561c65eea27c8f2"

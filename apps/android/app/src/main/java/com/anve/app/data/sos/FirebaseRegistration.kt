@@ -96,6 +96,7 @@ class AnveFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val kind = message.data["kind"] ?: return
         val eventId = message.data["eventId"] ?: return
-        PushSignalScheduler(applicationContext).schedule(kind, eventId)
+        val episode = message.data["episode"]?.toIntOrNull() ?: if ("episode" in message.data) return else 0
+        PushSignalScheduler(applicationContext).schedule(kind, eventId, episode)
     }
 }

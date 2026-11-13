@@ -1,0 +1,7 @@
+{
+  "prompt": "Edit this synthetic AnVề Android design comp while preserving its exact native layout, palette, controls, spacing, switch states and portrait frame. Correct only factual Vietnamese UI text: replace 'Thời gian dự kiến' with 'Thời hạn chia sẻ'; replace the supporting line 'Tự xác nhận khi bạn đến Nhà.' under the first switch with 'GPS chỉ cho kết quả ước tính.'; replace 'Khoảng thời gian nhắc' with 'Báo khi chưa có cập nhật trong'. Do not change any other words, add claims or alter the design. Crisp readable Vietnamese text. This is a mockup, not a running app.",
+  "approved": false,
+  "synthetic": true,
+  "reference": "PR20 native Journey screenshot for incumbent theme only",
+  "option": "c"
+}

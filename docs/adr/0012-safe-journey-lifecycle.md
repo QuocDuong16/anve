@@ -7,7 +7,8 @@
 ## Lifecycle and admission
 
 A journey is server-authoritative: ACTIVE → ARRIVED, ENDED, CANCELLED or EXPIRED.
-ARRIVED is an explicit owner assertion, never an inference from GPS. There is
+In this first-release scope, ARRIVED is an explicit owner assertion. ADR 0016
+extends the contract with separately opted-in estimates. There is
 at most one active journey per owner, across devices. The owner selects a
 duration from 15 minutes to 8 hours; expiry is an upper bound, not an ETA.
 Destination and audience additions are immutable: end and explicitly start a
@@ -61,6 +62,8 @@ current consent/membership, journey retention and state; revocation suppresses
 work. FCM contains an opaque journey ID and a lifecycle kind only. Provider
 acceptance is not delivery or a read receipt. Client display rechecks access.
 
-Automatic arrival and stale-journey alerts remain **Planned** until accuracy,
-dwell, gaps and alert thresholds have field evidence. Synthetic tests and CI
-emulators cannot prove real GPS, battery, OEM behavior or Firebase delivery.
+Automatic arrival and stale-journey alerts were deferred from this first
+release. Their later opt-in backend contract and remaining Android gates are
+documented in ADR 0016 and feature-completion.md. Field verification remains
+separate: synthetic tests and CI emulators cannot prove real GPS, battery,
+OEM behavior or Firebase delivery.

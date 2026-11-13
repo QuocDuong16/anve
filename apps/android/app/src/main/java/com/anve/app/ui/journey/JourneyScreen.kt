@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.RadioButtonChecked
@@ -85,6 +87,7 @@ import com.anve.app.AppContainer
 import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.journey.JourneyAction
+import com.anve.app.data.sos.authorizedJourneySignal
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.theme.AnVeTheme
@@ -111,7 +114,8 @@ fun JourneyScreen(container: AppContainer, onBack: () -> Unit, onPlaces: () -> U
         onDispose { lifecycle.removeObserver(observer); model.visible(false) }
     }
     key(state.owner) {
-        JourneyContent(state, tracking, onBack, model::reload, model::select, model::create, model::action, model::resumePriority, onPlaces, onLocation)
+        JourneyContent(state, tracking, onBack, model::reload, model::select, model::create, model::action, model::resumePriority, onPlaces, onLocation,
+            onCreateWithOptions = model::createWithOptions)
     }
 }
 
@@ -131,6 +135,7 @@ fun JourneyContent(
     onPlaces: () -> Unit = {},
     onLocation: () -> Unit = {},
     initiallyCreating: Boolean = false,
+    onCreateWithOptions: ((PlaceDto, Int, Set<String>, Boolean, Int) -> Unit)? = null,
 ) {
     var creating by remember(state.owner) { mutableStateOf(initiallyCreating) }
     var confirmation by remember(state.owner) { mutableStateOf<Confirmation?>(null) }
@@ -172,7 +177,10 @@ fun JourneyContent(
             }
             when {
                 creating -> item {
-                    JourneyCreateForm(state, tracking, onCreate, onPlaces, onLocation)
+                    JourneyCreateForm(state, tracking, { place, minutes, recipients, automatic, stale ->
+                        if (onCreateWithOptions != null) onCreateWithOptions(place, minutes, recipients, automatic, stale)
+                        else onCreate(place, minutes, recipients)
+                    }, onPlaces, onLocation)
                 }
                 selected != null -> item {
                     JourneyDetails(selected, state.owner == selected.ownerId, tracking, now, state.busy,
@@ -194,7 +202,7 @@ fun JourneyContent(
                 OutlinedCard(onClick = { onSelect(journey.id) }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("${if (journey.ownerId == state.owner) "Của bạn" else journey.ownerName} · ${journey.destination.label}", style = MaterialTheme.typography.titleMedium)
-                        Text(journeyStateLabel(journey.state), style = MaterialTheme.typography.bodyMedium)
+                        Text(if (journey.arrivalSource == "AUTOMATIC") "Đến nơi tự động — ước tính" else journeyStateLabel(journey.state), style = MaterialTheme.typography.bodyMedium)
                         Text("Bắt đầu ${journeyTime(journey.startedAt)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -259,9 +267,15 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 }
                 if (active) Text("Khoảng cách không phải thời gian đến.", style = MaterialTheme.typography.bodySmall)
             }
-            JourneyStep(when { journey.state == "ARRIVED" -> "Chủ hành trình đã xác nhận đến nơi"; active && owner -> "Xác nhận đến nơi"; active -> "Chờ chủ hành trình xác nhận"; else -> "Chưa xác nhận đến nơi" }, last = true, completed = journey.state == "ARRIVED") {
-                Text(when { !active -> "Không tự suy diễn đến nơi từ GPS."; owner -> "Bạn chủ động xác nhận khi đã đến."; else -> "Chủ hành trình sẽ tự xác nhận khi đã đến." }, style = MaterialTheme.typography.bodyMedium)
+            JourneyStep(when { journey.arrivalSource == "AUTOMATIC" -> "Đến nơi tự động — ước tính"; journey.state == "ARRIVED" -> "Chủ hành trình đã xác nhận đến nơi"; active && journey.automaticArrival -> "Có thể tự nhận diện đến nơi"; active && owner -> "Xác nhận đến nơi"; active -> "Chờ chủ hành trình xác nhận"; else -> "Chưa xác nhận đến nơi" }, last = true, completed = journey.state == "ARRIVED") {
+                Text(when { journey.arrivalSource == "AUTOMATIC" -> "Ước tính từ GPS có thể sai; không phải xác nhận an toàn."; active && journey.automaticArrival -> "GPS chỉ cho kết quả ước tính. Chủ hành trình vẫn có thể xác nhận thủ công."; !active -> "Không tự suy diễn đến nơi từ GPS."; owner -> "Bạn chủ động xác nhận khi đã đến."; else -> "Chủ hành trình sẽ tự xác nhận khi đã đến." }, style = MaterialTheme.typography.bodyMedium)
             }
+        }
+        if (active && !expiredLocally && authorizedJourneySignal(journey, "JOURNEY_STALE", journey.id, journey.staleEpisode)) {
+            JourneyNotice("Hành trình chưa có cập nhật mới — hãy liên hệ. Không suy diễn có tai nạn.")
+        }
+        if (active && (journey.automaticArrival || journey.staleAfterMinutes > 0)) {
+            Text("Cho hành trình này: ${if (journey.automaticArrival) "tự nhận diện đến nơi (ước tính)" else "xác nhận thủ công"}${if (journey.staleAfterMinutes > 0) "; nhắc sau ${journey.staleAfterMinutes} phút chưa có cập nhật" else ""}.", style = MaterialTheme.typography.bodySmall)
         }
         if (expiredLocally && active) JourneyNotice("Đã đến thời hạn trên thiết bị. Đọc lại để xác nhận trạng thái máy chủ; ưu tiên không được kéo dài.")
         if (owner) {
@@ -294,7 +308,7 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
             }
         } else {
             if (!tracking.online) JourneyNotice("Mất mạng: dữ liệu có thể cũ. Đọc lại khi có mạng.", Icons.Default.WifiOff)
-            Text("Chỉ chủ hành trình xác nhận đến nơi hoặc kết thúc. Dữ liệu cũ không chứng minh người đó gặp sự cố.", style = MaterialTheme.typography.bodyMedium)
+            Text("Chủ hành trình quản lý việc xác nhận đến nơi hoặc kết thúc. Dữ liệu cũ không chứng minh người đó gặp sự cố.", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -318,10 +332,13 @@ private fun JourneyStep(title: String, current: Boolean = false, completed: Bool
 }
 
 @Composable
-private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, onCreate: (PlaceDto, Int, Set<String>) -> Unit, onPlaces: () -> Unit, onLocation: () -> Unit) {
+private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, onCreate: (PlaceDto, Int, Set<String>, Boolean, Int) -> Unit, onPlaces: () -> Unit, onLocation: () -> Unit) {
     var destination by remember(state.owner) { mutableStateOf<String?>(null) }
     var minutes by remember(state.owner) { mutableStateOf(120) }
     var recipients by remember(state.owner) { mutableStateOf(emptySet<String>()) }
+    var automatic by remember(state.owner) { mutableStateOf(false) }
+    var staleMinutes by remember(state.owner) { mutableStateOf(0) }
+    var optionsOpen by remember(state.owner) { mutableStateOf(false) }
     val ready = !state.busy && state.pending.isEmpty() && state.consentEnabled && tracking.ownerUserId == state.owner && tracking.activelyTracking && tracking.online
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -357,16 +374,31 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                 }
             }
         } }
-        JourneyNotice("Bạn sẽ tự xác nhận khi đến nơi. Hành trình không tự phát hiện sự cố.")
+        OutlinedCard(onClick = { optionsOpen = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("journey-options")) {
+            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Settings, null)
+                Column(Modifier.weight(1f)) {
+                    Text("Tự động và nhắc nhở", style = MaterialTheme.typography.titleMedium)
+                    Text(if (!automatic && staleMinutes == 0) "Đang tắt" else "${if (automatic) "Tự đến nơi (ước tính)" else "Xác nhận thủ công"}${if (staleMinutes > 0) " · Nhắc sau $staleMinutes phút" else ""}", style = MaterialTheme.typography.bodySmall)
+                }
+                Icon(Icons.Default.ChevronRight, null)
+            }
+        }
+        JourneyNotice(if (automatic) "Bạn vẫn có thể xác nhận thủ công. Tự đến nơi chỉ là ước tính; hành trình không tự phát hiện sự cố." else "Bạn sẽ tự xác nhận khi đến nơi. Hành trình không tự phát hiện sự cố.")
         if (!state.consentEnabled || !tracking.activelyTracking) {
             JourneyNotice("Cần bật chia sẻ và thu thập vị trí trước khi bắt đầu. Hành trình không tự bật GPS.") { ink -> JourneyTextAction("Mở màn Vị trí", onLocation, color = ink) }
         }
         JourneyPrimaryAction("Bắt đầu hành trình", {
             val place = state.places.firstOrNull { it.id == destination } ?: return@JourneyPrimaryAction
-            onCreate(place, minutes, recipients)
+            onCreate(place, minutes, recipients, automatic, staleMinutes)
         }, ready && destination != null && recipients.isNotEmpty() && recipients.all { id -> state.members.any { it.userId == id } })
         Text("Cần có mạng để bắt đầu.", style = MaterialTheme.typography.bodySmall)
     }
+    if (optionsOpen) JourneyOptionsSheet(automatic, staleMinutes, onDismiss = { optionsOpen = false }, onApply = { arrival, stale ->
+        automatic = arrival
+        staleMinutes = stale
+        optionsOpen = false
+    })
 }
 
 @Composable

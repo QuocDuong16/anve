@@ -580,7 +580,10 @@ không bao giờ hứa “báo cảnh sát thay bạn”.
 > khai tại `bcde472` (Go/Android CI, 32 emulator tests), bản native đã được
 > duyệt qua tin nhắn theo ngoại lệ của người dùng. Phạm vi review được
 > ghi riêng tại [progress](../implementation/progress.md). Arrival tự động và
-> cảnh báo ngừng cập nhật vẫn **Planned**.
+> cảnh báo ngừng cập nhật, UI tùy chọn từng chuyến và luồng link mời đã có
+> **Implemented** trên nhánh PR #21; CI/native review của phần mở rộng và
+> field validation được ghi riêng, xem
+> [feature completion](../implementation/feature-completion.md).
 
 **Mục đích.** Tính năng khác biệt: người dùng chủ động bắt đầu một hành trình
 (đi học, đi làm, di chuyển xa, về nhà muộn) và người thân được chọn theo dõi
@@ -617,7 +620,9 @@ Diagnostics để thu thập dữ liệu thực địa cho ngưỡng cảnh báo
 30 phút–8 giờ trong app và từng người đang có quyền xem vị trí. Chỉ một hành
 trình đang hoạt động mỗi tài khoản; phải có mạng khi bắt đầu. App yêu cầu bật
 chia sẻ/thu thập ở màn Vị trí trước, không tự bật GPS. Đến nơi do chủ hành
-trình xác nhận thủ công; kết thúc riêng không khẳng định đã đến đích. Điểm đến
+trình xác nhận thủ công ở bản đầu; phần mở rộng ADR 0016 cho phép bật tự đến
+nơi (ước tính) theo từng chuyến, mặc định tắt. Kết thúc riêng không khẳng
+định đã đến đích. Điểm đến
 và việc thêm người xem chỉ đổi bằng một hành trình mới; có thể thu hồi từng
 người đang xem ngay trong hành trình. Re-grant hoặc rời/tham gia lại Circle
 không khôi phục lời mời cũ.
@@ -631,7 +636,8 @@ sau process death/reboot.
 
 Mẫu tiến trình là dữ liệu sau khi bắt đầu, kèm tuổi, accuracy và nhãn mock nếu
 có. Khoảng cách là đường chim bay, không phải tuyến đường, phần trăm hoàn
-thành hoặc ETA. FCM chỉ có UUID/kind, không có tọa độ/đích/tên. Chấp nhận bởi
+thành hoặc ETA. FCM có UUID/kind, thêm episode không chứa thông tin cá nhân
+cho cảnh báo thiếu cập nhật; không có tọa độ/đích/tên. Chấp nhận bởi
 provider không đồng nghĩa nhận hoặc đọc. Tạo/hủy chưa rõ kết quả giữ ID cũ để
 đọc lại/fence; app không tự gửi lại create hay báo thành công khi chưa xác nhận.
 
@@ -684,7 +690,8 @@ trừ khi người dùng chọn rõ ràng.
 
 ## 13. Notifications
 
-> Trạng thái: **Implemented — Automated Verified** cho SOS và Place Alert với fake provider; FCM thật chưa được kiểm chứng.
+> Trạng thái: **Implemented — Automated Verified** cho SOS, Place Alert và
+> lifecycle Journey với fake provider; FCM thật chưa được kiểm chứng.
 
 **Mục đích.** Firebase Cloud Messaging là kênh push notification chính, dùng
 cho các sự kiện hợp lệ:
@@ -695,8 +702,9 @@ cho các sự kiện hợp lệ:
 - Safe Journey events (bắt đầu, hoàn tất, cảnh báo).
 - Những sự kiện an toàn hợp lệ khác.
 
-Phạm vi M6 hiện tại chỉ gồm SOS và Place Alerts; thông báo invitation và
-Safe Journey vẫn là định hướng, chưa được triển khai trong M6.
+M6 triển khai SOS và Place Alerts; M7-B bổ sung lifecycle Journey. Invitation
+dùng chia sẻ mã/link chủ động, chưa có FCM invitation. Cảnh báo thiếu cập nhật
+của phần mở rộng được theo dõi tại feature-completion.md.
 
 **Ràng buộc kiến trúc.** **Không sử dụng FCM để truyền GPS liên tục.** M3
 ingestion và M4 authorized latest-location snapshots đi qua HTTPS. M4 dùng
@@ -711,5 +719,6 @@ tại thời điểm gửi.
 ---
 
 *Xem trạng thái ở đầu mỗi mục và bằng chứng tại [`roadmap.md`](roadmap.md),
-[`../implementation/progress.md`](../implementation/progress.md). M7 là
-Planned; bằng chứng tự động không thay thế field validation.*
+[`../implementation/progress.md`](../implementation/progress.md) và
+[`../implementation/feature-completion.md`](../implementation/feature-completion.md).
+Bằng chứng tự động không thay thế field validation.*

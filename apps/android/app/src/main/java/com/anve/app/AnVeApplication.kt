@@ -14,6 +14,7 @@ import com.anve.app.data.auth.SessionInterceptor
 import com.anve.app.data.auth.SessionNoticeStore
 import com.anve.app.data.auth.WorkManagerPendingRevocationScheduler
 import com.anve.app.data.circles.CircleRepository
+import com.anve.app.data.circles.InvitationInbox
 import com.anve.app.data.location.ApiLocationSyncGateway
 import com.anve.app.data.location.CaptureGenerationStore
 import com.anve.app.data.location.LocationDatabase
@@ -63,6 +64,8 @@ class AppContainer(application: Application) {
     val deviceIdentity: DeviceIdentity = DeviceIdentity(application)
 
     val sessionStore: DataStoreSessionStorage = DataStoreSessionStorage(application)
+
+    val invitationInbox = InvitationInbox()
 
     /** One process-wide generation source for UI, tracking and retry paths. */
     val consentMutationCoordinator = ConsentMutationCoordinator()
@@ -251,6 +254,7 @@ class AnVeApplication : Application() {
         }
         applicationScope.launch {
             container.sessionStore.session.collectLatest { session ->
+                container.invitationInbox.accountChanged(session?.userId)
                 val owner = session?.userId ?: return@collectLatest
                 try {
                     if (container.journeyOutbox.read(owner).isNotEmpty()) container.journeySyncScheduler.schedule(owner)

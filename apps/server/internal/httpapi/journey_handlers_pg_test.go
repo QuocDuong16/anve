@@ -47,7 +47,7 @@ func TestPGJourneyHTTPBindingAndStrictInput(t *testing.T) {
 		router.ServeHTTP(w, r)
 		return w
 	}
-	in := journeys.CreateRequest{JourneyID: uuid.New(), PreparedAt: time.Now().UTC(), DurationMinutes: 30, Destination: journeys.Destination{Label: "Nhà", Latitude: 0, Longitude: 0}, RecipientIDs: []uuid.UUID{viewer.ID}}
+	in := journeys.CreateRequest{JourneyID: uuid.New(), PreparedAt: time.Now().UTC(), DurationMinutes: 30, Destination: journeys.Destination{Label: "Nhà", Latitude: 0, Longitude: 0}, RecipientIDs: []uuid.UUID{viewer.ID}, AutomaticArrival: true, StaleAfterMinutes: 10}
 	body, err := json.Marshal(in)
 	require.NoError(t, err)
 	w := request(http.MethodPost, "/api/v1/journeys", ot.AccessToken, viewer.ID.String(), body)
@@ -63,6 +63,10 @@ func TestPGJourneyHTTPBindingAndStrictInput(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, w.Code)
 	w = request(http.MethodPost, "/api/v1/journeys", ot.AccessToken, owner.ID.String(), body)
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var created journeys.Journey
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	require.True(t, created.AutomaticArrival)
+	require.Equal(t, 10, created.StaleAfterMinutes)
 	require.Equal(t, "no-store, private", w.Header().Get("Cache-Control"))
 	w = request(http.MethodPost, "/api/v1/journeys", ot.AccessToken, owner.ID.String(), body)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())

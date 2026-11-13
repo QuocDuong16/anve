@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 fun SignInScreen(
     container: AppContainer,
     onSignedIn: () -> Unit,
+    invitationPending: Boolean = false,
 ) {
     val viewModel: SignInViewModel = viewModel(
         factory = SignInViewModel.factory(container.authRepository),
@@ -75,6 +76,7 @@ fun SignInScreen(
     }
 
     SignInContent(
+        invitationPending = invitationPending,
         state = state,
         error = error,
         busy = busy,
@@ -117,6 +119,7 @@ fun SignInContent(
     onGoogleSignIn: () -> Unit,
     onDevSignIn: (String) -> Unit,
     onRetry: () -> Unit,
+    invitationPending: Boolean = false,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         when (state) {
@@ -147,6 +150,12 @@ fun SignInContent(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 Spacer(Modifier.height(32.dp))
+
+                if (invitationPending) {
+                    Text("Đăng nhập để kiểm tra lời mời gia đình. Lời mời chỉ được giữ tạm trên thiết bị; chưa tham gia nhóm hoặc bật chia sẻ vị trí.",
+                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(16.dp))
+                }
 
                 if (notice != null) {
                     SignOutNoticeCard(notice = notice, onDismiss = onDismissNotice)

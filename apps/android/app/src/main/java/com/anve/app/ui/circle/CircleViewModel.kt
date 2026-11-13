@@ -10,6 +10,7 @@ import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.CircleRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,15 +41,18 @@ class CircleViewModel internal constructor(
 
     private val _state = MutableStateFlow(CircleUiState())
     val state: StateFlow<CircleUiState> = _state.asStateFlow()
+    private var revision = 0L
 
     init {
         refresh()
     }
 
     fun refresh() {
+        val expected = ++revision
         scope.launch {
             try {
                 val mine = repository.myCircle()
+                if (expected != revision) return@launch
                 if (mine.circle == null || mine.membership == null) {
                     _state.update { CircleUiState(loading = false) }
                     return@launch
@@ -62,27 +66,37 @@ class CircleViewModel internal constructor(
                         invites = emptyList(),
                     )
                 }
-                loadDetails(mine.circle.id)
-            } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = "Không tải được thông tin nhóm.") }
+                loadDetails(mine.circle.id, expected)
+            } catch (e: CancellationException) { throw e } catch (_: Exception) {
+                if (expected == revision) _state.update { it.copy(loading = false, error = "Không tải được thông tin nhóm.") }
             }
         }
     }
 
-    private fun loadDetails(circleId: String) {
+    fun acceptJoined(owner: String, joined: CircleMembershipDto) {
+        val circle = joined.circle ?: return
+        val membership = joined.membership ?: return
+        if (membership.userId != owner || membership.circleId != circle.id) return
+        val expected = ++revision
+        _state.value = CircleUiState(loading = false, circle = circle, myRole = membership.role, message = "Đã tham gia nhóm.")
+        loadDetails(circle.id, expected)
+    }
+
+    private fun loadDetails(circleId: String, expected: Long = revision) {
         scope.launch {
             try {
                 val members = repository.members(circleId)
+                if (expected != revision || _state.value.circle?.id != circleId) return@launch
                 _state.update { it.copy(members = members) }
                 if (_state.value.isOwner) {
                     // Non-owners get FORBIDDEN here; only owners ask.
                     runCatching { repository.invites(circleId) }.onSuccess { invites ->
-                        _state.update { it.copy(invites = invites) }
+                        if (expected == revision && _state.value.circle?.id == circleId) _state.update { it.copy(invites = invites) }
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 // Members are the core content; invites are owner extras.
-                _state.update { it.copy(error = "Không tải được danh sách thành viên.") }
+                if (expected == revision && _state.value.circle?.id == circleId) _state.update { it.copy(error = "Không tải được danh sách thành viên.") }
             }
         }
     }

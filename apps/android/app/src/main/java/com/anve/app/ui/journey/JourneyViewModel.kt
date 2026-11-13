@@ -131,6 +131,11 @@ class JourneyViewModel(
     }
 
     fun create(place: PlaceDto, minutes: Int, recipients: Set<String>) {
+        createWithOptions(place, minutes, recipients, false, 0)
+    }
+
+    fun createWithOptions(place: PlaceDto, minutes: Int, recipients: Set<String>, automaticArrival: Boolean, staleAfterMinutes: Int) {
+        if (staleAfterMinutes !in listOf(0, 5, 10, 15, 30)) return
         val state = _state.value
         val owner = state.owner ?: return
         if (!visible || state.busy || state.pending.isNotEmpty() || !state.consentEnabled || tracking.status.value.ownerUserId != owner || !tracking.status.value.activelyTracking || !tracking.status.value.online) return
@@ -142,7 +147,7 @@ class JourneyViewModel(
         viewModelScope.launch {
             try {
                 val journey = repository.create(owner, CreateJourneyDto(UUID.randomUUID().toString(), Instant.now().toString(), minutes,
-                    JourneyDestinationDto(place.name, place.latitude, place.longitude), recipients.toList()))
+                    JourneyDestinationDto(place.name, place.latitude, place.longitude), recipients.toList(), automaticArrival, staleAfterMinutes))
                 if (visible && generation == epoch && _state.value.owner == owner) {
                     if (journey.state == "ACTIVE") tracking.enableJourneyPriority(owner, journey.id, Instant.parse(journey.expiresAt).toEpochMilli(), revision)
                     _state.update { it.copy(selectedId = journey.id) }

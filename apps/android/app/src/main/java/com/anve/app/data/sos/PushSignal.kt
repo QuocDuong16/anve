@@ -24,34 +24,48 @@ import com.anve.app.MainActivity
 import com.anve.app.R
 import com.anve.app.data.api.AnveApi
 import com.anve.app.data.api.ApiException
+import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.orThrow
 import java.security.MessageDigest
-import java.util.UUID
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 
 class PushEventRepository(private val api: AnveApi) {
-    suspend fun authorized(owner: String, kind: String, id: String): Boolean = try {
+    suspend fun authorized(owner: String, kind: String, id: String, episode: Int = 0): Boolean = try {
         when (kind) {
             "SOS" -> api.getSos(owner, id).orThrow().let { it.state == "ACTIVE" && it.acknowledgedAt == null }
             "PLACE" -> api.placeEvent(owner, id).orThrow().id == id
-            else -> if (kind in JOURNEY_PUSH_KINDS) api.journey(owner, id).orThrow().let { it.id == id && it.state == kind.removePrefix("JOURNEY_") } else false
+            else -> if (kind in JOURNEY_PUSH_KINDS) authorizedJourneySignal(api.journey(owner, id).orThrow(), kind, id, episode) else false
         }
     } catch (e: ApiException) {
         if (e.httpStatus in setOf(401, 403, 404)) false else throw e
     }
 }
 
+fun authorizedJourneySignal(journey: JourneyDto, kind: String, id: String, episode: Int): Boolean {
+    if (!validPushSignal(kind, id, episode) || journey.id != id) return false
+    if (kind != "JOURNEY_STALE") return journey.state == kind.removePrefix("JOURNEY_")
+    if (journey.state != "ACTIVE" || journey.staleEpisode != episode || journey.staleAfterMinutes <= 0) return false
+    val stale = journey.staleSince?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: return false
+    // A new live progress sample can precede the maintenance pass that clears staleSince.
+    val progress = journey.progress
+    val newerRealSample = progress != null && !progress.isMock &&
+        runCatching { Instant.parse(progress.recordedAt).isAfter(stale) }.getOrDefault(true)
+    return !newerRealSample
+}
+
 /** Incoming messages contain only opaque IDs; authorization is rechecked online. */
 class PushSignalScheduler(context: Context) {
     private val app = context.applicationContext
-    fun schedule(kind: String, eventId: String) {
-        if ((kind !in setOf("SOS", "PLACE") && kind !in JOURNEY_PUSH_KINDS) || runCatching { UUID.fromString(eventId) }.isFailure) return
+    fun schedule(kind: String, eventId: String, episode: Int = 0) {
+        if (!validPushSignal(kind, eventId, episode)) return
         val work = OneTimeWorkRequestBuilder<PushSignalWorker>()
-            .setInputData(workDataOf("kind" to kind, "eventId" to eventId))
+            .setInputData(workDataOf("kind" to kind, "eventId" to eventId, "episode" to episode))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
-        WorkManager.getInstance(app).enqueueUniqueWork("push-signal-$kind-$eventId", ExistingWorkPolicy.KEEP, work)
+        val workName = "push-signal-$kind-$eventId" + if (kind == "JOURNEY_STALE") "-$episode" else ""
+        WorkManager.getInstance(app).enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, work)
     }
 }
 
@@ -59,16 +73,17 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
     override suspend fun doWork(): Result {
         val kind = inputData.getString("kind") ?: return Result.failure()
         val eventId = inputData.getString("eventId") ?: return Result.failure()
-        if ((kind !in setOf("SOS", "PLACE") && kind !in JOURNEY_PUSH_KINDS) || runCatching { UUID.fromString(eventId) }.isFailure) return Result.failure()
+        val episode = inputData.getInt("episode", 0)
+        if (!validPushSignal(kind, eventId, episode)) return Result.failure()
         val app = applicationContext as? AnVeApplication ?: return Result.failure()
         val owner = app.container.sessionStore.current()?.userId ?: return Result.success()
         return try {
-            if (!app.container.pushEventRepository.authorized(owner, kind, eventId)) return Result.success()
+            if (!app.container.pushEventRepository.authorized(owner, kind, eventId, episode)) return Result.success()
             if (app.container.sessionStore.current()?.userId != owner) return Result.success()
             val manager = NotificationManagerCompat.from(applicationContext)
             if (!manager.areNotificationsEnabled()) return Result.success()
             if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(applicationContext, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return Result.success()
-            val hash = MessageDigest.getInstance("SHA-256").digest("$owner:$kind:$eventId".toByteArray())
+            val hash = MessageDigest.getInstance("SHA-256").digest("$owner:${pushSignalIdentity(kind, eventId, episode)}".toByteArray())
             val key = hash.joinToString("") { "%02x".format(it) }
             val prefs = applicationContext.getSharedPreferences("anve_push_dedup", Context.MODE_PRIVATE)
             if (prefs.contains(key)) return Result.success()
@@ -84,8 +99,8 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
             val pending = PendingIntent.getActivity(applicationContext, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val notification = NotificationCompat.Builder(applicationContext, "anve_events")
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(when { kind == "SOS" -> "Có yêu cầu hỗ trợ"; kind in JOURNEY_PUSH_KINDS -> "Có cập nhật hành trình"; else -> "Có sự kiện địa điểm" })
-                .setContentText("Mở AnVề để xem thông tin được phép.")
+                .setContentTitle(when { kind == "SOS" -> "Có yêu cầu hỗ trợ"; kind == "JOURNEY_STALE" -> "Hành trình chưa có cập nhật mới"; kind in JOURNEY_PUSH_KINDS -> "Có cập nhật hành trình"; else -> "Có sự kiện địa điểm" })
+                .setContentText(if (kind == "JOURNEY_STALE") "Hãy liên hệ. Mở AnVề để kiểm tra trạng thái hiện tại." else "Mở AnVề để xem thông tin được phép.")
                 .setContentIntent(pending).setAutoCancel(true).build()
             manager.notify(id, notification)
             val now = System.currentTimeMillis()

@@ -43,11 +43,13 @@ type Destination struct {
 
 // CreateRequest is immutable once network admission begins.
 type CreateRequest struct {
-	JourneyID       uuid.UUID   `json:"journeyId"`
-	PreparedAt      time.Time   `json:"preparedAt"`
-	DurationMinutes int         `json:"durationMinutes"`
-	Destination     Destination `json:"destination"`
-	RecipientIDs    []uuid.UUID `json:"recipientIds"`
+	JourneyID         uuid.UUID   `json:"journeyId"`
+	PreparedAt        time.Time   `json:"preparedAt"`
+	DurationMinutes   int         `json:"durationMinutes"`
+	Destination       Destination `json:"destination"`
+	RecipientIDs      []uuid.UUID `json:"recipientIds"`
+	AutomaticArrival  bool        `json:"automaticArrival,omitempty"`
+	StaleAfterMinutes int         `json:"staleAfterMinutes,omitempty"`
 }
 
 // Recipient is returned only to the journey owner.
@@ -66,16 +68,22 @@ type Progress struct {
 
 // Journey is the currently authorized server state.
 type Journey struct {
-	ID          uuid.UUID   `json:"id"`
-	OwnerID     uuid.UUID   `json:"ownerId"`
-	OwnerName   string      `json:"ownerName"`
-	State       string      `json:"state"`
-	StartedAt   time.Time   `json:"startedAt"`
-	ExpiresAt   time.Time   `json:"expiresAt"`
-	EndedAt     *time.Time  `json:"endedAt,omitempty"`
-	Destination Destination `json:"destination"`
-	Recipients  []Recipient `json:"recipients,omitempty"`
-	Progress    *Progress   `json:"progress,omitempty"`
+	ID                uuid.UUID   `json:"id"`
+	OwnerID           uuid.UUID   `json:"ownerId"`
+	OwnerName         string      `json:"ownerName"`
+	State             string      `json:"state"`
+	StartedAt         time.Time   `json:"startedAt"`
+	ExpiresAt         time.Time   `json:"expiresAt"`
+	EndedAt           *time.Time  `json:"endedAt,omitempty"`
+	Destination       Destination `json:"destination"`
+	Recipients        []Recipient `json:"recipients,omitempty"`
+	Progress          *Progress   `json:"progress,omitempty"`
+	AutomaticArrival  bool        `json:"automaticArrival"`
+	StaleAfterMinutes int         `json:"staleAfterMinutes"`
+	ArrivalSource     string      `json:"arrivalSource,omitempty"`
+	LastLiveUpdateAt  *time.Time  `json:"lastLiveUpdateAt,omitempty"`
+	StaleSince        *time.Time  `json:"staleSince,omitempty"`
+	StaleEpisode      int         `json:"staleEpisode,omitempty"`
 }
 
 // Store rechecks authorization inside PostgreSQL, without a location cache.
@@ -90,6 +98,9 @@ func NewStore(pool *pgxpool.Pool, retentionDays int) *Store {
 }
 
 func validate(in CreateRequest, owner uuid.UUID) (CreateRequest, [32]byte, error) {
+	if !slices.Contains([]int{0, 5, 10, 15, 30}, in.StaleAfterMinutes) {
+		return in, [32]byte{}, ErrInvalid
+	}
 	if owner == uuid.Nil || in.JourneyID == uuid.Nil || in.PreparedAt.IsZero() || in.DurationMinutes < 15 || in.DurationMinutes > 480 ||
 		len(in.RecipientIDs) < 1 || len(in.RecipientIDs) > 30 || strings.TrimSpace(in.Destination.Label) != in.Destination.Label ||
 		utf8.RuneCountInString(in.Destination.Label) < 1 || utf8.RuneCountInString(in.Destination.Label) > 80 ||
@@ -232,8 +243,8 @@ func (s *Store) Create(ctx context.Context, p Principal, input CreateRequest) (J
 	if err != nil {
 		return Journey{}, false, fmt.Errorf("reserve journey identity: %w", err)
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO journeys(id,owner_user_id,sharing_epoch_id,destination_label,destination,started_at,expires_at,request_hash)
- VALUES($1,$2,$3,$4,ST_SetSRID(ST_MakePoint($5,$6),4326)::geography,$7,$8,$9)`, in.JourneyID, p.UserID, epoch, in.Destination.Label, in.Destination.Longitude, in.Destination.Latitude, now, now.Add(time.Duration(in.DurationMinutes)*time.Minute), hash[:])
+	_, err = tx.Exec(ctx, `INSERT INTO journeys(id,owner_user_id,sharing_epoch_id,destination_label,destination,started_at,expires_at,request_hash,automatic_arrival,stale_after_minutes,automation_generation,automation_anchor_at)
+ VALUES($1,$2,$3,$4,ST_SetSRID(ST_MakePoint($5,$6),4326)::geography,$7,$8,$9,$10,$11,(SELECT location_capture_generation FROM users WHERE id=$2),$7)`, in.JourneyID, p.UserID, epoch, in.Destination.Label, in.Destination.Longitude, in.Destination.Latitude, now, now.Add(time.Duration(in.DurationMinutes)*time.Minute), hash[:], in.AutomaticArrival, in.StaleAfterMinutes)
 	if err != nil {
 		return Journey{}, false, fmt.Errorf("insert journey: %w", err)
 	}
@@ -265,16 +276,21 @@ func (s *Store) read(ctx context.Context, q querier, actor, id uuid.UUID) (Journ
 	var j Journey
 	err := q.QueryRow(ctx, `SELECT j.id,j.owner_user_id,u.display_name,j.effective_state,j.started_at,j.expires_at,
  CASE WHEN j.effective_state='EXPIRED' THEN j.expires_at ELSE j.ended_at END,
- j.destination_label,ST_Y(j.destination::geometry),ST_X(j.destination::geometry)
+ j.destination_label,ST_Y(j.destination::geometry),ST_X(j.destination::geometry),j.automatic_arrival,j.stale_after_minutes,COALESCE(j.arrival_source,''),
+ CASE WHEN j.automation_generation=u.location_capture_generation AND (j.owner_user_id=$2 OR EXISTS(SELECT 1 FROM authorized_journey_recipients r WHERE r.journey_id=j.id AND r.user_id=$2 AND j.last_live_update_at>=r.visible_from)) THEN j.last_live_update_at END,
+ CASE WHEN j.effective_state='ACTIVE' AND j.automation_generation=u.location_capture_generation AND (j.owner_user_id=$2 OR EXISTS(SELECT 1 FROM authorized_journey_recipients r WHERE r.journey_id=j.id AND r.user_id=$2 AND j.stale_since>=r.visible_from)) THEN j.stale_since END,j.stale_episode
  FROM current_journeys j JOIN users u ON u.id=j.owner_user_id
  WHERE j.id=$1 AND j.started_at>now()-LEAST($3,u.location_retention_days)*interval '1 day'
  AND j.started_at>COALESCE((SELECT cutoff FROM location_retention_watermark WHERE singleton),'-infinity'::timestamptz)
- AND (j.owner_user_id=$2 OR EXISTS(SELECT 1 FROM authorized_journey_recipients r WHERE r.journey_id=j.id AND r.user_id=$2))`, id, actor, s.retentionDays).Scan(&j.ID, &j.OwnerID, &j.OwnerName, &j.State, &j.StartedAt, &j.ExpiresAt, &j.EndedAt, &j.Destination.Label, &j.Destination.Latitude, &j.Destination.Longitude)
+ AND (j.owner_user_id=$2 OR EXISTS(SELECT 1 FROM authorized_journey_recipients r WHERE r.journey_id=j.id AND r.user_id=$2))`, id, actor, s.retentionDays).Scan(&j.ID, &j.OwnerID, &j.OwnerName, &j.State, &j.StartedAt, &j.ExpiresAt, &j.EndedAt, &j.Destination.Label, &j.Destination.Latitude, &j.Destination.Longitude, &j.AutomaticArrival, &j.StaleAfterMinutes, &j.ArrivalSource, &j.LastLiveUpdateAt, &j.StaleSince, &j.StaleEpisode)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Journey{}, ErrNotFound
 	}
 	if err != nil {
 		return Journey{}, fmt.Errorf("read authorized journey: %w", err)
+	}
+	if j.StaleSince == nil {
+		j.StaleEpisode = 0
 	}
 	if actor == j.OwnerID {
 		rows, err := q.Query(ctx, `SELECT r.user_id,u.display_name FROM authorized_journey_recipients r JOIN users u ON u.id=r.user_id WHERE r.journey_id=$1 ORDER BY u.display_name,r.user_id`, id)
@@ -368,7 +384,7 @@ func recordTransition(ctx context.Context, tx pgx.Tx, owner, id uuid.UUID, state
 }
 
 func (s *Store) normalizeOwner(ctx context.Context, tx pgx.Tx, owner uuid.UUID) error {
-	rows, err := tx.Query(ctx, `UPDATE journeys j SET state=c.effective_state,ended_at=CASE WHEN c.effective_state='EXPIRED' THEN j.expires_at ELSE clock_timestamp() END
+	rows, err := tx.Query(ctx, `UPDATE journeys j SET state=c.effective_state,stale_since=NULL,ended_at=CASE WHEN c.effective_state='EXPIRED' THEN j.expires_at ELSE clock_timestamp() END
  FROM current_journeys c WHERE j.id=c.id AND j.owner_user_id=$1 AND j.state='ACTIVE' AND c.effective_state<>'ACTIVE' RETURNING j.id,j.state`, owner)
 	if err != nil {
 		return fmt.Errorf("normalize journey lifecycle: %w", err)
@@ -458,7 +474,7 @@ func (s *Store) Transition(ctx context.Context, p Principal, id uuid.UUID, actio
 	if current != "ACTIVE" {
 		return ErrConflict
 	}
-	_, err = tx.Exec(ctx, `UPDATE journeys SET state=$2,ended_at=clock_timestamp() WHERE id=$1`, id, state)
+	_, err = tx.Exec(ctx, `UPDATE journeys SET state=$2,ended_at=clock_timestamp(),stale_since=NULL,arrival_source=CASE WHEN $2='ARRIVED' THEN 'MANUAL' END WHERE id=$1`, id, state)
 	if err != nil {
 		return fmt.Errorf("transition journey: %w", err)
 	}

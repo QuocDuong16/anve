@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -27,12 +29,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,7 +49,13 @@ import com.anve.app.R
 import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
+import com.anve.app.data.circles.InviteLink
 import com.anve.app.ui.theme.AnVeTheme
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 /**
  * The circle tab: create or join a circle when the account has none, then
@@ -52,19 +64,38 @@ import com.anve.app.ui.theme.AnVeTheme
  */
 @Composable
 fun CircleScreen(container: AppContainer) {
+    val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
+    val owner = session?.userId
+    if (owner == null) {
+        Text("Đang kiểm tra phiên đăng nhập. Mở mục Cá nhân nếu chưa tải được.", Modifier.padding(24.dp))
+        return
+    }
     val viewModel: CircleViewModel = viewModel(
+        key = "circle-$owner",
         factory = CircleViewModel.factory(container.circleRepository),
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    var showDissolveDialog by remember { mutableStateOf(false) }
-    var showLeaveDialog by remember { mutableStateOf(false) }
-    var removeTarget by remember { mutableStateOf<MemberDto?>(null) }
+    var showDissolveDialog by remember(owner) { mutableStateOf(false) }
+    var showLeaveDialog by remember(owner) { mutableStateOf(false) }
+    var removeTarget by remember(owner) { mutableStateOf<MemberDto?>(null) }
+    var shareError by remember(owner) { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     CircleContent(
-        state = state,
+        state = state.copy(error = shareError ?: state.error),
         onCreate = viewModel::create,
-        onJoin = viewModel::join,
+        onJoin = { code -> scope.launch {
+            try {
+                if (container.sessionStore.current()?.userId == owner) {
+                    container.invitationInbox.accountChanged(owner)
+                    container.invitationInbox.offer(InviteLink.create(code.trim().uppercase()) ?: "")
+                }
+            } catch (e: CancellationException) { throw e } catch (_: Exception) {
+                shareError = "Chưa kiểm tra được tài khoản. Mở lại lời mời khi phiên đăng nhập sẵn sàng."
+            }
+        } },
         onCreateInvite = viewModel::createInvite,
         onRevokeInvite = viewModel::revokeInvite,
         onRemoveMember = { removeTarget = it },
@@ -72,7 +103,20 @@ fun CircleScreen(container: AppContainer) {
             if (state.isOwner) showDissolveDialog = true else showLeaveDialog = true
         },
         onRetry = viewModel::refresh,
+        onShareInvite = { invite -> scope.launch {
+            try {
+                if (container.sessionStore.current()?.userId != owner) return@launch
+                val chooser = invitationShareIntent(invite) ?: return@launch
+                context.startActivity(chooser)
+                shareError = null
+            } catch (e: CancellationException) { throw e } catch (_: Exception) {
+                shareError = "Không mở được trình chia sẻ. Bạn có thể gửi mã mời đang hiển thị."
+            }
+        } },
     )
+    InvitationHost(container, owner, onJoined = { joined ->
+        if (joined != null) viewModel.acceptJoined(owner, joined) else viewModel.refresh()
+    })
 
     if (showLeaveDialog) {
         AlertDialog(
@@ -141,6 +185,7 @@ fun CircleContent(
     onRemoveMember: (MemberDto) -> Unit,
     onLeave: () -> Unit,
     onRetry: () -> Unit,
+    onShareInvite: (InviteDto) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
@@ -157,7 +202,7 @@ fun CircleContent(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("circle-content"),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -196,7 +241,7 @@ fun CircleContent(
                     )
                 }
                 items(state.invites, key = { it.id }) { invite ->
-                    InviteRow(invite = invite, onRevoke = { onRevokeInvite(invite.id) })
+                    InviteRow(invite = invite, onRevoke = { onRevokeInvite(invite.id) }, onShare = { onShareInvite(invite) })
                 }
                 item {
                     OutlinedButton(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth()) {
@@ -284,7 +329,7 @@ private fun CircleSetup(
                         enabled = !busy && code.isNotBlank(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(stringResource(R.string.circle_join_button))
+                        Text("Xem lời mời")
                     }
                     Text(
                         text = stringResource(R.string.circle_join_caption),
@@ -387,28 +432,32 @@ private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Uni
 }
 
 @Composable
-private fun InviteRow(invite: InviteDto, onRevoke: () -> Unit) {
+private fun InviteRow(invite: InviteDto, onRevoke: () -> Unit, onShare: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
+        Column(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(Modifier.weight(1f)) {
+            Column {
                 Text(
                     invite.code,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = stringResource(R.string.circle_invite_expires),
+                    text = "Hết hạn: " + runCatching { DateTimeFormatter.ofPattern("dd/MM, HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(invite.expiresAt)) }.getOrDefault("Chưa đọc được"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onRevoke) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor =
+                    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary)) { Text("Chia sẻ link mời") }
+                TextButton(onClick = onRevoke) {
                 Text(
                     stringResource(R.string.circle_invite_revoke),
                     color = MaterialTheme.colorScheme.error,
                 )
+                }
             }
         }
     }

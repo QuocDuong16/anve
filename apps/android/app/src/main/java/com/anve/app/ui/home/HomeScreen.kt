@@ -103,6 +103,14 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     var selectedJourney by remember { mutableStateOf<String?>(null) }
     var selectedSos by remember { mutableStateOf<String?>(null) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
+    val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
+    LaunchedEffect(invitation?.id, invitation?.owner, session?.userId) {
+        if (invitation != null && invitation?.owner == session?.userId && session?.userId != null) {
+            showDiagnostics = false
+            showJourneys = false
+            tab = HomeTab.CIRCLE
+        }
+    }
     LaunchedEffect(session?.userId) {
         showDiagnostics = false
         showJourneys = false

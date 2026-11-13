@@ -201,7 +201,7 @@ jobs:
 
   emulator:
     if: github.event_name != 'workflow_dispatch' || inputs.fixture_run_id == ''
-    name: Emulator lifecycle, history, places, diagnostics and journeys UI
+    name: Emulator lifecycle, journeys, invitation links and native UI
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

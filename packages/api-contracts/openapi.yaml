@@ -36,7 +36,7 @@ tags:
   - name: sos
     description: Explicit emergency requests, recipients and acknowledgement
   - name: journeys
-    description: Explicitly addressed journeys with manual owner arrival confirmation
+    description: Explicitly addressed journeys with manual arrival or optional per-journey arrival estimates and missing-update reminders
 
 paths:
   /metrics:
@@ -1480,6 +1480,12 @@ paths:
       tags: [circles]
       security:
         - bearerAuth: []
+      parameters:
+        - name: X-Anve-Expected-Owner
+          in: header
+          required: false
+          description: If supplied, must match the authenticated user; binds reconciliation to its original account.
+          schema: {type: string, format: uuid}
       responses:
         "200":
           description: The caller's circle and membership, or nulls.
@@ -1797,6 +1803,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/invites/preview:
+    post:
+      operationId: previewInvite
+      summary: Preview a valid invitation before explicitly joining
+      description: |
+        Authenticated capability lookup. Returns only the invited circle ID,
+        name and invite expiry, without membership or location data. Does not
+        consume the code, create membership or enable sharing. The code is
+        carried in the body so it does not enter URL access logs. Unknown,
+        expired, used and revoked invitations have the same response.
+        Confirmation must still redeem the code atomically; preview is not
+        a reservation or evidence that redemption will succeed.
+      tags: [circles]
+      security:
+        - bearerAuth: []
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemInviteRequest"
+      responses:
+        "200":
+          description: Minimal preview of a currently valid invitation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitePreview"
+        "400":
+          description: The request body is invalid.
+        "401":
+          description: No valid session token was presented.
+        "409":
+          description: Invitation unavailable (unknown, expired, used or revoked).
+
   /api/v1/invites/redeem:
     post:
       operationId: redeemInvite
@@ -1809,6 +1852,14 @@ paths:
       tags: [circles]
       security:
         - bearerAuth: []
+      parameters:
+        - name: X-Anve-Expected-Owner
+          in: header
+          required: false
+          description: When supplied, must match the authenticated user. New link clients bind confirmation to the account that previewed the invitation.
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -1861,6 +1912,15 @@ components:
         journeyId: {type: string, format: uuid}
         preparedAt: {type: string, format: date-time}
         durationMinutes: {type: integer, minimum: 15, maximum: 480}
+        automaticArrival:
+          type: boolean
+          default: false
+          description: Explicit per-journey opt-in. Server estimates arrival from consecutive timely non-mock authorized samples; never starts location capture. Engineering thresholds are not field-calibrated safety guarantees.
+        staleAfterMinutes:
+          type: integer
+          enum: [0, 5, 10, 15, 30]
+          default: 0
+          description: Zero disables reminders. Otherwise notify the owner and currently authorized selected viewers once per stale episode; a timely live sample rearms a later episode. Never implies an accident.
         destination:
           type: object
           additionalProperties: false
@@ -1881,6 +1941,12 @@ components:
         startedAt: {type: string, format: date-time}
         expiresAt: {type: string, format: date-time}
         endedAt: {type: string, format: date-time}
+        automaticArrival: {type: boolean, default: false}
+        staleAfterMinutes: {type: integer, enum: [0, 5, 10, 15, 30], default: 0}
+        arrivalSource: {type: string, enum: [MANUAL, AUTOMATIC], description: Present only after arrival; AUTOMATIC is a GPS estimate.}
+        lastLiveUpdateAt: {type: string, format: date-time}
+        staleSince: {type: string, format: date-time, description: Missing updates are not evidence of a person's safety or danger.}
+        staleEpisode: {type: integer, minimum: 0, description: Current reminder occurrence; JOURNEY_STALE signals carry this opaque counter to reject delayed prior episodes.}
         destination:
           type: object
           required: [label, latitude, longitude]
@@ -2497,6 +2563,19 @@ components:
           type: string
           format: date-time
         createdAt:
+          type: string
+          format: date-time
+
+    InvitePreview:
+      type: object
+      required: [circleId, circleName, expiresAt]
+      properties:
+        circleId:
+          type: string
+          format: uuid
+        circleName:
+          type: string
+        expiresAt:
           type: string
           format: date-time
 

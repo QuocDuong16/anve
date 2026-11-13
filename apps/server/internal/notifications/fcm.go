@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,10 +21,11 @@ import (
 // ErrInvalidToken means FCM reports that a registration no longer exists.
 var ErrInvalidToken = errors.New("push registration is no longer valid")
 
-// Signal contains only an opaque event identifier and a type, never GPS.
+// Signal contains only an opaque identifier/type and optional stale-episode counter.
 type Signal struct {
 	EventID uuid.UUID
 	Kind    string
+	Episode int
 }
 
 // Gateway reports provider acceptance, not delivery or acknowledgement.
@@ -65,12 +67,16 @@ func validProject(project string) bool {
 // Send returns nil only when FCM accepted the request. Unknown failures must
 // be retried with a stable event ID; clients must also deduplicate display.
 func (f *FCM) Send(ctx context.Context, token string, signal Signal) error {
-	validKind := signal.Kind == "SOS" || signal.Kind == "PLACE" || signal.Kind == "JOURNEY_ACTIVE" || signal.Kind == "JOURNEY_ARRIVED" || signal.Kind == "JOURNEY_ENDED" || signal.Kind == "JOURNEY_CANCELLED" || signal.Kind == "JOURNEY_EXPIRED"
-	if token == "" || signal.EventID == uuid.Nil || !validKind {
+	validKind := signal.Kind == "SOS" || signal.Kind == "PLACE" || signal.Kind == "JOURNEY_ACTIVE" || signal.Kind == "JOURNEY_ARRIVED" || signal.Kind == "JOURNEY_ENDED" || signal.Kind == "JOURNEY_CANCELLED" || signal.Kind == "JOURNEY_EXPIRED" || signal.Kind == "JOURNEY_STALE"
+	if token == "" || signal.EventID == uuid.Nil || !validKind || (signal.Kind == "JOURNEY_STALE" && signal.Episode <= 0) || (signal.Kind != "JOURNEY_STALE" && signal.Episode != 0) {
 		return errors.New("invalid push request")
 	}
+	data := map[string]string{"eventId": signal.EventID.String(), "kind": signal.Kind}
+	if signal.Kind == "JOURNEY_STALE" {
+		data["episode"] = strconv.Itoa(signal.Episode)
+	}
 	body, err := json.Marshal(map[string]any{"message": map[string]any{
-		"token": token, "data": map[string]string{"eventId": signal.EventID.String(), "kind": signal.Kind},
+		"token": token, "data": data,
 		"android": map[string]any{"priority": "high", "ttl": "3600s"},
 	}})
 	if err != nil {

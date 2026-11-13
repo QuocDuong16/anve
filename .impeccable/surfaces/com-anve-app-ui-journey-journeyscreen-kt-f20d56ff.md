@@ -77,3 +77,49 @@ confirmation comps and reuse for end/cancel/empty/error/pending states.
 Formal portal session 5297b254ace168458f8ce46520c388bcfa0c890f120185a615b7a0ed7d4f5dd1
 remains pending; no receipt was fabricated. Emulator/native review and tests
 remain required, and no failing test is waived. This is not a ship verdict.
+
+## 2026-11-12 extension — per-journey automation
+
+Owner selected option B in the current round:
+`.impeccable/mocks/feature-completion/journey-automation-b.png`.
+The sidecar records approval. Retain the three-step creation form and open
+the new options from its summary row; the sheet has independent drafts until
+Apply, both switches default OFF and the reminder threshold defaults to
+10 minutes when enabled. Existing manual confirmation remains available.
+
+THESIS: Make opt-in automation a deliberate per-trip choice without obscuring
+destination, expiry and the selected audience.
+
+OWN-WORLD: Existing static AnVề Material roles, native system typography,
+Compose Switch, FilterChip, ModalBottomSheet and vector icons; zero rasters.
+Font matching is a measurement aid; DESIGN.md's native Material typography
+takes precedence over a web catalog face inferred from generated pixels.
+
+STORY: Choose destination, expiry and viewers; optionally review the sheet,
+Apply to this trip, start online, distinguish manual and estimated arrival,
+and contact a person when updates are missing without inferring an accident.
+
+FIRST VIEWPORT: Preserve native creation context; the opened sheet leads with
+“Cho hành trình này”, helper, separate arrival/reminder groups, threshold
+chips only when enabled and an Apply action. It scrolls at enlarged text.
+
+FORM: Approved B sheet plus existing steps-led lifecycle; settings are
+immutable once admitted and reset for the next new journey. Back/scrim drops
+unapplied drafts. Account changes close private UI and invalidate requests.
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+Measured plan: `.impeccable/build/spec.json` has 22 semantic regions, zero
+plates. New plan review revision
+`95493b755678576b6856795746d56fd24ecf96e1869bf33ea71b9fcce850f69b`
+could not open a reviewer browser (serve exited 2). On 2026-11-12 the user
+approved the current message-based native plan: “Duyệt nha bạn code tiếp đi”.
+This authorizes implementing B and C with native Compose controls while the
+formal portal remains pending; no formal receipt or gate pass is fabricated.
+Native CI rendering and an independent finish review remain required.
+
+Native translation keeps Material type roles and scrolling at font scale 1.3;
+generated text sizes are not fixed Android sp values. Arrival helper copy also
+makes the approved automatic consequence explicit: enough evidence ends the
+journey and notifies viewers. The comp's two switches remain OFF by default,
+while the comparison fixture may turn reminders on to expose the threshold row.
