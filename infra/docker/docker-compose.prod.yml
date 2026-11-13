@@ -1,0 +1,125 @@
+# Production API stack. Only Caddy publishes ports; Postgres and the API are
+# reachable solely on private Docker networks.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-security: &security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+  tmpfs:
+    - /tmp
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.6@sha256:d7053f57b0d62c427ffbf412208b6625317124d62eebf40672e990fea81e9d53
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in env.prod}
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *logging
+    networks:
+      - data
+
+  migrate:
+    <<: *security
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    entrypoint: ["/usr/local/bin/migrate"]
+    command: ["up"]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in env.prod}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env.prod}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in env.prod}?sslmode=disable
+      MIGRATIONS_DIR: /migrations
+    volumes:
+      - ./infra/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    networks:
+      - data
+
+  api:
+    <<: *security
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      LISTEN_ADDR: ${LISTEN_ADDR:?Set LISTEN_ADDR in env.prod}
+      ENVIRONMENT: ${ENVIRONMENT:?Set ENVIRONMENT=production in env.prod}
+      DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in env.prod}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in env.prod}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in env.prod}?sslmode=disable
+      AUTH_GOOGLE_CLIENT_ID: ${AUTH_GOOGLE_CLIENT_ID:?Set AUTH_GOOGLE_CLIENT_ID in env.prod}
+      AUTH_DEV_LOGIN_ENABLED: ${AUTH_DEV_LOGIN_ENABLED:-false}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/fcm-credentials.json
+      LOCATION_RETENTION_DAYS: ${LOCATION_RETENTION_DAYS:-30}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    volumes:
+      - ${FCM_CREDENTIALS_FILE:-/dev/null}:/run/secrets/fcm-credentials.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging: *logging
+    networks:
+      - edge
+      - data
+
+  caddy:
+    image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in env.prod}
+    ports:
+      - "${HTTP_PORT:-24080}:80"
+      - "${HTTPS_PORT:-24443}:443"
+      - "${HTTPS_PORT:-24443}:443/udp"
+    volumes:
+      - ./infra/docker/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+    networks:
+      - edge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+    driver: bridge
+  data:
+    driver: bridge
+    internal: true

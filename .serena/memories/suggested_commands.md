@@ -10,9 +10,10 @@ Everything goes through the Makefile from the repo root; `make help` is the defa
 
 ## Daily workflow
 
-- `make docker-up` (alias `up`) — build & start PostgreSQL/PostGIS + API; API on `http://localhost:8080`, `GET /healthz`.
-- `make docker-down` / `docker-logs` (aliases `down` / `logs`); `docker-clean` also deletes volumes.
-- `make migrate-up` / `migrate-down` — apply pending migrations / roll back the last one (runs the migrator inside Docker; no local DB access needed).
+- `make docker-up-dev` (alias `up-dev`) — build & start local PostgreSQL/PostGIS + API; API on `http://localhost:8080`, `GET /healthz`.
+- `make docker-down-dev` / `docker-logs-dev` (aliases `down-dev` / `logs-dev`); `make docker-clean-dev` also deletes only development volumes.
+- Production: copy `env.prod.example` to private `env.prod`, configure DNS/OAuth/secrets, then `make docker-config` and `make docker-up`; `make docker-down` preserves production volumes.
+- `make migrate-up-dev` / `migrate-down-dev` — apply pending migrations / roll back the last development migration (runs the migrator inside Docker; no local DB access needed). Production migrations run as part of `make docker-up`.
 - `make server-run` — run the API locally via `go run ./cmd/api` from `apps/server` (works without a DB; uses `.env` values).
 - `make android-build` — debug APK at `apps/android/app/build/outputs/apk/debug/app-debug.apk` (requires `ANDROID_HOME`).
 - `make android-test`, `make android-lint` — JVM unit tests / Android lint.
@@ -22,7 +23,7 @@ Everything goes through the Makefile from the repo root; `make help` is the defa
 - `make server-fix` — `go mod tidy` + `go fmt`.
 - `make server-test` / `make server-test-race`.
 - `make server-check` — full Go gate: gofmt clean, `go mod tidy -diff`, vet, golangci-lint, govulncheck, tests, build of `cmd/api` + `cmd/migrate`.
-- `make server-test-integration` — migrator integration tests against the running local stack (`make docker-up` first); skipped without `TEST_DATABASE_URL`.
+- `make server-test-integration` — migrator integration tests against the running local stack (`make docker-up-dev` first); skipped without `TEST_DATABASE_URL`.
 
 ## Android checks
 

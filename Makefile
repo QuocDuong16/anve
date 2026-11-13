@@ -7,9 +7,10 @@
 
 .PHONY: help clean \
 	toolchain-install toolchain-check \
-	docker-up docker-down docker-logs docker-clean docker-config compose-lint \
-	up down logs \
-	migrate-up migrate-down \
+	docker-up docker-down docker-logs docker-config \
+	docker-up-dev docker-down-dev docker-logs-dev docker-clean-dev docker-config-dev \
+	compose-lint up down logs up-dev down-dev logs-dev \
+	migrate-up-dev migrate-down-dev \
 	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
 	android-sdk-check android-build android-test android-lint android-check android-release android-release-config-check android-release-check android-signed-smoke android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint release-tooling-check \
@@ -40,41 +41,57 @@ toolchain-check: ## Verify the repository toolchain pins are consistent
 
 ##@ Docker Compose
 DOCKER_COMPOSE = docker compose --project-directory . -f infra/docker/docker-compose.yml
+DEV_COMPOSE = $(DOCKER_COMPOSE)
 
-docker-up: ## Build and start the local stack (PostgreSQL/PostGIS + API)
-	$(DOCKER_COMPOSE) build && $(DOCKER_COMPOSE) up -d --force-recreate
+docker-up: ## Deploy production API, PostgreSQL/PostGIS and HTTPS ingress from env.prod
+	bash scripts/docker_prod.sh up
+
+docker-down: ## Stop the production stack without deleting persistent data
+	bash scripts/docker_prod.sh down
+
+docker-logs: ## Follow production service logs
+	bash scripts/docker_prod.sh logs
+
+docker-config: ## Validate production Compose without printing secrets
+	bash scripts/docker_prod.sh config
+
+docker-up-dev: ## Build and start the local development stack (PostgreSQL/PostGIS + API)
+	$(DEV_COMPOSE) build && $(DEV_COMPOSE) up -d --force-recreate
 	@echo ""
-	@echo "✅ Stack ready:"
+	@echo "✅ Development stack ready:"
 	@echo "   API:          http://localhost:$${API_PORT:-8080}/healthz"
 	@echo "   PostgreSQL:   localhost:$${POSTGRES_PORT:-5432}"
 
-docker-down: ## Stop the local stack
-	$(DOCKER_COMPOSE) down
+docker-down-dev: ## Stop the development stack
+	$(DEV_COMPOSE) down
 
-docker-logs: ## Follow the local stack logs
-	$(DOCKER_COMPOSE) logs -f
+docker-logs-dev: ## Follow the development stack logs
+	$(DEV_COMPOSE) logs -f
 
-docker-clean: ## Stop the local stack and delete its volumes
-	$(DOCKER_COMPOSE) down -v --remove-orphans
+docker-clean-dev: ## Stop the development stack and delete its volumes
+	$(DEV_COMPOSE) down -v --remove-orphans
 
-docker-config: ## Validate the effective Docker Compose configuration
-	$(DOCKER_COMPOSE) config
+docker-config-dev: ## Print the effective development Compose configuration
+	$(DEV_COMPOSE) config
 
 compose-lint: ## Verify that no Compose port is published beyond loopback
 	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the Compose exposure." >&2; exit 1; }
 	python3 scripts/check_compose_ports.py
 
-# Short aliases for the same targets.
+# Short aliases; the unqualified form operates on production.
 up: docker-up
 down: docker-down
 logs: docker-logs
+up-dev: docker-up-dev
+down-dev: docker-down-dev
+logs-dev: docker-logs-dev
 
 ##@ Database migrations
-migrate-up: ## Apply the pending SQL migrations
-	$(DOCKER_COMPOSE) run --rm migrate up
+migrate-up-dev: ## Apply pending migrations to the development database
+	$(DEV_COMPOSE) run --rm migrate up
 
-migrate-down: ## Roll back the most recent applied migration
-	$(DOCKER_COMPOSE) run --rm migrate down
+migrate-down-dev: ## Roll back the most recent development migration
+	$(DEV_COMPOSE) run --rm migrate down
 
 ##@ Go server
 server-run: ## Run the API server locally (no hot reload; restart after changes)
@@ -96,7 +113,7 @@ SERVER_TEST_RACE_PACKAGES ?= ./...
 server-test-race: ## Run the Go server tests with the race detector
 	cd apps/server && go test -race -count=$(SERVER_TEST_RACE_COUNT) $(SERVER_TEST_RACE_PACKAGES)
 
-server-test-integration: ## Run the DB integration tests against the running local stack (make docker-up first)
+server-test-integration: ## Run DB integration tests against the running development stack (make docker-up-dev first)
 	cd apps/server && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-postgres://$${POSTGRES_USER:-anve}:$${POSTGRES_PASSWORD:-anve}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-anve}?sslmode=disable}" go test -race -count=1 ./cmd/migrate ./internal/auth ./internal/circles ./internal/locations ./internal/locationaccess ./internal/places ./internal/sos ./internal/journeys ./internal/httpapi
 
 server-history-plan: ## Inspect an isolated synthetic PostgreSQL history query plan

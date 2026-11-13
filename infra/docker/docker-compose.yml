@@ -1,9 +1,9 @@
 # AnVề local development stack.
 #
 # Usage:
-#   make up        # start postgres + api
-#   make down      # stop the stack
-#   make logs      # follow the logs
+#   make docker-up-dev    # start postgres + api
+#   make docker-down-dev  # stop the development stack
+#   make docker-logs-dev  # follow the development logs
 #
 # The compose file lives in infra/docker/ but runs with the repository root as
 # the project directory, so relative paths (../../apps/server) and the .env

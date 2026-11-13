@@ -1,6 +1,6 @@
 # Chuẩn bị bản kiểm thử thật đầu tiên cho AnVề
 
-Ngày chuẩn bị: 12/11/2026. Owner xác nhận **chưa có API HTTPS và dự án
+Ngày chuẩn bị: 13/11/2026. Owner xác nhận **chưa có API HTTPS và dự án
 Google Cloud/Firebase**. Đây là hướng dẫn thiết lập, không phải biên bản đã
 triển khai. Chưa tạo tài khoản dịch vụ, bật thanh toán, sinh khóa thật hoặc
 phát hành app trong thay đổi này.
@@ -24,16 +24,16 @@ Website dự kiến ở `anve.niand.id.vn`; có thể dùng một hostname API r
 ví dụ `api.anve.niand.id.vn`, **sau khi owner chọn và cấu hình DNS/TLS**.
 Không có bản ghi DNS hoặc hạ tầng production nào được tạo bởi hướng dẫn này.
 
-Thông số máy chủ cần cung cấp qua môi trường riêng:
+Các giá trị production được giữ trong `env.prod` trên máy chủ:
 
 | Input | Thiết lập cần có |
 | --- | --- |
-| `ENVIRONMENT` | `production` |
-| `LISTEN_ADDR` | Tường minh; loopback khi reverse proxy cùng host, hoặc interface nội bộ container. Chỉ HTTPS ingress được công khai. |
-| `DATABASE_URL` | Kết nối database riêng với tài khoản/mật khẩu được quản lý kín; chạy migrations của đúng commit trước khi nhận traffic. |
-| `AUTH_DEV_LOGIN_ENABLED` | `false`; không dùng đăng nhập phát triển cho môi trường thật |
+| `API_DOMAIN` | Hostname API trỏ DNS tới server; Caddy cấp/gia hạn TLS |
+| `HTTP_PORT`, `HTTPS_PORT` | Cổng host trong dải 24xxx; mặc định `24080`, `24443` |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Tài khoản database riêng; mật khẩu 64 ký tự hex được sinh ngẫu nhiên. Compose tạo `DATABASE_URL` nội bộ. |
+| `ENVIRONMENT`, `LISTEN_ADDR`, `AUTH_DEV_LOGIN_ENABLED` | `production`, `0.0.0.0:8080`, `false`; Make guard từ chối giá trị khác |
 | `AUTH_GOOGLE_CLIENT_ID` | Web OAuth client ID ở bước 2, trùng audience phía Android |
-| `FCM_PROJECT_ID` | Firebase project ID ở bước 4; credentials server được cấp riêng |
+| `FCM_PROJECT_ID`, `FCM_CREDENTIALS_FILE` | Tùy chọn tới khi Firebase sẵn sàng; credential file server được cấp riêng, không đưa vào Git |
 | `LOCATION_RETENTION_DAYS` | Chốt với chính sách thực tế; mặc định mã nguồn là 30 ngày |
 
 Không đưa PostgreSQL hoặc metrics listener ra Internet. HTTP metrics có
@@ -41,10 +41,42 @@ listener loopback riêng; xem [runbook](observability.md). Khóa và database UR
 không nằm trong Git hay log. Lưu image/commit triển khai, vùng dữ liệu,
 quyền truy cập, thời hạn log/backup và thử quy trình phục hồi/xóa sau restore.
 
-`make docker-up` hiện là **stack phát triển local**, không phải một lệnh triển
-khai production: có mặc định development/password local, chưa provision TLS,
-DNS, secret storage, backup hoặc mount ADC cho FCM. Sau khi owner chọn host,
-cần cấu hình triển khai cụ thể và kiểm tra các mục đó trước khi mở ingress.
+Production đã có Compose stack riêng. Sau khi có máy Linux cài Docker Engine và
+Compose plugin, trỏ DNS `A` (và `AAAA` nếu dùng IPv6) của hostname API tới máy
+chủ; mở inbound TCP `24080/24443` và UDP `24443` nếu muốn HTTP/3. Nếu truy cập
+Internet qua router, chuyển tiếp cổng công khai TCP `80 → 24080`, TCP `443 →
+24443` (và UDP `443 → 24443` nếu bật HTTP/3). Caddy cần các cổng công khai
+80/443 để tự xin/gia hạn chứng thư; nếu nhà mạng hoặc proxy không chuyển tiếp
+được, cần cấu hình DNS challenge hoặc reverse proxy phù hợp. Với kết nối trực
+tiếp tới cổng host thay vì chuyển tiếp chuẩn, URL API phải ghi rõ `:24443`.
+Sao chép cấu hình mẫu,
+điền OAuth Web client ID và mật khẩu database, rồi khóa quyền đọc file:
+
+```bash
+cp env.prod.example env.prod
+openssl rand -hex 32  # đặt kết quả vào POSTGRES_PASSWORD trong env.prod
+chmod 600 env.prod
+make docker-config     # kiểm tra cấu hình, không in secret
+make docker-up         # build, migrate, bật API và Caddy/HTTPS
+```
+
+`make docker-up` là lệnh production; `make docker-up-dev` giữ stack phát triển
+localhost. Production chỉ publish Caddy trên `24080/24443`; API và Postgres
+không có cổng host, Postgres nằm trên Docker network nội bộ. Caddy tự xin/gia
+hạn chứng thư khi DNS, firewall và chuyển tiếp cổng công khai đúng.
+`make docker-down` dừng dịch vụ nhưng giữ volume dữ liệu. Không dùng
+`make docker-clean-dev` với mục đích xóa dữ liệu
+production.
+
+FCM có thể để trống trong `env.prod` khi chưa cấu hình Firebase; push sẽ không
+hoạt động. Khi bật FCM, đặt project ID và đường dẫn tới credential file nằm
+ngoài checkout. Vì API chạy bằng user không đặc quyền trong container, đặt
+file trong thư mục riêng (`chmod 700`) và file JSON chỉ đọc (`chmod 444`);
+đường dẫn cần là đường dẫn tuyệt đối. Không commit file này. Lệnh
+deploy không tự tạo backup: trước khi nhận dữ liệu thật, cấu hình backup mã hóa
+off-host, giới hạn thời gian lưu cả backup và log, rồi diễn tập phục hồi/xóa.
+Không đưa PostgreSQL hoặc metrics listener ra Internet; xem
+[runbook metrics](observability.md).
 
 Kiểm chứng từ bên ngoài: HTTPS hợp lệ; `/healthz` và `/readyz` trả 200 khi
 database/migrations sẵn sàng; `/api/v1/auth/config` phản ánh cấu hình Google

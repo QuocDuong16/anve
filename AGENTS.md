@@ -74,8 +74,10 @@ Use the Makefile rather than raw commands; CI runs the same targets.
 
 | Task                | Target                |
 | ------------------- | --------------------- |
-| Full local stack    | `make docker-up`      |
-| Stop local stack    | `make docker-down`    |
+| Production stack    | `make docker-up`      |
+| Stop production     | `make docker-down`    |
+| Full local stack    | `make docker-up-dev`  |
+| Stop local stack    | `make docker-down-dev`|
 | Go format/tidy      | `make server-fix`     |
 | Go checks           | `make server-check`   |
 | Android build       | `make android-build`  |

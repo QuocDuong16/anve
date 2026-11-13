@@ -1,0 +1,1560 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-11-11T14:56:32.648Z",
+  "comp": ".impeccable/mocks/decision/m7b-checklist.png",
+  "warnings": [
+    "region appbar: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region destination-icon: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region steps: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region active-step: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region offline-notice: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region destination-group: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region destination-group: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region start-step-row: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region start-step-row: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region arrival-step-row: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region arrival-step-row: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region end-button-row: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region end-button-row: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+  ],
+  "uncoveredInkCells": [],
+  "compSize": {
+    "width": 841,
+    "height": 1870
+  },
+  "aspect": 0.4497,
+  "orientation": "portrait",
+  "palette": [
+    {
+      "hex": "#f6f7f6",
+      "coverage": 0.7711
+    },
+    {
+      "hex": "#085759",
+      "coverage": 0.1536
+    },
+    {
+      "hex": "#f8c88a",
+      "coverage": 0.0582
+    },
+    {
+      "hex": "#152626",
+      "coverage": 0.0108
+    },
+    {
+      "hex": "#4a5252",
+      "coverage": 0.0063
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.0947,
+      "strength": 1
+    },
+    {
+      "y": 0.1439,
+      "strength": 0.2077
+    },
+    {
+      "y": 0.2456,
+      "strength": 0.4281
+    },
+    {
+      "y": 0.3123,
+      "strength": 0.4017
+    },
+    {
+      "y": 0.386,
+      "strength": 0.3293
+    },
+    {
+      "y": 0.4596,
+      "strength": 0.5218
+    },
+    {
+      "y": 0.4877,
+      "strength": 0.3003
+    },
+    {
+      "y": 0.5544,
+      "strength": 0.5496
+    },
+    {
+      "y": 0.5965,
+      "strength": 0.5307
+    },
+    {
+      "y": 0.6281,
+      "strength": 0.3877
+    },
+    {
+      "y": 0.6702,
+      "strength": 0.4963
+    },
+    {
+      "y": 0.7018,
+      "strength": 1
+    },
+    {
+      "y": 0.7614,
+      "strength": 1
+    },
+    {
+      "y": 0.8,
+      "strength": 0.3976
+    },
+    {
+      "y": 0.8351,
+      "strength": 0.6404
+    }
+  ],
+  "regions": [
+    {
+      "id": "appbar",
+      "kind": "chrome",
+      "note": "Native Material top app bar, Back and refresh actions; semantic teal surface.",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.0963
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 841,
+        "h": 180
+      },
+      "aspect": 4.6722,
+      "palette": [
+        {
+          "hex": "#085858",
+          "coverage": 0.9853
+        },
+        {
+          "hex": "#f5f7f5",
+          "coverage": 0.0132
+        },
+        {
+          "hex": "#c0d0d0",
+          "coverage": 0.0016
+        }
+      ],
+      "detail": {
+        "energy": 9.4069
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    },
+    {
+      "id": "appbar-title",
+      "kind": "text",
+      "note": "Hành trình; native Material titleLarge system font.",
+      "grid": null,
+      "box": {
+        "x": 0.1344,
+        "y": 0.0471,
+        "w": 0.2723,
+        "h": 0.0273
+      },
+      "px": {
+        "x": 113,
+        "y": 88,
+        "w": 229,
+        "h": 51
+      },
+      "aspect": 4.4902,
+      "palette": [
+        {
+          "hex": "#09555b",
+          "coverage": 0.8196
+        },
+        {
+          "hex": "#f2f5f4",
+          "coverage": 0.1369
+        },
+        {
+          "hex": "#408184",
+          "coverage": 0.0237
+        },
+        {
+          "hex": "#85a9a9",
+          "coverage": 0.0191
+        },
+        {
+          "hex": "#083848",
+          "coverage": 0.0008
+        }
+      ],
+      "detail": {
+        "energy": 35.1686
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 8,
+          "capHeightPx": 33.6,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5662,
+          "advTall": 0.5662,
+          "advX": 0.5662,
+          "gap": 0.149,
+          "xRatio": 0.7152,
+          "stemW": 0.1278,
+          "contrast": 1.1888,
+          "serif": null,
+          "densTall": 0.4283,
+          "densX": 0.5025,
+          "weight": 0.4283
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "destination-icon",
+      "kind": "chrome",
+      "note": "Native home vector icon in a tonal circular surface, no raster asset.",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.038,
+        "y": 0.1225,
+        "w": 0.1367,
+        "h": 0.0615
+      },
+      "px": {
+        "x": 32,
+        "y": 229,
+        "w": 115,
+        "h": 115
+      },
+      "aspect": 1,
+      "palette": [
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.6443
+        },
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.2635
+        },
+        {
+          "hex": "#095058",
+          "coverage": 0.0856
+        },
+        {
+          "hex": "#357d80",
+          "coverage": 0.004
+        },
+        {
+          "hex": "#b0d0e0",
+          "coverage": 0.0026
+        }
+      ],
+      "detail": {
+        "energy": 3.6834
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "destination-title",
+      "kind": "text",
+      "note": "Về nhà; native Material headlineSmall.",
+      "grid": null,
+      "box": {
+        "x": 0.2033,
+        "y": 0.1235,
+        "w": 0.195,
+        "h": 0.0251
+      },
+      "px": {
+        "x": 171,
+        "y": 231,
+        "w": 164,
+        "h": 47
+      },
+      "aspect": 3.4894,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.7077
+        },
+        {
+          "hex": "#152423",
+          "coverage": 0.2371
+        },
+        {
+          "hex": "#989d99",
+          "coverage": 0.0253
+        },
+        {
+          "hex": "#485250",
+          "coverage": 0.0219
+        },
+        {
+          "hex": "#6f7a7a",
+          "coverage": 0.0081
+        }
+      ],
+      "detail": {
+        "energy": 36.2368
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 5,
+          "capHeightPx": 37.6,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6117,
+          "advTall": 0.625,
+          "advX": 0.5851,
+          "gap": 0.1463,
+          "xRatio": 0.7189,
+          "stemW": 0.1761,
+          "contrast": 1.297,
+          "serif": null,
+          "densTall": 0.5028,
+          "densX": 0.6298,
+          "weight": 0.5028
+        },
+        "widthClass": "normal",
+        "weightClass": "medium",
+        "chosen": {
+          "family": "Martel Sans",
+          "weight": 700,
+          "fontSizePx": 46,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 5,
+            "capHeightPx": 37.5,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.5867,
+            "advTall": 0.5867,
+            "advX": 0.5867,
+            "gap": 0.1867,
+            "xRatio": 0.6862,
+            "stemW": 0.1658,
+            "contrast": 1.3792,
+            "serif": null,
+            "densTall": 0.5094,
+            "densX": 0.6099,
+            "weight": 0.5094
+          },
+          "stamp": "92f027632a31"
+        }
+      }
+    },
+    {
+      "id": "expiry",
+      "kind": "text",
+      "note": "Tự kết thúc lúc 23:00; expiry not ETA.",
+      "grid": null,
+      "box": {
+        "x": 0.2033,
+        "y": 0.1594,
+        "w": 0.3805,
+        "h": 0.0182
+      },
+      "px": {
+        "x": 171,
+        "y": 298,
+        "w": 320,
+        "h": 34
+      },
+      "aspect": 9.4118,
+      "palette": [
+        {
+          "hex": "#f7f6f4",
+          "coverage": 0.7908
+        },
+        {
+          "hex": "#525a5b",
+          "coverage": 0.1552
+        },
+        {
+          "hex": "#949897",
+          "coverage": 0.0259
+        },
+        {
+          "hex": "#c7c9c1",
+          "coverage": 0.0212
+        },
+        {
+          "hex": "#343a3d",
+          "coverage": 0.0071
+        }
+      ],
+      "detail": {
+        "energy": 69.8192
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 15,
+          "capHeightPx": 25.6,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5862,
+          "advTall": 0.5862,
+          "advX": 0.5862,
+          "gap": 0.1172,
+          "xRatio": 0.7069,
+          "stemW": 0.1276,
+          "contrast": 1.1671,
+          "serif": 0.4868,
+          "densTall": 0.4151,
+          "densX": 0.4063,
+          "weight": 0.4151
+        },
+        "widthClass": "normal",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "steps",
+      "kind": "chrome",
+      "note": "Native Material vector status icons with a vertical divider; drawn by Compose, not painted artwork.",
+      "grid": null,
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0642,
+        "y": 0.2193,
+        "w": 0.088,
+        "h": 0.2503
+      },
+      "px": {
+        "x": 54,
+        "y": 410,
+        "w": 74,
+        "h": 468
+      },
+      "aspect": 0.1581,
+      "palette": [
+        {
+          "hex": "#f6f7f6",
+          "coverage": 0.8204
+        },
+        {
+          "hex": "#08545b",
+          "coverage": 0.1022
+        },
+        {
+          "hex": "#97dad7",
+          "coverage": 0.0279
+        },
+        {
+          "hex": "#939799",
+          "coverage": 0.0253
+        },
+        {
+          "hex": "#0d7272",
+          "coverage": 0.0242
+        }
+      ],
+      "detail": {
+        "energy": 4.2497
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "started",
+      "kind": "text",
+      "note": "Đã bắt đầu · 21:10; native titleMedium.",
+      "grid": null,
+      "box": {
+        "x": 0.1867,
+        "y": 0.2257,
+        "w": 0.4875,
+        "h": 0.0225
+      },
+      "px": {
+        "x": 157,
+        "y": 422,
+        "w": 410,
+        "h": 42
+      },
+      "aspect": 9.7619,
+      "palette": [
+        {
+          "hex": "#f8f8f6",
+          "coverage": 0.7707
+        },
+        {
+          "hex": "#11201f",
+          "coverage": 0.1622
+        },
+        {
+          "hex": "#c3c3c2",
+          "coverage": 0.0255
+        },
+        {
+          "hex": "#6d7673",
+          "coverage": 0.0218
+        },
+        {
+          "hex": "#424b48",
+          "coverage": 0.0197
+        }
+      ],
+      "detail": {
+        "energy": 75.3783
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 14,
+          "capHeightPx": 32.2,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5588,
+          "advTall": 0.5743,
+          "advX": 0.3725,
+          "gap": 0.3104,
+          "xRatio": 0.6621,
+          "stemW": 0.175,
+          "contrast": 1.2852,
+          "serif": 0.7271,
+          "densTall": 0.574,
+          "densX": 0.5284,
+          "weight": 0.574
+        },
+        "widthClass": "compressed",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "active-step",
+      "kind": "chrome",
+      "note": "Tonal native active step container holding observed location information.",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.17,
+        "y": 0.293,
+        "w": 0.8014,
+        "h": 0.1166
+      },
+      "px": {
+        "x": 143,
+        "y": 548,
+        "w": 674,
+        "h": 218
+      },
+      "aspect": 3.0917,
+      "palette": [
+        {
+          "hex": "#e8ece8",
+          "coverage": 0.9436
+        },
+        {
+          "hex": "#495151",
+          "coverage": 0.0218
+        },
+        {
+          "hex": "#162626",
+          "coverage": 0.0171
+        },
+        {
+          "hex": "#8c918f",
+          "coverage": 0.0104
+        },
+        {
+          "hex": "#acb9ac",
+          "coverage": 0.007
+        }
+      ],
+      "detail": {
+        "energy": 24.6888
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    },
+    {
+      "id": "active-title",
+      "kind": "text",
+      "note": "Đang di chuyển; indicates journey lifecycle, not inferred velocity.",
+      "grid": null,
+      "box": {
+        "x": 0.1974,
+        "y": 0.3048,
+        "w": 0.3567,
+        "h": 0.0241
+      },
+      "px": {
+        "x": 166,
+        "y": 570,
+        "w": 300,
+        "h": 45
+      },
+      "aspect": 6.6667,
+      "palette": [
+        {
+          "hex": "#e9efe7",
+          "coverage": 0.7009
+        },
+        {
+          "hex": "#132221",
+          "coverage": 0.1923
+        },
+        {
+          "hex": "#b4bfb5",
+          "coverage": 0.0441
+        },
+        {
+          "hex": "#3d4d43",
+          "coverage": 0.036
+        },
+        {
+          "hex": "#778480",
+          "coverage": 0.0267
+        }
+      ],
+      "detail": {
+        "energy": 65.3243
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 12,
+          "capHeightPx": 33.1,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5433,
+          "advTall": 0.5584,
+          "advX": 0.5433,
+          "gap": 0.1207,
+          "xRatio": 0.6431,
+          "stemW": 0.1673,
+          "contrast": 1.2493,
+          "serif": 0.7274,
+          "densTall": 0.5564,
+          "densX": 0.6369,
+          "weight": 0.5564
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "freshness",
+      "kind": "text",
+      "note": "Vị trí cập nhật 2 phút trước; observed sample timestamp.",
+      "grid": null,
+      "box": {
+        "x": 0.2735,
+        "y": 0.3396,
+        "w": 0.6409,
+        "h": 0.0182
+      },
+      "px": {
+        "x": 230,
+        "y": 635,
+        "w": 539,
+        "h": 34
+      },
+      "aspect": 15.8529,
+      "palette": [
+        {
+          "hex": "#e8ede6",
+          "coverage": 0.8472
+        },
+        {
+          "hex": "#474f4f",
+          "coverage": 0.0757
+        },
+        {
+          "hex": "#7d8681",
+          "coverage": 0.039
+        },
+        {
+          "hex": "#afb7af",
+          "coverage": 0.0353
+        },
+        {
+          "hex": "#3d3d4d",
+          "coverage": 0.0028
+        }
+      ],
+      "detail": {
+        "energy": 54.2319
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 22,
+          "capHeightPx": 22.9,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5669,
+          "advTall": 0.5887,
+          "advX": 0.5778,
+          "gap": 0.1308,
+          "xRatio": 0.7132,
+          "stemW": 0.1367,
+          "contrast": 1.1309,
+          "serif": 1.3337,
+          "densTall": 0.4224,
+          "densX": 0.4405,
+          "weight": 0.4224
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "distance",
+      "kind": "text",
+      "note": "Còn 3,2 km đường chim bay; no ETA.",
+      "grid": null,
+      "box": {
+        "x": 0.2747,
+        "y": 0.3717,
+        "w": 0.5696,
+        "h": 0.0182
+      },
+      "px": {
+        "x": 231,
+        "y": 695,
+        "w": 479,
+        "h": 34
+      },
+      "aspect": 14.0882,
+      "palette": [
+        {
+          "hex": "#e8ece5",
+          "coverage": 0.833
+        },
+        {
+          "hex": "#485050",
+          "coverage": 0.0812
+        },
+        {
+          "hex": "#8d9390",
+          "coverage": 0.055
+        },
+        {
+          "hex": "#b6bfb4",
+          "coverage": 0.0236
+        },
+        {
+          "hex": "#697969",
+          "coverage": 0.0073
+        }
+      ],
+      "detail": {
+        "energy": 61.8625
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 19,
+          "capHeightPx": 22.7,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6159,
+          "advTall": 0.6159,
+          "advX": 0.6159,
+          "gap": 0.176,
+          "xRatio": 0.7352,
+          "stemW": 0.1374,
+          "contrast": 1.1183,
+          "serif": 0.9594,
+          "densTall": 0.4216,
+          "densX": 0.4724,
+          "weight": 0.4216
+        },
+        "widthClass": "normal",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "arrival-title",
+      "kind": "text",
+      "note": "Xác nhận đến nơi; explicit manual next step.",
+      "grid": null,
+      "box": {
+        "x": 0.1867,
+        "y": 0.4396,
+        "w": 0.4126,
+        "h": 0.0219
+      },
+      "px": {
+        "x": 157,
+        "y": 822,
+        "w": 347,
+        "h": 41
+      },
+      "aspect": 8.4634,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.7129
+        },
+        {
+          "hex": "#172727",
+          "coverage": 0.1741
+        },
+        {
+          "hex": "#465352",
+          "coverage": 0.0423
+        },
+        {
+          "hex": "#979c9a",
+          "coverage": 0.0416
+        },
+        {
+          "hex": "#c8cac8",
+          "coverage": 0.029
+        }
+      ],
+      "detail": {
+        "energy": 81.2896
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 13,
+          "capHeightPx": 32.1,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5599,
+          "advTall": 0.5599,
+          "advX": 0.5599,
+          "gap": 0.1089,
+          "xRatio": 0.6671,
+          "stemW": 0.1716,
+          "contrast": 1.2523,
+          "serif": 0.8758,
+          "densTall": 0.5426,
+          "densX": 0.6126,
+          "weight": 0.5426
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "arrival-help",
+      "kind": "text",
+      "note": "Bạn chủ động xác nhận khi đã đến.",
+      "grid": null,
+      "box": {
+        "x": 0.1867,
+        "y": 0.4727,
+        "w": 0.6516,
+        "h": 0.0171
+      },
+      "px": {
+        "x": 157,
+        "y": 884,
+        "w": 548,
+        "h": 32
+      },
+      "aspect": 17.125,
+      "palette": [
+        {
+          "hex": "#f7f7f4",
+          "coverage": 0.7713
+        },
+        {
+          "hex": "#4a5151",
+          "coverage": 0.1158
+        },
+        {
+          "hex": "#7f8583",
+          "coverage": 0.0579
+        },
+        {
+          "hex": "#babdb7",
+          "coverage": 0.0529
+        },
+        {
+          "hex": "#404050",
+          "coverage": 0.002
+        }
+      ],
+      "detail": {
+        "energy": 77.4099
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 25,
+          "capHeightPx": 24.9,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5215,
+          "advTall": 0.5215,
+          "advX": 0.5215,
+          "gap": 0.1605,
+          "xRatio": 0.6601,
+          "stemW": 0.1222,
+          "contrast": 1.155,
+          "serif": 0.9208,
+          "densTall": 0.4435,
+          "densX": 0.481,
+          "weight": 0.4435
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "recipient-summary",
+      "kind": "text",
+      "note": "Người theo dõi: Mẹ, Bố; owner only.",
+      "grid": null,
+      "box": {
+        "x": 0.1237,
+        "y": 0.5385,
+        "w": 0.39,
+        "h": 0.0166
+      },
+      "px": {
+        "x": 104,
+        "y": 1007,
+        "w": 328,
+        "h": 31
+      },
+      "aspect": 10.5806,
+      "palette": [
+        {
+          "hex": "#f6f6f4",
+          "coverage": 0.7392
+        },
+        {
+          "hex": "#172323",
+          "coverage": 0.1108
+        },
+        {
+          "hex": "#8e928f",
+          "coverage": 0.0617
+        },
+        {
+          "hex": "#4d5653",
+          "coverage": 0.0542
+        },
+        {
+          "hex": "#bfc3bc",
+          "coverage": 0.0342
+        }
+      ],
+      "detail": {
+        "energy": 102.4347
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 14,
+          "capHeightPx": 25.8,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5806,
+          "advTall": 0.6,
+          "advX": 0.5806,
+          "gap": 0.1161,
+          "xRatio": 0.6398,
+          "stemW": 0.12,
+          "contrast": 1.0996,
+          "serif": 0.9024,
+          "densTall": 0.4253,
+          "densX": 0.4579,
+          "weight": 0.4253
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "recipient-action",
+      "kind": "control",
+      "note": "Native text action Quản lý người xem.",
+      "grid": null,
+      "box": {
+        "x": 0.6433,
+        "y": 0.5241,
+        "w": 0.3282,
+        "h": 0.0433
+      },
+      "px": {
+        "x": 541,
+        "y": 980,
+        "w": 276,
+        "h": 81
+      },
+      "aspect": 3.4074,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.8751
+        },
+        {
+          "hex": "#0c555b",
+          "coverage": 0.0697
+        },
+        {
+          "hex": "#aec9c8",
+          "coverage": 0.032
+        },
+        {
+          "hex": "#548787",
+          "coverage": 0.0187
+        },
+        {
+          "hex": "#083844",
+          "coverage": 0.0045
+        }
+      ],
+      "detail": {
+        "energy": 28.3268
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "offline-notice",
+      "kind": "chrome",
+      "note": "Amber tonal offline notice container, native Wi-Fi-off vector icon.",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.038,
+        "y": 0.5979,
+        "w": 0.9263,
+        "h": 0.0711
+      },
+      "px": {
+        "x": 32,
+        "y": 1118,
+        "w": 779,
+        "h": 133
+      },
+      "aspect": 5.8571,
+      "palette": [
+        {
+          "hex": "#f7c88a",
+          "coverage": 0.8944
+        },
+        {
+          "hex": "#122322",
+          "coverage": 0.0448
+        },
+        {
+          "hex": "#f8ebde",
+          "coverage": 0.0273
+        },
+        {
+          "hex": "#363d2f",
+          "coverage": 0.0192
+        },
+        {
+          "hex": "#c3a376",
+          "coverage": 0.0142
+        }
+      ],
+      "detail": {
+        "energy": 34.3627
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "offline-copy",
+      "kind": "text",
+      "note": "Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.",
+      "grid": null,
+      "box": {
+        "x": 0.1653,
+        "y": 0.6107,
+        "w": 0.7503,
+        "h": 0.0422
+      },
+      "px": {
+        "x": 139,
+        "y": 1142,
+        "w": 631,
+        "h": 79
+      },
+      "aspect": 7.9873,
+      "palette": [
+        {
+          "hex": "#f7c88b",
+          "coverage": 0.8252
+        },
+        {
+          "hex": "#132222",
+          "coverage": 0.0821
+        },
+        {
+          "hex": "#393d2f",
+          "coverage": 0.0427
+        },
+        {
+          "hex": "#bb9d71",
+          "coverage": 0.0282
+        },
+        {
+          "hex": "#615644",
+          "coverage": 0.0219
+        }
+      ],
+      "detail": {
+        "energy": 69.3166
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 48,
+          "capHeightPx": 27.3,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5455,
+          "advTall": 0.5455,
+          "advX": 0.5487,
+          "gap": 0.1455,
+          "xRatio": 0.6524,
+          "stemW": 0.1485,
+          "contrast": 1.2082,
+          "serif": 0.8717,
+          "densTall": 0.5015,
+          "densX": 0.5066,
+          "weight": 0.5015
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "arrive-action",
+      "kind": "control",
+      "note": "Native filled Đã đến nơi action; at least 48dp touch target.",
+      "grid": null,
+      "box": {
+        "x": 0.0309,
+        "y": 0.7021,
+        "w": 0.9405,
+        "h": 0.0604
+      },
+      "px": {
+        "x": 26,
+        "y": 1313,
+        "w": 791,
+        "h": 113
+      },
+      "aspect": 7,
+      "palette": [
+        {
+          "hex": "#08585c",
+          "coverage": 0.901
+        },
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.0682
+        },
+        {
+          "hex": "#93b9b9",
+          "coverage": 0.0294
+        },
+        {
+          "hex": "#398181",
+          "coverage": 0.0013
+        }
+      ],
+      "detail": {
+        "energy": 19.9324
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "end-action",
+      "kind": "control",
+      "note": "Native outlined Kết thúc hành trình action; wraps under font scaling.",
+      "grid": null,
+      "box": {
+        "x": 0.0297,
+        "y": 0.777,
+        "w": 0.9417,
+        "h": 0.0561
+      },
+      "px": {
+        "x": 25,
+        "y": 1453,
+        "w": 792,
+        "h": 105
+      },
+      "aspect": 7.5429,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.8859
+        },
+        {
+          "hex": "#111c1c",
+          "coverage": 0.0523
+        },
+        {
+          "hex": "#434a49",
+          "coverage": 0.0407
+        },
+        {
+          "hex": "#838b86",
+          "coverage": 0.0137
+        },
+        {
+          "hex": "#c7c9c7",
+          "coverage": 0.0074
+        }
+      ],
+      "detail": {
+        "energy": 35.4153
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      }
+    },
+    {
+      "id": "destination-group",
+      "kind": "chrome",
+      "note": "Native destination summary with title, expiry and home vector.",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.038,
+        "y": 0.1176,
+        "w": 0.9275,
+        "h": 0.0802
+      },
+      "px": {
+        "x": 32,
+        "y": 220,
+        "w": 780,
+        "h": 150
+      },
+      "aspect": 5.2,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.8869
+        },
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.0765
+        },
+        {
+          "hex": "#162525",
+          "coverage": 0.0149
+        },
+        {
+          "hex": "#495252",
+          "coverage": 0.0123
+        },
+        {
+          "hex": "#084f57",
+          "coverage": 0.0095
+        }
+      ],
+      "detail": {
+        "energy": 19.5016
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    },
+    {
+      "id": "start-step-row",
+      "kind": "chrome",
+      "note": "Native lifecycle row holding start timestamp and complete indicator.",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.0595,
+        "y": 0.2086,
+        "w": 0.8799,
+        "h": 0.0722
+      },
+      "px": {
+        "x": 50,
+        "y": 390,
+        "w": 740,
+        "h": 135
+      },
+      "aspect": 5.4815,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9329
+        },
+        {
+          "hex": "#09535a",
+          "coverage": 0.0324
+        },
+        {
+          "hex": "#152525",
+          "coverage": 0.0244
+        },
+        {
+          "hex": "#636d69",
+          "coverage": 0.0068
+        },
+        {
+          "hex": "#abaeab",
+          "coverage": 0.0035
+        }
+      ],
+      "detail": {
+        "energy": 21.8093
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    },
+    {
+      "id": "arrival-step-row",
+      "kind": "chrome",
+      "note": "Native lifecycle row holding manual confirmation instruction.",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.0595,
+        "y": 0.4251,
+        "w": 0.8799,
+        "h": 0.0802
+      },
+      "px": {
+        "x": 50,
+        "y": 795,
+        "w": 740,
+        "h": 150
+      },
+      "aspect": 4.9333,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.9216
+        },
+        {
+          "hex": "#454e4e",
+          "coverage": 0.025
+        },
+        {
+          "hex": "#8f9291",
+          "coverage": 0.0199
+        },
+        {
+          "hex": "#132322",
+          "coverage": 0.0185
+        },
+        {
+          "hex": "#c9cac7",
+          "coverage": 0.015
+        }
+      ],
+      "detail": {
+        "energy": 29.3946
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    },
+    {
+      "id": "end-button-row",
+      "kind": "chrome",
+      "note": "Native secondary outlined end action and its real text label.",
+      "grid": null,
+      "codeDrawn": true,
+      "container": true,
+      "box": {
+        "x": 0.0285,
+        "y": 0.7647,
+        "w": 0.9453,
+        "h": 0.0856
+      },
+      "px": {
+        "x": 24,
+        "y": 1430,
+        "w": 795,
+        "h": 160
+      },
+      "aspect": 4.9688,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9324
+        },
+        {
+          "hex": "#0b1419",
+          "coverage": 0.0317
+        },
+        {
+          "hex": "#a7a8a7",
+          "coverage": 0.023
+        },
+        {
+          "hex": "#4d5a56",
+          "coverage": 0.0071
+        },
+        {
+          "hex": "#183230",
+          "coverage": 0.0057
+        }
+      ],
+      "detail": {
+        "energy": 30.3662
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    }
+  ],
+  "compSha256": "07a273b66e694109dcd705d7d7eefdd88b7c63c931a65808af99f14c9387a135",
+  "regionsSource": {
+    "path": ".impeccable/review/m7b-regions.json",
+    "sha256": "300c6c8786a0cde928a9e3e8b88df1c9c6cea5acd9faf694da22f65054adb4fd"
+  }
+}

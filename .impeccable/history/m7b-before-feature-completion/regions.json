@@ -1,0 +1,134 @@
+{
+  "regions": [
+    {
+      "id": "app-bar",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 841,
+        "h": 185
+      },
+      "note": "Native Android system and application bars, teal theme; Back and refresh controls",
+      "codeDrawn": true
+    },
+    {
+      "id": "summary-icon",
+      "kind": "control",
+      "pixelBox": {
+        "x": 28,
+        "y": 228,
+        "w": 140,
+        "h": 132
+      },
+      "note": "Semantic location status icon; native Material icon with tonal backing",
+      "codeDrawn": true
+    },
+    {
+      "id": "summary-title",
+      "kind": "text",
+      "pixelBox": {
+        "x": 170,
+        "y": 220,
+        "w": 630,
+        "h": 65
+      },
+      "note": "Primary diagnosis title; native Material headline, Roboto bold"
+    },
+    {
+      "id": "summary-body",
+      "kind": "text",
+      "pixelBox": {
+        "x": 170,
+        "y": 285,
+        "w": 650,
+        "h": 90
+      },
+      "note": "Two-line explanation of current capture and upload state; native body text"
+    },
+    {
+      "id": "tabs",
+      "kind": "control",
+      "pixelBox": {
+        "x": 30,
+        "y": 411,
+        "w": 784,
+        "h": 69
+      },
+      "note": "Native equal-width overview and details segmented buttons",
+      "codeDrawn": true
+    },
+    {
+      "id": "notice",
+      "kind": "control",
+      "pixelBox": {
+        "x": 0,
+        "y": 510,
+        "w": 841,
+        "h": 145
+      },
+      "note": "Actionable offline notice with network settings button; state-dependent native controls",
+      "codeDrawn": true
+    },
+    {
+      "id": "capture-section",
+      "kind": "control",
+      "pixelBox": {
+        "x": 29,
+        "y": 668,
+        "w": 786,
+        "h": 242
+      },
+      "note": "Native grouped acquisition rows with section heading and latest fix age",
+      "codeDrawn": true
+    },
+    {
+      "id": "sync-section",
+      "kind": "control",
+      "pixelBox": {
+        "x": 29,
+        "y": 939,
+        "w": 786,
+        "h": 239
+      },
+      "note": "Native grouped queue count and last successful upload rows",
+      "codeDrawn": true
+    },
+    {
+      "id": "permissions-section",
+      "kind": "control",
+      "pixelBox": {
+        "x": 0,
+        "y": 1190,
+        "w": 841,
+        "h": 430
+      },
+      "note": "Native grouped permission, location and power saver rows",
+      "codeDrawn": true
+    },
+    {
+      "id": "export",
+      "kind": "control",
+      "pixelBox": {
+        "x": 31,
+        "y": 1629,
+        "w": 785,
+        "h": 113
+      },
+      "note": "Explicit report preview and export entry; no automatic sending",
+      "codeDrawn": true
+    },
+    {
+      "id": "preview-footer",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 1742,
+        "w": 841,
+        "h": 128
+      },
+      "note": "Mockup-only synthetic-data annotation and native system navigation; omit the annotation when rendering live data",
+      "codeDrawn": true
+    }
+  ]
+}

@@ -49,10 +49,10 @@ Bằng chứng đã xác minh:
   PostgreSQL/PostGIS thật (service `postgis/postgis:17-3.6` pin bằng digest):
   up → up → down → up, rollback migration lỗi, kiểm tra extensions.
 - **Runtime smoke test full Docker Compose stack — đã xác minh ngày 2026-10-25**
-  (trước đó chưa được kiểm tra trong review): `make docker-up` → postgres
+  (trước đó chưa được kiểm tra trong review): `make docker-up-dev` → postgres
   healthy → migrate one-shot chạy xong → `GET /healthz`, `GET /readyz`,
   `GET /api/v1/version` trả 200 với JSON đúng contract → extensions
-  (`postgis`, `pg_trgm`, `uuid-ossp`) tồn tại trong database → `make docker-down`
+  (`postgis`, `pg_trgm`, `uuid-ossp`) tồn tại trong database → `make docker-down-dev`
   sạch sẽ.
 
 Còn thiếu (chặn việc coi M0 là "hoàn thành tuyệt đối"):

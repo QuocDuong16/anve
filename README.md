@@ -110,10 +110,13 @@ flowchart LR
 các milestone M5/M6.* Maps Compose đã có trong M4, nhưng render bản đồ cần Maps
 API key do nhà phát triển cấu hình theo `docs/implementation/setup-android.md`.
 
-### Local stack & development login
+### Development stack & development login
 
-`make docker-up` chỉ publish cổng API và PostgreSQL trên `127.0.0.1`; máy khác
-trong LAN không truy cập được. Chạy API trực tiếp (không Docker) mặc định bind
+`make docker-up-dev` chỉ publish cổng API và PostgreSQL trên `127.0.0.1`; máy
+khác trong LAN không truy cập được. `make docker-up` dành cho production, đọc
+`env.prod`, chạy migrations và đưa API qua HTTPS bằng Caddy. Xem
+[`docs/operations/first-real-test.vi.md`](docs/operations/first-real-test.vi.md)
+để chuẩn bị DNS, OAuth và máy chủ. Chạy API trực tiếp (không Docker) mặc định bind
 `127.0.0.1:8080`. Development login chỉ mount khi
 `ENVIRONMENT=development` và `AUTH_DEV_LOGIN_ENABLED=true`, và còn phải qua
 allowlist địa chỉ nguồn; xem
@@ -171,7 +174,7 @@ Chi tiết exit criteria và bằng chứng xác minh của từng mốc:
 mise install          # cài toolchain pin (mise.toml + mise.lock)
 cp .env.example .env  # cấu hình local
 make toolchain-check  # các pin trong repo khớp nhau
-make docker-up        # PostgreSQL/PostGIS + migrate + API
+make docker-up-dev    # PostgreSQL/PostGIS + migrate + API trên localhost
 ```
 
 API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",...}`.
@@ -180,7 +183,8 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 
 | Việc | Lệnh |
 | --- | --- |
-| Full local stack | `make docker-up` / `make docker-down` |
+| Production API + HTTPS | `make docker-up` / `make docker-down` |
+| Full local dev stack | `make docker-up-dev` / `make docker-down-dev` |
 | Chạy API local | `make server-run` (port 8080) |
 | Build APK debug | `make android-build` |
 | Kiểm chứng AAB minified bằng khóa tạm, package riêng | `make android-release-check` |
@@ -189,7 +193,7 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 | Build APK production có ký | `make android-release` |
 | Kiểm tra Go | `make server-check` |
 | Kiểm tra Android | `make android-check` |
-| Migrations | `make migrate-up` / `make migrate-down` |
+| Dev migrations | `make migrate-up-dev` / `make migrate-down-dev` |
 | Mọi thứ | `make quality-check` |
 
 `make help` liệt kê đầy đủ mọi target.

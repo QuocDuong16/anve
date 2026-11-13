@@ -1,0 +1,1041 @@
+{
+  "tool": "comp-spec inspect-map",
+  "version": 1,
+  "referenceOnly": true,
+  "stateChanged": false,
+  "comp": ".impeccable/mocks/decision/m7b-checklist.png",
+  "compSize": {
+    "width": 841,
+    "height": 1870
+  },
+  "inputRegionCount": 19,
+  "regions": [
+    {
+      "id": "appbar",
+      "kind": "chrome",
+      "note": "Native Material top app bar, Back and refresh actions; semantic teal surface.",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 0.0963
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 841,
+        "h": 180
+      },
+      "aspect": 4.6722,
+      "palette": [
+        {
+          "hex": "#085858",
+          "coverage": 0.9853
+        },
+        {
+          "hex": "#f5f7f5",
+          "coverage": 0.0132
+        },
+        {
+          "hex": "#c0d0d0",
+          "coverage": 0.0016
+        }
+      ],
+      "detail": {
+        "energy": 9.4069
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 1,
+      "cropPath": "region-1.png"
+    },
+    {
+      "id": "appbar-title",
+      "kind": "text",
+      "note": "Hành trình; native Material titleLarge system font.",
+      "grid": null,
+      "box": {
+        "x": 0.1344,
+        "y": 0.0471,
+        "w": 0.2723,
+        "h": 0.0273
+      },
+      "px": {
+        "x": 113,
+        "y": 88,
+        "w": 229,
+        "h": 51
+      },
+      "aspect": 4.4902,
+      "palette": [
+        {
+          "hex": "#09555b",
+          "coverage": 0.8196
+        },
+        {
+          "hex": "#f2f5f4",
+          "coverage": 0.1369
+        },
+        {
+          "hex": "#408184",
+          "coverage": 0.0237
+        },
+        {
+          "hex": "#85a9a9",
+          "coverage": 0.0191
+        },
+        {
+          "hex": "#083848",
+          "coverage": 0.0008
+        }
+      ],
+      "detail": {
+        "energy": 35.1686
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 2,
+      "cropPath": "region-2.png"
+    },
+    {
+      "id": "destination-icon",
+      "kind": "chrome",
+      "note": "Native home vector icon in a tonal circular surface, no raster asset.",
+      "grid": null,
+      "box": {
+        "x": 0.038,
+        "y": 0.1225,
+        "w": 0.1367,
+        "h": 0.0615
+      },
+      "px": {
+        "x": 32,
+        "y": 229,
+        "w": 115,
+        "h": 115
+      },
+      "aspect": 1,
+      "palette": [
+        {
+          "hex": "#b8e8e8",
+          "coverage": 0.6443
+        },
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.2635
+        },
+        {
+          "hex": "#095058",
+          "coverage": 0.0856
+        },
+        {
+          "hex": "#357d80",
+          "coverage": 0.004
+        },
+        {
+          "hex": "#b0d0e0",
+          "coverage": 0.0026
+        }
+      ],
+      "detail": {
+        "energy": 3.6834
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 3,
+      "cropPath": "region-3.png"
+    },
+    {
+      "id": "destination-title",
+      "kind": "text",
+      "note": "Về nhà; native Material headlineSmall.",
+      "grid": null,
+      "box": {
+        "x": 0.2033,
+        "y": 0.1235,
+        "w": 0.195,
+        "h": 0.0251
+      },
+      "px": {
+        "x": 171,
+        "y": 231,
+        "w": 164,
+        "h": 47
+      },
+      "aspect": 3.4894,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.7077
+        },
+        {
+          "hex": "#152423",
+          "coverage": 0.2371
+        },
+        {
+          "hex": "#989d99",
+          "coverage": 0.0253
+        },
+        {
+          "hex": "#485250",
+          "coverage": 0.0219
+        },
+        {
+          "hex": "#6f7a7a",
+          "coverage": 0.0081
+        }
+      ],
+      "detail": {
+        "energy": 36.2368
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 4,
+      "cropPath": "region-4.png"
+    },
+    {
+      "id": "expiry",
+      "kind": "text",
+      "note": "Tự kết thúc lúc 23:00; expiry not ETA.",
+      "grid": null,
+      "box": {
+        "x": 0.2033,
+        "y": 0.1594,
+        "w": 0.3805,
+        "h": 0.0182
+      },
+      "px": {
+        "x": 171,
+        "y": 298,
+        "w": 320,
+        "h": 34
+      },
+      "aspect": 9.4118,
+      "palette": [
+        {
+          "hex": "#f7f6f4",
+          "coverage": 0.7908
+        },
+        {
+          "hex": "#525a5b",
+          "coverage": 0.1552
+        },
+        {
+          "hex": "#949897",
+          "coverage": 0.0259
+        },
+        {
+          "hex": "#c7c9c1",
+          "coverage": 0.0212
+        },
+        {
+          "hex": "#343a3d",
+          "coverage": 0.0071
+        }
+      ],
+      "detail": {
+        "energy": 69.8192
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 5,
+      "cropPath": "region-5.png"
+    },
+    {
+      "id": "started",
+      "kind": "text",
+      "note": "Đã bắt đầu · 21:10; native titleMedium.",
+      "grid": null,
+      "box": {
+        "x": 0.1867,
+        "y": 0.2257,
+        "w": 0.4875,
+        "h": 0.0225
+      },
+      "px": {
+        "x": 157,
+        "y": 422,
+        "w": 410,
+        "h": 42
+      },
+      "aspect": 9.7619,
+      "palette": [
+        {
+          "hex": "#f8f8f6",
+          "coverage": 0.7707
+        },
+        {
+          "hex": "#11201f",
+          "coverage": 0.1622
+        },
+        {
+          "hex": "#c3c3c2",
+          "coverage": 0.0255
+        },
+        {
+          "hex": "#6d7673",
+          "coverage": 0.0218
+        },
+        {
+          "hex": "#424b48",
+          "coverage": 0.0197
+        }
+      ],
+      "detail": {
+        "energy": 75.3783
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 7,
+      "cropPath": "region-7.png"
+    },
+    {
+      "id": "active-step",
+      "kind": "chrome",
+      "note": "Tonal native active step container holding observed location information.",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.17,
+        "y": 0.293,
+        "w": 0.8014,
+        "h": 0.1166
+      },
+      "px": {
+        "x": 143,
+        "y": 548,
+        "w": 674,
+        "h": 218
+      },
+      "aspect": 3.0917,
+      "palette": [
+        {
+          "hex": "#e8ece8",
+          "coverage": 0.9436
+        },
+        {
+          "hex": "#495151",
+          "coverage": 0.0218
+        },
+        {
+          "hex": "#162626",
+          "coverage": 0.0171
+        },
+        {
+          "hex": "#8c918f",
+          "coverage": 0.0104
+        },
+        {
+          "hex": "#acb9ac",
+          "coverage": 0.007
+        }
+      ],
+      "detail": {
+        "energy": 24.6888
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 8,
+      "cropPath": "region-8.png"
+    },
+    {
+      "id": "active-title",
+      "kind": "text",
+      "note": "Đang di chuyển; indicates journey lifecycle, not inferred velocity.",
+      "grid": null,
+      "box": {
+        "x": 0.1974,
+        "y": 0.3048,
+        "w": 0.3567,
+        "h": 0.0241
+      },
+      "px": {
+        "x": 166,
+        "y": 570,
+        "w": 300,
+        "h": 45
+      },
+      "aspect": 6.6667,
+      "palette": [
+        {
+          "hex": "#e9efe7",
+          "coverage": 0.7009
+        },
+        {
+          "hex": "#132221",
+          "coverage": 0.1923
+        },
+        {
+          "hex": "#b4bfb5",
+          "coverage": 0.0441
+        },
+        {
+          "hex": "#3d4d43",
+          "coverage": 0.036
+        },
+        {
+          "hex": "#778480",
+          "coverage": 0.0267
+        }
+      ],
+      "detail": {
+        "energy": 65.3243
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 9,
+      "cropPath": "region-9.png"
+    },
+    {
+      "id": "freshness",
+      "kind": "text",
+      "note": "Vị trí cập nhật 2 phút trước; observed sample timestamp.",
+      "grid": null,
+      "box": {
+        "x": 0.2735,
+        "y": 0.3396,
+        "w": 0.6409,
+        "h": 0.0182
+      },
+      "px": {
+        "x": 230,
+        "y": 635,
+        "w": 539,
+        "h": 34
+      },
+      "aspect": 15.8529,
+      "palette": [
+        {
+          "hex": "#e8ede6",
+          "coverage": 0.8472
+        },
+        {
+          "hex": "#474f4f",
+          "coverage": 0.0757
+        },
+        {
+          "hex": "#7d8681",
+          "coverage": 0.039
+        },
+        {
+          "hex": "#afb7af",
+          "coverage": 0.0353
+        },
+        {
+          "hex": "#3d3d4d",
+          "coverage": 0.0028
+        }
+      ],
+      "detail": {
+        "energy": 54.2319
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 10,
+      "cropPath": "region-10.png"
+    },
+    {
+      "id": "distance",
+      "kind": "text",
+      "note": "Còn 3,2 km đường chim bay; no ETA.",
+      "grid": null,
+      "box": {
+        "x": 0.2747,
+        "y": 0.3717,
+        "w": 0.5696,
+        "h": 0.0182
+      },
+      "px": {
+        "x": 231,
+        "y": 695,
+        "w": 479,
+        "h": 34
+      },
+      "aspect": 14.0882,
+      "palette": [
+        {
+          "hex": "#e8ece5",
+          "coverage": 0.833
+        },
+        {
+          "hex": "#485050",
+          "coverage": 0.0812
+        },
+        {
+          "hex": "#8d9390",
+          "coverage": 0.055
+        },
+        {
+          "hex": "#b6bfb4",
+          "coverage": 0.0236
+        },
+        {
+          "hex": "#697969",
+          "coverage": 0.0073
+        }
+      ],
+      "detail": {
+        "energy": 61.8625
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 11,
+      "cropPath": "region-11.png"
+    },
+    {
+      "id": "arrival-title",
+      "kind": "text",
+      "note": "Xác nhận đến nơi; explicit manual next step.",
+      "grid": null,
+      "box": {
+        "x": 0.1867,
+        "y": 0.4396,
+        "w": 0.4126,
+        "h": 0.0219
+      },
+      "px": {
+        "x": 157,
+        "y": 822,
+        "w": 347,
+        "h": 41
+      },
+      "aspect": 8.4634,
+      "palette": [
+        {
+          "hex": "#f7f7f5",
+          "coverage": 0.7129
+        },
+        {
+          "hex": "#172727",
+          "coverage": 0.1741
+        },
+        {
+          "hex": "#465352",
+          "coverage": 0.0423
+        },
+        {
+          "hex": "#979c9a",
+          "coverage": 0.0416
+        },
+        {
+          "hex": "#c8cac8",
+          "coverage": 0.029
+        }
+      ],
+      "detail": {
+        "energy": 81.2896
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 12,
+      "cropPath": "region-12.png"
+    },
+    {
+      "id": "arrival-help",
+      "kind": "text",
+      "note": "Bạn chủ động xác nhận khi đã đến.",
+      "grid": null,
+      "box": {
+        "x": 0.1867,
+        "y": 0.4727,
+        "w": 0.6516,
+        "h": 0.0171
+      },
+      "px": {
+        "x": 157,
+        "y": 884,
+        "w": 548,
+        "h": 32
+      },
+      "aspect": 17.125,
+      "palette": [
+        {
+          "hex": "#f7f7f4",
+          "coverage": 0.7713
+        },
+        {
+          "hex": "#4a5151",
+          "coverage": 0.1158
+        },
+        {
+          "hex": "#7f8583",
+          "coverage": 0.0579
+        },
+        {
+          "hex": "#babdb7",
+          "coverage": 0.0529
+        },
+        {
+          "hex": "#404050",
+          "coverage": 0.002
+        }
+      ],
+      "detail": {
+        "energy": 77.4099
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 13,
+      "cropPath": "region-13.png"
+    },
+    {
+      "id": "recipient-summary",
+      "kind": "text",
+      "note": "Người theo dõi: Mẹ, Bố; owner only.",
+      "grid": null,
+      "box": {
+        "x": 0.1237,
+        "y": 0.5385,
+        "w": 0.39,
+        "h": 0.0166
+      },
+      "px": {
+        "x": 104,
+        "y": 1007,
+        "w": 328,
+        "h": 31
+      },
+      "aspect": 10.5806,
+      "palette": [
+        {
+          "hex": "#f6f6f4",
+          "coverage": 0.7392
+        },
+        {
+          "hex": "#172323",
+          "coverage": 0.1108
+        },
+        {
+          "hex": "#8e928f",
+          "coverage": 0.0617
+        },
+        {
+          "hex": "#4d5653",
+          "coverage": 0.0542
+        },
+        {
+          "hex": "#bfc3bc",
+          "coverage": 0.0342
+        }
+      ],
+      "detail": {
+        "energy": 102.4347
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 14,
+      "cropPath": "region-14.png"
+    },
+    {
+      "id": "recipient-action",
+      "kind": "control",
+      "note": "Native text action Quản lý người xem.",
+      "grid": null,
+      "box": {
+        "x": 0.6433,
+        "y": 0.5241,
+        "w": 0.3282,
+        "h": 0.0433
+      },
+      "px": {
+        "x": 541,
+        "y": 980,
+        "w": 276,
+        "h": 81
+      },
+      "aspect": 3.4074,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.8751
+        },
+        {
+          "hex": "#0c555b",
+          "coverage": 0.0697
+        },
+        {
+          "hex": "#aec9c8",
+          "coverage": 0.032
+        },
+        {
+          "hex": "#548787",
+          "coverage": 0.0187
+        },
+        {
+          "hex": "#083844",
+          "coverage": 0.0045
+        }
+      ],
+      "detail": {
+        "energy": 28.3268
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 15,
+      "cropPath": "region-15.png"
+    },
+    {
+      "id": "offline-notice",
+      "kind": "chrome",
+      "note": "Amber tonal offline notice container, native Wi-Fi-off vector icon.",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.038,
+        "y": 0.5979,
+        "w": 0.9263,
+        "h": 0.0711
+      },
+      "px": {
+        "x": 32,
+        "y": 1118,
+        "w": 779,
+        "h": 133
+      },
+      "aspect": 5.8571,
+      "palette": [
+        {
+          "hex": "#f7c88a",
+          "coverage": 0.8944
+        },
+        {
+          "hex": "#122322",
+          "coverage": 0.0448
+        },
+        {
+          "hex": "#f8ebde",
+          "coverage": 0.0273
+        },
+        {
+          "hex": "#363d2f",
+          "coverage": 0.0192
+        },
+        {
+          "hex": "#c3a376",
+          "coverage": 0.0142
+        }
+      ],
+      "detail": {
+        "energy": 34.3627
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 16,
+      "cropPath": "region-16.png"
+    },
+    {
+      "id": "offline-copy",
+      "kind": "text",
+      "note": "Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.",
+      "grid": null,
+      "box": {
+        "x": 0.1653,
+        "y": 0.6107,
+        "w": 0.7503,
+        "h": 0.0422
+      },
+      "px": {
+        "x": 139,
+        "y": 1142,
+        "w": 631,
+        "h": 79
+      },
+      "aspect": 7.9873,
+      "palette": [
+        {
+          "hex": "#f7c88b",
+          "coverage": 0.8252
+        },
+        {
+          "hex": "#132222",
+          "coverage": 0.0821
+        },
+        {
+          "hex": "#393d2f",
+          "coverage": 0.0427
+        },
+        {
+          "hex": "#bb9d71",
+          "coverage": 0.0282
+        },
+        {
+          "hex": "#615644",
+          "coverage": 0.0219
+        }
+      ],
+      "detail": {
+        "energy": 69.3166
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 17,
+      "cropPath": "region-17.png"
+    },
+    {
+      "id": "arrive-action",
+      "kind": "control",
+      "note": "Native filled Đã đến nơi action; at least 48dp touch target.",
+      "grid": null,
+      "box": {
+        "x": 0.0309,
+        "y": 0.7021,
+        "w": 0.9405,
+        "h": 0.0604
+      },
+      "px": {
+        "x": 26,
+        "y": 1313,
+        "w": 791,
+        "h": 113
+      },
+      "aspect": 7,
+      "palette": [
+        {
+          "hex": "#08585c",
+          "coverage": 0.901
+        },
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.0682
+        },
+        {
+          "hex": "#93b9b9",
+          "coverage": 0.0294
+        },
+        {
+          "hex": "#398181",
+          "coverage": 0.0013
+        }
+      ],
+      "detail": {
+        "energy": 19.9324
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 18,
+      "cropPath": "region-18.png"
+    },
+    {
+      "id": "end-action",
+      "kind": "control",
+      "note": "Native outlined Kết thúc hành trình action; wraps under font scaling.",
+      "grid": null,
+      "box": {
+        "x": 0.0297,
+        "y": 0.777,
+        "w": 0.9417,
+        "h": 0.0561
+      },
+      "px": {
+        "x": 25,
+        "y": 1453,
+        "w": 792,
+        "h": 105
+      },
+      "aspect": 7.5429,
+      "palette": [
+        {
+          "hex": "#f8f8f7",
+          "coverage": 0.8859
+        },
+        {
+          "hex": "#111c1c",
+          "coverage": 0.0523
+        },
+        {
+          "hex": "#434a49",
+          "coverage": 0.0407
+        },
+        {
+          "hex": "#838b86",
+          "coverage": 0.0137
+        },
+        {
+          "hex": "#c7c9c7",
+          "coverage": 0.0074
+        }
+      ],
+      "detail": {
+        "energy": 35.4153
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": false,
+        "rules": false
+      },
+      "number": 19,
+      "cropPath": "region-19.png"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "error",
+      "code": "measurement",
+      "regionId": "steps",
+      "message": "region steps is kind \"chrome\" but its note describes painted material (\"Native lifecycle step icons and vertical connector, semantic code drawing.\"). Anything drawn, photographed, or textured ships as a raster plate: set kind to plate (illustration, diagram, figure), image (photograph), or texture (ground). If the note is wrong and code really draws it (a table, a rule, a chrome bar), reword the note or set \"codeDrawn\": true on the region."
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region appbar: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region active-step: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "measurement-warning",
+      "regionId": null,
+      "message": "region offline-notice: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+    },
+    {
+      "severity": "warning",
+      "code": "uncovered-ink",
+      "regionId": null,
+      "message": "14 grid cells have detail outside named regions. This is a coverage heuristic, not proof of missing components."
+    }
+  ],
+  "overlaps": [
+    {
+      "a": "appbar",
+      "b": "appbar-title",
+      "pixels": 11679.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "active-step",
+      "b": "active-title",
+      "pixels": 13500.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "active-step",
+      "b": "freshness",
+      "pixels": 18326.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "active-step",
+      "b": "distance",
+      "pixels": 16286.0,
+      "relationship": "container extent"
+    },
+    {
+      "a": "offline-notice",
+      "b": "offline-copy",
+      "pixels": 49849.0,
+      "relationship": "container extent"
+    }
+  ],
+  "reviewGroups": {},
+  "uncoveredInkCells": [
+    "C1",
+    "D1",
+    "E1",
+    "F1",
+    "B2",
+    "C2",
+    "D2",
+    "E2",
+    "F2",
+    "G4",
+    "D8",
+    "E8",
+    "F8",
+    "G8"
+  ],
+  "comparisonSheets": []
+}

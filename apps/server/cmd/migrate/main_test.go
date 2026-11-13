@@ -2,7 +2,7 @@
 // server. They are skipped unless TEST_DATABASE_URL points at an existing
 // database whose user may create databases — for the local Compose stack:
 //
-//	make docker-up
+//	make docker-up-dev
 //	make server-test-integration
 //
 // Each test migrates its own scratch database (PostGIS extensions are

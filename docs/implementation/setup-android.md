@@ -10,7 +10,7 @@ point at an SDK that has the compile SDK pinned in
 The API base URL is a BuildConfig field:
 
 - Debug builds default to `http://10.0.2.2:8080` — the emulator's alias for
-  the host machine, matching `make docker-up` on the same machine. The
+  the host machine, matching `make docker-up-dev` on the same machine. The
   debug network security config allows cleartext **only** for `10.0.2.2`,
   `localhost` and `127.0.0.1`.
 - Override with `-PANVE_API_URL=https://your-host` (or a `gradle.properties`
