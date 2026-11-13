@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,6 +22,25 @@ class BrandingScreenInstrumentedTest {
 
     @Test fun lightBranding() = captureBranding(false)
     @Test fun darkBrandingAtLargeFont() = captureBranding(true)
+
+    @Test fun googleAttemptShowsProgressThenIncompleteFeedback() {
+        var busy by mutableStateOf(true)
+        var error by mutableStateOf<String?>(null)
+        var attempts = 0
+        val message = "Chưa đăng nhập. Google chưa hoàn tất xác nhận tài khoản. Bạn có thể thử lại; nếu vẫn gặp lỗi, hãy liên hệ hỗ trợ AnVề."
+        compose.setContent {
+            LargeFontScale { AnVeTheme(darkTheme = true) {
+                SignInContent(SignInUiState.Ready(true, false), error, busy, null, {}, { attempts++ }, {}, {})
+            } }
+        }
+        compose.onNodeWithText("Đang hoàn tất đăng nhập…").assertIsDisplayed()
+        compose.onNodeWithText("Đăng nhập bằng Google").assertIsNotEnabled()
+        compose.runOnIdle { busy = false; error = message }
+        compose.onNodeWithText(message).assertIsDisplayed()
+        captureNativeFixture("signin-google-incomplete-dark-font130")
+        compose.onNodeWithText("Thử lại").performClick()
+        compose.runOnIdle { assertEquals(1, attempts) }
+    }
 
     private fun captureBranding(dark: Boolean) {
         var showSignIn by mutableStateOf(false)

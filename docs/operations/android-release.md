@@ -119,6 +119,19 @@ certificate, separately from any APK sideloaded with the upload/fixture key.
 See [Android signing](https://developer.android.com/studio/publish/app-signing)
 and [Google client authentication](https://developers.google.com/android/guides/client-auth).
 
+For a Play-installed build, copy **SHA-1** from Play Console → App integrity →
+App signing → **App signing key certificate**. In the same Google Cloud project
+as the web OAuth client, create an **Android** OAuth client for `com.anve.app`
+and that SHA-1. Keep the web client ID in `ANDROID_GOOGLE_WEB_CLIENT_ID`;
+the Android client's ID does not replace it. The upload certificate's SHA-1
+alone does not identify an app installed through Play.
+
+If the account chooser closes without a `POST /api/v1/auth/google` request,
+check the client/provider step before diagnosing server token verification.
+Credential Manager can report authorization/configuration failures as
+`GetCredentialCancellationException`; it does not prove the user pressed Back.
+The app displays an incomplete-sign-in message and waits for an explicit retry.
+
 Set the following environment variables/secrets in GitHub. The right column
 is the input name accepted by local `make android-distribution`.
 

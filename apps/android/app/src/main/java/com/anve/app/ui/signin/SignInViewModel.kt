@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.auth.AuthRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,13 +71,28 @@ class SignInViewModel internal constructor(
 
     /** The screen has already obtained the Google ID token. */
     fun signInWithGoogleToken(idToken: String) {
+        signInWithGoogle({ Result.success(idToken) }, { "Đăng nhập Google chưa hoàn tất. Vui lòng thử lại." })
+    }
+
+    /** Own the whole attempt so leaving the composition for Google's UI does not lose its result. */
+    fun signInWithGoogle(fetchIdToken: suspend () -> Result<String>, credentialError: (Throwable) -> String) {
         if (_busy.value) return
+        _busy.value = true
+        _error.value = null
         scope.launch {
-            _busy.value = true
-            _error.value = null
             try {
+                val credential = fetchIdToken()
+                val failure = credential.exceptionOrNull()
+                if (failure is CancellationException) throw failure
+                if (failure != null) {
+                    _error.value = credentialError(failure)
+                    return@launch
+                }
+                val idToken = credential.getOrThrow()
                 val user = repository.signInWithGoogleToken(idToken)
                 _state.update { SignInUiState.SignedIn(user.displayName) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _error.value = friendly(e)
             } finally {

@@ -1,11 +1,13 @@
 package com.anve.app.ui.signin
 
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.DeviceRegistrationDto
 import com.anve.app.data.auth.AuthRepository
 import com.anve.app.data.auth.DeviceRegistrationProvider
 import com.anve.app.data.auth.InMemorySessionStorage
 import com.anve.app.ui.awaitUntil
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +59,42 @@ class SignInViewModelTest {
     private fun api() = ApiFactory.api(
         ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())),
     )
+
+    @Test
+    fun `provider cancellation remains visible and never reaches the API`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"googleSignIn":true,"devLogin":false}"""))
+        val vm = SignInViewModel(repository, scope)
+        awaitUntil { vm.state.value is SignInUiState.Ready }
+        val pending = CompletableDeferred<Result<String>>()
+        var attempts = 0
+        vm.signInWithGoogle({ attempts++; pending.await() }, { "Google chưa hoàn tất xác nhận tài khoản." })
+        assertTrue(vm.busy.value)
+        vm.signInWithGoogle({ attempts++; Result.success("duplicate") }, { "unexpected" })
+        assertEquals(1, attempts)
+        pending.complete(Result.failure(GetCredentialCancellationException("provider stopped")))
+        awaitUntil { !vm.busy.value }
+        assertEquals("Google chưa hoàn tất xác nhận tài khoản.", vm.error.value)
+        assertTrue(vm.state.value is SignInUiState.Ready)
+        assertEquals(1, server.requestCount)
+        assertNull(storage.current())
+    }
+
+    @Test
+    fun `Google token exchange rejection is visible and permits another attempt`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"googleSignIn":true,"devLogin":false}"""))
+        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"code":"UNAUTHENTICATED","message":"rejected"}"""))
+        val vm = SignInViewModel(repository, scope)
+        awaitUntil { vm.state.value is SignInUiState.Ready }
+        vm.signInWithGoogleToken("test-only-id-token")
+        awaitUntil { vm.error.value != null && !vm.busy.value }
+        assertEquals("Đăng nhập không thành công. Vui lòng thử lại.", vm.error.value)
+        assertNull(storage.current())
+        server.takeRequest()
+        assertEquals("/api/v1/auth/google", server.takeRequest().path)
+        vm.signInWithGoogle({ Result.failure(IllegalStateException("provider failed")) }, { "Thử lại Google" })
+        awaitUntil { vm.error.value == "Thử lại Google" && !vm.busy.value }
+        assertEquals(2, server.requestCount)
+    }
 
     @Test
     fun `loads the server auth config`() = runBlocking {

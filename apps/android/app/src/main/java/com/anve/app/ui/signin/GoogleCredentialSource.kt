@@ -9,6 +9,7 @@ import com.anve.app.R
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+import kotlinx.coroutines.CancellationException
 
 /**
  * Thin wrapper around Credential Manager so ViewModels never touch the
@@ -32,7 +33,7 @@ class GoogleCredentialSource(private val activity: Activity) {
         if (!isConfigured) {
             return Result.failure(GoogleSignInUnavailableError)
         }
-        return runCatching {
+        return try {
             val option = GetSignInWithGoogleOption.Builder(serverClientId)
                 .build()
             val request = GetCredentialRequest.Builder()
@@ -45,7 +46,11 @@ class GoogleCredentialSource(private val activity: Activity) {
                 credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 "unexpected credential type: ${credential.type}"
             }
-            GoogleIdTokenCredential.createFrom(credential.data).idToken
+            Result.success(GoogleIdTokenCredential.createFrom(credential.data).idToken)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            Result.failure(failure)
         }
     }
 
