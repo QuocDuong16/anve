@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class HistoryScreenInstrumentedTest {
-    @get:Rule(order = 0) val fontScale = SystemFontScaleRule("darkLayoutAtLargeFont", 1.3f)
+    @get:Rule(order = 0) val fontScale: org.junit.rules.TestRule = SystemFontScaleRule("darkLayoutAtLargeFont", 1.3f)
     @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test

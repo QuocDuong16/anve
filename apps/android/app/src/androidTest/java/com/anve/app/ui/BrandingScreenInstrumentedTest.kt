@@ -17,7 +17,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class BrandingScreenInstrumentedTest {
-    @get:Rule(order = 0) val fontScale = SystemFontScaleRule("darkBrandingAtLargeFont", 1.3f)
+    @get:Rule(order = 0) val fontScale: org.junit.rules.TestRule = SystemFontScaleRule("darkBrandingAtLargeFont", 1.3f)
     @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test fun lightBranding() = captureBranding(false)

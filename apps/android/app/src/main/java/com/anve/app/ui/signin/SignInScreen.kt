@@ -72,6 +72,7 @@ fun SignInScreen(
     val notice by container.sessionNotices.notice.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val genericSignInError = stringResource(R.string.signin_generic_error)
 
     LaunchedEffect(state) {
         if (state is SignInUiState.SignedIn) onSignedIn()
@@ -98,7 +99,7 @@ fun SignInScreen(
                         // Cancelling the account sheet is a normal exit, not
                         // an error the user needs to hear about.
                         if (cause !is GetCredentialCancellationException) {
-                            viewModel.reportError(context.getString(R.string.signin_generic_error))
+                            viewModel.reportError(genericSignInError)
                         }
                     },
                 )
