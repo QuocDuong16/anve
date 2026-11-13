@@ -1,8 +1,6 @@
 package com.anve.app.ui.home
 
 import androidx.activity.compose.BackHandler
-import com.anve.app.ui.diagnostics.DiagnosticsScreen
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,23 +17,37 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,43 +57,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.Role
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
-import com.anve.app.ui.circle.CircleScreen
 import com.anve.app.R
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.DeviceSessionDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.sos.IncomingPush
 import com.anve.app.data.sos.pushDestination
-import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.avatar.AvatarEditorHost
 import com.anve.app.ui.avatar.AvatarImage
-import com.anve.app.ui.tracking.TrackingScreen
-import com.anve.app.ui.map.LiveMapScreen
+import com.anve.app.ui.circle.CircleScreen
+import com.anve.app.ui.diagnostics.DiagnosticsScreen
 import com.anve.app.ui.history.HistoryScreen
+import com.anve.app.ui.map.LiveMapScreen
 import com.anve.app.ui.places.PlacesScreen
 import com.anve.app.ui.sos.SosScreen
+import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.tracking.TrackingScreen
 
 /**
  * M1 home: the account, the privacy consent switch and the device list.
@@ -93,18 +93,24 @@ private enum class HomeTab(val labelRes: Int) {
     MAP(R.string.tab_map),
     HISTORY(R.string.tab_history),
     PLACES(R.string.tab_places),
-    SOS(R.string.tab_sos),
-    LOCATION(R.string.tab_location),
+}
+
+private enum class HomeSecondaryPage(val titleRes: Int) {
+    TRACKING(R.string.tracking_title),
     ACCOUNT(R.string.tab_account),
+    SOS(R.string.tab_sos),
 }
 
 /**
- * The signed-in surface: a bottom bar with the circle tab (the family
- * object) and the account tab. Later milestones add the map tab here.
+ * The signed-in surface keeps four primary destinations and routes secondary
+ * settings screens above the selected destination.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
+    var secondaryPage by remember { mutableStateOf<HomeSecondaryPage?>(null) }
+    var sosReturnPage by remember { mutableStateOf<HomeSecondaryPage?>(null) }
     var showDiagnostics by remember { mutableStateOf(false) }
     var showJourneys by remember { mutableStateOf(false) }
     var selectedJourney by remember { mutableStateOf<String?>(null) }
@@ -116,6 +122,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         if (invitation != null && invitation?.owner == session?.userId && session?.userId != null) {
             showDiagnostics = false
             showJourneys = false
+            secondaryPage = null
             tab = HomeTab.CIRCLE
         }
     }
@@ -124,6 +131,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         showJourneys = false
         selectedJourney = null
         selectedSos = null
+        secondaryPage = null
+        sosReturnPage = null
         selectedInvitation = null
         tab = HomeTab.CIRCLE
     }
@@ -136,15 +145,28 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             showJourneys = destination.kind in com.anve.app.data.sos.JOURNEY_PUSH_KINDS
             selectedJourney = if (showJourneys) destination.eventId else null
             selectedSos = if (destination.kind == "SOS") destination.eventId else null
+            secondaryPage = when {
+                destination.kind == "SOS" -> HomeSecondaryPage.SOS
+                showJourneys -> HomeSecondaryPage.TRACKING
+                else -> null
+            }
+            sosReturnPage = null
             selectedInvitation = if (destination.kind == "CIRCLE_INVITE") destination.eventId else null
-            tab = when (destination.kind) { "SOS" -> HomeTab.SOS; "CIRCLE_INVITE" -> HomeTab.CIRCLE; else -> HomeTab.PLACES }
+            tab = when (destination.kind) {
+                "SOS", "CIRCLE_INVITE" -> HomeTab.CIRCLE
+                else -> HomeTab.PLACES
+            }
         }
         onPushConsumed()
     }
     if (showJourneys) {
-        com.anve.app.ui.journey.JourneyScreen(container, onBack = { showJourneys = false },
-            onPlaces = { showJourneys = false; tab = HomeTab.PLACES },
-            onLocation = { showJourneys = false; tab = HomeTab.LOCATION }, journeyId = selectedJourney)
+        com.anve.app.ui.journey.JourneyScreen(
+            container,
+            onBack = { showJourneys = false },
+            onPlaces = { showJourneys = false; secondaryPage = null; tab = HomeTab.PLACES },
+            onLocation = { showJourneys = false; secondaryPage = HomeSecondaryPage.TRACKING },
+            journeyId = selectedJourney,
+        )
         return
     }
     if (showDiagnostics) {
@@ -152,13 +174,40 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         DiagnosticsScreen(container = container, onBack = { showDiagnostics = false })
         return
     }
+    val returnFromSecondaryPage = {
+        secondaryPage = if (secondaryPage == HomeSecondaryPage.SOS) sosReturnPage else null
+        sosReturnPage = null
+        selectedSos = null
+    }
+    BackHandler(enabled = secondaryPage != null, onBack = returnFromSecondaryPage)
     Scaffold(
+        topBar = {
+            secondaryPage?.let { page ->
+                TopAppBar(
+                    title = {
+                        if (page == HomeSecondaryPage.ACCOUNT) {
+                            Text(stringResource(page.titleRes))
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = returnFromSecondaryPage) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        }
+                    },
+                )
+            }
+        },
         bottomBar = {
             NavigationBar {
                 HomeTab.entries.forEach { entry ->
                     NavigationBarItem(
-                        selected = tab == entry,
-                        onClick = { tab = entry },
+                        selected = secondaryPage == null && tab == entry,
+                        onClick = {
+                            tab = entry
+                            secondaryPage = null
+                            sosReturnPage = null
+                            selectedSos = null
+                        },
                         icon = {
                             Icon(
                                 imageVector = when (entry) {
@@ -166,9 +215,6 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                     HomeTab.MAP -> Icons.Default.Map
                                     HomeTab.HISTORY -> Icons.Default.History
                                     HomeTab.PLACES -> Icons.Default.Place
-                                    HomeTab.SOS -> Icons.Default.Warning
-                                    HomeTab.LOCATION -> Icons.Default.LocationOn
-                                    HomeTab.ACCOUNT -> Icons.Default.Person
                                 },
                                 contentDescription = stringResource(entry.labelRes),
                             )
@@ -178,16 +224,68 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 }
             }
         },
+        floatingActionButton = {
+            if (secondaryPage != HomeSecondaryPage.SOS) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        sosReturnPage = secondaryPage
+                        selectedSos = null
+                        secondaryPage = HomeSecondaryPage.SOS
+                    },
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                    icon = { Icon(Icons.Default.Warning, contentDescription = null) },
+                    text = { Text(stringResource(R.string.tab_sos)) },
+                )
+            }
+        },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            when (tab) {
-                HomeTab.CIRCLE -> CircleScreen(container = container, invitationId = selectedInvitation, onInvitationConsumed = { selectedInvitation = null })
-                HomeTab.MAP -> LiveMapScreen(container = container)
-                HomeTab.HISTORY -> HistoryScreen(container = container)
-                HomeTab.PLACES -> PlacesScreen(container = container)
-                HomeTab.SOS -> SosScreen(container = container, eventId = selectedSos)
-                HomeTab.LOCATION -> TrackingScreen(container = container, onOpenDiagnostics = { showDiagnostics = true }, onOpenJourney = { selectedJourney = null; showJourneys = true })
-                HomeTab.ACCOUNT -> AccountContent(container = container)
+            when (secondaryPage) {
+                HomeSecondaryPage.TRACKING -> TrackingScreen(
+                    container = container,
+                    onOpenDiagnostics = { showDiagnostics = true },
+                    onOpenJourney = { selectedJourney = null; showJourneys = true },
+                )
+                HomeSecondaryPage.ACCOUNT -> AccountContent(container = container)
+                HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
+                null -> when (tab) {
+                    HomeTab.CIRCLE -> Column(Modifier.fillMaxSize()) {
+                        SharingSettingsCard(
+                            onOpenTracking = { secondaryPage = HomeSecondaryPage.TRACKING },
+                            onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
+                        )
+                        Box(Modifier.fillMaxWidth().weight(1f)) {
+                            CircleScreen(
+                                container = container,
+                                invitationId = selectedInvitation,
+                                onInvitationConsumed = { selectedInvitation = null },
+                            )
+                        }
+                    }
+                    HomeTab.MAP -> LiveMapScreen(container = container)
+                    HomeTab.HISTORY -> HistoryScreen(container = container)
+                    HomeTab.PLACES -> PlacesScreen(container = container)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SharingSettingsCard(onOpenTracking: () -> Unit, onOpenAccount: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.home_quick_settings_title), style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onOpenTracking, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null)
+                    Text(stringResource(R.string.tab_location), modifier = Modifier.padding(start = 8.dp))
+                }
+                OutlinedButton(onClick = onOpenAccount, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Person, contentDescription = null)
+                    Text(stringResource(R.string.tab_account), modifier = Modifier.padding(start = 8.dp))
+                }
             }
         }
     }

@@ -173,6 +173,15 @@ emulator URL are never substitutes for explicit production inputs.
    privacy/Data Safety and permission-declaration evidence before any separate
    store-publication decision. This workflow never uploads to a store.
 
+### Follow-up from the first internal test
+
+Play Console warned that release version code 1 contains native code but has
+no native debug symbols. Before building the next distribution version,
+configure the Android release build to produce native debug symbols, include
+them in the AAB or upload the matching symbols file to Play Console, and verify
+that Play Console accepts them for that version. This improves native crash
+and ANR stack traces; the warning did not block the first internal-test release.
+
 For an authorized local build, inject the right-column inputs through a secret
 manager or private environment, then run `make android-distribution` from a
 clean committed checkout. No passwords belong in shell arguments, tracked

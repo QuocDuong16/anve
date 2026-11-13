@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -45,8 +47,8 @@ import com.anve.app.BuildConfig
 import com.anve.app.R
 import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
+import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.theme.AnVeTheme
-
 import kotlinx.coroutines.launch
 
 
@@ -96,9 +98,7 @@ fun SignInScreen(
                         // Cancelling the account sheet is a normal exit, not
                         // an error the user needs to hear about.
                         if (cause !is GetCredentialCancellationException) {
-                            viewModel.reportError(
-                                "Không lấy được tài khoản Google: ${cause.message ?: "lỗi không rõ"}",
-                            )
+                            viewModel.reportError(context.getString(R.string.signin_generic_error))
                         }
                     },
                 )
@@ -139,6 +139,7 @@ fun SignInContent(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                AnVeBrandMark(Modifier.size(80.dp))
                 Text(
                     text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.displaySmall,
@@ -163,13 +164,19 @@ fun SignInContent(
                 }
 
                 if (error != null) {
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ),
                         modifier = Modifier.fillMaxWidth(),
-                    )
+                    ) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
                 }
 
@@ -184,7 +191,7 @@ fun SignInContent(
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(stringResource(R.string.signin_google))
+                        Text(stringResource(if (error == null) R.string.signin_google else R.string.signin_retry))
                     }
                     Text(
                         text = stringResource(R.string.signin_google_caption),

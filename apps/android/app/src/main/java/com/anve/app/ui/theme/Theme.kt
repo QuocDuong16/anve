@@ -10,13 +10,13 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-private val LightColors = lightColorScheme(
+internal val LightColors = lightColorScheme(
     primary = Teal700,
     onPrimary = Sand50,
     primaryContainer = Teal100,
     onPrimaryContainer = Teal900,
     secondary = Amber600,
-    onSecondary = Sand50,
+    onSecondary = Ink900,
     secondaryContainer = Amber300,
     onSecondaryContainer = Ink900,
     background = Sand50,
@@ -27,14 +27,14 @@ private val LightColors = lightColorScheme(
     onSurfaceVariant = Ink600,
 )
 
-private val DarkColors = darkColorScheme(
-    primary = Teal400,
+internal val DarkColors = darkColorScheme(
+    primary = Teal300,
     onPrimary = Teal900,
     primaryContainer = Teal700,
     onPrimaryContainer = Teal100,
     secondary = Amber300,
     onSecondary = Ink900,
-    secondaryContainer = Amber600,
+    secondaryContainer = Amber800,
     onSecondaryContainer = Sand50,
     background = Ink900,
     onBackground = Sand50,
