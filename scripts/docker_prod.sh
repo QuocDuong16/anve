@@ -68,7 +68,7 @@ if values["LISTEN_ADDR"] != "0.0.0.0:8080":
 if values["AUTH_DEV_LOGIN_ENABLED"].lower() != "false":
     print("AUTH_DEV_LOGIN_ENABLED must be false in production.", file=sys.stderr)
     raise SystemExit(1)
-for name, default in (("HTTP_PORT", "24080"), ("HTTPS_PORT", "24443")):
+for name, default in (("HTTP_PORT", "24080"),):
     port = values.get(name, default)
     if not re.fullmatch(r"24[0-9]{3}", port):
         print(f"{name} must use the 24xxx port range.", file=sys.stderr)
@@ -115,7 +115,7 @@ unset_vars=(
 	API_PORT API_DOMAIN AUTH_DEV_LOGIN_ALLOW_NETWORK AUTH_DEV_LOGIN_ALLOWED_CIDRS
 	AUTH_DEV_LOGIN_ENABLED AUTH_GOOGLE_CLIENT_ID COMPOSE_PROJECT_NAME DATABASE_URL
 	ENVIRONMENT FCM_CREDENTIALS_FILE FCM_PROJECT_ID LISTEN_ADDR LOCATION_RETENTION_DAYS
-	HTTP_PORT HTTPS_PORT POSTGRES_DB POSTGRES_PASSWORD POSTGRES_PORT POSTGRES_USER TZ
+	HTTP_PORT POSTGRES_DB POSTGRES_PASSWORD POSTGRES_PORT POSTGRES_USER TZ
 )
 unset_args=()
 for name in "${unset_vars[@]}"; do

@@ -99,8 +99,6 @@ services:
       API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env.prod}
     ports:
       - "${HTTP_PORT:-24080}:80"
-      - "${HTTPS_PORT:-24443}:443"
-      - "${HTTPS_PORT:-24443}:443/udp"
     volumes:
       - ./infra/docker/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

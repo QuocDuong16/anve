@@ -18,20 +18,20 @@ còn nháp không được mô tả là đã công khai hoặc đã được Goo
 
 ## 1. Máy chủ và API HTTPS
 
-Owner chọn nơi đặt máy chủ, vùng dữ liệu và cách vận hành/backup. Cần một
-dịch vụ chạy Go API, PostgreSQL hỗ trợ PostGIS và HTTPS với chứng thư hợp lệ.
-Có thể dùng chung hostname `anve.niand.id.vn`; Caddy chuyển tiếp `/api/*`,
-`/healthz` và `/readyz` vào Go API. `API_DOMAIN` chỉ nhận hostname, không có
-scheme hoặc path. Android đặt `ANVE_API_URL=https://anve.niand.id.vn`; các
-endpoint đã có tiền tố `/api/v1`. Không có bản ghi DNS hoặc hạ tầng production
-nào được tạo bởi hướng dẫn này.
+Owner chọn nơi đặt máy chủ, vùng dữ liệu và cách vận hành/backup. Cần Go API,
+PostgreSQL có PostGIS, cùng Cloudflare Tunnel làm public ingress HTTPS.
+Hostname công khai `anve.niand.id.vn` có thể dùng chung; Caddy chỉ nhận HTTP từ
+tunnel rồi chuyển `/api/*`, `/healthz` và `/readyz` vào Go API. `API_DOMAIN`
+chỉ nhận hostname, không có scheme hoặc path. Android đặt
+`ANVE_API_URL=https://anve.niand.id.vn`; endpoint đã có tiền tố `/api/v1`.
+Không có bản ghi DNS hoặc hạ tầng production nào được tạo bởi hướng dẫn này.
 
 Các giá trị production được giữ trong `.env.prod` trên máy chủ:
 
 | Input | Thiết lập cần có |
 | --- | --- |
-| `API_DOMAIN` | Hostname `anve.niand.id.vn` trỏ DNS tới server; Caddy cấp/gia hạn TLS và route `/api/*` |
-| `HTTP_PORT`, `HTTPS_PORT` | Cổng host trong dải 24xxx; mặc định `24080`, `24443` |
+| `API_DOMAIN` | Hostname public `anve.niand.id.vn`; Caddy dùng Host để route `/api/*` qua HTTP nội bộ |
+| `HTTP_PORT` | Cổng host trong dải 24xxx cho Cloudflare Tunnel origin; mặc định `24080` |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Tài khoản database riêng; mật khẩu 64 ký tự hex được sinh ngẫu nhiên. Compose tạo `DATABASE_URL` nội bộ. |
 | `ENVIRONMENT`, `LISTEN_ADDR`, `AUTH_DEV_LOGIN_ENABLED` | `production`, `0.0.0.0:8080`, `false`; Make guard từ chối giá trị khác |
 | `AUTH_GOOGLE_CLIENT_ID` | Web OAuth client ID ở bước 2, trùng audience phía Android |
@@ -43,31 +43,28 @@ listener loopback riêng; xem [runbook](observability.md). Khóa và database UR
 không nằm trong Git hay log. Lưu image/commit triển khai, vùng dữ liệu,
 quyền truy cập, thời hạn log/backup và thử quy trình phục hồi/xóa sau restore.
 
-Production đã có Compose stack riêng. Sau khi có máy Linux cài Docker Engine và
-Compose plugin, trỏ DNS `A` (và `AAAA` nếu dùng IPv6) của hostname API tới máy
-chủ; mở inbound TCP `24080/24443` và UDP `24443` nếu muốn HTTP/3. Nếu truy cập
-Internet qua router, chuyển tiếp cổng công khai TCP `80 → 24080`, TCP `443 →
-24443` (và UDP `443 → 24443` nếu bật HTTP/3). Caddy cần các cổng công khai
-80/443 để tự xin/gia hạn chứng thư; nếu nhà mạng hoặc proxy không chuyển tiếp
-được, cần cấu hình DNS challenge hoặc reverse proxy phù hợp. Với kết nối trực
-tiếp tới cổng host thay vì chuyển tiếp chuẩn, URL API phải ghi rõ `:24443`.
-Sao chép cấu hình mẫu,
-điền OAuth Web client ID và mật khẩu database, rồi khóa quyền đọc file:
+Production đã có Compose stack riêng. Trên Cloudflare Tunnel, cấu hình public
+hostname `anve.niand.id.vn` tới origin `http://localhost:24080` nếu connector
+chạy trên cùng máy; nếu connector ở nơi khác, dùng địa chỉ host mà connector
+truy cập được. Không cần mở inbound 80/443 hoặc port-forward từ router. HTTPS
+kết thúc tại Cloudflare; Caddy chỉ nghe HTTP và không tự xin chứng thư hay
+redirect. Sao chép cấu hình mẫu, điền OAuth Web client ID và mật khẩu database,
+rồi khóa quyền đọc file:
 
 ```bash
 cp .env.prod.example .env.prod
 openssl rand -hex 32  # đặt kết quả vào POSTGRES_PASSWORD trong .env.prod
 chmod 600 .env.prod
 make docker-config     # kiểm tra cấu hình, không in secret
-make docker-up         # build, migrate, bật API và Caddy/HTTPS
+make docker-up         # build, migrate, bật API và Caddy HTTP origin
 ```
 
 `make docker-up` là lệnh production; `make docker-up-dev` giữ stack phát triển
-localhost. Production chỉ publish Caddy trên `24080/24443`; API và Postgres
-không có cổng host, Postgres nằm trên Docker network nội bộ. Caddy tự xin/gia
-hạn chứng thư khi DNS, firewall và chuyển tiếp cổng công khai đúng.
+localhost. Production chỉ publish Caddy HTTP trên host port `24080`; API và
+Postgres không có cổng host, Postgres nằm trên Docker network nội bộ. Cloudflare
+Tunnel giữ URL public HTTPS trong khi kết nối origin tới Caddy bằng HTTP.
 `LISTEN_ADDR=0.0.0.0:8080` là cổng bên trong container API, nơi Caddy gọi tới;
-`24080/24443` là cổng host của Caddy. Không cần đổi API listener sang `24080`.
+`24080` là cổng host của Caddy. Không cần đổi API listener sang `24080`.
 `make docker-down` dừng dịch vụ nhưng giữ volume dữ liệu. Không dùng
 `make docker-clean-dev` với mục đích xóa dữ liệu
 production.
