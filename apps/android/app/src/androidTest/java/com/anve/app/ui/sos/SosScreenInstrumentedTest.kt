@@ -2,12 +2,11 @@ package com.anve.app.ui.sos
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.isScrollable
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -91,7 +90,7 @@ class SosScreenInstrumentedTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val event = SosEventDto("event-iso", "owner", "not-a-timestamp", "not-a-timestamp", "ACTIVE")
         compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event)), vmFor(FakeSource()), false, null, {}) }
-        compose.onNode(isScrollable()).performScrollToNode(
+        compose.onNode(hasScrollAction()).performScrollToNode(
             hasText(context.getString(R.string.journey_time_unknown), substring = true),
         )
         compose.onNodeWithText(context.getString(R.string.journey_time_unknown), substring = true).assertIsDisplayed()
@@ -112,7 +111,7 @@ class SosScreenInstrumentedTest {
         val event = SosEventDto("event-1", "opener", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ACTIVE")
         compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event), selected = event), vm, false, null, {}) }
         compose.runOnIdle { vm.activate("viewer") }
-        compose.onNode(isScrollable()).performScrollToNode(hasText(context.getString(R.string.sos_acknowledge)))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_acknowledge)))
         compose.onNodeWithText(context.getString(R.string.sos_acknowledge)).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.getString(R.string.sos_action_acknowledge_title)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.sos_confirm)).assertIsDisplayed().performClick()
@@ -132,7 +131,7 @@ class SosScreenInstrumentedTest {
         val event = SosEventDto("event-1", "owner", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ACTIVE")
         compose.setContent { SosContent(SosState(owner = "owner", selected = event), vm, false, null, {}) }
         compose.runOnIdle { vm.activate("owner") }
-        compose.onNode(isScrollable()).performScrollToNode(hasText(context.getString(R.string.sos_cancel)))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_cancel)))
         compose.onNodeWithText(context.getString(R.string.sos_cancel)).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.getString(R.string.sos_action_cancel_title)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.sos_confirm)).assertIsDisplayed().performClick()
@@ -150,7 +149,9 @@ class SosScreenInstrumentedTest {
             object : SosSyncScheduler { override fun schedule(owner: String) = Unit })
     }
 
-    private class FakeSource : SosDataSource {
+    // open so the tests' anonymous overrides (retry counting, injected
+    // failures) can subclass it; Kotlin classes are final by default.
+    private open class FakeSource : SosDataSource {
         override suspend fun members(owner: String): List<MemberDto> = emptyList()
         override suspend fun events(owner: String): List<SosEventDto> = emptyList()
         override suspend fun event(owner: String, id: String): SosEventDto = error("unused")
