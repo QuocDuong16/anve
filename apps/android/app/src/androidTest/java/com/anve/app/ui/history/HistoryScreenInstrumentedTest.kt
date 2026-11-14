@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -102,13 +104,16 @@ class HistoryScreenInstrumentedTest {
         val oneDayChip = context.getString(R.string.history_retention_chip_days, 1)
         // Shortening the horizon deletes data, so the tap opens the confirm
         // dialog and stores nothing until the user confirms.
-        compose.onNodeWithText(oneDayChip).performScrollTo().performClick()
+        // Chip finders pair the label with the click action: the retention
+        // summary line renders the same "N ngày" sentence, so a text-only
+        // finder would match two nodes.
+        compose.onNode(hasText(oneDayChip) and hasClickAction()).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.history_retention_confirm_title)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.action_cancel)).performClick()
         compose.waitForIdle()
         assertTrue("Cancel must not store a retention change", fake.retentionCalls.isEmpty())
         // The same decrease, confirmed: stored exactly once with the chosen value.
-        compose.onNodeWithText(oneDayChip).performScrollTo().performClick()
+        compose.onNode(hasText(oneDayChip) and hasClickAction()).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.history_retention_confirm)).performClick()
         compose.waitForIdle()
         assertEquals(listOf(1), fake.retentionCalls)
@@ -120,7 +125,8 @@ class HistoryScreenInstrumentedTest {
         }
         // Raising the horizon deletes nothing, so it commits in one tap and
         // never shows the dialog.
-        compose.onNodeWithText(context.getString(R.string.history_retention_chip_days, 30)).performScrollTo().performClick()
+        compose.onNode(hasText(context.getString(R.string.history_retention_chip_days, 30)) and hasClickAction())
+            .performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(listOf(1, 30), fake.retentionCalls)
         compose.onNodeWithText(context.getString(R.string.history_retention_confirm_title)).assertDoesNotExist()

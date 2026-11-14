@@ -199,7 +199,9 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             // only pre-fills the dialer — AnVề still never places the call.
             val dialer = LocalContext.current
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("113", "114", "115").forEach { number ->
+                // Numbers as Int so the %1$d placeholder in sos_call_number
+                // formats without an IllegalFormatConversionException.
+                listOf(113, 114, 115).forEach { number ->
                     TextButton(
                         onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
                         modifier = Modifier.heightIn(min = 48.dp),

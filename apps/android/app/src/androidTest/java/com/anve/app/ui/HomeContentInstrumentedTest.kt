@@ -1,6 +1,9 @@
 package com.anve.app.ui
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -124,6 +127,10 @@ class HomeContentInstrumentedTest {
      * only. The asserted state lands in semantics, not just in switch color.
      */
     @Test fun consentRowIsTheOnlyToggleableAndAnnouncesTheRequestedState() {
+        // One composition: the requested value is state the content reads, so
+        // the announced state flips without a second setContent (setContent is
+        // one-shot per test activity).
+        var requested by mutableStateOf(false)
         var toggledTo: Boolean? = null
         compose.setContent {
             AnVeTheme {
@@ -132,7 +139,7 @@ class HomeContentInstrumentedTest {
                         loading = false,
                         user = sampleUser(),
                         devices = listOf(currentDevice(), otherDevice()),
-                        locationSharingRequested = false,
+                        locationSharingRequested = requested,
                     ),
                     onToggleSharing = { toggled -> toggledTo = toggled },
                     onRename = {},
@@ -149,27 +156,10 @@ class HomeContentInstrumentedTest {
         compose.onAllNodes(isToggleable())[0].performClick()
         compose.runOnIdle { assertEquals(true, toggledTo) }
 
-        // The announced state follows the requested value: re-render with the
-        // request flipped and the same row reads as on (precedent:
-        // HistoryScreenInstrumentedTest asserts selection lands in semantics).
-        compose.setContent {
-            AnVeTheme {
-                HomeContent(
-                    state = HomeUiState(
-                        loading = false,
-                        user = sampleUser(),
-                        devices = listOf(currentDevice(), otherDevice()),
-                        locationSharingRequested = true,
-                    ),
-                    onToggleSharing = { toggled -> toggledTo = toggled },
-                    onRename = {},
-                    onRevokeDevice = {},
-                    onSignOut = {},
-                    onDeleteAccount = {},
-                    onRetry = {},
-                )
-            }
-        }
+        // The announced state follows the requested value: raising the request
+        // flips the same row to on (precedent: HistoryScreenInstrumentedTest
+        // asserts selection lands in semantics).
+        compose.runOnIdle { requested = true }
         compose.onAllNodes(isToggleable()).assertCountEquals(1)
         compose.onAllNodes(isToggleable())[0].assertIsOn()
     }
@@ -186,18 +176,23 @@ class HomeContentInstrumentedTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         var messageDismisses = 0
         var avatarDismissed = false
+        // One composition: the phase flip below mutates state the content
+        // reads instead of calling setContent twice (one-shot per activity).
+        var state by mutableStateOf(
+            HomeUiState(
+                loading = false,
+                user = sampleUser(),
+                devices = listOf(currentDevice(), otherDevice()),
+                messageRes = R.string.home_rename_done,
+                // ConsentResult still reports resolved copy, so the consent
+                // message stays a passthrough String here.
+                consentMessage = "x",
+            ),
+        )
         compose.setContent {
             AnVeTheme {
                 HomeContent(
-                    state = HomeUiState(
-                        loading = false,
-                        user = sampleUser(),
-                        devices = listOf(currentDevice(), otherDevice()),
-                        messageRes = R.string.home_rename_done,
-                        // ConsentResult still reports resolved copy, so the
-                        // consent message stays a passthrough String here.
-                        consentMessage = "x",
-                    ),
+                    state = state,
                     onToggleSharing = {},
                     onRename = {},
                     onRevokeDevice = {},
@@ -224,24 +219,12 @@ class HomeContentInstrumentedTest {
 
         // Only the avatar notice pending: its card acknowledges through the
         // controller consumer, not the ViewModel batch.
-        compose.setContent {
-            AnVeTheme {
-                HomeContent(
-                    state = HomeUiState(
-                        loading = false,
-                        user = sampleUser(),
-                        devices = listOf(currentDevice(), otherDevice()),
-                    ),
-                    onToggleSharing = {},
-                    onRename = {},
-                    onRevokeDevice = {},
-                    onSignOut = {},
-                    onDeleteAccount = {},
-                    onRetry = {},
-                    avatarMessageRes = R.string.avatar_updated_notice,
-                    onDismissAvatarMessage = { avatarDismissed = true },
-                )
-            }
+        compose.runOnIdle {
+            state = HomeUiState(
+                loading = false,
+                user = sampleUser(),
+                devices = listOf(currentDevice(), otherDevice()),
+            )
         }
         compose.onNodeWithText(context.getString(R.string.avatar_updated_notice)).assertIsDisplayed()
         compose.onAllNodesWithText(dismissLabel).assertCountEquals(1)
