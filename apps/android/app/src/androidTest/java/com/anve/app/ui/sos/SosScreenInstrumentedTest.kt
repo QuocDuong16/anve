@@ -112,7 +112,11 @@ class SosScreenInstrumentedTest {
         val event = SosEventDto("event-1", "opener", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ACTIVE")
         compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event), selected = event), vm, false, null, {}) }
         compose.runOnIdle { vm.activate("viewer") }
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_acknowledge)))
+        // Scrolling to the button itself aligns its bottom edge with the
+        // viewport bottom, where the pinned send bar covers it: the click
+        // then lands on the bar and no dialog ever opens. Scrolling to the
+        // row after the detail card leaves the button clear of the bar.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_check_again)))
         compose.onNodeWithText(context.getString(R.string.sos_acknowledge)).assertIsDisplayed().performClick()
         // The dialog window's first frame can lag the click on a cold
         // emulator, so poll for laid-out bounds before asserting visibility.
@@ -138,7 +142,8 @@ class SosScreenInstrumentedTest {
         val event = SosEventDto("event-1", "owner", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ACTIVE")
         compose.setContent { SosContent(SosState(owner = "owner", selected = event), vm, false, null, {}) }
         compose.runOnIdle { vm.activate("owner") }
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_cancel)))
+        // Same pinned-bar clearance as the acknowledge test.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_check_again)))
         compose.onNodeWithText(context.getString(R.string.sos_cancel)).assertIsDisplayed().performClick()
         // Same dialog-window settle wait as the acknowledge test.
         compose.waitUntil(5_000) {
