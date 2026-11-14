@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -113,6 +114,12 @@ class SosScreenInstrumentedTest {
         compose.runOnIdle { vm.activate("viewer") }
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_acknowledge)))
         compose.onNodeWithText(context.getString(R.string.sos_acknowledge)).assertIsDisplayed().performClick()
+        // The dialog window's first frame can lag the click on a cold
+        // emulator, so poll for laid-out bounds before asserting visibility.
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText(context.getString(R.string.sos_action_acknowledge_title))
+                .fetchSemanticsNodes().any { it.boundsInRoot.height > 0f && it.boundsInRoot.width > 0f }
+        }
         compose.onNodeWithText(context.getString(R.string.sos_action_acknowledge_title)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.sos_confirm)).assertIsDisplayed().performClick()
         compose.waitUntil(5_000) { acknowledged > 0 }
@@ -133,6 +140,11 @@ class SosScreenInstrumentedTest {
         compose.runOnIdle { vm.activate("owner") }
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_cancel)))
         compose.onNodeWithText(context.getString(R.string.sos_cancel)).assertIsDisplayed().performClick()
+        // Same dialog-window settle wait as the acknowledge test.
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText(context.getString(R.string.sos_action_cancel_title))
+                .fetchSemanticsNodes().any { it.boundsInRoot.height > 0f && it.boundsInRoot.width > 0f }
+        }
         compose.onNodeWithText(context.getString(R.string.sos_action_cancel_title)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.sos_confirm)).assertIsDisplayed().performClick()
         compose.waitUntil(5_000) { cancelled > 0 }
