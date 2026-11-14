@@ -2,6 +2,7 @@ package com.anve.app.ui.journey
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.CreateJourneyDto
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.JourneyDestinationDto
@@ -35,7 +36,7 @@ data class JourneyUiState(
     val consentEnabled: Boolean = false,
     val loading: Boolean = true,
     val busy: Boolean = false,
-    val error: String? = null,
+    val errorRes: Int? = null,
 )
 
 /** Only visible, current-session generations may publish private journey state. */
@@ -81,7 +82,7 @@ class JourneyViewModel(
     }
 
     fun reload() { viewModelScope.launch { refresh(explicit = true) } }
-    fun select(id: String?) { _state.update { it.copy(selectedId = id, error = null) } }
+    fun select(id: String?) { _state.update { it.copy(selectedId = id, errorRes = null) } }
 
     private suspend fun refresh(explicit: Boolean = false) {
         val owner = _state.value.owner ?: return
@@ -111,7 +112,7 @@ class JourneyViewModel(
                     pending = remaining,
                     selectedId = selected ?: journeys.firstOrNull { j -> j.ownerId == owner && j.state == "ACTIVE" }?.id,
                     loading = false,
-                    error = null,
+                    errorRes = null,
                 )
             }
             val destinations = places.places(owner)
@@ -125,7 +126,7 @@ class JourneyViewModel(
             if (current()) _state.update {
                 val denied = error is ApiException && error.httpStatus in setOf(401, 403, 404)
                 it.copy(journeys = if (denied) emptyList() else it.journeys, selectedId = if (denied) null else it.selectedId,
-                    loading = false, error = "Chưa đọc được trạng thái mới. Kiểm tra mạng rồi thử lại; dữ liệu đang hiển thị có thể cũ.")
+                    loading = false, errorRes = R.string.journey_reload_failed)
             }
         }
     }
@@ -143,7 +144,7 @@ class JourneyViewModel(
         val generation = epoch
         val revision = tracking.journeyAdmissionRevision()
         refreshSequence++
-        _state.update { it.copy(busy = true, error = null) }
+        _state.update { it.copy(busy = true, errorRes = null) }
         viewModelScope.launch {
             try {
                 val journey = repository.create(owner, CreateJourneyDto(UUID.randomUUID().toString(), Instant.now().toString(), minutes,
@@ -155,7 +156,7 @@ class JourneyViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
-                if (visible && generation == epoch) _state.update { it.copy(error = "Chưa xác nhận bắt đầu. Đọc lại trạng thái hoặc hủy yêu cầu đang chờ; không tạo lại hành trình mới.") }
+                if (visible && generation == epoch) _state.update { it.copy(errorRes = R.string.journey_start_unconfirmed) }
             } finally {
                 if (visible && generation == epoch) {
                     _state.update { it.copy(busy = false) }
@@ -171,14 +172,14 @@ class JourneyViewModel(
         tracking.stopJourneyPriority(owner)
         refreshSequence++
         val generation = epoch
-        _state.update { it.copy(busy = true, error = null) }
+        _state.update { it.copy(busy = true, errorRes = null) }
         viewModelScope.launch {
             try {
                 repository.request(owner, id, action, recipient)
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
-                if (visible && generation == epoch) _state.update { it.copy(error = "Máy chủ chưa xác nhận thao tác. Ưu tiên hành trình đã dừng trên thiết bị; chia sẻ thông thường được quản lý riêng.") }
+                if (visible && generation == epoch) _state.update { it.copy(errorRes = R.string.journey_action_unconfirmed) }
             } finally {
                 if (visible && generation == epoch) {
                     _state.update { it.copy(busy = false) }
@@ -198,10 +199,10 @@ class JourneyViewModel(
                 val journey = repository.get(owner, id)
                 if (visible && generation == epoch && journey.ownerId == owner && journey.state == "ACTIVE") {
                     val enabled = tracking.enableJourneyPriority(owner, id, Instant.parse(journey.expiresAt).toEpochMilli(), revision)
-                    if (!enabled) _state.update { it.copy(error = "Bật thu thập vị trí ở màn Vị trí trước khi tiếp tục ưu tiên hành trình.") }
+                    if (!enabled) _state.update { it.copy(errorRes = R.string.journey_priority_capture_off) }
                 }
             } catch (error: CancellationException) { throw error } catch (_: Exception) {
-                if (visible && generation == epoch) _state.update { it.copy(error = "Chưa xác nhận hành trình còn hoạt động. Thử đọc lại trạng thái.") }
+                if (visible && generation == epoch) _state.update { it.copy(errorRes = R.string.journey_priority_unconfirmed) }
             }
         }
     }

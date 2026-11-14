@@ -3,6 +3,7 @@ package com.anve.app.ui.tracking
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.tracking.TrackingControl
 import com.anve.app.tracking.TrackingStatus
 import kotlinx.coroutines.CancellationException
@@ -16,7 +17,14 @@ import kotlinx.coroutines.launch
 data class TrackingUiState(
     val status: TrackingStatus = TrackingStatus(),
     val busy: Boolean = false,
-    val message: String? = null,
+    /** Outcome copy this ViewModel owns; the screen resolves it from resources. */
+    val messageRes: Int? = null,
+    /**
+     * Consent outcome text handed over by the tracking layer (`ConsentResult`).
+     * That contract still reports resolved copy, so it passes through verbatim
+     * until `ConsentResult` itself becomes resource-backed.
+     */
+    val consentMessage: String? = null,
 )
 
 class TrackingViewModel internal constructor(
@@ -52,27 +60,23 @@ class TrackingViewModel internal constructor(
 
     fun retrySync() {
         manager.retrySync()
-        _state.update { it.copy(message = "Đã yêu cầu đồng bộ lại. AnVề sẽ gửi các điểm đang chờ khi có mạng.") }
+        _state.update { it.copy(consentMessage = null, messageRes = R.string.tracking_retry_sync_queued) }
     }
 
     fun setConsent(enabled: Boolean) {
         if (_state.value.busy) return
         scope.launch {
-            _state.update { it.copy(busy = true, message = null) }
+            _state.update { it.copy(busy = true, messageRes = null, consentMessage = null) }
             try {
                 val result = manager.setConsent(enabled)
-                _state.update { it.copy(busy = false, message = result.message) }
+                _state.update { it.copy(busy = false, consentMessage = result.message) }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 _state.update {
                     it.copy(
                         busy = false,
-                        message = if (enabled) {
-                            "Không bật được chia sẻ vị trí. Vui lòng thử lại."
-                        } else {
-                            "Đã dừng theo dõi trên thiết bị này. Chưa xác nhận được với máy chủ."
-                        },
+                        messageRes = if (enabled) R.string.tracking_consent_enable_failed else R.string.tracking_consent_disable_unconfirmed,
                     )
                 }
             }
@@ -80,7 +84,7 @@ class TrackingViewModel internal constructor(
     }
 
     fun consumeMessage() {
-        _state.update { it.copy(message = null) }
+        _state.update { it.copy(messageRes = null, consentMessage = null) }
     }
 
     companion object {

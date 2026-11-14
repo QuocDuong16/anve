@@ -79,6 +79,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -93,6 +94,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.repeatOnLifecycle
 import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
+import com.anve.app.R
 import com.anve.app.data.diagnostics.AndroidDiagnosticsSource
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.TrackingStatus
@@ -101,6 +103,8 @@ import com.anve.app.tracking.diagnostics.SyncWorkStatus
 import com.anve.app.tracking.diagnostics.diagnoseTracking
 import com.anve.app.tracking.diagnostics.diagnosticAgeSeconds
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.isDarkSurface
+import com.anve.app.ui.theme.rememberInkOnSurface
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
@@ -141,12 +145,18 @@ fun DiagnosticsScreen(container: AppContainer, onBack: () -> Unit) {
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) model.activate()
         onDispose { lifecycle.removeObserver(observer); model.deactivate() }
     }
+    // Callback bodies are not composable, so their messages resolve here.
+    val openSettingsFailedMessage = stringResource(R.string.diag_open_settings_failed)
+    val exportStaleMessage = stringResource(R.string.diag_export_stale)
+    val exportSubject = stringResource(R.string.diag_export_subject)
+    val exportChooserTitle = stringResource(R.string.diag_export_chooser_title)
+    val exportChangedMessage = stringResource(R.string.diag_export_changed)
 
     fun open(intent: Intent) {
         try {
             context.startActivity(intent)
         } catch (_: ActivityNotFoundException) {
-            actionError = "Thiết bị không mở được trang này. Hãy mở Cài đặt của điện thoại để kiểm tra."
+            actionError = openSettingsFailedMessage
         }
     }
 
@@ -167,7 +177,7 @@ fun DiagnosticsScreen(container: AppContainer, onBack: () -> Unit) {
         onExport = {
             scope.launch {
                 export = model.prepareExport(BuildConfig.VERSION_NAME, Build.VERSION.SDK_INT)
-                if (export == null) actionError = "Trạng thái đã thay đổi hoặc chưa đọc xong. Hãy làm mới rồi thử lại."
+                if (export == null) actionError = exportStaleMessage
             }
         },
         actionError = actionError,
@@ -182,11 +192,11 @@ fun DiagnosticsScreen(container: AppContainer, onBack: () -> Unit) {
                     if (model.canShare(report)) {
                         open(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "Báo cáo chẩn đoán AnVề")
+                            putExtra(Intent.EXTRA_SUBJECT, exportSubject)
                             putExtra(Intent.EXTRA_TEXT, report.text)
-                        }, "Chọn nơi gửi báo cáo"))
+                        }, exportChooserTitle))
                     } else {
-                        actionError = "Tài khoản hoặc trạng thái đã thay đổi. Hãy tạo lại báo cáo."
+                        actionError = exportChangedMessage
                     }
                     export = null
                 }
@@ -197,21 +207,20 @@ fun DiagnosticsScreen(container: AppContainer, onBack: () -> Unit) {
 
 @Composable
 internal fun DiagnosticsExportReview(report: String, onDismiss: () -> Unit, onShare: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val actionColor = if (colors.background.luminance() < 0.5f) colors.onSurface else colors.primary
+    val actionColor = rememberInkOnSurface()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Kiểm tra báo cáo trước khi gửi") },
+        title = { Text(stringResource(R.string.diag_export_review_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Báo cáo gồm phiên bản, quyền, trạng thái dịch vụ/mạng/pin, số điểm chờ, tuổi dữ liệu và trạng thái thông báo. Không chứa tọa độ, tên, tài khoản hay thông tin đăng nhập.")
+                Text(stringResource(R.string.diag_export_review_body))
                 SelectionContainer {
                     Text(report, Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text("Chọn nơi gửi") } },
-        dismissButton = { TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text("Hủy") } },
+        confirmButton = { TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text(stringResource(R.string.diag_export_share)) } },
+        dismissButton = { TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -232,7 +241,7 @@ fun DiagnosticsContent(
     val ready = state.owner != null && status.ownerUserId == state.owner
     val diagnosis = diagnoseTracking(status)
     val colors = MaterialTheme.colorScheme
-    val dark = colors.background.luminance() < 0.5f
+    val dark = isDarkSurface()
     val appBarBackground = if (dark) colors.primaryContainer else colors.primary
     val appBarForeground = if (dark) colors.onPrimaryContainer else colors.onPrimary
     val actionColor = if (dark) colors.onSurface else colors.primary
@@ -243,17 +252,29 @@ fun DiagnosticsContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chẩn đoán vị trí") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Quay lại") } },
-                actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Làm mới chẩn đoán") } },
+                title = { Text(stringResource(R.string.diag_title)) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
+                actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, stringResource(R.string.diag_refresh_content_desc)) } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = appBarBackground, titleContentColor = appBarForeground, navigationIconContentColor = appBarForeground, actionIconContentColor = appBarForeground),
             )
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("diagnostics-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if (state.loading) {
+                item {
+                    // Same labeled progress treatment as the other screens.
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text(
+                            stringResource(R.string.diag_reading),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             if (!ready) {
-                item { Text("Đang đọc trạng thái tài khoản. Quay lại màn Vị trí nếu phiên đăng nhập đã thay đổi.") }
+                item { Text(stringResource(R.string.diag_not_ready)) }
                 return@LazyColumn
             }
             item {
@@ -272,7 +293,9 @@ fun DiagnosticsContent(
             }
             item {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    listOf("Tổng quan", "Chi tiết").forEachIndexed { index, label ->
+                    val overviewLabel = stringResource(R.string.diag_segment_overview)
+                    val detailsLabel = stringResource(R.string.diag_segment_details)
+                    listOf(overviewLabel, detailsLabel).forEachIndexed { index, label ->
                         SegmentedButton(
                             selected = showDetails == (index == 1),
                             onClick = { showDetails = index == 1 },
@@ -286,7 +309,7 @@ fun DiagnosticsContent(
             }
             if (diagnosis.action != null) item {
                 DiagnosticsNotice(
-                    title = if (diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS) "Mất kết nối mạng" else diagnosis.title,
+                    title = if (diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS) stringResource(R.string.diag_network_title) else diagnosis.title,
                     actionLabel = diagnosis.actionLabel.orEmpty(),
                     networkIssue = diagnosis.action == DiagnosticsAction.NETWORK_SETTINGS,
                     background = noticeBackground,
@@ -295,64 +318,64 @@ fun DiagnosticsContent(
                 )
             }
             if (actionError != null) item { Text(actionError, color = MaterialTheme.colorScheme.error) }
-            if (state.readFailed) item { Text("Chưa đọc được chẩn đoán bổ sung. Dùng nút Làm mới để thử lại.", color = MaterialTheme.colorScheme.error) }
+            if (state.readFailed) item { Text(stringResource(R.string.diag_details_failed), color = MaterialTheme.colorScheme.error) }
             if (!showDetails) {
-                item { DiagnosticsSection("Thu thập vị trí", Icons.Default.LocationOn) {
-                    DiagnosticRow("Dịch vụ theo dõi", if (status.activelyTracking) "Đang chạy" else if (status.serviceRunning) "Chưa xác nhận thu thập" else "Đã dừng")
-                    DiagnosticRow("Lần ghi gần nhất", ageLabel(status.lastFixAtMillis, nowMillis))
+                item { DiagnosticsSection(stringResource(R.string.diag_section_capture), Icons.Default.LocationOn) {
+                    DiagnosticRow(stringResource(R.string.diag_row_service), if (status.activelyTracking) stringResource(R.string.diag_value_running) else if (status.serviceRunning) stringResource(R.string.diag_value_capture_unconfirmed) else stringResource(R.string.diag_value_stopped))
+                    DiagnosticRow(stringResource(R.string.diag_row_last_fix), ageLabel(status.lastFixAtMillis, nowMillis))
                 } }
-                item { DiagnosticsSection("Đồng bộ", Icons.Default.Sync) {
-                    DiagnosticRow("Điểm chờ gửi", details?.queue?.queuedPoints?.let { "$it điểm" } ?: unknownLabel(state.loading))
-                    DiagnosticRow("Lần gửi thành công", ageLabel(status.lastUploadAtMillis, nowMillis))
+                item { DiagnosticsSection(stringResource(R.string.diag_section_sync), Icons.Default.Sync) {
+                    DiagnosticRow(stringResource(R.string.diag_row_queued), details?.queue?.queuedPoints?.let { stringResource(R.string.diag_points_count, it) } ?: unknownLabel(state.loading))
+                    DiagnosticRow(stringResource(R.string.diag_row_last_upload), ageLabel(status.lastUploadAtMillis, nowMillis))
                 } }
-                item { DiagnosticsSection("Quyền & thiết bị", Icons.Default.Security) {
-                    DiagnosticRow("Quyền vị trí", when (status.permission) {
-                        LocationPermissionState.GRANTED_PRECISE -> "Chính xác"
-                        LocationPermissionState.GRANTED_APPROXIMATE -> "Gần đúng"
-                        LocationPermissionState.NOT_REQUESTED -> "Chưa yêu cầu"
-                        LocationPermissionState.DENIED -> "Chưa cấp"
+                item { DiagnosticsSection(stringResource(R.string.diag_section_permissions), Icons.Default.Security) {
+                    DiagnosticRow(stringResource(R.string.diag_row_location_permission), when (status.permission) {
+                        LocationPermissionState.GRANTED_PRECISE -> stringResource(R.string.diag_value_precise)
+                        LocationPermissionState.GRANTED_APPROXIMATE -> stringResource(R.string.diag_value_approximate)
+                        LocationPermissionState.NOT_REQUESTED -> stringResource(R.string.diag_value_not_requested)
+                        LocationPermissionState.DENIED -> stringResource(R.string.diag_value_not_granted)
                     })
-                    DiagnosticRow("Quyền chạy trong nền", yesNo(status.backgroundPermissionGranted, "Đã cấp", "Chưa cấp"))
-                    DiagnosticRow("Dịch vụ định vị", yesNo(status.locationServicesEnabled, "Đã bật", "Đang tắt"))
-                    DiagnosticRow("Trình tiết kiệm pin", yesNo(status.batterySaver, "Đang bật", "Đang tắt"))
-                    if (status.batterySaver || !status.backgroundPermissionGranted) Text("Thiết bị có thể giới hạn cập nhật khi màn hình tắt. Kiểm tra cài đặt và thử nghiệm trên điện thoại thực tế.", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                    DiagnosticRow(stringResource(R.string.diag_row_background_permission), yesNo(status.backgroundPermissionGranted, stringResource(R.string.diag_value_granted), stringResource(R.string.diag_value_not_granted)))
+                    DiagnosticRow(stringResource(R.string.diag_row_location_services), yesNo(status.locationServicesEnabled, stringResource(R.string.diag_value_enabled), stringResource(R.string.diag_value_disabled)))
+                    DiagnosticRow(stringResource(R.string.diag_row_battery_saver), yesNo(status.batterySaver, stringResource(R.string.diag_value_on), stringResource(R.string.diag_value_off)))
+                    if (status.batterySaver || !status.backgroundPermissionGranted) Text(stringResource(R.string.diag_battery_limit_notice), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
                 } }
             } else {
-                item { DiagnosticsSection("Hàng đợi & phục hồi", Icons.Default.Sync) {
-                    DiagnosticRow("Điểm chờ gửi", details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading))
-                    DiagnosticRow("Điểm chờ lâu nhất", ageLabel(details?.queue?.oldestCreatedAtMillis, nowMillis))
-                    DiagnosticRow("Tổng lần thử gửi", details?.queue?.attempts?.toString() ?: unknownLabel(state.loading))
-                    DiagnosticRow("Điểm đã thử lại", details?.queue?.retriedPoints?.toString() ?: unknownLabel(state.loading))
-                    DiagnosticRow("Xác nhận ghi nhận cục bộ", details?.captureCheckpoint?.let { yesNo(it, "Đã lưu", "Chưa có") } ?: unknownLabel(state.loading))
-                    DiagnosticRow("Cần khôi phục", yesNo(status.recoveryRequired, "Có", "Không"))
-                    DiagnosticRow("Tác vụ đồng bộ trên máy", details?.syncWork?.let { work -> if (work.isEmpty()) "Không có tác vụ đang chờ" else work.joinToString { workLabel(it) } } ?: unknownLabel(state.loading))
-                    if (status.privacyDiscardedPoints) Text("Một số điểm đã bị loại theo chính sách riêng tư; không thể khôi phục bằng cách gửi lại.", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = { onAction(DiagnosticsAction.RETRY_SYNC) }, enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0, modifier = Modifier.padding(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor)) { Text("Yêu cầu đồng bộ lại") }
+                item { DiagnosticsSection(stringResource(R.string.diag_section_queue), Icons.Default.Sync) {
+                    DiagnosticRow(stringResource(R.string.diag_row_queued), details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading))
+                    DiagnosticRow(stringResource(R.string.diag_row_oldest), ageLabel(details?.queue?.oldestCreatedAtMillis, nowMillis))
+                    DiagnosticRow(stringResource(R.string.diag_row_attempts), details?.queue?.attempts?.toString() ?: unknownLabel(state.loading))
+                    DiagnosticRow(stringResource(R.string.diag_row_retried), details?.queue?.retriedPoints?.toString() ?: unknownLabel(state.loading))
+                    DiagnosticRow(stringResource(R.string.diag_row_checkpoint), details?.captureCheckpoint?.let { yesNo(it, stringResource(R.string.diag_value_saved), stringResource(R.string.diag_value_absent)) } ?: unknownLabel(state.loading))
+                    DiagnosticRow(stringResource(R.string.diag_row_recovery), yesNo(status.recoveryRequired, stringResource(R.string.diag_value_yes), stringResource(R.string.diag_value_no)))
+                    DiagnosticRow(stringResource(R.string.diag_row_sync_work), details?.syncWork?.let { work -> if (work.isEmpty()) stringResource(R.string.diag_value_no_pending_work) else work.map { workLabel(it) }.joinToString() } ?: unknownLabel(state.loading))
+                    if (status.privacyDiscardedPoints) Text(stringResource(R.string.diag_privacy_discarded), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = { onAction(DiagnosticsAction.RETRY_SYNC) }, enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0, modifier = Modifier.padding(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor)) { Text(stringResource(R.string.diag_retry_sync)) }
                 } }
-                item { DiagnosticsSection("Thông báo & SOS", Icons.Default.Security) {
-                    DiagnosticRow("Quyền thông báo", yesNo(status.notificationsGranted, "Đã cấp", "Chưa cấp"))
-                    DiagnosticRow("Đăng ký push trên máy chủ", details?.pushRegistered?.let { yesNo(it, "Đã đăng ký", "Chưa đăng ký") } ?: unknownLabel(state.loading || state.checkingPush))
-                    DiagnosticRow("Cấu hình dịch vụ push", details?.pushConfigured?.let { yesNo(it, "Đã cấu hình", "Chưa cấu hình") } ?: unknownLabel(state.loading || state.checkingPush))
-                    DiagnosticRow("SOS còn chờ xử lý trên máy", details?.sosPending?.toString() ?: unknownLabel(state.loading))
-                    Text("Đăng ký push hoặc cấu hình hợp lệ không chứng minh thông báo đã đến hay người nhận đã đọc.", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                item { DiagnosticsSection(stringResource(R.string.diag_section_notifications), Icons.Default.Security) {
+                    DiagnosticRow(stringResource(R.string.diag_row_notification_permission), yesNo(status.notificationsGranted, stringResource(R.string.diag_value_granted), stringResource(R.string.diag_value_not_granted)))
+                    DiagnosticRow(stringResource(R.string.diag_row_push_registered), details?.pushRegistered?.let { yesNo(it, stringResource(R.string.diag_value_registered), stringResource(R.string.diag_value_not_registered)) } ?: unknownLabel(state.loading || state.checkingPush))
+                    DiagnosticRow(stringResource(R.string.diag_row_push_configured), details?.pushConfigured?.let { yesNo(it, stringResource(R.string.diag_value_configured), stringResource(R.string.diag_value_not_configured)) } ?: unknownLabel(state.loading || state.checkingPush))
+                    DiagnosticRow(stringResource(R.string.diag_row_sos_pending), details?.sosPending?.toString() ?: unknownLabel(state.loading))
+                    Text(stringResource(R.string.diag_push_notice), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
                 } }
-                item { DiagnosticsSection("Thiết bị & ứng dụng", Icons.Default.Security) {
-                    DiagnosticRow("Miễn tối ưu hóa pin", details?.batteryOptimizationExempt?.let { yesNo(it, "Có", "Không") } ?: unknownLabel(state.loading))
-                    DiagnosticRow("Phiên bản AnVề", BuildConfig.VERSION_NAME)
-                    DiagnosticRow("Android API", Build.VERSION.SDK_INT.toString())
-                    Text("Chưa đo mức pin tiêu thụ thêm. Các trạng thái ở đây không thay thế kiểm thử GPS, OEM và chạy nền trên thiết bị thật.", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                item { DiagnosticsSection(stringResource(R.string.diag_section_device), Icons.Default.Security) {
+                    DiagnosticRow(stringResource(R.string.diag_row_battery_optimization), details?.batteryOptimizationExempt?.let { yesNo(it, stringResource(R.string.diag_value_yes), stringResource(R.string.diag_value_no)) } ?: unknownLabel(state.loading))
+                    DiagnosticRow(stringResource(R.string.diag_row_version), BuildConfig.VERSION_NAME)
+                    DiagnosticRow(stringResource(R.string.diag_row_api), Build.VERSION.SDK_INT.toString())
+                    Text(stringResource(R.string.diag_battery_not_measured), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
                 } }
             }
             item {
                 TextButton(onClick = onExport, enabled = !state.loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) {
                     Icon(Icons.Default.Description, null, Modifier.padding(end = 12.dp))
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                        Text("Xuất báo cáo", style = MaterialTheme.typography.titleMedium)
-                        Text("Không chứa tọa độ hay thông tin đăng nhập", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.diag_export_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.diag_export_subtitle), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            item { Text("Trạng thái tại lần đọc gần nhất. Làm mới sau khi đổi cài đặt.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(stringResource(R.string.diag_footer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }
@@ -411,7 +434,9 @@ private fun DiagnosticRow(label: String, value: String) {
 }
 
 private fun yesNo(value: Boolean, yes: String, no: String) = if (value) yes else no
-private fun unknownLabel(loading: Boolean) = if (loading) "Đang đọc…" else "Chưa xác định"
+
+@Composable
+private fun unknownLabel(loading: Boolean) = if (loading) stringResource(R.string.diag_reading) else stringResource(R.string.diag_unknown)
 
 @Composable
 private fun DiagnosticsStatusBar(darkIcons: Boolean) {
@@ -431,23 +456,29 @@ private fun Context.diagnosticsActivity(): Activity? = when (this) {
     else -> null
 }
 
+@Composable
 private fun workLabel(status: SyncWorkStatus): String = when (status) {
-    SyncWorkStatus.ENQUEUED -> "Đang chờ"
-    SyncWorkStatus.RUNNING -> "Đang chạy"
-    SyncWorkStatus.BLOCKED -> "Chờ điều kiện"
-    SyncWorkStatus.SUCCEEDED -> "Đã xong"
-    SyncWorkStatus.FAILED -> "Thất bại"
-    SyncWorkStatus.CANCELLED -> "Đã hủy"
+    SyncWorkStatus.ENQUEUED -> stringResource(R.string.diag_work_enqueued)
+    SyncWorkStatus.RUNNING -> stringResource(R.string.diag_value_running)
+    SyncWorkStatus.BLOCKED -> stringResource(R.string.diag_work_blocked)
+    SyncWorkStatus.SUCCEEDED -> stringResource(R.string.diag_work_done)
+    SyncWorkStatus.FAILED -> stringResource(R.string.diag_work_failed)
+    SyncWorkStatus.CANCELLED -> stringResource(R.string.diag_work_cancelled)
 }
 
-private fun ageLabel(timestamp: Long?, now: Long): String = diagnosticAgeSeconds(timestamp, now)?.let {
-    when {
-        it < 60 -> "Dưới 1 phút trước"
-        it < 3_600 -> "${it / 60} phút trước"
-        it < 86_400 -> "${it / 3_600} giờ trước"
-        else -> "${it / 86_400} ngày trước"
+@Composable
+private fun ageLabel(timestamp: Long?, now: Long): String {
+    val ageSeconds = diagnosticAgeSeconds(timestamp, now)
+    val noData = stringResource(R.string.diag_age_no_data)
+    val clock = stringResource(R.string.diag_age_clock)
+    return when {
+        ageSeconds == null -> if (timestamp == null) noData else clock
+        ageSeconds < 60 -> stringResource(R.string.diag_age_under_minute)
+        ageSeconds < 3_600 -> stringResource(R.string.diag_age_minutes, ageSeconds / 60)
+        ageSeconds < 86_400 -> stringResource(R.string.diag_age_hours, ageSeconds / 3_600)
+        else -> stringResource(R.string.diag_age_days, ageSeconds / 86_400)
     }
-} ?: if (timestamp == null) "Chưa có dữ liệu" else "Cần kiểm tra đồng hồ"
+}
 
 @Preview(showBackground = true)
 @Composable

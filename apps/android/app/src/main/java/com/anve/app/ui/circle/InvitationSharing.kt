@@ -4,8 +4,14 @@ import android.content.Intent
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.circles.InviteLink
 
-fun invitationShareIntent(invite: InviteDto): Intent? {
+/**
+ * Builds the Android sharesheet intent for an invite. The copy is resolved
+ * at the screen (string resources) because a plain function cannot resolve
+ * resources; the recipient reads this text in the chooser, so the
+ * consent-not-automatic fact travels with the link.
+ */
+fun invitationShareIntent(invite: InviteDto, message: String, chooserTitle: String): Intent? {
     val link = InviteLink.create(invite.code) ?: return null
-    val message = "Mời bạn tham gia gia đình trên AnVề:\n$link\nNếu link không mở, nhập mã: ${invite.code}\nTham gia không tự bật chia sẻ vị trí."
-    return Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, message), "Gửi lời mời gia đình")
+    val body = message.format(link, invite.code)
+    return Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, body), chooserTitle)
 }

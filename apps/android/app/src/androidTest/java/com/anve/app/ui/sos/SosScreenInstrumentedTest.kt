@@ -46,7 +46,7 @@ class SosScreenInstrumentedTest {
         compose.onNodeWithText("Gửi yêu cầu SOS").performClick()
         compose.onNodeWithText("Gửi yêu cầu hỗ trợ?").assertIsDisplayed()
         compose.onNodeWithText("Xác nhận gửi").assertIsDisplayed()
-        compose.onNodeWithText("Quay lại").performClick()
+        compose.onNodeWithText("Hủy").performClick()
         compose.runOnIdle { state.value = SosState(owner = "other") }
         compose.onNodeWithText("Gửi yêu cầu SOS").assertIsNotEnabled()
         compose.onNodeWithText("An").assertDoesNotExist()

@@ -8,6 +8,10 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
+import android.content.Context
+import com.anve.app.R
+import com.anve.app.ui.common.UiMessage
 import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.signin.SignInContent
 import com.anve.app.ui.signin.SignInUiState
@@ -25,9 +29,9 @@ class BrandingScreenInstrumentedTest {
 
     @Test fun googleAttemptShowsProgressThenIncompleteFeedback() {
         var busy by mutableStateOf(true)
-        var error by mutableStateOf<String?>(null)
+        var error by mutableStateOf<UiMessage?>(null)
         var attempts = 0
-        val message = "Chưa đăng nhập. Google chưa hoàn tất xác nhận tài khoản. Bạn có thể thử lại; nếu vẫn gặp lỗi, hãy liên hệ hỗ trợ AnVề."
+        val context = ApplicationProvider.getApplicationContext<Context>()
         compose.setContent {
             LargeFontScale { AnVeTheme(darkTheme = true) {
                 SignInContent(SignInUiState.Ready(true, false), error, busy, null, {}, { attempts++ }, {}, {})
@@ -35,8 +39,8 @@ class BrandingScreenInstrumentedTest {
         }
         compose.onNodeWithText("Đang hoàn tất đăng nhập…").assertIsDisplayed()
         compose.onNodeWithText("Đăng nhập bằng Google").assertIsNotEnabled()
-        compose.runOnIdle { busy = false; error = message }
-        compose.onNodeWithText(message).assertIsDisplayed()
+        compose.runOnIdle { busy = false; error = UiMessage(R.string.signin_google_incomplete) }
+        compose.onNodeWithText(context.getString(R.string.signin_google_incomplete)).assertIsDisplayed()
         captureNativeFixture("signin-google-incomplete-dark-font130")
         compose.onNodeWithText("Thử lại").performClick()
         compose.runOnIdle { assertEquals(1, attempts) }
@@ -51,7 +55,7 @@ class BrandingScreenInstrumentedTest {
                     if (showSignIn) {
                         SignInContent(
                             state = SignInUiState.Ready(googleSignIn = true, devLogin = false),
-                            error = "Đăng nhập chưa thành công. Vui lòng thử lại.",
+                            error = UiMessage(R.string.signin_generic_error),
                             busy = false,
                             notice = null,
                             onDismissNotice = {},

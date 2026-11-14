@@ -3,6 +3,7 @@ package com.anve.app.ui.circle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.CircleMembershipDto
@@ -24,9 +25,12 @@ data class CircleUiState(
     val myRole: String? = null,
     val members: List<MemberDto> = emptyList(),
     val invites: List<InviteDto> = emptyList(),
+    /** True once the member list of the current circle has been fetched (or its fetch failed);
+     *  the activation checklist waits for it so its progress reflects the actual membership. */
+    val membersLoaded: Boolean = false,
     val busy: Boolean = false,
-    val message: String? = null,
-    val error: String? = null,
+    val messageRes: Int? = null,
+    val errorRes: Int? = null,
 ) {
     val isOwner: Boolean get() = myRole == "owner"
 }
@@ -58,17 +62,22 @@ class CircleViewModel internal constructor(
                     return@launch
                 }
                 _state.update {
+                    // Keep the previously loaded members of the same circle while
+                    // refreshing, so the activation checklist does not flash back
+                    // on between the circle snapshot and the member list arriving.
+                    val sameCircle = it.circle?.id == mine.circle.id
                     it.copy(
                         loading = false,
                         circle = mine.circle,
                         myRole = mine.membership.role,
-                        members = emptyList(),
-                        invites = emptyList(),
+                        members = if (sameCircle) it.members else emptyList(),
+                        invites = if (sameCircle) it.invites else emptyList(),
+                        membersLoaded = sameCircle && it.membersLoaded,
                     )
                 }
                 loadDetails(mine.circle.id, expected)
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                if (expected == revision) _state.update { it.copy(loading = false, error = "Không tải được thông tin nhóm.") }
+                if (expected == revision) _state.update { it.copy(loading = false, errorRes = R.string.circle_load_failed) }
             }
         }
     }
@@ -78,7 +87,7 @@ class CircleViewModel internal constructor(
         val membership = joined.membership ?: return
         if (membership.userId != owner || membership.circleId != circle.id) return
         val expected = ++revision
-        _state.value = CircleUiState(loading = false, circle = circle, myRole = membership.role, message = "Đã tham gia nhóm.")
+        _state.value = CircleUiState(loading = false, circle = circle, myRole = membership.role, messageRes = R.string.circle_joined)
         loadDetails(circle.id, expected)
     }
 
@@ -87,7 +96,7 @@ class CircleViewModel internal constructor(
             try {
                 val members = repository.members(circleId)
                 if (expected != revision || _state.value.circle?.id != circleId) return@launch
-                _state.update { it.copy(members = members) }
+                _state.update { it.copy(members = members, membersLoaded = true) }
                 if (_state.value.isOwner) {
                     // Non-owners get FORBIDDEN here; only owners ask.
                     runCatching { repository.invites(circleId) }.onSuccess { invites ->
@@ -96,7 +105,9 @@ class CircleViewModel internal constructor(
                 }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 // Members are the core content; invites are owner extras.
-                if (expected == revision && _state.value.circle?.id == circleId) _state.update { it.copy(error = "Không tải được danh sách thành viên.") }
+                if (expected == revision && _state.value.circle?.id == circleId) {
+                    _state.update { it.copy(errorRes = R.string.circle_members_failed, membersLoaded = true) }
+                }
             }
         }
     }
@@ -104,13 +115,13 @@ class CircleViewModel internal constructor(
     fun create(name: String) {
         if (_state.value.busy || name.isBlank()) return
         scope.launch {
-            setBusy(message = null, error = null)
+            setBusy(messageRes = null, errorRes = null)
             try {
                 repository.create(name.trim())
-                _state.update { CircleUiState(loading = false, message = "Đã tạo nhóm gia đình.") }
+                _state.update { CircleUiState(loading = false, messageRes = R.string.circle_created) }
                 refresh()
             } catch (e: Exception) {
-                _state.update { it.copy(busy = false, error = circleError(e, "tạo nhóm")) }
+                _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_create_failed)) }
             }
         }
     }
@@ -118,13 +129,13 @@ class CircleViewModel internal constructor(
     fun join(code: String) {
         if (_state.value.busy || code.isBlank()) return
         scope.launch {
-            setBusy(message = null, error = null)
+            setBusy(messageRes = null, errorRes = null)
             try {
                 repository.joinWithCode(code.trim().uppercase())
-                _state.update { CircleUiState(loading = false, message = "Đã tham gia nhóm.") }
+                _state.update { CircleUiState(loading = false, messageRes = R.string.circle_joined) }
                 refresh()
             } catch (e: Exception) {
-                _state.update { it.copy(busy = false, error = circleError(e, "tham gia nhóm")) }
+                _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_join_failed)) }
             }
         }
     }
@@ -132,13 +143,13 @@ class CircleViewModel internal constructor(
     fun createInvite() {
         val circle = _state.value.circle ?: return
         scope.launch {
-            setBusy(message = null, error = null)
+            setBusy(messageRes = null, errorRes = null)
             try {
                 repository.createInvite(circle.id)
                 loadDetails(circle.id)
-                _state.update { it.copy(busy = false, message = "Đã tạo mã mời mới.") }
+                _state.update { it.copy(busy = false, messageRes = R.string.circle_invite_created) }
             } catch (e: Exception) {
-                _state.update { it.copy(busy = false, error = circleError(e, "tạo mã mời")) }
+                _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_invite_create_failed)) }
             }
         }
     }
@@ -146,11 +157,13 @@ class CircleViewModel internal constructor(
     fun revokeInvite(inviteId: String) {
         val circle = _state.value.circle ?: return
         scope.launch {
+            setBusy(messageRes = null, errorRes = null)
             try {
                 repository.revokeInvite(inviteId)
                 loadDetails(circle.id)
+                _state.update { it.copy(busy = false, messageRes = R.string.circle_invite_revoked) }
             } catch (e: Exception) {
-                _state.update { it.copy(error = "Không thu hồi được mã mời.") }
+                _state.update { it.copy(busy = false, errorRes = R.string.circle_invite_revoke_failed) }
             }
         }
     }
@@ -161,9 +174,9 @@ class CircleViewModel internal constructor(
             try {
                 repository.removeMember(circle.id, userId)
                 loadDetails(circle.id)
-                _state.update { it.copy(message = "Đã xóa thành viên khỏi nhóm.") }
+                _state.update { it.copy(messageRes = R.string.circle_member_removed) }
             } catch (e: Exception) {
-                _state.update { it.copy(error = circleError(e, "xóa thành viên")) }
+                _state.update { it.copy(errorRes = circleError(e, R.string.circle_error_remove_member_failed)) }
             }
         }
     }
@@ -171,36 +184,37 @@ class CircleViewModel internal constructor(
     fun leave(dissolve: Boolean) {
         val circle = _state.value.circle ?: return
         scope.launch {
-            setBusy(message = null, error = null)
+            setBusy(messageRes = null, errorRes = null)
             try {
                 repository.leave(circle.id, dissolve)
-                _state.update { CircleUiState(loading = false, message = "Bạn đã rời nhóm.") }
+                _state.update { CircleUiState(loading = false, messageRes = R.string.circle_left) }
             } catch (e: Exception) {
-                _state.update { it.copy(busy = false, error = circleError(e, "rời nhóm")) }
+                _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_leave_failed)) }
             }
         }
     }
 
     fun consumeMessage() {
-        _state.update { it.copy(message = null, error = null) }
+        _state.update { it.copy(messageRes = null, errorRes = null) }
     }
 
-    private fun setBusy(message: String?, error: String?) {
-        _state.update { it.copy(busy = true, message = message, error = error) }
+    private fun setBusy(messageRes: Int?, errorRes: Int?) {
+        _state.update { it.copy(busy = true, messageRes = messageRes, errorRes = errorRes) }
+    }
+
+    /**
+     * Maps the contract's 409 codes to their copy; other failures get the
+     * caller's action-specific sentence.
+     */
+    private fun circleError(e: Exception, actionFailedRes: Int): Int = when {
+        e is ApiException && e.code == "ACTIVE_CIRCLE_EXISTS" -> R.string.circle_error_active_circle
+        e is ApiException && e.code == "INVITE_UNAVAILABLE" -> R.string.circle_error_invite_unavailable
+        e is ApiException && e.code == "CIRCLE_HAS_MEMBERS" -> R.string.circle_error_circle_has_members
+        e is ApiException && e.code == "FORBIDDEN" -> R.string.circle_error_forbidden
+        else -> actionFailedRes
     }
 
     companion object {
-        fun circleError(e: Exception, action: String): String = when {
-            e is ApiException && e.code == "ACTIVE_CIRCLE_EXISTS" ->
-                "Bạn đã thuộc một nhóm. Hãy rời nhóm hiện tại trước."
-            e is ApiException && e.code == "INVITE_UNAVAILABLE" ->
-                "Mã mời không tồn tại, đã hết hạn hoặc đã được dùng."
-            e is ApiException && e.code == "CIRCLE_HAS_MEMBERS" ->
-                "Nhóm vẫn còn thành viên. Chọn giải tán nhóm nếu bạn chắc chắn."
-            e is ApiException && e.code == "FORBIDDEN" -> "Bạn không có quyền thực hiện việc này."
-            else -> "Không $action được. Vui lòng thử lại."
-        }
-
         fun factory(repository: CircleRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")

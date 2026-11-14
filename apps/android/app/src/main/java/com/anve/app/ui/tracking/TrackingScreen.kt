@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,10 +26,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,18 +68,18 @@ import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.OperationalState
 import com.anve.app.tracking.TrackingProblem
 import com.anve.app.tracking.TrackingStatus
+import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.theme.AnVeTheme
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
 
 private enum class PendingAction { NONE, START, ENABLE_THEN_START, CONSENT_ONLY }
 
 /**
- * Tracking control and status. It deliberately separates "I agreed to
- * share" from "the phone is actually updating" in two cards, because the
- * product rule is that consent is not evidence of collection.
+ * Tracking control and status. Consent and actual collection still read as
+ * two different things, now inside one card: the hero Start/Stop button and
+ * the activity label under it describe what the phone is doing, while the
+ * consent switch row describes the server-side agreement. The product rule
+ * that consent is not evidence of collection stays visible in copy, not in
+ * a second competing card.
  */
 @Composable
 fun TrackingScreen(container: AppContainer, onOpenDiagnostics: () -> Unit = {}, onOpenJourney: () -> Unit = {}) {
@@ -300,7 +299,6 @@ fun TrackingScreen(container: AppContainer, onOpenDiagnostics: () -> Unit = {}, 
         onStop = viewModel::stop,
         onToggleConsent = ::toggleConsent,
         onRetrySync = viewModel::retrySync,
-        onRefresh = viewModel::refresh,
         onRequestBackground = {
             val foregroundGranted = state.status.permission == LocationPermissionState.GRANTED_PRECISE ||
                 state.status.permission == LocationPermissionState.GRANTED_APPROXIMATE
@@ -363,7 +361,6 @@ fun TrackingContent(
     onStop: () -> Unit,
     onToggleConsent: (Boolean) -> Unit,
     onRetrySync: () -> Unit,
-    onRefresh: () -> Unit,
     onRequestBackground: () -> Unit,
     onRequestNotifications: () -> Unit,
     onOpenAppSettings: () -> Unit,
@@ -392,18 +389,24 @@ fun TrackingContent(
                 }
             }
 
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpenJourney, modifier = Modifier.fillMaxWidth()) {
-                    Text("Hành trình")
-                }
-                OutlinedButton(onClick = onOpenDiagnostics, modifier = Modifier.fillMaxWidth()) {
-                    Text("Chẩn đoán vị trí")
-                }
+            val messageRes = state.messageRes
+            if (messageRes != null) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        ),
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(stringResource(messageRes), style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = onDismissMessage) {
+                                Text(stringResource(R.string.tracking_message_dismiss))
+                            }
+                        }
+                    }
                 }
             }
-
-            state.message?.let { message ->
+            state.consentMessage?.let { message ->
                 item {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -421,13 +424,11 @@ fun TrackingContent(
             }
 
             item {
-                ConsentCard(status = status, onToggle = onToggleConsent, enabled = !state.busy)
-            }
-            item {
-                TrackingStateCard(
+                TrackingControlCard(
                     status = status,
                     onStart = onStartFlow,
                     onStop = onStop,
+                    onToggleConsent = onToggleConsent,
                     enabled = !state.busy,
                 )
             }
@@ -445,72 +446,36 @@ fun TrackingContent(
                     onOpenLocationSettings = onOpenLocationSettings,
                 )
             }
-            item { StatusCard(status = status, onRetrySync = onRetrySync, onRefresh = onRefresh) }
+            item { StatusCard(status = status, onRetrySync = onRetrySync) }
             item { DiagnosticsCard(status = status) }
-        }
-    }
-}
-
-@Composable
-private fun ConsentCard(
-    status: TrackingStatus,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean,
-) {
-    val label = when {
-        status.consentConflict -> stringResource(R.string.tracking_consent_conflict)
-        status.consentSyncPending -> stringResource(R.string.tracking_consent_pending)
-        status.consentEnabled -> stringResource(R.string.tracking_consent_on)
-        else -> stringResource(R.string.tracking_consent_off)
-    }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.tracking_consent_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        stringResource(R.string.tracking_consent_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            // Navigation to related surfaces sits below the status cards so the
+            // consent/Start control stays the single primary focus on open.
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onOpenJourney, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.journey_title))
+                    }
+                    OutlinedButton(onClick = onOpenDiagnostics, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.diag_title))
+                    }
                 }
-                Switch(
-                    checked = status.conflictServerConsent ?: status.consentEnabled,
-                    onCheckedChange = onToggle,
-                    enabled = enabled,
-                )
             }
-            Spacer(Modifier.height(8.dp))
-            if (status.consentConflict) {
-                Text(
-                    stringResource(R.string.tracking_problem_consent_conflict),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-            AssistChip(
-                onClick = {},
-                label = { Text(label) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                    )
-                },
-            )
         }
     }
 }
 
+/**
+ * The single primary control of the screen: Start/Stop capture, the current
+ * activity label right under it, and the server-side consent as a small
+ * secondary switch row. The two concepts stay separable by copy and by
+ * control, not by card position.
+ */
 @Composable
-private fun TrackingStateCard(
+private fun TrackingControlCard(
     status: TrackingStatus,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onToggleConsent: (Boolean) -> Unit,
     enabled: Boolean,
 ) {
     val stateLabel = when {
@@ -524,6 +489,12 @@ private fun TrackingStateCard(
         status.trackingRequested -> stringResource(R.string.tracking_state_requested)
         else -> stringResource(R.string.tracking_state_stopped)
     }
+    val consentValue = when {
+        status.consentConflict -> stringResource(R.string.tracking_consent_conflict)
+        status.consentSyncPending -> stringResource(R.string.tracking_consent_pending)
+        status.consentEnabled -> stringResource(R.string.tracking_consent_on)
+        else -> stringResource(R.string.tracking_consent_off)
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -534,23 +505,12 @@ private fun TrackingStateCard(
             },
         ),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                stringResource(R.string.tracking_state_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(stateLabel, style = MaterialTheme.typography.titleLarge)
-            Text(
-                operationalLabel(status.operational),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(Modifier.height(12.dp))
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (status.activelyTracking) {
                 OutlinedButton(
                     onClick = onStop,
                     enabled = enabled,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 ) {
                     Text(stringResource(R.string.tracking_stop))
                 }
@@ -558,7 +518,7 @@ private fun TrackingStateCard(
                 Button(
                     onClick = onStart,
                     enabled = enabled && status.sessionReady,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 ) {
                     Text(
                         when {
@@ -572,6 +532,33 @@ private fun TrackingStateCard(
                         },
                     )
                 }
+            }
+            Text(stateLabel, style = MaterialTheme.typography.bodyMedium)
+            HorizontalDivider()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.tracking_consent_server_value, consentValue),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        stringResource(R.string.tracking_consent_server_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = status.conflictServerConsent ?: status.consentEnabled,
+                    onCheckedChange = onToggleConsent,
+                    enabled = enabled,
+                )
+            }
+            if (status.consentConflict) {
+                Text(
+                    stringResource(R.string.tracking_problem_consent_conflict),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }
@@ -605,6 +592,12 @@ private fun ProblemCard(status: TrackingStatus, onOpenSettings: () -> Unit) {
     }
 }
 
+/**
+ * Only what is still missing surfaces here, each with its own action; when
+ * every permission and the location services switch are in place the card
+ * collapses to a single settled row so nothing competes with the hero
+ * control. The disclosure and education dialogs stay in the shared flows.
+ */
 @Composable
 private fun PermissionsCard(
     status: TrackingStatus,
@@ -615,15 +608,27 @@ private fun PermissionsCard(
     onOpenAppSettings: () -> Unit,
     onOpenLocationSettings: () -> Unit,
 ) {
+    val locationGranted = status.permission == LocationPermissionState.GRANTED_PRECISE ||
+        status.permission == LocationPermissionState.GRANTED_APPROXIMATE
+    if (locationGranted &&
+        status.backgroundPermissionGranted &&
+        status.notificationsGranted &&
+        status.locationServicesEnabled
+    ) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            InfoRow(
+                label = stringResource(R.string.tracking_permissions_title),
+                value = stringResource(R.string.tracking_permissions_ok),
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+        return
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 stringResource(R.string.tracking_permissions_title),
                 style = MaterialTheme.typography.titleMedium,
-            )
-            InfoRow(
-                label = stringResource(R.string.tracking_permission_location),
-                value = permissionLabel(status.permission),
             )
             if (!status.locationServicesEnabled) {
                 Text(
@@ -635,15 +640,17 @@ private fun PermissionsCard(
                     Text(stringResource(R.string.tracking_location_services_settings))
                 }
             }
-            if (status.permission == LocationPermissionState.DENIED) {
+            if (!locationGranted) {
+                InfoRow(
+                    label = stringResource(R.string.tracking_permission_location),
+                    value = permissionLabel(status.permission),
+                )
                 if (permissionPermanentlyDenied) {
                     Text(
                         stringResource(R.string.tracking_permission_permanently_denied),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
-                }
-                if (permissionPermanentlyDenied) {
                     TextButton(onClick = onOpenAppSettings) {
                         Text(stringResource(R.string.tracking_permission_settings))
                     }
@@ -653,16 +660,11 @@ private fun PermissionsCard(
                     }
                 }
             }
-            HorizontalDivider()
-            InfoRow(
-                label = stringResource(R.string.tracking_permission_background),
-                value = if (status.backgroundPermissionGranted) {
-                    stringResource(R.string.tracking_permission_background_granted)
-                } else {
-                    stringResource(R.string.tracking_permission_background_missing)
-                },
-            )
             if (!status.backgroundPermissionGranted) {
+                InfoRow(
+                    label = stringResource(R.string.tracking_permission_background),
+                    value = stringResource(R.string.tracking_permission_background_missing),
+                )
                 Text(
                     stringResource(R.string.tracking_permission_background_explainer),
                     style = MaterialTheme.typography.bodySmall,
@@ -672,22 +674,14 @@ private fun PermissionsCard(
                     Text(stringResource(R.string.tracking_permission_background_grant))
                 }
             }
-            HorizontalDivider()
-            InfoRow(
-                label = stringResource(R.string.tracking_permission_notifications),
-                value = if (status.notificationsGranted) {
-                    stringResource(R.string.tracking_permission_notifications_granted)
-                } else {
-                    stringResource(R.string.tracking_permission_notifications_missing)
-                },
-            )
             if (!status.notificationsGranted) {
+                InfoRow(
+                    label = stringResource(R.string.tracking_permission_notifications),
+                    value = stringResource(R.string.tracking_permission_notifications_missing),
+                )
                 TextButton(onClick = onRequestNotifications) {
                     Text(stringResource(R.string.tracking_permission_notifications_grant))
                 }
-            }
-            TextButton(onClick = onOpenAppSettings) {
-                Text(stringResource(R.string.tracking_permission_settings))
             }
         }
     }
@@ -703,7 +697,6 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 private fun StatusCard(
     status: TrackingStatus,
     onRetrySync: () -> Unit,
-    onRefresh: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -717,12 +710,6 @@ private fun StatusCard(
                     status.lastFixAtMillis,
                     stringResource(R.string.tracking_never),
                 ),
-            )
-            InfoRow(
-                label = stringResource(R.string.tracking_last_fix_accuracy),
-                value = status.lastAccuracyMeters?.let {
-                    stringResource(R.string.tracking_accuracy_value, it.roundToInt())
-                } ?: stringResource(R.string.tracking_never),
             )
             InfoRow(
                 label = stringResource(R.string.tracking_last_upload),
@@ -740,7 +727,7 @@ private fun StatusCard(
                 ),
             )
             if (status.privacyDiscardedPoints) {
-                Text("Một số điểm không được đồng bộ vì không xác minh được quyền riêng tư. Hãy kiểm tra kết nối và thử lại.")
+                Text(stringResource(R.string.tracking_privacy_discarded_notice))
             }
             InfoRow(
                 label = stringResource(R.string.tracking_connection),
@@ -750,21 +737,8 @@ private fun StatusCard(
                     stringResource(R.string.tracking_connection_offline)
                 },
             )
-            InfoRow(
-                label = stringResource(R.string.tracking_battery_saver),
-                value = if (status.batterySaver) {
-                    stringResource(R.string.tracking_battery_on)
-                } else {
-                    stringResource(R.string.tracking_battery_off)
-                },
-            )
-            Row {
-                TextButton(onClick = onRetrySync, enabled = status.pendingQueueCount > 0) {
-                    Text(stringResource(R.string.tracking_retry_sync))
-                }
-                TextButton(onClick = onRefresh) {
-                    Text(stringResource(R.string.tracking_refresh))
-                }
+            TextButton(onClick = onRetrySync, enabled = status.pendingQueueCount > 0) {
+                Text(stringResource(R.string.tracking_retry_sync))
             }
         }
     }
@@ -819,8 +793,8 @@ private fun DiagnosticsCard(status: TrackingStatus) {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Text(
             label,
             modifier = Modifier.weight(1f),
@@ -881,11 +855,7 @@ private fun problemText(problem: TrackingProblem?): String? = when (problem) {
     TrackingProblem.CLOCK_SKEW -> stringResource(R.string.tracking_problem_clock)
 }
 
-private val timeFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy").withZone(ZoneId.systemDefault())
-
-fun formatTime(millis: Long?, fallback: String): String =
-    millis?.let { timeFormatter.format(Instant.ofEpochMilli(it)) } ?: fallback
+fun formatTime(millis: Long?, fallback: String): String = AnveTime.full(millis, fallback)
 
 @Preview(showBackground = true)
 @Composable
@@ -915,7 +885,6 @@ private fun TrackingContentPreview() {
             onStop = {},
             onToggleConsent = {},
             onRetrySync = {},
-            onRefresh = {},
             onRequestBackground = {},
             onRequestNotifications = {},
             onOpenAppSettings = {},

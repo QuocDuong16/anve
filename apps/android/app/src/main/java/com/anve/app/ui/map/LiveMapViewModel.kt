@@ -3,6 +3,7 @@ package com.anve.app.ui.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.data.location.AudienceMutationOutcome
 import com.anve.app.data.location.SharingManagementSnapshot
@@ -25,7 +26,7 @@ data class LiveMapUiState(
     val sharingOpen: Boolean = false,
     val pendingViewerIds: Set<String> = emptySet(),
     val unresolvedViewerIds: Set<String> = emptySet(),
-    val sharingError: String? = null,
+    val sharingErrorRes: Int? = null,
 )
 
 class LiveMapViewModel internal constructor(
@@ -38,7 +39,7 @@ class LiveMapViewModel internal constructor(
     private val mutationJobs = mutableMapOf<MutationKey, Job>()
     private val reconciliationWaiters = mutableSetOf<String>()
     private val unresolvedDesired = mutableMapOf<String, Boolean>()
-    private val outcomeMessages = mutableMapOf<String, String>()
+    private val outcomeMessageRes = mutableMapOf<String, Int>()
     private var ownerGeneration = 0L
     private var sharingGeneration = 0L
     private var locationSnapshotGeneration = 0L
@@ -60,7 +61,7 @@ class LiveMapViewModel internal constructor(
         oldJobs.forEach(Job::cancel)
         reconciliationWaiters.clear()
         unresolvedDesired.clear()
-        outcomeMessages.clear()
+        outcomeMessageRes.clear()
         _state.value = LiveMapUiState(ownerId = ownerId)
         if (ownerId != null) loadSharing(ownerId)
     }
@@ -80,7 +81,7 @@ class LiveMapViewModel internal constructor(
             ownerChanged(expectedOwnerId)
             return
         }
-        _state.update { it.copy(sharingOpen = open, sharingError = null) }
+        _state.update { it.copy(sharingOpen = open, sharingErrorRes = null) }
         if (open) _state.value.ownerId?.let(::loadSharing)
     }
 
@@ -113,11 +114,11 @@ class LiveMapViewModel internal constructor(
             it.copy(
                 pendingViewerIds = it.pendingViewerIds + viewer.userId,
                 unresolvedViewerIds = it.unresolvedViewerIds - viewer.userId,
-                sharingError = null,
+                sharingErrorRes = null,
             )
         }
         unresolvedDesired.remove(viewer.userId)
-        outcomeMessages.remove(viewer.userId)
+        outcomeMessageRes.remove(viewer.userId)
         val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             try {
                 val outcome = try {
@@ -135,15 +136,15 @@ class LiveMapViewModel internal constructor(
                 when (outcome) {
                     is AudienceMutationOutcome.Confirmed -> {
                         unresolvedDesired.remove(viewer.userId)
-                        outcomeMessages.remove(viewer.userId)
+                        outcomeMessageRes.remove(viewer.userId)
                     }
                     is AudienceMutationOutcome.Rejected -> {
                         unresolvedDesired.remove(viewer.userId)
-                        outcomeMessages[viewer.userId] = "Máy chủ từ chối thay đổi quyền xem."
+                        outcomeMessageRes[viewer.userId] = R.string.map_error_grant_rejected
                     }
                     is AudienceMutationOutcome.UnknownOutcome -> {
                         unresolvedDesired[viewer.userId] = outcome.requestedEnabled
-                        outcomeMessages[viewer.userId] = unknownOutcomeMessage(
+                        outcomeMessageRes[viewer.userId] = unknownOutcomeMessageRes(
                             outcome.requestedEnabled,
                             outcome.currentEnabled,
                         )
@@ -159,7 +160,7 @@ class LiveMapViewModel internal constructor(
                             } else {
                                 it.unresolvedViewerIds - viewer.userId
                             },
-                            sharingError = outcomeMessages[viewer.userId],
+                            sharingErrorRes = outcomeMessageRes[viewer.userId],
                         )
                     }
                 }
@@ -167,13 +168,13 @@ class LiveMapViewModel internal constructor(
             } catch (error: CancellationException) {
                 if (isOwnerCurrent(ownerId, ownerToken)) {
                     unresolvedDesired[viewer.userId] = enabled
-                    outcomeMessages[viewer.userId] = unknownOutcomeMessage(enabled, null)
+                    outcomeMessageRes[viewer.userId] = unknownOutcomeMessageRes(enabled, null)
                     reconciliationWaiters += viewer.userId
                     _state.update {
                         if (it.ownerId != ownerId) it else {
                             it.copy(
                                 unresolvedViewerIds = it.unresolvedViewerIds + viewer.userId,
-                                sharingError = outcomeMessages[viewer.userId],
+                                sharingErrorRes = outcomeMessageRes[viewer.userId],
                             )
                         }
                     }
@@ -195,7 +196,7 @@ class LiveMapViewModel internal constructor(
         val ownerToken = ownerGeneration
         val requestToken = ++sharingGeneration
         sharingLoadJob?.cancel()
-        _state.update { it.copy(sharingLoading = true, sharingError = null) }
+        _state.update { it.copy(sharingLoading = true, sharingErrorRes = null) }
         val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             try {
                 val snapshot = repository.sharingManagement(ownerId)
@@ -205,9 +206,9 @@ class LiveMapViewModel internal constructor(
                     reconciled.forEach { (viewerId, desired) ->
                         val actual = snapshot.viewerAccess(viewerId)
                         if (actual == desired) {
-                            outcomeMessages.remove(viewerId)
+                            outcomeMessageRes.remove(viewerId)
                         } else {
-                            outcomeMessages[viewerId] = unknownOutcomeMessage(desired, actual)
+                            outcomeMessageRes[viewerId] = unknownOutcomeMessageRes(desired, actual)
                         }
                     }
                     unresolvedDesired.keys.removeAll(reconciled.keys)
@@ -221,7 +222,7 @@ class LiveMapViewModel internal constructor(
                             sharingLoading = false,
                             pendingViewerIds = it.pendingViewerIds - (readyToRelease - activeViewerIds),
                             unresolvedViewerIds = unresolvedDesired.keys.toSet(),
-                            sharingError = outcomeMessages.values.firstOrNull(),
+                            sharingErrorRes = outcomeMessageRes.values.firstOrNull(),
                         )
                     }
                 }
@@ -232,7 +233,7 @@ class LiveMapViewModel internal constructor(
                     _state.update {
                         it.copy(
                             sharingLoading = false,
-                            sharingError = sharingLoadFailureMessage(it.pendingViewerIds),
+                            sharingErrorRes = sharingLoadFailureMessageRes(it.pendingViewerIds),
                         )
                     }
                 }
@@ -254,20 +255,20 @@ class LiveMapViewModel internal constructor(
         members.firstOrNull { it.userId == viewerId }?.canViewLocation
             ?: if (members.none { it.userId == viewerId }) false else null
 
-    private fun unknownOutcomeMessage(desired: Boolean, current: Boolean?): String = when {
+    private fun unknownOutcomeMessageRes(desired: Boolean, current: Boolean?): Int = when {
         current == true && !desired ->
-            "Yêu cầu thu hồi trước chưa đạt: máy chủ vẫn cho biết người này có quyền xem."
+            R.string.map_error_revoke_unconfirmed
         current == false && desired ->
-            "Yêu cầu cấp quyền trước chưa đạt: máy chủ hiện chưa hiển thị quyền này."
-        else -> "Chưa xác định kết quả thay đổi quyền xem. Đang giữ trạng thái chờ đối chiếu."
+            R.string.map_error_grant_unconfirmed
+        else -> R.string.map_error_outcome_unresolved
     }
 
-    private fun sharingLoadFailureMessage(pendingViewerIds: Set<String>): String = when {
+    private fun sharingLoadFailureMessageRes(pendingViewerIds: Set<String>): Int = when {
         pendingViewerIds.any { it in unresolvedDesired } ->
-            "Chưa xác định kết quả thay đổi quyền xem. Không tải được trạng thái máy chủ; quyền vẫn đang chờ đối chiếu."
+            R.string.map_error_outcome_load_failed
         pendingViewerIds.isNotEmpty() ->
-            "Chưa tải được danh sách quyền hiện tại. Thay đổi vẫn đang chờ đối chiếu với máy chủ."
-        else -> "Không tải được danh sách quyền xem. Thử lại khi có kết nối."
+            R.string.map_error_grants_load_pending
+        else -> R.string.map_error_grants_load_failed
     }
 
     companion object {

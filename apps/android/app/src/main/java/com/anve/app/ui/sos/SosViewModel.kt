@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.anve.app.AppContainer
+import com.anve.app.R
 import com.anve.app.data.api.SosEventDto
 import com.anve.app.data.api.SosRecipientDto
 import com.anve.app.data.sos.SosCachedMember
@@ -36,7 +37,7 @@ data class SosState(
     val offline: Boolean = false,
     val pushRegistered: Boolean? = null,
     val pushConfigured: Boolean? = null,
-    val error: String? = null,
+    val errorRes: Int? = null,
 )
 
 class SosViewModel(
@@ -48,6 +49,15 @@ class SosViewModel(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(SosState())
     val state = mutable.asStateFlow()
+
+    // Id of the most recent SOS request durably written to the local outbox.
+    // The screen reports the attempt in place from this: the durable local
+    // write is the only fact confirmed at that moment — server confirmation
+    // stays visible through the outbox states.
+    private val mutableQueuedEventId = MutableStateFlow<String?>(null)
+    val queuedEventId = mutableQueuedEventId.asStateFlow()
+    fun consumeQueuedEventId() { mutableQueuedEventId.value = null }
+
     private var generation = 0L
     private var loadJob: Job? = null
     private var mutationJob: Job? = null
@@ -56,17 +66,18 @@ class SosViewModel(
         generation++
         loadJob?.cancel(); mutationJob?.cancel()
         mutable.value = SosState(owner = owner)
+        mutableQueuedEventId.value = null
         if (owner != null) refresh()
     }
 
     fun refresh(keepError: Boolean = false) {
         val owner = mutable.value.owner ?: return
         if (mutable.value.pending) return
-        val priorError = if (keepError) mutable.value.error else null
+        val priorError = if (keepError) mutable.value.errorRes else null
         val selectedId = mutable.value.selected?.id
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(loading = true, error = priorError) }
+        mutable.update { it.copy(loading = true, errorRes = priorError) }
         loadJob = viewModelScope.launch {
             try {
                 var local = outbox.read(owner)
@@ -99,12 +110,12 @@ class SosViewModel(
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update { it.copy(members = members, events = events, outbox = local, selected = selected,
                     recipients = recipients, loading = false, offline = offline, pushRegistered = pushRegistered,
-                    pushConfigured = pushConfigured, error = priorError) }
+                    pushConfigured = pushConfigured, errorRes = priorError) }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner) mutable.update {
                     it.copy(members = emptyList(), events = emptyList(), outbox = emptyList(), selected = null,
                         recipients = emptyList(), loading = false, pushRegistered = null, pushConfigured = null,
-                        error = "Không thể đọc dữ liệu SOS. Hãy kiểm tra kết nối và bộ nhớ thiết bị.")
+                        errorRes = R.string.sos_error_read_failed)
                 }
             }
         }
@@ -115,9 +126,11 @@ class SosViewModel(
         if (mutable.value.pending || recipientIds.isEmpty() || recipientIds.any { id -> mutable.value.members.none { it.userId == id } }) return
         mutate {
             val at = now()
+            val item = SosOutboxItem(UUID.randomUUID().toString(), owner, Instant.ofEpochMilli(at).toString(), recipientIds.sorted(), at, SosLocalState.QUEUED)
             try {
-                outbox.enqueue(SosOutboxItem(UUID.randomUUID().toString(), owner, Instant.ofEpochMilli(at).toString(), recipientIds.sorted(), at, SosLocalState.QUEUED))
+                outbox.enqueue(item)
             } catch (e: CancellationException) { throw e } catch (e: Exception) { throw SosLocalQueueException(e) }
+            mutableQueuedEventId.value = item.eventId
             scheduler.schedule(owner)
         }
     }
@@ -126,7 +139,7 @@ class SosViewModel(
         val owner = mutable.value.owner ?: return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(selected = null, recipients = emptyList(), loading = true, error = null) }
+        mutable.update { it.copy(selected = null, recipients = emptyList(), loading = true, errorRes = null) }
         loadJob = viewModelScope.launch {
             try {
                 val event = repository.event(owner, id)
@@ -136,7 +149,7 @@ class SosViewModel(
                 } catch (e: CancellationException) { throw e } catch (_: Exception) { mutable.value.members }
                 if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(selected = event, recipients = recipients, members = members, loading = false) }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(selected = null, recipients = emptyList(), loading = false, error = "Không thể kiểm tra sự kiện hoặc quyền hiện tại.") }
+                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(selected = null, recipients = emptyList(), loading = false, errorRes = R.string.sos_error_select_failed) }
             }
         }
     }
@@ -174,11 +187,11 @@ class SosViewModel(
         if (mutable.value.pending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(pending = true, selected = null, recipients = emptyList(), error = null) }
+        mutable.update { it.copy(pending = true, selected = null, recipients = emptyList(), errorRes = null) }
         mutationJob = viewModelScope.launch {
             try { action(owner) } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 if (generation == token && mutable.value.owner == owner) mutable.update {
-                    it.copy(error = if (e is SosLocalQueueException) "Không xác nhận được việc lưu SOS. Hãy liên hệ trực tiếp và kiểm tra bộ nhớ thiết bị." else "Chưa xác nhận được thao tác. Hãy kiểm tra trạng thái trước khi thử lại.")
+                    it.copy(errorRes = if (e is SosLocalQueueException) R.string.sos_error_queue_failed else R.string.sos_error_action_failed)
                 }
             } finally {
                 if (generation == token && mutable.value.owner == owner) {

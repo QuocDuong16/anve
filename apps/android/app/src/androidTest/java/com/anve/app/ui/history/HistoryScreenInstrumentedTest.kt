@@ -27,6 +27,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class HistoryScreenInstrumentedTest {
+
     @get:Rule val compose = createComposeRule()
 
     @Test
@@ -38,9 +39,10 @@ class HistoryScreenInstrumentedTest {
         }
         compose.runOnIdle { vm.activate("owner"); vm.select("owner", LocalDate.of(2020, 3, 8)) }
         compose.onNodeWithText("Lịch sử vị trí").assertIsDisplayed()
-        compose.onNodeWithText("2020-03-08").assertIsDisplayed()
+        // The date renders in the vi-VN display format, not ISO.
+        compose.onNodeWithText("08/03/2020").assertIsDisplayed()
         compose.onNodeWithContentDescription("Ngày trước").performClick()
-        compose.onNodeWithText("2020-03-07").assertIsDisplayed()
+        compose.onNodeWithText("07/03/2020").assertIsDisplayed()
     }
 
     @Test

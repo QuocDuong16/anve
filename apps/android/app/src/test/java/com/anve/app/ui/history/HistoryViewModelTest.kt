@@ -1,5 +1,7 @@
 package com.anve.app.ui.history
 
+import com.anve.app.R
+
 import com.anve.app.data.api.HistoryRetentionDto
 import com.anve.app.data.api.HistoryPageDto
 import com.anve.app.data.api.HistoryPointDto
@@ -23,6 +25,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryViewModelTest {
+
     private val dispatcher = UnconfinedTestDispatcher()
     private val source = FakeHistory()
     private lateinit var vm: HistoryViewModel
@@ -93,7 +96,7 @@ class HistoryViewModelTest {
         assertEquals(1, vm.state.value.points.size)
         vm.recheckAccess("a", "viewer")
         assertTrue(vm.state.value.points.isEmpty())
-        assertTrue(vm.state.value.error.orEmpty().contains("không còn"))
+        assertEquals(R.string.history_error_viewer_revoked, vm.state.value.errorRes)
     }
 
     @Test fun `timeline pages stay bounded and request the server cursor`() {
@@ -105,8 +108,24 @@ class HistoryViewModelTest {
         vm.activate("a")
         assertEquals("first", vm.state.value.points.single().eventId)
         vm.next()
-        assertEquals("second", vm.state.value.points.single().eventId)
+        // Load-more appends: the page the reader already saw stays on screen.
+        assertEquals(listOf("first", "second"), vm.state.value.points.map { it.eventId })
         assertEquals(null, vm.state.value.nextCursor)
+    }
+
+    @Test fun `failed next page keeps the loaded timeline and drops the cursor`() {
+        val first = point("first", "2026-10-29T00:00:00Z", 10.0)
+        source.fetchPage = { _, cursor ->
+            if (cursor == null) HistoryPageDto(listOf(first), "next") else throw IllegalStateException("offline")
+        }
+        vm.activate("a")
+        vm.next()
+        // The reader keeps what was already shown; dropping the cursor is what
+        // stops the scroll-triggered load-more from retrying itself in a loop.
+        // Recovery goes through the error notice's refresh.
+        assertEquals(listOf("first"), vm.state.value.points.map { it.eventId })
+        assertEquals(null, vm.state.value.nextCursor)
+        assertEquals(R.string.history_error_load_failed, vm.state.value.errorRes)
     }
 
     @Test fun `failed delete never claims success or retries`() {
@@ -114,7 +133,7 @@ class HistoryViewModelTest {
         vm.activate("a")
         vm.delete(all = true)
         assertEquals(1, source.deleteCalls)
-        assertTrue(vm.state.value.error.orEmpty().contains("Chưa xác nhận"))
+        assertEquals(R.string.history_error_delete_unconfirmed, vm.state.value.errorRes)
         assertTrue(vm.state.value.points.isEmpty())
         vm.refresh()
         assertEquals(1, source.deleteCalls)
@@ -127,12 +146,37 @@ class HistoryViewModelTest {
         source.fetch = { throw IllegalStateException("denied") }
         vm.refresh()
         assertTrue(vm.state.value.points.isEmpty())
-        assertTrue(vm.state.value.error != null)
+        assertTrue(vm.state.value.errorRes != null)
+    }
+
+    @Test fun `confirmed retention change reports the server-accepted days once`() {
+        vm.activate("a")
+        vm.changeRetention(7)
+        assertEquals(R.string.history_retention_saved, vm.retentionConfirmation.value?.messageRes)
+        assertEquals(7, vm.retentionConfirmation.value?.days)
+        vm.consumeRetentionConfirmation()
+        assertEquals(null, vm.retentionConfirmation.value)
+    }
+
+    @Test fun `failed retention change never announces success`() {
+        source.failRetention = true
+        vm.activate("a")
+        vm.changeRetention(7)
+        assertEquals(null, vm.retentionConfirmation.value)
+        assertEquals(R.string.history_error_retention_unconfirmed, vm.state.value.errorRes)
+    }
+
+    @Test fun `account switch clears an unconsumed retention confirmation`() {
+        vm.activate("a")
+        vm.changeRetention(7)
+        vm.activate("b")
+        assertEquals(null, vm.retentionConfirmation.value)
     }
 
     private fun point(id: String, timestamp: String, lat: Double) = HistoryPointDto(id, lat, 106.0, 10.0, timestamp, timestamp, "fused", false, false, "epoch")
     private class FakeHistory : HistoryDataSource {
         var failDelete = false
+        var failRetention = false
         var deleteCalls = 0
         var lastRange: Pair<String, String>? = null
         var lastDeletedRange: Pair<String?, String>? = null
@@ -144,7 +188,10 @@ class HistoryViewModelTest {
             return fetchPage(owner, cursor)
         }
         override suspend fun retention(owner: String) = HistoryRetentionDto(30, 30)
-        override suspend fun setRetention(owner: String, days: Int) = HistoryRetentionDto(days, days)
+        override suspend fun setRetention(owner: String, days: Int): HistoryRetentionDto {
+            if (failRetention) throw IllegalStateException("unconfirmed")
+            return HistoryRetentionDto(days, days)
+        }
         override suspend fun delete(owner: String, from: String?, to: String) {
             deleteCalls++
             lastDeletedRange = from to to

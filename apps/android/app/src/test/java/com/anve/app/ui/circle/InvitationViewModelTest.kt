@@ -1,6 +1,7 @@
 package com.anve.app.ui.circle
 
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.CircleMembershipDto
 import com.anve.app.data.api.InvitePreviewDto
@@ -126,7 +127,7 @@ class InvitationViewModelTest {
             assertFalse(model.state.value.loading)
             assertNull(model.state.value.preview)
             assertTrue(model.state.value.blocked)
-            assertFalse(model.state.value.error.orEmpty().contains("private failure"))
+            assertEquals(R.string.invite_session_check_failed, model.state.value.errorRes)
             model.confirm()
             assertEquals(0, gateway.confirms)
         } finally { model.viewModelScope.cancel() }

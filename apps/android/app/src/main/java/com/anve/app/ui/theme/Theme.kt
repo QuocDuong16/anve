@@ -8,6 +8,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 internal val LightColors = lightColorScheme(
@@ -58,6 +61,35 @@ internal val DarkColors = darkColorScheme(
     onSurfaceVariant = Sand200,
 )
 
+/**
+ * Emergency marks urgent safety actions (SOS). It is deliberately separate
+ * from `error`: amber urgency asks the user to act now, while `error` stays
+ * reserved for failures. Both pairs are drawn from the brand amber ramp and
+ * are covered by ThemeContrastTest at body-text contrast.
+ */
+data class EmergencyColors(
+    val emergency: Color,
+    val onEmergency: Color,
+    val emergencyContainer: Color,
+    val onEmergencyContainer: Color,
+)
+
+internal val LightEmergencyColors = EmergencyColors(
+    emergency = Amber600,
+    onEmergency = Ink900,
+    emergencyContainer = Amber300,
+    onEmergencyContainer = Ink900,
+)
+
+internal val DarkEmergencyColors = EmergencyColors(
+    emergency = Amber300,
+    onEmergency = Ink900,
+    emergencyContainer = Amber800,
+    onEmergencyContainer = Sand50,
+)
+
+internal val LocalEmergencyColors = staticCompositionLocalOf { LightEmergencyColors }
+
 @Composable
 fun AnVeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -75,8 +107,11 @@ fun AnVeTheme(
         else -> LightColors
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content,
-    )
+    // Emergency keeps the brand amber even under dynamic color: an urgent
+    // safety action must stay recognizable regardless of the wallpaper.
+    val emergencyColors = if (darkTheme) DarkEmergencyColors else LightEmergencyColors
+
+    MaterialTheme(colorScheme = colorScheme) {
+        CompositionLocalProvider(LocalEmergencyColors provides emergencyColors, content = content)
+    }
 }

@@ -21,6 +21,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PrivateInvitationsControllerTest {
+
     private val dispatcher = UnconfinedTestDispatcher()
     private val sessions = InMemorySessionStorage()
     private suspend fun login(owner: String = "owner") { sessions.save(StoredSession("a", "r", "later", "later", owner)) }

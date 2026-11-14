@@ -12,6 +12,16 @@
     <string name="signin_in_progress">Đang hoàn tất đăng nhập…</string>
     <string name="signin_google_unavailable">Đăng nhập Google chưa sẵn sàng trên máy chủ hoặc trên bản cài này. Kiểm tra kết nối tới máy chủ, hoặc xem hướng dẫn cấu hình.</string>
     <string name="signin_retry">Thử lại</string>
+    <string name="signin_no_activity_resolver">Không mở được trình đăng nhập trên màn hình này.</string>
+    <string name="signin_invitation_prompt">Đăng nhập để kiểm tra lời mời gia đình. Lời mời chỉ được giữ tạm trên thiết bị; chưa tham gia nhóm hoặc bật chia sẻ vị trí.</string>
+    <!-- Copy SignInViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="signin_credential_incomplete">Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.</string>
+    <string name="signin_unauthenticated">Đăng nhập không thành công. Vui lòng thử lại.</string>
+    <string name="signin_auth_not_configured">Máy chủ chưa cấu hình đăng nhập Google. Hãy xem hướng dẫn thiết lập.</string>
+    <string name="signin_rate_limited">Bạn đã thử quá nhiều lần. Vui lòng đợi một lát.</string>
+    <string name="signin_validation_failed">Thông tin đăng nhập chưa hợp lệ.</string>
+    <string name="signin_server_error">Máy chủ báo lỗi: %1$s</string>
+    <string name="signin_network_failed">Không kết nối được máy chủ. Kiểm tra mạng và thử lại.</string>
     <string name="signin_dev_title">Đăng nhập phát triển (chỉ máy chủ dev)</string>
     <string name="signin_dev_email">Email</string>
     <string name="signin_dev_button">Đăng nhập dev</string>
@@ -21,24 +31,65 @@
     <string name="signin_local_signout_no_retry">Đã đăng xuất khỏi thiết bị này. Máy chủ chưa xác nhận thu hồi phiên; lần thử lại không được lưu trên thiết bị, nên phiên có thể còn hiệu lực đến khi hết hạn.</string>
     <string name="action_dismiss">Đã hiểu</string>
 
+    <!-- Avatar sheet (profile photo) -->
+    <string name="avatar_title">Ảnh đại diện</string>
+    <string name="avatar_subtitle">Ảnh hiển thị với người trong nhóm.</string>
+    <string name="avatar_processing">Đang xử lý ảnh…</string>
+    <string name="avatar_loading_info">Đang tải thông tin ảnh…</string>
+    <string name="avatar_choose_other">Chọn ảnh khác</string>
+    <string name="avatar_remove">Xóa ảnh</string>
+    <string name="avatar_privacy_note">Chỉ ảnh bạn chọn được gửi lên AnVề.</string>
+    <string name="avatar_remove_draft_note">Ảnh hiện tại sẽ được xóa sau khi bạn lưu.</string>
+    <string name="avatar_offline">Mất mạng. Bạn có thể xem trước; cần kết nối để lưu thay đổi.</string>
+    <string name="avatar_busy">Đang chờ máy chủ xác nhận. Đóng bảng không hủy được thao tác đã gửi.</string>
+    <string name="avatar_check_result">Kiểm tra kết quả</string>
+    <string name="avatar_save_changes">Lưu thay đổi</string>
+    <string name="avatar_save">Lưu ảnh</string>
+    <!-- Copy AvatarController reports as resource IDs, resolved at AvatarEditorHost. -->
+    <string name="avatar_load_failed">Chưa tải được ảnh đại diện. Kiểm tra mạng rồi thử lại.</string>
+    <string name="avatar_decode_failed">Không đọc được ảnh này. Chọn một ảnh khác hoặc ảnh nhỏ hơn.</string>
+    <string name="avatar_picker_unavailable">Không mở được trình chọn ảnh. Thử lại hoặc kiểm tra ứng dụng hệ thống.</string>
+    <string name="avatar_save_offline">Mất mạng. Ảnh chưa được gửi; kết nối lại trước khi lưu.</string>
+    <string name="avatar_save_failed">Chưa lưu được ảnh. Kiểm tra ảnh, tài khoản hoặc thử lại sau.</string>
+    <string name="avatar_changed_externally">Ảnh hiện tại đã thay đổi. Kiểm tra trước khi chọn thao tác mới.</string>
+    <string name="avatar_unconfirmed_check">Máy chủ chưa xác nhận thay đổi ảnh. Kiểm tra kết quả; app không tự gửi lại.</string>
+    <string name="avatar_unconfirmed_reconnect">Máy chủ chưa xác nhận thay đổi ảnh. Kết nối lại rồi kiểm tra kết quả.</string>
+    <string name="avatar_removed_notice">Đã xóa ảnh đại diện.</string>
+    <string name="avatar_updated_notice">Đã cập nhật ảnh đại diện.</string>
+    <string name="avatar_image_failed_desc">Chưa tải được ảnh đại diện; đang hiển thị chữ cái.</string>
+    <string name="avatar_retry_content_desc">Tải lại ảnh đại diện</string>
+
     <!-- Home / account -->
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
     <string name="home_quick_settings_title">Cài đặt chia sẻ</string>
     <string name="sos_open">Mở SOS</string>
     <string name="action_back">Quay lại</string>
     <string name="action_retry">Thử lại</string>
+    <string name="action_open_location">Mở màn Vị trí</string>
+    <string name="action_loading">Đang tải…</string>
+    <string name="action_processing">Đang xử lý…</string>
     <string name="action_rename">Đổi tên</string>
     <string name="action_save">Lưu</string>
     <string name="action_cancel">Hủy</string>
     <string name="home_sharing_title">Chia sẻ vị trí của tôi</string>
     <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
-    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở tab Vị trí để bật theo dõi và cấp quyền hệ thống.</string>
+    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở màn Vị trí để bật theo dõi và cấp quyền hệ thống.</string>
     <string name="home_sharing_pending_notice">Thay đổi đã lưu trên thiết bị nhưng máy chủ chưa xác nhận. Quyền chia sẻ đang chờ đồng bộ; trạng thái này chưa có hiệu lực trên máy chủ.</string>
     <string name="home_sharing_conflict_notice">Chia sẻ đã thay đổi trên thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới; vị trí vẫn dừng trên thiết bị này.</string>
     <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
-    <string name="home_device_revoke">Đăng xuất</string>
+    <!-- Distinguishes revoking one listed session from signing this device
+         out entirely (home_sign_out). -->
+    <string name="home_device_revoke">Thu hồi phiên</string>
     <string name="home_sign_out">Đăng xuất</string>
+    <string name="home_checking_account">Đang kiểm tra tài khoản…</string>
+    <string name="home_avatar_edit_desc">Đổi ảnh đại diện</string>
+    <string name="home_device_fallback_name">Thiết bị</string>
+    <!-- Push deep-link snackbar: names that a notification moved the user and
+         offers the pre-push screen back once (the shell saved that state
+         before applying the jump). -->
+    <string name="home_push_opened">Đã mở từ thông báo</string>
+    <string name="home_push_back">Quay lại</string>
     <string name="tab_sos">SOS</string>
     <string name="home_sign_out_title">Đăng xuất thiết bị này?</string>
     <string name="home_sign_out_body">Phiên trên thiết bị này sẽ bị xóa ngay. SOS đang chờ sẽ được giữ trên thiết bị và chỉ gửi tiếp khi bạn đăng nhập lại đúng tài khoản. Nếu không có mạng, máy chủ có thể giữ phiên đến khi hết hạn — ứng dụng sẽ thử thu hồi lại ở lần mở sau.</string>
@@ -46,8 +97,22 @@
     <string name="home_rename_title">Tên hiển thị</string>
     <string name="home_rename_label">Tên mà người thân sẽ thấy</string>
     <string name="home_delete_title">Xóa tài khoản?</string>
-    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.\n\nNếu bạn là chủ nhóm còn thành viên, hãy vào Nhóm và giải tán nhóm trước: tài khoản sẽ không xóa được khi nhóm còn người khác.</string>
+    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.\n\nNếu bạn là chủ nhóm còn thành viên, hãy vào màn Nhóm và giải tán nhóm trước: tài khoản sẽ không xóa được khi nhóm còn người khác.</string>
     <string name="home_delete_confirm">Xóa vĩnh viễn</string>
+    <!-- Copy HomeViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="home_conflict_reload_notice">Chia sẻ đã thay đổi trên một thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới.</string>
+    <string name="home_load_failed_retry">Không tải được thông tin tài khoản. Kiểm tra kết nối và thử lại.</string>
+    <string name="home_enable_failed">Không bật được chia sẻ vị trí. Vui lòng thử lại.</string>
+    <string name="home_disable_unconfirmed">Đã dừng theo dõi trên thiết bị này; chưa xác nhận được với máy chủ.</string>
+    <string name="home_rename_done">Đã cập nhật tên hiển thị.</string>
+    <string name="home_rename_failed">Không cập nhật được tên hiển thị.</string>
+    <string name="home_device_revoked">Đã đăng xuất thiết bị.</string>
+    <string name="home_device_revoke_failed">Không đăng xuất được thiết bị.</string>
+    <string name="home_sign_out_failed">Không đăng xuất được. Vui lòng thử lại.</string>
+    <string name="home_delete_unconfirmed">Chưa xác nhận được kết quả xóa tài khoản. Đang kiểm tra lại với máy chủ…</string>
+    <string name="home_delete_failed">Không xóa được tài khoản. Vui lòng thử lại.</string>
+    <string name="home_delete_circle_has_members">Tài khoản của bạn đang quản lý một nhóm gia đình có thành viên. Bạn cần giải tán nhóm trước khi xóa tài khoản.</string>
+    <string name="home_delete_unauthenticated">Phiên đăng nhập không còn hiệu lực. Vui lòng đăng nhập lại.</string>
 
     <!-- Circle (M2) -->
     <string name="circle_setup_title">Nhóm gia đình của bạn</string>
@@ -78,6 +143,44 @@
     <string name="circle_dissolve_title">Giải tán nhóm?</string>
     <string name="circle_dissolve_body">Nhóm, mã mời, địa điểm và sự kiện liên quan sẽ bị xóa vĩnh viễn với mọi người. Hành động này không thể hoàn tác.</string>
     <string name="circle_dissolve_confirm">Giải tán</string>
+    <!-- Copy the ViewModel reports for load results and contract errors,
+         resolved at the screen so the strings stay translatable. -->
+    <string name="circle_load_failed">Không tải được thông tin nhóm.</string>
+    <string name="circle_members_failed">Không tải được danh sách thành viên.</string>
+    <string name="circle_joined">Đã tham gia nhóm.</string>
+    <string name="circle_created">Đã tạo nhóm gia đình.</string>
+    <string name="circle_invite_created">Đã tạo mã mời mới.</string>
+    <string name="circle_invite_revoke_failed">Không thu hồi được mã mời.</string>
+    <string name="circle_invite_revoked">Đã thu hồi mã mời.</string>
+    <string name="circle_member_removed">Đã xóa thành viên khỏi nhóm.</string>
+    <string name="circle_left">Bạn đã rời nhóm.</string>
+    <string name="circle_error_active_circle">Bạn đã thuộc một nhóm. Hãy rời nhóm hiện tại trước.</string>
+    <string name="circle_error_invite_unavailable">Mã mời không tồn tại, đã hết hạn hoặc đã được dùng.</string>
+    <string name="circle_error_circle_has_members">Nhóm vẫn còn thành viên. Chọn giải tán nhóm nếu bạn chắc chắn.</string>
+    <string name="circle_error_forbidden">Bạn không có quyền thực hiện việc này.</string>
+    <!-- Full sentences replace the old "Không <động từ> được" template so a
+         translation never has to reassemble a sentence from parts. -->
+    <string name="circle_error_create_failed">Không tạo được nhóm. Vui lòng thử lại.</string>
+    <string name="circle_error_join_failed">Không tham gia được nhóm. Vui lòng thử lại.</string>
+    <string name="circle_error_invite_create_failed">Không tạo được mã mời. Vui lòng thử lại.</string>
+    <string name="circle_error_remove_member_failed">Không xóa được thành viên. Vui lòng thử lại.</string>
+    <string name="circle_error_leave_failed">Không rời được nhóm. Vui lòng thử lại.</string>
+
+    <!-- Activation checklist shown while the user is the only member of their
+         circle. Steps collapse on real progress: another member joined
+         (invite), consent turned on (sharing), or the user went to the map to
+         pick viewers (audience; grants are not readable from this screen). -->
+    <string name="circle_activation_title">Bước tiếp theo</string>
+    <string name="circle_activation_intro">Để người thân xem được vị trí của bạn:</string>
+    <string name="circle_activation_invite_title">1. Mời người thân</string>
+    <string name="circle_activation_invite_body">Tạo mã mời hoặc liên kết để gửi cho người thân; họ tự xác nhận tham gia.</string>
+    <string name="circle_activation_invite_action">Tạo lời mời</string>
+    <string name="circle_activation_share_title">2. Bật chia sẻ vị trí của bạn</string>
+    <string name="circle_activation_share_body">Chọn đồng ý chia sẻ ở màn Vị trí. AnVề không ghi vị trí khi bạn chưa đồng ý.</string>
+    <string name="circle_activation_share_action">Mở màn Vị trí</string>
+    <string name="circle_activation_audience_title">3. Chọn ai được xem vị trí của bạn</string>
+    <string name="circle_activation_audience_body">Trong phần “Quyền xem” ở màn Bản đồ, chọn từng người được xem vị trí của bạn.</string>
+    <string name="circle_activation_audience_action">Mở màn Bản đồ</string>
 
     <!-- Tracking (M3) -->
     <string name="tracking_notification_channel">Theo dõi vị trí</string>
@@ -131,6 +234,7 @@
     <string name="tracking_permission_notifications_missing">Chưa cho phép — thông báo theo dõi có thể không hiển thị</string>
     <string name="tracking_permission_notifications_grant">Bật thông báo</string>
     <string name="tracking_permission_settings">Mở cài đặt quyền</string>
+    <string name="tracking_permissions_ok">Đủ ✓</string>
     <string name="tracking_location_services_off">Vị trí của điện thoại đang tắt.</string>
     <string name="tracking_location_services_settings">Mở cài đặt vị trí</string>
     <string name="tracking_status_title">Trạng thái gần nhất</string>
@@ -184,6 +288,13 @@
     <string name="tracking_disclosure_accept">Đồng ý và tiếp tục</string>
     <string name="tracking_disclosure_later">Để sau</string>
     <string name="tracking_message_dismiss">Đã hiểu</string>
+    <string name="tracking_consent_server_value">Đồng ý chia sẻ (máy chủ): %1$s</string>
+    <string name="tracking_consent_server_note">Đồng ý trên máy chủ khác với việc điện thoại đang ghi vị trí.</string>
+    <string name="tracking_privacy_discarded_notice">Một số điểm không được đồng bộ vì không xác minh được quyền riêng tư. Hãy kiểm tra kết nối và thử lại.</string>
+    <!-- Copy TrackingViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="tracking_retry_sync_queued">Đã yêu cầu đồng bộ lại. AnVề sẽ gửi các điểm đang chờ khi có mạng.</string>
+    <string name="tracking_consent_enable_failed">Không bật được chia sẻ vị trí. Vui lòng thử lại.</string>
+    <string name="tracking_consent_disable_unconfirmed">Đã dừng theo dõi trên thiết bị này. Chưa xác nhận được với máy chủ.</string>
 
     <!-- Home tabs -->
     <string name="tab_circle">Nhóm</string>
@@ -192,4 +303,527 @@
     <string name="tab_map">Bản đồ</string>
     <string name="tab_location">Vị trí</string>
     <string name="tab_account">Tài khoản</string>
+
+    <!-- History (M4) -->
+    <string name="history_title">Lịch sử vị trí</string>
+    <string name="history_refresh_content_desc">Làm mới</string>
+    <string name="history_actions_content_desc">Thao tác lịch sử</string>
+    <string name="history_member_self">Của tôi</string>
+    <string name="history_prev_day_content_desc">Ngày trước</string>
+    <string name="history_next_day_content_desc">Ngày sau</string>
+    <string name="history_pick_confirm">Chọn</string>
+    <string name="history_start_time_title">Chọn giờ bắt đầu</string>
+    <string name="history_end_time_title">Chọn giờ kết thúc</string>
+    <string name="history_time_from">Từ %1$s</string>
+    <string name="history_time_to">Đến %1$s</string>
+    <string name="history_time_all_day">Cả ngày</string>
+    <string name="history_gap_prefix">Gián đoạn · </string>
+    <string name="history_backfill_suffix"> · đồng bộ trễ</string>
+    <string name="history_mock_suffix"> · nguồn mô phỏng</string>
+    <string name="history_point_row">%1$s%2$s · ±%3$d m%4$s%5$s</string>
+    <string name="history_center_map">Đưa bản đồ tới điểm đã chọn</string>
+    <string name="history_map_unconfigured">Bản đồ chưa được cấu hình; lịch sử vẫn hiển thị bên dưới.</string>
+    <string name="history_empty_day">Không có điểm lịch sử trong ngày này.</string>
+    <string name="history_retention_title">Thời hạn lưu</string>
+    <string name="history_retention_days_value">%1$s ngày</string>
+    <string name="history_retention_chip_days">%1$d ngày</string>
+    <string name="history_delete_range_menu">Xóa khoảng giờ</string>
+    <string name="history_delete_day_menu">Xóa ngày này</string>
+    <string name="history_delete_all_menu">Xóa toàn bộ lịch sử</string>
+    <string name="history_delete_title">Xóa lịch sử?</string>
+    <string name="history_delete_scope_all">Xóa lịch sử đến lúc này.</string>
+    <string name="history_delete_scope_day">Xóa lịch sử ngày đã chọn.</string>
+    <string name="history_delete_scope_range">Xóa lịch sử trong khoảng giờ đã chọn.</string>
+    <string name="history_delete_privacy_note">Để bảo vệ quyền riêng tư, các điểm chưa đồng bộ trên thiết bị khác có thể bị bỏ, kể cả điểm mới ghi khi thiết bị offline.</string>
+    <string name="history_delete_confirm">Xóa</string>
+    <!-- Copy HistoryViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="history_error_invalid_interval">Khoảng giờ không hợp lệ.</string>
+    <string name="history_error_offline">Không có kết nối. Kiểm tra mạng rồi thử lại.</string>
+    <string name="history_error_access_lost">Không còn quyền xem lịch sử này.</string>
+    <string name="history_error_load_failed">Không thể tải lịch sử. Vui lòng thử lại.</string>
+    <string name="history_error_viewer_revoked">Quyền xem không còn hiệu lực.</string>
+    <string name="history_error_access_check_failed">Không thể kiểm tra quyền xem. Thử lại khi có kết nối.</string>
+    <string name="history_error_delete_unconfirmed">Chưa xác nhận việc xóa. Kiểm tra lại lịch sử trước khi thực hiện thao tác mới.</string>
+    <string name="history_error_retention_unconfirmed">Chưa xác nhận thời hạn lưu. Kiểm tra lại trước khi thay đổi.</string>
+    <!-- Snackbar for a retention change the server confirmed: %1$d is the
+         value the server returned, not the chip the user tapped. -->
+    <string name="history_retention_saved">Đã lưu thời hạn lưu %1$d ngày.</string>
+
+    <!-- SOS (M5) -->
+    <string name="sos_push_registering">Đang đăng ký nhận thông báo cho thiết bị này…</string>
+    <string name="sos_push_not_configured">Dịch vụ thông báo chưa được cấu hình trên bản cài đặt này.</string>
+    <string name="sos_open_settings_failed">Không thể mở cài đặt; hãy bật thông báo trong cài đặt ứng dụng.</string>
+    <string name="sos_notifications_dialog_title">Thông báo sự kiện</string>
+    <string name="sos_notifications_dialog_body">Cho phép thông báo để thiết bị có thể nhận tín hiệu SOS và sự kiện địa điểm. AnVề không gọi dịch vụ cấp cứu thay bạn.</string>
+    <string name="sos_notifications_continue">Tiếp tục</string>
+    <string name="sos_notifications_later">Để sau</string>
+    <string name="sos_title">Yêu cầu hỗ trợ</string>
+    <string name="sos_emergency_disclaimer">AnVề không tự gọi 113, 114 hoặc 115. Hãy gọi dịch vụ cấp cứu nếu cần.</string>
+    <string name="sos_push_configured">Máy chủ đã cấu hình gửi thông báo. Điều này chưa chứng minh thông báo đã đến người nhận.</string>
+    <string name="sos_push_unconfigured">Máy chủ chưa cài đặt việc gửi thông báo. Hãy liên hệ trực tiếp với người thân cần hỗ trợ.</string>
+    <string name="sos_push_unknown">Chưa kiểm tra được trạng thái gửi thông báo. Nếu cần hỗ trợ khẩn cấp, hãy liên hệ trực tiếp.</string>
+    <string name="sos_offline_notice">Đang dùng danh sách đã lưu; quyền thành viên sẽ được kiểm tra khi kết nối lại.</string>
+    <string name="sos_recipients_title">Chọn người nhận</string>
+    <string name="sos_recipients_empty">Không có danh sách người nhận. Hãy kết nối để tải thành viên Circle.</string>
+    <string name="sos_outbox_title">Yêu cầu trên thiết bị</string>
+    <string name="sos_outbox_row_meta">Tạo lúc %1$s · %2$d người nhận đã chọn</string>
+    <string name="sos_outbox_empty">Chưa có yêu cầu SOS nào được lưu trên thiết bị.</string>
+    <string name="sos_state_queued">Đang chờ mạng</string>
+    <string name="sos_state_sending">Đang gửi</string>
+    <string name="sos_state_unknown">Chưa biết kết quả gửi</string>
+    <string name="sos_state_confirmed">Máy chủ đã ghi nhận</string>
+    <string name="sos_state_cancel_requested">Chưa xác nhận được việc hủy</string>
+    <string name="sos_state_cancelled">Đã hủy</string>
+    <string name="sos_state_resolved">Đã kết thúc</string>
+    <string name="sos_state_expired">Yêu cầu chưa gửi đã hết hạn</string>
+    <string name="sos_state_server_expired">Sự kiện đã hết hạn trên máy chủ</string>
+    <string name="sos_cancel_action">Hủy yêu cầu</string>
+    <string name="sos_cancel_recheck">Kiểm tra lại việc hủy</string>
+    <string name="sos_recheck">Kiểm tra lại yêu cầu</string>
+    <string name="sos_clear_finished">Xóa khỏi thiết bị</string>
+    <string name="sos_notifications_section">Thông báo</string>
+    <string name="sos_notifications_disabled">Thông báo đang tắt hoặc chưa được cấp quyền.</string>
+    <string name="sos_push_registered">Thiết bị đã đăng ký nhận thông báo.</string>
+    <string name="sos_push_not_registered">Thiết bị chưa đăng ký nhận thông báo.</string>
+    <string name="sos_push_check_unknown">Chưa kiểm tra được trạng thái đăng ký nhận thông báo của thiết bị.</string>
+    <!-- Technical annotation for the notification section: "push" jargon is
+         kept out of the status rows, but the acceptance-vs-delivery
+         distinction must stay explicit. -->
+    <string name="sos_notifications_technical_note">Kỹ thuật: thông báo gửi qua dịch vụ thông báo của Google (FCM). Máy chủ chỉ xác nhận việc dịch vụ đã chấp nhận gửi; chưa chứng minh thiết bị người nhận đã nhận hay đã đọc thông báo.</string>
+    <string name="sos_notifications_setup">Thiết lập thông báo</string>
+    <string name="sos_open_notification_settings">Mở cài đặt thông báo</string>
+    <string name="sos_events_title">Sự kiện</string>
+    <string name="sos_events_empty">Chưa có sự kiện có thể xem.</string>
+    <string name="sos_person_you">Bạn</string>
+    <string name="sos_person_member">Thành viên</string>
+    <string name="sos_person_member_unnamed">Thành viên (chưa tải tên)</string>
+    <string name="sos_detail_title">Chi tiết sự kiện</string>
+    <string name="sos_detail_sender">Người gửi: %1$s</string>
+    <string name="sos_detail_status">Thời điểm yêu cầu: %1$s (%2$s)\nMáy chủ ghi nhận: %3$s\nTrạng thái: %4$s</string>
+    <string name="sos_push_queued_pending">Đang chờ gửi thông báo</string>
+    <string name="sos_push_queued_accepted">Dịch vụ thông báo đã nhận ít nhất một lượt gửi; còn lượt đang chờ</string>
+    <string name="sos_push_accepted">Dịch vụ thông báo đã chấp nhận gửi</string>
+    <string name="sos_push_suppressed">Đã dừng gửi thông báo</string>
+    <string name="sos_push_suppressed_accepted">Đã dừng gửi; một lượt trước đã được dịch vụ chấp nhận</string>
+    <string name="sos_push_expired">Lượt gửi thông báo đã hết hạn</string>
+    <string name="sos_push_expired_accepted">Lượt gửi hết hạn; một lượt trước đã được dịch vụ chấp nhận</string>
+    <string name="sos_push_state_unknown">Chưa rõ trạng thái gửi thông báo</string>
+    <string name="sos_acknowledged">Đã xác nhận</string>
+    <string name="sos_not_acknowledged">Chưa xác nhận</string>
+    <string name="sos_revoke_viewer">Thu hồi quyền xem của %1$s</string>
+    <string name="sos_cancel">Hủy</string>
+    <string name="sos_resolve">Kết thúc</string>
+    <string name="sos_acknowledge">Tôi đã biết</string>
+    <string name="sos_check_again">Kiểm tra lại</string>
+    <string name="sos_snackbar_queued">Yêu cầu đã được lưu trên thiết bị; máy chủ chưa xác nhận.</string>
+    <string name="sos_snackbar_view_status">Xem trạng thái</string>
+    <string name="sos_bottom_pending">Đang xử lý yêu cầu…</string>
+    <string name="sos_bottom_no_recipients">Không có người nhận để chọn</string>
+    <string name="sos_bottom_none_selected">Chưa chọn người nhận nào</string>
+    <string name="sos_bottom_ready">Sẵn sàng gửi đến %1$d người đã chọn</string>
+    <string name="sos_send_button">Gửi yêu cầu SOS</string>
+    <string name="sos_bottom_disclaimer">Lời nhắn không đính kèm vị trí và không bật GPS.</string>
+    <string name="sos_confirm_title">Gửi yêu cầu hỗ trợ?</string>
+    <string name="sos_confirm_body">Yêu cầu sẽ được gửi đến %1$d người đã chọn khi có kết nối. Không đính kèm vị trí.</string>
+    <string name="sos_confirm_send">Xác nhận gửi</string>
+    <string name="sos_action_cancel_title">Hủy yêu cầu?</string>
+    <string name="sos_action_resolve_title">Kết thúc yêu cầu?</string>
+    <string name="sos_action_acknowledge_title">Xác nhận đã biết?</string>
+    <string name="sos_action_dialog_body">Trạng thái sẽ được xác nhận với máy chủ khi có kết nối.</string>
+    <string name="sos_confirm">Xác nhận</string>
+    <string name="sos_revoke_dialog_title">Thu hồi quyền xem?</string>
+    <string name="sos_revoke_dialog_body">Người này sẽ không xem được sự kiện hoặc nhận thông báo chưa gửi. Thông báo đã gửi không thể thu hồi.</string>
+    <string name="sos_revoke">Thu hồi</string>
+    <string name="sos_elapsed_just_sent">vừa gửi</string>
+    <string name="sos_elapsed_minutes">%1$d phút trước</string>
+    <string name="sos_elapsed_hours">%1$d giờ trước</string>
+    <string name="sos_elapsed_days">%1$d ngày trước</string>
+    <string name="sos_elapsed_unknown">không rõ thời gian</string>
+    <string name="sos_event_active">Đang mở</string>
+    <string name="sos_event_expired">Đã hết hạn</string>
+    <string name="sos_event_unknown">Không rõ</string>
+    <!-- Copy SosViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="sos_error_read_failed">Không thể đọc dữ liệu SOS. Hãy kiểm tra kết nối và bộ nhớ thiết bị.</string>
+    <string name="sos_error_select_failed">Không thể kiểm tra sự kiện hoặc quyền hiện tại.</string>
+    <string name="sos_error_queue_failed">Không xác nhận được việc lưu SOS. Hãy liên hệ trực tiếp và kiểm tra bộ nhớ thiết bị.</string>
+    <string name="sos_error_action_failed">Chưa xác nhận được thao tác. Hãy kiểm tra trạng thái trước khi thử lại.</string>
+
+    <!-- Live Map -->
+    <string name="map_unconfigured_message">Bản đồ chưa được cấu hình cho bản dựng này. Bạn vẫn có thể quản lý quyền chia sẻ.</string>
+    <string name="map_status_updating">Đang cập nhật</string>
+    <string name="map_status_disconnected">Chưa kết nối</string>
+    <!-- Quoted so the two leading spaces (icon gap) survive resource compile. -->
+    <string name="map_audience_action">Quyền xem</string>
+    <string name="map_no_locations_notice">Chưa có thành viên nào cấp quyền xem vị trí cho bạn.</string>
+    <string name="map_unavailable_title">Bản đồ chưa sẵn sàng</string>
+    <string name="map_updated_at">Cập nhật: %1$s</string>
+    <string name="map_accuracy">Độ chính xác: ±%1$d m</string>
+    <string name="map_recenter_content_desc">Đưa bản đồ tới vị trí thành viên</string>
+    <string name="map_audience_title">Ai có thể xem vị trí của bạn?</string>
+    <!-- The old single 60+ word paragraph is split into short bullets; each
+         keeps one truthful fact: consent is not a grant, grants start at the
+         moment they are made and are revocable, offline points can be missed. -->
+    <string name="map_audience_explainer_consent">• Bật chia sẻ chỉ ghi nhận sự đồng ý của bạn — chọn tiếp từng người được xem ở đây.</string>
+    <string name="map_audience_explainer_timing">• Quyền mới chỉ có hiệu lực từ lúc cấp, và bạn có thể thu hồi bất cứ lúc nào.</string>
+    <string name="map_audience_explainer_offline">• Một số vị trí chưa đồng bộ khi mất mạng có thể bị bỏ, để bảo vệ quyền riêng tư.</string>
+    <string name="map_retry">Kiểm tra lại</string>
+    <string name="map_no_circle">Bạn chưa tham gia nhóm gia đình.</string>
+    <string name="map_consent_off">Chia sẻ vị trí đang tắt. Bật trong Tài khoản trước khi chọn người xem.</string>
+    <string name="map_no_other_members">Nhóm chưa có thành viên khác.</string>
+    <string name="map_viewer_unresolved">Chưa xác định</string>
+    <string name="map_confidence_fresh">Vị trí mới</string>
+    <string name="map_confidence_delayed">Vị trí cập nhật chậm</string>
+    <string name="map_confidence_stale">Vị trí đã cũ</string>
+    <string name="map_confidence_offline">Ngoại tuyến</string>
+    <string name="map_confidence_unknown">Chưa có vị trí</string>
+    <string name="map_time_unavailable">chưa có dữ liệu</string>
+    <!-- Copy LiveMapViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="map_error_grant_rejected">Máy chủ từ chối thay đổi quyền xem.</string>
+    <string name="map_error_revoke_unconfirmed">Yêu cầu thu hồi trước chưa đạt: máy chủ vẫn cho biết người này có quyền xem.</string>
+    <string name="map_error_grant_unconfirmed">Yêu cầu cấp quyền trước chưa đạt: máy chủ hiện chưa hiển thị quyền này.</string>
+    <string name="map_error_outcome_unresolved">Chưa xác định kết quả thay đổi quyền xem. Đang giữ trạng thái chờ đối chiếu.</string>
+    <string name="map_error_outcome_load_failed">Chưa xác định kết quả thay đổi quyền xem. Không tải được trạng thái máy chủ; quyền vẫn đang chờ đối chiếu.</string>
+    <string name="map_error_grants_load_pending">Chưa tải được danh sách quyền hiện tại. Thay đổi vẫn đang chờ đối chiếu với máy chủ.</string>
+    <string name="map_error_grants_load_failed">Không tải được danh sách quyền xem. Thử lại khi có kết nối.</string>
+
+    <!-- Journey (M7) -->
+    <string name="journey_title">Hành trình</string>
+    <string name="journey_creating_title">Bắt đầu hành trình</string>
+    <string name="journey_reload_content_desc">Đọc lại trạng thái</string>
+    <string name="journey_reload_action">Thử đọc lại</string>
+    <string name="journey_offline_end_notice">Mất mạng: dữ liệu có thể cũ. Việc kết thúc cần máy chủ xác nhận.</string>
+    <string name="journey_offline_reload_notice">Mất mạng: dữ liệu có thể cũ. Đọc lại khi có mạng.</string>
+    <string name="journey_pending_prefix">Máy chủ chưa xác nhận %1$s.</string>
+    <string name="journey_pending_create_hint">Kiểm tra lại hoặc hủy yêu cầu trước khi bắt đầu hành trình khác.</string>
+    <string name="journey_pending_other_hint">Ưu tiên đã dừng trên thiết bị. Bạn có thể kiểm tra lại khi có mạng.</string>
+    <string name="journey_pending_recheck">Kiểm tra lại</string>
+    <string name="journey_pending_cancel">Hủy hành trình đang chờ</string>
+    <string name="journey_action_create">bắt đầu hành trình</string>
+    <string name="journey_action_arrive">đã đến nơi</string>
+    <string name="journey_action_end">kết thúc hành trình</string>
+    <string name="journey_action_cancel">hủy hành trình</string>
+    <string name="journey_action_revoke">thu hồi người xem</string>
+    <string name="journey_intro_title">Chủ động chia sẻ một hành trình</string>
+    <string name="journey_intro_body">Chọn điểm đến và người thân được theo dõi. Bạn tự xác nhận khi đã đến nơi.</string>
+    <string name="journey_start">Bắt đầu hành trình</string>
+    <string name="journey_viewable_title">Hành trình được phép xem</string>
+    <string name="journey_card_owner_you">Của bạn</string>
+    <string name="journey_card_title">%1$s · %2$s</string>
+    <string name="journey_arrival_automatic">Đến nơi tự động — ước tính</string>
+    <string name="journey_started_at">Bắt đầu %1$s</string>
+    <string name="journey_start_new">Bắt đầu hành trình mới</string>
+    <string name="journey_confirm_arrive_title">Xác nhận đã đến nơi?</string>
+    <string name="journey_confirm_revoke_title">Ngừng cho %1$s theo dõi?</string>
+    <string name="journey_confirm_end_title">Kết thúc hành trình?</string>
+    <string name="journey_arrive_action">Đã đến nơi</string>
+    <string name="journey_revoke_recipient">Thu hồi người xem</string>
+    <string name="journey_end_action">Kết thúc hành trình</string>
+    <string name="journey_confirm_arrive_body">Bạn xác nhận đã đến điểm đến “%1$s”. Những người bạn đã chọn theo dõi sẽ nhận sự kiện đến nơi khi máy chủ ghi nhận.</string>
+    <string name="journey_confirm_revoke_body">Quyền theo dõi hành trình này sẽ bị thu hồi khi máy chủ ghi nhận. Quyền xem vị trí thông thường được quản lý riêng.</string>
+    <string name="journey_confirm_end_body">Hành trình sẽ kết thúc mà không xác nhận đã đến nơi. Ưu tiên hành trình dừng trên thiết bị ngay; chia sẻ vị trí thông thường được quản lý riêng.</string>
+    <string name="journey_of_owner">Hành trình của %1$s</string>
+    <string name="journey_expires_auto">Tự kết thúc %1$s</string>
+    <string name="journey_ended_at">Kết thúc %1$s</string>
+    <string name="journey_ended">Đã kết thúc hành trình</string>
+    <string name="journey_step_started">Đã bắt đầu · %1$s</string>
+    <string name="journey_step_active">Hành trình đang diễn ra</string>
+    <string name="journey_no_fix_after_start">Chưa có vị trí sau khi bắt đầu.</string>
+    <string name="journey_pending_ended">Ưu tiên hành trình đã kết thúc.</string>
+    <string name="journey_observation_age">Vị trí cập nhật %1$s</string>
+    <string name="journey_age_under_minute">dưới 1 phút trước</string>
+    <string name="journey_age_minutes">%1$d phút trước</string>
+    <string name="journey_distance_km">Khoảng %1$s km đường chim bay</string>
+    <string name="journey_accuracy">Độ chính xác khoảng %1$d m%2$s</string>
+    <string name="journey_mock_suffix"> · Vị trí mô phỏng</string>
+    <string name="journey_distance_disclaimer">Khoảng cách không phải thời gian đến.</string>
+    <string name="journey_arrival_confirmed">Chủ hành trình đã xác nhận đến nơi</string>
+    <string name="journey_arrival_auto_possible">Có thể tự nhận diện đến nơi</string>
+    <string name="journey_arrival_confirm">Xác nhận đến nơi</string>
+    <string name="journey_arrival_waiting">Chờ chủ hành trình xác nhận</string>
+    <string name="journey_arrival_unconfirmed">Chưa xác nhận đến nơi</string>
+    <string name="journey_arrival_auto_caveat">Ước tính từ GPS có thể sai; không phải xác nhận an toàn.</string>
+    <string name="journey_arrival_auto_manual_note">GPS chỉ cho kết quả ước tính. Chủ hành trình vẫn có thể xác nhận thủ công.</string>
+    <string name="journey_arrival_no_infer">Không tự suy diễn đến nơi từ GPS.</string>
+    <string name="journey_arrival_owner_confirm">Bạn chủ động xác nhận khi đã đến.</string>
+    <string name="journey_arrival_waiting_confirm">Chủ hành trình sẽ tự xác nhận khi đã đến.</string>
+    <string name="journey_stale_notice">Hành trình chưa có cập nhật mới — hãy liên hệ. Không suy diễn có tai nạn.</string>
+    <string name="journey_config_line">Cho hành trình này: %1$s%2$s.</string>
+    <string name="journey_config_auto">tự nhận diện đến nơi (ước tính)</string>
+    <string name="journey_config_manual">xác nhận thủ công</string>
+    <string name="journey_config_stale_suffix">; nhắc sau %1$d phút chưa có cập nhật</string>
+    <string name="journey_expired_locally">Đã đến thời hạn trên thiết bị. Đọc lại để xác nhận trạng thái máy chủ; ưu tiên không được kéo dài.</string>
+    <string name="journey_followers">Người theo dõi: %1$s</string>
+    <string name="journey_no_viewers_left">Không còn người xem có quyền</string>
+    <string name="journey_collapse_viewers">Thu gọn người xem</string>
+    <string name="journey_manage_viewers">Quản lý người xem</string>
+    <string name="journey_revoke_row">Thu hồi</string>
+    <string name="journey_capture_stopped_notice">Thu thập vị trí đang dừng trên thiết bị. Mở màn Vị trí để tiếp tục; hành trình không tự bật GPS.</string>
+    <string name="journey_open_location">Mở màn Vị trí</string>
+    <string name="journey_resume_priority">Tiếp tục ưu tiên hành trình</string>
+    <string name="journey_end_priority_note">Kết thúc hành trình dừng ưu tiên. Bạn quản lý chia sẻ vị trí thông thường ở màn Vị trí.</string>
+    <string name="journey_viewer_manages_arrival">Chủ hành trình quản lý việc xác nhận đến nơi hoặc kết thúc. Dữ liệu cũ không chứng minh người đó gặp sự cố.</string>
+    <string name="journey_step_destination">1. Chọn điểm đến</string>
+    <string name="journey_no_places">Chưa có địa điểm được phép chọn. Tạo hoặc chia sẻ địa điểm trước khi bắt đầu.</string>
+    <string name="journey_manage_places">Quản lý địa điểm</string>
+    <string name="journey_step_expiry">2. Tự kết thúc sau</string>
+    <string name="journey_chip_minutes">%1$d phút</string>
+    <string name="journey_chip_hours">%1$d giờ</string>
+    <string name="journey_expiry_note">Đây là thời hạn chia sẻ, không phải giờ dự kiến đến.</string>
+    <string name="journey_step_viewers">3. Chọn người theo dõi</string>
+    <string name="journey_viewers_note">Chỉ hiện người bạn đã cấp quyền xem vị trí.</string>
+    <string name="journey_no_viewers">Chưa có người được cấp quyền. Mở màn Vị trí để chọn người xem trước.</string>
+    <string name="journey_options_entry">Tự động và nhắc nhở</string>
+    <string name="journey_option_off">Đang tắt</string>
+    <string name="journey_option_auto_summary">Tự đến nơi (ước tính)</string>
+    <string name="journey_option_manual_summary">Xác nhận thủ công</string>
+    <string name="journey_option_summary">%1$s%2$s</string>
+    <string name="journey_option_stale_summary"> · Nhắc sau %1$d phút</string>
+    <string name="journey_auto_caveat">Bạn vẫn có thể xác nhận thủ công. Tự đến nơi chỉ là ước tính; hành trình không tự phát hiện sự cố.</string>
+    <string name="journey_manual_caveat">Bạn sẽ tự xác nhận khi đến nơi. Hành trình không tự phát hiện sự cố.</string>
+    <string name="journey_requires_capture">Cần bật chia sẻ và thu thập vị trí trước khi bắt đầu. Hành trình không tự bật GPS.</string>
+    <string name="journey_requires_network">Cần có mạng để bắt đầu.</string>
+    <string name="journey_state_active">Đang trong hành trình</string>
+    <string name="journey_state_ended">Đã kết thúc, chưa xác nhận đến nơi</string>
+    <string name="journey_state_cancelled">Đã hủy hoặc không còn người xem có quyền</string>
+    <string name="journey_state_expired">Đã hết thời hạn</string>
+    <string name="journey_state_unknown">Cần đọc lại trạng thái</string>
+    <string name="journey_time_unknown">chưa rõ thời điểm</string>
+    <string name="journey_options_title">Cho hành trình này</string>
+    <string name="journey_options_subtitle">Thiết lập riêng cho hành trình này.</string>
+    <string name="journey_options_auto_title">Tự nhận diện đến nơi</string>
+    <string name="journey_options_auto_helper">GPS chỉ cho kết quả ước tính. Khi đủ dữ liệu, hành trình tự kết thúc và báo người xem. Bạn vẫn có thể xác nhận thủ công.</string>
+    <string name="journey_options_stale_title">Nhắc khi ngừng cập nhật</string>
+    <string name="journey_options_stale_helper">Gửi cho bạn và người xem đã chọn.</string>
+    <string name="journey_options_stale_threshold">Báo khi chưa có cập nhật trong</string>
+    <string name="journey_options_apply">Áp dụng</string>
+    <!-- Copy JourneyViewModel reports as resource IDs, resolved at the screen. -->
+    <string name="journey_reload_failed">Chưa đọc được trạng thái mới. Kiểm tra mạng rồi thử lại; dữ liệu đang hiển thị có thể cũ.</string>
+    <string name="journey_start_unconfirmed">Chưa xác nhận bắt đầu. Đọc lại trạng thái hoặc hủy yêu cầu đang chờ; không tạo lại hành trình mới.</string>
+    <string name="journey_action_unconfirmed">Máy chủ chưa xác nhận thao tác. Ưu tiên hành trình đã dừng trên thiết bị; chia sẻ thông thường được quản lý riêng.</string>
+    <string name="journey_priority_capture_off">Bật thu thập vị trí ở màn Vị trí trước khi tiếp tục ưu tiên hành trình.</string>
+    <string name="journey_priority_unconfirmed">Chưa xác nhận hành trình còn hoạt động. Thử đọc lại trạng thái.</string>
+    <!-- Shown above the disabled Start button when no viewer is picked. -->
+    <string name="journey_no_recipients_selected">Chọn ít nhất một người theo dõi để bắt đầu.</string>
+    <!-- Shown above the disabled Start button when no destination is picked. -->
+    <string name="journey_no_destination_selected">Chọn điểm đến để bắt đầu.</string>
+
+    <!-- Places (M6) -->
+    <string name="places_back_content_desc">Quay lại địa điểm</string>
+    <string name="places_title">Địa điểm</string>
+    <string name="places_actions_content_desc">Thao tác địa điểm</string>
+    <string name="places_edit">Sửa địa điểm</string>
+    <string name="places_delete_menu">Xóa địa điểm</string>
+    <string name="places_monitoring_notice">Theo dõi dùng các mẫu vị trí đã chia sẻ; sự kiện có thể trễ hoặc bị bỏ lỡ.</string>
+    <string name="places_add">Thêm địa điểm</string>
+    <string name="places_refresh">Làm mới</string>
+    <string name="places_empty">Chưa có địa điểm nào. Thêm một địa điểm để tự quản lý các vùng đã lưu.</string>
+    <string name="places_owner_you">Của tôi</string>
+    <string name="places_member_fallback">Thành viên</string>
+    <string name="places_radius_of">%1$s · bán kính %2$d m</string>
+    <string name="places_missing">Địa điểm không còn khả dụng. Làm mới danh sách để kiểm tra lại.</string>
+    <string name="places_refresh_list">Làm mới danh sách</string>
+    <string name="places_radius">Bán kính %1$d m</string>
+    <string name="places_share_with">Chia sẻ địa điểm với</string>
+    <string name="places_share_notice">Thành viên vẫn phải tự bật theo dõi cho bản thân; chia sẻ địa điểm không cấp quyền xem sự kiện.</string>
+    <string name="places_access_supporting">Quyền xem địa điểm</string>
+    <string name="places_monitor_mine_title">Theo dõi vị trí của tôi tại đây</string>
+    <string name="places_monitor_mine_notice">Chỉ bạn bật theo dõi cho mình. Người nhận cần được bạn cấp quyền vị trí và được chia sẻ địa điểm này.</string>
+    <!-- Shown next to the disabled "Bật theo dõi" button so a first-time user
+         (consent is off by default) does not hit a silent dead end. -->
+    <string name="places_consent_notice">Cần bật chia sẻ vị trí ở màn Vị trí trước khi bật theo dõi tại đây. Theo dõi không tự bật GPS.</string>
+    <!-- Copy PlacesViewModel/PlacesEditor feedback, resolved at the screen. -->
+    <string name="places_editor_invalid_coords">Vĩ độ hoặc Kinh độ chưa hợp lệ. Kiểm tra lại số đã nhập.</string>
+    <string name="places_save_confirmed">Đã lưu địa điểm.</string>
+    <string name="places_error_load_failed">Không thể kiểm tra địa điểm và quyền hiện tại. Kiểm tra kết nối rồi thử lại.</string>
+    <string name="places_error_mutation_unconfirmed">Chưa xác nhận thay đổi. Kiểm tra lại trước khi thực hiện thao tác mới.</string>
+    <string name="places_configure_confirmed">Đã lưu cấu hình theo dõi.</string>
+    <!-- Discard-draft dialog when leaving the editor with typed input. -->
+    <string name="places_discard_title">Bỏ thay đổi?</string>
+    <string name="places_discard_body">Những gì đã nhập sẽ không được lưu.</string>
+    <string name="places_discard_confirm">Bỏ</string>
+    <string name="places_recipient_supporting">Nhận thông báo sự kiện tại địa điểm này</string>
+    <string name="places_offline_notice">Bật hoặc đổi quyền theo dõi có thể loại các điểm offline chưa đồng bộ.</string>
+    <string name="places_monitor_enable">Bật theo dõi</string>
+    <string name="places_monitor_save">Lưu người nhận</string>
+    <string name="places_monitor_stop">Dừng</string>
+    <string name="places_events_title">Sự kiện</string>
+    <string name="places_events_empty">Chưa có sự kiện được phép xem.</string>
+    <string name="places_event_enter">Đến</string>
+    <string name="places_event_exit">Rời</string>
+    <string name="places_event_unknown">Không rõ</string>
+    <string name="places_event_delayed"> · xử lý trễ</string>
+    <string name="places_confidence_observed"> · nhiều mẫu GPS</string>
+    <string name="places_confidence_unknown"> · độ tin cậy chưa rõ</string>
+    <string name="places_event_title">%1$s · %2$s %3$s</string>
+    <string name="places_delete_title">Xóa địa điểm?</string>
+    <string name="places_delete_body">Các cấu hình theo dõi và sự kiện liên quan sẽ bị xóa.</string>
+    <string name="places_delete_confirm">Xóa</string>
+    <string name="places_editor_name_label">Tên địa điểm</string>
+    <!-- Tell the person what touching the map does and what the number
+         fields below are for, without assuming map or coordinate literacy. -->
+    <string name="places_editor_map_hint">Chạm vào một chỗ trên bản đồ để đặt địa điểm — ô Vĩ độ và Kinh độ bên dưới sẽ tự điền theo. Bạn cũng có thể gõ số vào hai ô đó nếu muốn chỉnh chính xác.</string>
+    <string name="places_editor_no_map">Bản đồ chưa được cấu hình; nhập tọa độ bên dưới.</string>
+    <string name="places_editor_lat_label">Vĩ độ</string>
+    <string name="places_editor_lon_label">Kinh độ</string>
+    <string name="places_editor_radius_note">Thay đổi địa điểm sẽ dừng các cấu hình theo dõi hiện tại; mỗi người cần bật lại.</string>
+    <!-- Current-location escape hatch for the coordinate fields: one line for
+         the permission dialog and one for a failed/timed-out fix; manual
+         entry stays the primary path in both. -->
+    <string name="places_editor_use_current_location">Dùng vị trí hiện tại</string>
+    <string name="places_editor_location_permission_note">Cần quyền vị trí để dùng vị trí hiện tại. Bạn có thể nhập tọa độ tay.</string>
+    <string name="places_editor_location_unavailable">Chưa lấy được vị trí. Thử lại hoặc nhập tay.</string>
+
+    <!-- Diagnostics -->
+    <string name="diag_open_settings_failed">Thiết bị không mở được trang này. Hãy mở Cài đặt của điện thoại để kiểm tra.</string>
+    <string name="diag_export_stale">Trạng thái đã thay đổi hoặc chưa đọc xong. Hãy làm mới rồi thử lại.</string>
+    <string name="diag_export_subject">Báo cáo chẩn đoán AnVề</string>
+    <string name="diag_export_chooser_title">Chọn nơi gửi báo cáo</string>
+    <string name="diag_export_changed">Tài khoản hoặc trạng thái đã thay đổi. Hãy tạo lại báo cáo.</string>
+    <string name="diag_export_review_title">Kiểm tra báo cáo trước khi gửi</string>
+    <string name="diag_export_review_body">Báo cáo gồm phiên bản, quyền, trạng thái dịch vụ/mạng/pin, số điểm chờ, tuổi dữ liệu và trạng thái thông báo. Không chứa tọa độ, tên, tài khoản hay thông tin đăng nhập.</string>
+    <string name="diag_export_share">Chọn nơi gửi</string>
+    <string name="diag_title">Chẩn đoán vị trí</string>
+    <string name="diag_refresh_content_desc">Làm mới chẩn đoán</string>
+    <string name="diag_not_ready">Đang đọc trạng thái tài khoản. Quay lại màn Vị trí nếu phiên đăng nhập đã thay đổi.</string>
+    <string name="diag_segment_overview">Tổng quan</string>
+    <string name="diag_segment_details">Chi tiết</string>
+    <string name="diag_network_title">Mất kết nối mạng</string>
+    <string name="diag_details_failed">Chưa đọc được chẩn đoán bổ sung. Dùng nút Làm mới để thử lại.</string>
+    <string name="diag_section_capture">Thu thập vị trí</string>
+    <string name="diag_section_sync">Đồng bộ</string>
+    <string name="diag_section_permissions">Quyền &amp; thiết bị</string>
+    <string name="diag_section_queue">Hàng đợi &amp; phục hồi</string>
+    <string name="diag_section_notifications">Thông báo &amp; SOS</string>
+    <string name="diag_section_device">Thiết bị &amp; ứng dụng</string>
+    <string name="diag_row_service">Dịch vụ theo dõi</string>
+    <string name="diag_row_last_fix">Lần ghi gần nhất</string>
+    <string name="diag_row_queued">Điểm chờ gửi</string>
+    <string name="diag_row_last_upload">Lần gửi thành công</string>
+    <string name="diag_row_location_permission">Quyền vị trí</string>
+    <string name="diag_row_background_permission">Quyền chạy trong nền</string>
+    <string name="diag_row_location_services">Dịch vụ định vị</string>
+    <string name="diag_row_battery_saver">Trình tiết kiệm pin</string>
+    <string name="diag_row_oldest">Điểm chờ lâu nhất</string>
+    <string name="diag_row_attempts">Tổng lần thử gửi</string>
+    <string name="diag_row_retried">Điểm đã thử lại</string>
+    <string name="diag_row_checkpoint">Xác nhận ghi nhận cục bộ</string>
+    <string name="diag_row_recovery">Cần khôi phục</string>
+    <string name="diag_row_sync_work">Tác vụ đồng bộ trên máy</string>
+    <string name="diag_row_notification_permission">Quyền thông báo</string>
+    <string name="diag_row_push_registered">Đăng ký nhận thông báo trên máy chủ</string>
+    <string name="diag_row_push_configured">Cấu hình dịch vụ thông báo</string>
+    <string name="diag_row_sos_pending">SOS còn chờ xử lý trên máy</string>
+    <string name="diag_row_battery_optimization">Miễn tối ưu hóa pin</string>
+    <string name="diag_row_version">Phiên bản AnVề</string>
+    <string name="diag_row_api">Android API</string>
+    <string name="diag_value_running">Đang chạy</string>
+    <string name="diag_value_capture_unconfirmed">Chưa xác nhận thu thập</string>
+    <string name="diag_value_stopped">Đã dừng</string>
+    <string name="diag_value_precise">Chính xác</string>
+    <string name="diag_value_approximate">Gần đúng</string>
+    <string name="diag_value_not_requested">Chưa yêu cầu</string>
+    <string name="diag_value_not_granted">Chưa cấp</string>
+    <string name="diag_value_granted">Đã cấp</string>
+    <string name="diag_value_enabled">Đã bật</string>
+    <string name="diag_value_disabled">Đang tắt</string>
+    <string name="diag_value_on">Đang bật</string>
+    <string name="diag_value_off">Đang tắt</string>
+    <string name="diag_value_saved">Đã lưu</string>
+    <string name="diag_value_absent">Chưa có</string>
+    <string name="diag_value_yes">Có</string>
+    <string name="diag_value_no">Không</string>
+    <string name="diag_value_no_pending_work">Không có tác vụ đang chờ</string>
+    <string name="diag_value_registered">Đã đăng ký</string>
+    <string name="diag_value_not_registered">Chưa đăng ký</string>
+    <string name="diag_value_configured">Đã cấu hình</string>
+    <string name="diag_value_not_configured">Chưa cấu hình</string>
+    <string name="diag_points_count">%1$d điểm</string>
+    <string name="diag_battery_limit_notice">Thiết bị có thể giới hạn cập nhật khi màn hình tắt. Kiểm tra cài đặt và thử nghiệm trên điện thoại thực tế.</string>
+    <string name="diag_privacy_discarded">Một số điểm đã bị loại theo chính sách riêng tư; không thể khôi phục bằng cách gửi lại.</string>
+    <string name="diag_retry_sync">Yêu cầu đồng bộ lại</string>
+    <string name="diag_push_notice">Đăng ký nhận thông báo hoặc cấu hình hợp lệ không chứng minh thông báo đã đến hay người nhận đã đọc.</string>
+    <string name="diag_battery_not_measured">Chưa đo mức pin tiêu thụ thêm. Các trạng thái ở đây không thay thế kiểm thử GPS, OEM và chạy nền trên thiết bị thật.</string>
+    <string name="diag_export_title">Xuất báo cáo</string>
+    <string name="diag_export_subtitle">Không chứa tọa độ hay thông tin đăng nhập</string>
+    <string name="diag_footer">Trạng thái tại lần đọc gần nhất. Làm mới sau khi đổi cài đặt.</string>
+    <string name="diag_reading">Đang đọc…</string>
+    <string name="diag_unknown">Chưa xác định</string>
+    <string name="diag_work_enqueued">Đang chờ</string>
+    <string name="diag_work_blocked">Chờ điều kiện</string>
+    <string name="diag_work_done">Đã xong</string>
+    <string name="diag_work_failed">Thất bại</string>
+    <string name="diag_work_cancelled">Đã hủy</string>
+    <string name="diag_age_under_minute">Dưới 1 phút trước</string>
+    <string name="diag_age_minutes">%1$d phút trước</string>
+    <string name="diag_age_hours">%1$d giờ trước</string>
+    <string name="diag_age_days">%1$d ngày trước</string>
+    <string name="diag_age_no_data">Chưa có dữ liệu</string>
+    <string name="diag_age_clock">Cần kiểm tra đồng hồ</string>
+
+    <!-- Invitations: private/invite flows across the circle surface -->
+    <string name="invite_session_checking">Đang kiểm tra phiên đăng nhập. Mở màn Tài khoản nếu chưa tải được.</string>
+    <string name="invite_join_session_error">Chưa kiểm tra được tài khoản. Mở lại lời mời khi phiên đăng nhập sẵn sàng.</string>
+    <string name="invite_share_error">Không mở được trình chia sẻ. Bạn có thể gửi mã mời đang hiển thị.</string>
+    <string name="invite_share_link">Chia sẻ link mời</string>
+    <string name="invite_view">Xem lời mời</string>
+    <string name="invite_expiry_prefix">Hết hạn: %1$s</string>
+    <string name="invite_expiry_unreadable">Chưa đọc được</string>
+    <string name="invite_expiry_unreadable_detail">Chưa đọc được thời hạn</string>
+    <string name="invite_expiry_unknown">chưa rõ</string>
+    <string name="invite_sheet_title">Mời người thân</string>
+    <string name="invite_mode_email">Theo email</string>
+    <string name="invite_mode_link">Chỉ tạo link/mã</string>
+    <string name="invite_email_section">Email người nhận</string>
+    <string name="invite_email_placeholder">ten@example.com</string>
+    <string name="invite_email_label">Email người được mời</string>
+    <string name="invite_email_note">Chỉ tài khoản có email này được tham gia.</string>
+    <string name="invite_email_info">Nếu có tài khoản AnVề và bật thông báo, người nhận có thể nhận lời mời. Bạn vẫn có thể gửi link. Đây không phải thư gửi qua email.</string>
+    <string name="invite_link_info">Gửi mã hoặc liên kết qua ứng dụng bạn chọn sau khi tạo. Người nhận cần đăng nhập và xác nhận tham gia.</string>
+    <string name="invite_privacy_warning">Không công khai email đã đăng ký. Tham gia không tự bật chia sẻ vị trí.</string>
+    <string name="invite_uses_summary">Lời mời dùng một lần · %1$s</string>
+    <string name="invite_expiry_hours">%1$d giờ</string>
+    <string name="invite_expiry_week">7 ngày</string>
+    <string name="invite_offline">Mất mạng. Cần kết nối để tạo lời mời hoặc kiểm tra kết quả.</string>
+    <string name="invite_busy">Đang chờ máy chủ xác nhận. Đóng bảng không hủy thao tác đã gửi.</string>
+    <string name="invite_check_result">Kiểm tra kết quả</string>
+    <string name="invite_create">Tạo lời mời</string>
+    <string name="invite_dialog_title">Tham gia nhóm?</string>
+    <string name="invite_dialog_checking">Đang kiểm tra lời mời với máy chủ…</string>
+    <string name="invite_single_use">Lời mời dùng một lần.</string>
+    <string name="invite_join_consent_note">Tham gia nhóm không tự bật chia sẻ vị trí.</string>
+    <string name="invite_logged_in_as">Đang đăng nhập: %1$s</string>
+    <string name="invite_dialog_offline">Mất mạng. Kết nối lại để kiểm tra hoặc xác nhận lời mời.</string>
+    <string name="invite_dialog_busy">Đang chờ máy chủ xác nhận…</string>
+    <string name="invite_dialog_later">Để sau</string>
+    <string name="invite_dialog_join">Tham gia nhóm</string>
+    <string name="invite_received_title">Lời mời dành cho bạn</string>
+    <string name="invite_received_empty">Chưa có lời mời đang hiệu lực.</string>
+    <string name="invite_received_intro">%1$s mời bạn tham gia</string>
+    <string name="invite_hide">Ẩn với tôi</string>
+    <string name="invite_reload">Tải lại lời mời</string>
+    <!-- Copy InvitationViewModel reports as resource IDs, resolved at InvitationHost. -->
+    <string name="invite_session_check_failed">Chưa kiểm tra được tài khoản. Đóng lời mời và mở lại khi phiên đăng nhập sẵn sàng.</string>
+    <string name="invite_link_invalid">Link mời không hợp lệ. Nhờ người thân gửi lại link hoặc nhập mã mời.</string>
+    <string name="invite_expired">Lời mời đã hết hạn. Nhờ người thân tạo lời mời mới.</string>
+    <string name="invite_already_member">Bạn đã là thành viên của nhóm này.</string>
+    <string name="invite_active_circle_exists">Bạn đang ở trong một nhóm gia đình. Hãy quản lý nhóm hiện tại trước khi tham gia nhóm khác.</string>
+    <string name="invite_unavailable_detail">Lời mời không còn dùng được: đã hết hạn, được dùng hoặc bị thu hồi. Nhờ người thân gửi lời mời mới.</string>
+    <string name="invite_load_failed">Chưa tải được lời mời. Kiểm tra mạng rồi thử lại.</string>
+    <string name="invite_rejected_active_circle">Bạn đã thuộc một nhóm gia đình. Kiểm tra nhóm hiện tại trước.</string>
+    <string name="invite_rejected_other">Máy chủ chưa cho phép tham gia. Lời mời có thể đã hết hạn, được dùng hoặc bị thu hồi.</string>
+    <string name="invite_join_unconfirmed">Máy chủ chưa xác nhận tham gia. Kiểm tra kết quả; ứng dụng không tự gửi lại yêu cầu.</string>
+    <!-- Copy PrivateInvitationsController reports as resource IDs, resolved at
+         the screen: draft errors and inbox outcomes. -->
+    <string name="invite_create_offline">Mất mạng. Kết nối lại trước khi tạo lời mời.</string>
+    <string name="invite_email_invalid">Nhập email hợp lệ, ví dụ ten@example.com.</string>
+    <string name="invite_create_rate_limited">Đã tạo nhiều lời mời. Thử lại sau.</string>
+    <string name="invite_create_failed">Chưa tạo được lời mời. Kiểm tra quyền chủ nhóm và email rồi thử lại.</string>
+    <string name="invite_created_notice">Đã tạo lời mời. Email không xác nhận tài khoản hay trạng thái nhận thông báo.</string>
+    <string name="invite_create_unconfirmed">Chưa rõ kết quả tạo lời mời. Kiểm tra kết quả; app không tự tạo lại.</string>
+    <string name="invite_received_load_failed">Chưa tải được lời mời. Kết nối lại rồi tải lại.</string>
+    <string name="invite_hide_unconfirmed">Chưa rõ kết quả ẩn lời mời. Tải lại để kiểm tra; app không tự gửi lại.</string>
+    <string name="invite_open_failed">Không mở được lời mời. Có thể đã hết hạn, bị thu hồi hoặc không dành cho tài khoản này. Tải lại để kiểm tra.</string>
+    <!-- Sharesheet copy the recipient actually reads, resolved at the screen. -->
+    <string name="invite_share_message">Mời bạn tham gia gia đình trên AnVề:\n%1$s\nNếu link không mở, nhập mã: %2$s\nTham gia không tự bật chia sẻ vị trí.</string>
+    <string name="invite_share_chooser_title">Gửi lời mời gia đình</string>
 </resources>

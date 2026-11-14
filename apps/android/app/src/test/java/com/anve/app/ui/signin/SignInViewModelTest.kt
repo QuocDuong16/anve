@@ -1,6 +1,7 @@
 package com.anve.app.ui.signin
 
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import com.anve.app.R
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.DeviceRegistrationDto
 import com.anve.app.data.auth.AuthRepository
@@ -67,13 +68,13 @@ class SignInViewModelTest {
         awaitUntil { vm.state.value is SignInUiState.Ready }
         val pending = CompletableDeferred<Result<String>>()
         var attempts = 0
-        vm.signInWithGoogle({ attempts++; pending.await() }, { "Google chưa hoàn tất xác nhận tài khoản." })
+        vm.signInWithGoogle({ attempts++; pending.await() }, { R.string.signin_google_incomplete })
         assertTrue(vm.busy.value)
-        vm.signInWithGoogle({ attempts++; Result.success("duplicate") }, { "unexpected" })
+        vm.signInWithGoogle({ attempts++; Result.success("duplicate") }, { R.string.signin_generic_error })
         assertEquals(1, attempts)
         pending.complete(Result.failure(GetCredentialCancellationException("provider stopped")))
         awaitUntil { !vm.busy.value }
-        assertEquals("Google chưa hoàn tất xác nhận tài khoản.", vm.error.value)
+        assertEquals(R.string.signin_google_incomplete, vm.error.value?.id)
         assertTrue(vm.state.value is SignInUiState.Ready)
         assertEquals(1, server.requestCount)
         assertNull(storage.current())
@@ -87,12 +88,12 @@ class SignInViewModelTest {
         awaitUntil { vm.state.value is SignInUiState.Ready }
         vm.signInWithGoogleToken("test-only-id-token")
         awaitUntil { vm.error.value != null && !vm.busy.value }
-        assertEquals("Đăng nhập không thành công. Vui lòng thử lại.", vm.error.value)
+        assertEquals(R.string.signin_unauthenticated, vm.error.value?.id)
         assertNull(storage.current())
         server.takeRequest()
         assertEquals("/api/v1/auth/google", server.takeRequest().path)
-        vm.signInWithGoogle({ Result.failure(IllegalStateException("provider failed")) }, { "Thử lại Google" })
-        awaitUntil { vm.error.value == "Thử lại Google" && !vm.busy.value }
+        vm.signInWithGoogle({ Result.failure(IllegalStateException("provider failed")) }, { R.string.signin_retry })
+        awaitUntil { vm.error.value?.id == R.string.signin_retry && !vm.busy.value }
         assertEquals(2, server.requestCount)
     }
 

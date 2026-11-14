@@ -1,5 +1,6 @@
 package com.anve.app.ui.home
 
+import com.anve.app.R
 import com.anve.app.data.api.AnveApi
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.DeviceRegistrationDto
@@ -148,7 +149,7 @@ class HomeViewModelTest {
         assertTrue(vm.state.value.consentConflict)
         assertTrue(vm.state.value.consentSyncPending)
         assertEquals(false, vm.state.value.locationSharingRequested)
-        assertTrue(vm.state.value.message.orEmpty().contains("thiết bị khác"))
+        assertEquals(R.string.home_conflict_reload_notice, vm.state.value.messageRes)
     }
 
     @Test
@@ -159,10 +160,10 @@ class HomeViewModelTest {
 
         server.enqueue(MockResponse().setResponseCode(500).setBody("""{"code":"INTERNAL","message":"x"}"""))
         vm.refresh()
-        awaitUntil { !vm.state.value.loading && vm.state.value.error != null }
+        awaitUntil { !vm.state.value.loading && vm.state.value.errorRes != null }
 
         assertEquals("screen data survives an API failure", "Mai", vm.state.value.user?.displayName)
-        assertNotNull(vm.state.value.error)
+        assertNotNull(vm.state.value.errorRes)
     }
 
     @Test
@@ -200,14 +201,14 @@ class HomeViewModelTest {
 
         server.enqueue(MockResponse().setResponseCode(503).setBody("""{"code":"SERVICE_UNAVAILABLE","message":"no db"}"""))
         vm.setLocationSharing(true)
-        awaitUntil { vm.state.value.message != null }
+        awaitUntil { vm.state.value.consentMessage != null }
 
         assertFalse(vm.state.value.user!!.locationSharingEnabled)
         assertTrue("the pending intent is shown separately from server confirmation", vm.state.value.locationSharingRequested!!)
         assertTrue(vm.state.value.consentSyncPending)
         assertTrue(
             "the UI must explain that the consent write was not confirmed",
-            vm.state.value.message.orEmpty().contains("Không bật"),
+            vm.state.value.consentMessage.orEmpty().contains("Không bật"),
         )
     }
 
@@ -229,7 +230,7 @@ class HomeViewModelTest {
         awaitUntil { !vm.state.value.consentBusy }
 
         assertFalse(vm.state.value.consentSyncPending)
-        assertEquals("Không lưu được yêu cầu tắt chia sẻ.", vm.state.value.message)
+        assertEquals("Không lưu được yêu cầu tắt chia sẻ.", vm.state.value.consentMessage)
     }
 
     @Test
@@ -275,7 +276,7 @@ class HomeViewModelTest {
         vm.setLocationSharing(true)
         vm.setLocationSharing(false)
 
-        awaitUntil { vm.state.value.message != null }
+        awaitUntil { vm.state.value.consentMessage != null }
         assertTrue("the server-confirmed snapshot stays ON", vm.state.value.user!!.locationSharingEnabled)
         assertFalse("the latest OFF remains the local requested state", vm.state.value.locationSharingRequested!!)
         assertTrue(vm.state.value.consentSyncPending)
@@ -351,8 +352,9 @@ class HomeViewModelTest {
         )
         assertNull(
             "the message must not live on the disposed Home screen",
-            vm.state.value.message,
+            vm.state.value.consentMessage,
         )
+        assertNull(vm.state.value.messageRes)
     }
 
     @Test
@@ -381,10 +383,10 @@ class HomeViewModelTest {
                 .setBody("""{"code":"CIRCLE_HAS_MEMBERS","message":"dissolve first"}"""),
         )
         vm.deleteAccount()
-        awaitUntil { vm.state.value.error != null }
+        awaitUntil { vm.state.value.errorRes != null }
 
         assertNotNull("a refused deletion must not sign the user out", storage.current())
-        assertTrue(vm.state.value.error.orEmpty().contains("giải tán nhóm"))
+        assertEquals(R.string.home_delete_circle_has_members, vm.state.value.errorRes)
         assertFalse(vm.state.value.busy)
     }
 
@@ -397,7 +399,7 @@ class HomeViewModelTest {
 
         server.enqueue(MockResponse().setResponseCode(500).setBody("""{"code":"INTERNAL","message":"x"}"""))
         vm.deleteAccount()
-        awaitUntil { vm.state.value.error != null }
+        awaitUntil { vm.state.value.errorRes != null }
 
         assertNotNull(storage.current())
         assertFalse(vm.state.value.busy)

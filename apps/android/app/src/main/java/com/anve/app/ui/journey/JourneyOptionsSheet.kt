@@ -32,14 +32,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.anve.app.R
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.isDarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,30 +49,30 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
     var automatic by remember { mutableStateOf(automaticArrival) }
     var stale by remember { mutableStateOf(staleAfterMinutes) }
     val colors = MaterialTheme.colorScheme
-    val dark = colors.surface.luminance() < 0.5f
+    val dark = isDarkSurface()
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f).padding(horizontal = 16.dp)) {
         LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).testTag("journey-options-sheet"),
             contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Text("Cho hành trình này", style = MaterialTheme.typography.headlineSmall)
-                Text("Thiết lập riêng cho hành trình này.", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.journey_options_title), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.journey_options_subtitle), style = MaterialTheme.typography.bodyMedium)
             }
             item {
-                OptionCard("Tự nhận diện đến nơi", "GPS chỉ cho kết quả ước tính. Khi đủ dữ liệu, hành trình tự kết thúc và báo người xem. Bạn vẫn có thể xác nhận thủ công.", Icons.Default.LocationOn,
+                OptionCard(stringResource(R.string.journey_options_auto_title), stringResource(R.string.journey_options_auto_helper), Icons.Default.LocationOn,
                     automatic, { automatic = it }, "automatic-arrival")
             }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OptionRow("Nhắc khi ngừng cập nhật", "Gửi cho bạn và người xem đã chọn.", Icons.Default.Notifications,
+                        OptionRow(stringResource(R.string.journey_options_stale_title), stringResource(R.string.journey_options_stale_helper), Icons.Default.Notifications,
                             stale > 0, { stale = if (it) 10 else 0 }, "stale-reminder")
                         if (stale > 0) {
-                            Text("Báo khi chưa có cập nhật trong", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.journey_options_stale_threshold), style = MaterialTheme.typography.bodyMedium)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf(5, 10, 15, 30).forEach { value ->
-                                    FilterChip(stale == value, onClick = { stale = value }, label = { Text("$value phút") },
+                                    FilterChip(stale == value, onClick = { stale = value }, label = { Text(stringResource(R.string.journey_chip_minutes, value)) },
                                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.primaryContainer, selectedLabelColor = colors.onPrimaryContainer))
                                 }
                             }
@@ -80,7 +82,7 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
             }
         }
         Button(onClick = { onApply(automatic, stale) }, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).heightIn(min = 48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary, contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary)) { Text("Áp dụng") }
+            colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary, contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary)) { Text(stringResource(R.string.journey_options_apply)) }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.anve.app.ui.circle
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.CircleMembershipDto
 import com.anve.app.data.api.InvitePreviewDto
@@ -26,7 +27,7 @@ data class InvitationUiState(
     val preview: InvitePreviewDto? = null,
     val accountLabel: String = "",
     val blocked: Boolean = false,
-    val error: String? = null,
+    val errorRes: Int? = null,
     val retryable: Boolean = false,
     val unknown: Boolean = false,
     val joined: Boolean = false,
@@ -75,7 +76,7 @@ class InvitationViewModel(
     private suspend fun current(): Boolean = try {
         active && sessions.current()?.userId == owner && inbox.current(invitationId, owner) != null
     } catch (e: CancellationException) { throw e } catch (_: Exception) {
-        _state.value = InvitationUiState(loading = false, blocked = true, error = "Chưa kiểm tra được tài khoản. Đóng lời mời và mở lại khi phiên đăng nhập sẵn sàng.")
+        _state.value = InvitationUiState(loading = false, blocked = true, errorRes = R.string.invite_session_check_failed)
         false
     }
 
@@ -96,7 +97,7 @@ class InvitationViewModel(
                 if (!current()) return@launch
                 val code = inbox.current(invitationId, owner)?.code
                 if (code == null) {
-                    _state.value = InvitationUiState(loading = false, error = "Link mời không hợp lệ. Nhờ người thân gửi lại link hoặc nhập mã mời.")
+                    _state.value = InvitationUiState(loading = false, errorRes = R.string.invite_link_invalid)
                     return@launch
                 }
                 val label = gateway.accountLabel(owner)
@@ -106,12 +107,11 @@ class InvitationViewModel(
                 val expired = runCatching { !Instant.parse(preview.expiresAt).isAfter(Instant.now()) }.getOrDefault(true)
                 val inCircle = mine.circle != null || mine.membership != null
                 _state.value = InvitationUiState(loading = false, preview = preview, accountLabel = label, blocked = inCircle || expired,
-                    error = when { expired -> "Lời mời đã hết hạn. Nhờ người thân tạo lời mời mới."; mine.circle?.id == preview.circleId -> "Bạn đã là thành viên của nhóm này."; inCircle -> "Bạn đang ở trong một nhóm gia đình. Hãy quản lý nhóm hiện tại trước khi tham gia nhóm khác."; else -> null })
+                    errorRes = when { expired -> R.string.invite_expired; mine.circle?.id == preview.circleId -> R.string.invite_already_member; inCircle -> R.string.invite_active_circle_exists; else -> null })
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 if (current() && revision == sequence) {
                     val unavailable = e is ApiException && e.code == "INVITE_UNAVAILABLE"
-                    _state.value = InvitationUiState(loading = false, error = if (unavailable) "Lời mời không còn dùng được: đã hết hạn, được dùng hoặc bị thu hồi. Nhờ người thân gửi lời mời mới."
-                        else "Chưa tải được lời mời. Kiểm tra mạng rồi thử lại.", retryable = !unavailable)
+                    _state.value = InvitationUiState(loading = false, errorRes = if (unavailable) R.string.invite_unavailable_detail else R.string.invite_load_failed, retryable = !unavailable)
                 }
             }
         }
@@ -122,7 +122,7 @@ class InvitationViewModel(
         val preview = before.preview ?: return
         if (!active || before.loading || before.busy || before.blocked || before.unknown || before.joined) return
         if (runCatching { !Instant.parse(preview.expiresAt).isAfter(Instant.now()) }.getOrDefault(true)) {
-            _state.update { it.copy(blocked = true, error = "Lời mời đã hết hạn. Nhờ người thân tạo lời mời mới.") }
+            _state.update { it.copy(blocked = true, errorRes = R.string.invite_expired) }
             return
         }
         submit(checkOnly = false)
@@ -133,7 +133,7 @@ class InvitationViewModel(
     private fun submit(checkOnly: Boolean) {
         val preview = _state.value.preview ?: return
         val revision = ++sequence
-        _state.update { it.copy(busy = true, error = null) }
+        _state.update { it.copy(busy = true, errorRes = null) }
         work = viewModelScope.launch {
             try {
                 if (!current()) return@launch
@@ -143,8 +143,7 @@ class InvitationViewModel(
                 when (result) {
                     is InvitationConfirmation.Joined -> _state.update { it.copy(busy = false, joined = true, joinedMembership = result.membership, unknown = false) }
                     is InvitationConfirmation.Rejected -> _state.update { it.copy(busy = false, blocked = true, unknown = false,
-                        error = if (result.code == "ACTIVE_CIRCLE_EXISTS") "Bạn đã thuộc một nhóm gia đình. Kiểm tra nhóm hiện tại trước."
-                        else "Máy chủ chưa cho phép tham gia. Lời mời có thể đã hết hạn, được dùng hoặc bị thu hồi.") }
+                        errorRes = if (result.code == "ACTIVE_CIRCLE_EXISTS") R.string.invite_rejected_active_circle else R.string.invite_rejected_other) }
                     InvitationConfirmation.Unknown -> uncertain()
                 }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
@@ -154,6 +153,6 @@ class InvitationViewModel(
     }
 
     private fun uncertain() {
-        _state.update { it.copy(busy = false, unknown = true, error = "Máy chủ chưa xác nhận tham gia. Kiểm tra kết quả; ứng dụng không tự gửi lại yêu cầu.") }
+        _state.update { it.copy(busy = false, unknown = true, errorRes = R.string.invite_join_unconfirmed) }
     }
 }

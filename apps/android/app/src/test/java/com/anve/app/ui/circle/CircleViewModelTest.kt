@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import com.anve.app.R
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.CircleMembershipDto
@@ -90,10 +91,10 @@ class CircleViewModelTest {
         server.enqueue(MockResponse().setResponseCode(503))
         val joined = CircleMembershipDto(CircleDto("c1", "Nhà mình", "u1", "now"), MembershipDto("c1", "u2", "member", "now"))
         vm.acceptJoined("u2", joined)
-        awaitUntil { vm.state.value.error != null }
+        awaitUntil { vm.state.value.errorRes != null }
         assertEquals("c1", vm.state.value.circle?.id)
         assertEquals("member", vm.state.value.myRole)
-        assertEquals("Đã tham gia nhóm.", vm.state.value.message)
+        assertEquals(R.string.circle_joined, vm.state.value.messageRes)
     }
 
     @Test
@@ -122,6 +123,48 @@ class CircleViewModelTest {
         assertEquals("ABCD234567", vm.state.value.invites.first().code)
     }
 
+    /**
+     * The activation checklist renders from these signals: a fetched member
+     * list where the signed-in user (u2 here) is the only member keeps the
+     * invite step visible.
+     */
+    @Test
+    fun `solo owner reports members loaded without other members`() = runBlocking {
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(repository, scope)
+        awaitUntil { vm.state.value.membersLoaded }
+
+        assertTrue(vm.state.value.membersLoaded)
+        assertEquals("owner", vm.state.value.myRole)
+        assertTrue(vm.state.value.members.none { it.userId != "u2" })
+    }
+
+    @Test
+    fun `member list with another member marks other members present`() = runBlocking {
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[
+                     {"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"},
+                     {"userId":"u3","displayName":"Bố","role":"member","joinedAt":"2026-10-25T01:00:00Z"}]}""".replace("\n", ""),
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(repository, scope)
+        awaitUntil { vm.state.value.membersLoaded }
+
+        assertTrue(vm.state.value.membersLoaded)
+        assertTrue(vm.state.value.members.any { it.userId != "u2" })
+    }
+
     @Test
     fun `member does not request invites`() = runBlocking {
         enqueueMyCircle(role = "member")
@@ -147,12 +190,9 @@ class CircleViewModelTest {
             ),
         )
         vm.join("USEDCODE123")
-        awaitUntil { vm.state.value.error != null }
+        awaitUntil { vm.state.value.errorRes != null }
 
-        assertEquals(
-            "Mã mời không tồn tại, đã hết hạn hoặc đã được dùng.",
-            vm.state.value.error,
-        )
+        assertEquals(R.string.circle_error_invite_unavailable, vm.state.value.errorRes)
         assertNull(vm.state.value.circle)
     }
 
@@ -194,7 +234,7 @@ class CircleViewModelTest {
 
         server.enqueue(MockResponse().setResponseCode(204))
         vm.leave(true)
-        awaitUntil { vm.state.value.message != null }
+        awaitUntil { vm.state.value.messageRes != null }
 
         val myCircle = server.takeRequest()
         val members = server.takeRequest()

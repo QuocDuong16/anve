@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,11 +27,11 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -43,6 +44,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -53,6 +57,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +87,9 @@ import com.anve.app.ui.map.LiveMapScreen
 import com.anve.app.ui.places.PlacesScreen
 import com.anve.app.ui.sos.SosScreen
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.tracking.TrackingScreen
+import java.io.Serializable
 
 /**
  * M1 home: the account, the privacy consent switch and the device list.
@@ -101,6 +109,71 @@ private enum class HomeSecondaryPage(val titleRes: Int) {
     SOS(R.string.tab_sos),
 }
 
+// Navigation state persists as enum names so a rotation or process death
+// restores the open screen; a name from an older install that is no longer
+// in the enum set falls back instead of crashing on restore.
+private val homeTabSaver = Saver<HomeTab, String>(
+    save = { it.name },
+    restore = { name -> HomeTab.entries.firstOrNull { it.name == name } ?: HomeTab.CIRCLE },
+)
+
+// A null state value is not persisted (the saver returns null, which the
+// saveable registry skips), so restore falls back to the init default.
+private val homeSecondaryPageSaver = Saver<HomeSecondaryPage?, String>(
+    save = { it?.name },
+    restore = { name -> HomeSecondaryPage.entries.firstOrNull { it.name == name } },
+)
+
+private val nullableStringSaver = Saver<String?, String>(
+    save = { it },
+    restore = { it },
+)
+
+/**
+ * Where the user was before a push deep-link rewrote navigation. Pushes
+ * overwrite tab, secondary page and selections without going through a back
+ * stack, so this snapshot is the only way back. Saved as one Serializable
+ * value with the default bundle saver (every field is an enum, String or
+ * Boolean) so the whole pre-push state survives rotation and process death
+ * together instead of restoring half-applied from separate saveables.
+ */
+private data class PrePushNav(
+    val tab: HomeTab,
+    val secondaryPage: HomeSecondaryPage?,
+    val sosReturnPage: HomeSecondaryPage?,
+    val showDiagnostics: Boolean,
+    val showJourneys: Boolean,
+    val selectedJourney: String?,
+    val selectedInvitation: String?,
+    val selectedSos: String?,
+) : Serializable {
+    companion object {
+        /**
+         * A fresh session's navigation. A push arriving while the user is
+         * here displaces nothing — the destination already is where they
+         * would return to — so no "Quay lại" offer is needed.
+         */
+        val DEFAULT = PrePushNav(
+            tab = HomeTab.CIRCLE,
+            secondaryPage = null,
+            sosReturnPage = null,
+            showDiagnostics = false,
+            showJourneys = false,
+            selectedJourney = null,
+            selectedInvitation = null,
+            selectedSos = null,
+        )
+    }
+}
+
+/**
+ * Material Scaffold floats the FAB above the bottom bar without adding it to
+ * the content padding, so full-height tab content (History, Places) clears it
+ * on its own: the FAB's 56dp container (FabBaselineTokens) plus the 16dp gap
+ * between the FAB and the bottom bar (Scaffold FabSpacing).
+ */
+internal val HOME_FAB_CLEARANCE = 72.dp
+
 /**
  * The signed-in surface keeps four primary destinations and routes secondary
  * settings screens above the selected destination.
@@ -108,14 +181,22 @@ private enum class HomeSecondaryPage(val titleRes: Int) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
-    var tab by remember { mutableStateOf(HomeTab.CIRCLE) }
-    var secondaryPage by remember { mutableStateOf<HomeSecondaryPage?>(null) }
-    var sosReturnPage by remember { mutableStateOf<HomeSecondaryPage?>(null) }
-    var showDiagnostics by remember { mutableStateOf(false) }
-    var showJourneys by remember { mutableStateOf(false) }
-    var selectedJourney by remember { mutableStateOf<String?>(null) }
-    var selectedInvitation by remember { mutableStateOf<String?>(null) }
-    var selectedSos by remember { mutableStateOf<String?>(null) }
+    var tab by rememberSaveable(stateSaver = homeTabSaver) { mutableStateOf(HomeTab.CIRCLE) }
+    var secondaryPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
+    var sosReturnPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
+    var showDiagnostics by rememberSaveable { mutableStateOf(false) }
+    var showJourneys by rememberSaveable { mutableStateOf(false) }
+    var selectedJourney: String? by rememberSaveable(stateSaver = nullableStringSaver) { mutableStateOf<String?>(null) }
+    var selectedInvitation: String? by rememberSaveable(stateSaver = nullableStringSaver) { mutableStateOf<String?>(null) }
+    var selectedSos: String? by rememberSaveable(stateSaver = nullableStringSaver) { mutableStateOf<String?>(null) }
+    // Set exactly once per applied push, so the snackbar effect below shows
+    // at most once per push and the snapshot survives rotation.
+    var prePushNav: PrePushNav? by rememberSaveable { mutableStateOf<PrePushNav?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    // The circle activation checklist cannot observe viewer grants from its
+    // own state, so the "choose viewers" step hides once the user has gone to
+    // the map. Held here (not in CircleScreen) so it survives tab switches.
+    var circleAudienceStepHidden by remember { mutableStateOf(false) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
     LaunchedEffect(invitation?.id, invitation?.owner, session?.userId) {
@@ -126,7 +207,15 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             tab = HomeTab.CIRCLE
         }
     }
+    // A recreated Activity lands on this effect while the session flow has
+    // not re-emitted yet (initialValue null), then again when it re-emits the
+    // same user. Resetting on either frame would discard the navigation state
+    // rememberSaveable just restored, so only a real user change resets.
+    var resetForUserId by rememberSaveable(stateSaver = nullableStringSaver) { mutableStateOf<String?>(null) }
     LaunchedEffect(session?.userId) {
+        val userId = session?.userId
+        if (userId == null || userId == resetForUserId) return@LaunchedEffect
+        resetForUserId = userId
         showDiagnostics = false
         showJourneys = false
         selectedJourney = null
@@ -134,6 +223,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         secondaryPage = null
         sosReturnPage = null
         selectedInvitation = null
+        circleAudienceStepHidden = false
+        prePushNav = null
         tab = HomeTab.CIRCLE
     }
     LaunchedEffect(incomingPush, session?.userId) {
@@ -141,6 +232,19 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         val owner = session?.userId ?: return@LaunchedEffect
         val destination = pushDestination(hint.kind, hint.eventId, hint.ownerId, owner)
         if (destination != null) {
+            // Capture where the user actually was before the push rewrites
+            // navigation. Pushes bypass the back stack, so this snapshot plus
+            // the snackbar action below is the only way back to it.
+            prePushNav = PrePushNav(
+                tab,
+                secondaryPage,
+                sosReturnPage,
+                showDiagnostics,
+                showJourneys,
+                selectedJourney,
+                selectedInvitation,
+                selectedSos,
+            )
             showDiagnostics = false
             showJourneys = destination.kind in com.anve.app.data.sos.JOURNEY_PUSH_KINDS
             selectedJourney = if (showJourneys) destination.eventId else null
@@ -158,6 +262,36 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             }
         }
         onPushConsumed()
+    }
+    // One snackbar per applied push: name that a notification moved the user
+    // and offer the pre-push screen back once. Resolved in composition — the
+    // snackbar call runs in a coroutine (SOS snackbar pattern). Journey and
+    // diagnostics pushes cover the shell with a full-screen overlay, so the
+    // snackbar surfaces when the user is back in the shell.
+    val pushOpenedMessage = stringResource(R.string.home_push_opened)
+    val pushBackAction = stringResource(R.string.home_push_back)
+    LaunchedEffect(prePushNav) {
+        val saved = prePushNav ?: return@LaunchedEffect
+        // Only a push that actually displaced the user offers a way back; from
+        // the default screen the destination is its own return, and a no-op
+        // action would just be noise.
+        if (saved == PrePushNav.DEFAULT) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(pushOpenedMessage, actionLabel = pushBackAction)
+        if (result == SnackbarResult.ActionPerformed) {
+            // Restore the whole pre-push navigation atomically; clearing the
+            // snapshot afterwards keeps one offer per push.
+            prePushNav?.let {
+                tab = it.tab
+                secondaryPage = it.secondaryPage
+                sosReturnPage = it.sosReturnPage
+                showDiagnostics = it.showDiagnostics
+                showJourneys = it.showJourneys
+                selectedJourney = it.selectedJourney
+                selectedInvitation = it.selectedInvitation
+                selectedSos = it.selectedSos
+            }
+        }
+        prePushNav = null
     }
     if (showJourneys) {
         com.anve.app.ui.journey.JourneyScreen(
@@ -182,14 +316,13 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     }
     BackHandler(enabled = secondaryPage != null, onBack = returnFromSecondaryPage)
     Scaffold(
+        // Hosts the push deep-link snackbar; nothing else in the shell posts
+        // here today, so the host stays otherwise default.
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             secondaryPage?.let { page ->
                 TopAppBar(
-                    title = {
-                        if (page == HomeSecondaryPage.ACCOUNT) {
-                            Text(stringResource(page.titleRes))
-                        }
-                    },
+                    title = { Text(stringResource(page.titleRes)) },
                     navigationIcon = {
                         IconButton(onClick = returnFromSecondaryPage) {
                             Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
@@ -227,6 +360,9 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         },
         floatingActionButton = {
             if (secondaryPage != HomeSecondaryPage.SOS) {
+                // SOS is urgent-but-not-a-failure, so it uses the emergency
+                // amber role instead of error.
+                val emergency = LocalEmergencyColors.current
                 ExtendedFloatingActionButton(
                     modifier = Modifier.semantics { contentDescription = sosOpenLabel },
                     onClick = {
@@ -234,9 +370,9 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                         selectedSos = null
                         secondaryPage = HomeSecondaryPage.SOS
                     },
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                    icon = { Icon(Icons.Default.Warning, contentDescription = null) },
+                    containerColor = emergency.emergency,
+                    contentColor = emergency.onEmergency,
+                    icon = { Icon(Icons.Default.Sos, contentDescription = null) },
                     text = { Text(stringResource(R.string.tab_sos)) },
                 )
             }
@@ -251,23 +387,44 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 )
                 HomeSecondaryPage.ACCOUNT -> AccountContent(container = container)
                 HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
-                null -> when (tab) {
-                    HomeTab.CIRCLE -> Column(Modifier.fillMaxSize()) {
+                null -> Column(Modifier.fillMaxSize()) {
+                    // Vị trí (consent + capture — the product's core control)
+                    // and Tài khoản (rename, sessions, deletion) are top-level
+                    // destinations: the labeled card keeps both reachable from
+                    // every tab, not only Nhóm where the activation checklist
+                    // used to be the only pointer. The map tab is exempt: it
+                    // already carries its own status chip and audience overlay,
+                    // and the card would eat viewing space there.
+                    if (tab != HomeTab.MAP) {
                         SharingSettingsCard(
                             onOpenTracking = { secondaryPage = HomeSecondaryPage.TRACKING },
                             onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
                         )
-                        Box(Modifier.fillMaxWidth().weight(1f)) {
-                            CircleScreen(
+                    }
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        when (tab) {
+                            HomeTab.CIRCLE -> CircleScreen(
                                 container = container,
                                 invitationId = selectedInvitation,
                                 onInvitationConsumed = { selectedInvitation = null },
+                                onOpenLocation = { secondaryPage = HomeSecondaryPage.TRACKING },
+                                onOpenMap = {
+                                    circleAudienceStepHidden = true
+                                    tab = HomeTab.MAP
+                                    secondaryPage = null
+                                    sosReturnPage = null
+                                    selectedSos = null
+                                },
+                                audienceStepHidden = circleAudienceStepHidden,
+                            )
+                            HomeTab.MAP -> LiveMapScreen(container = container)
+                            HomeTab.HISTORY -> HistoryScreen(container = container)
+                            HomeTab.PLACES -> PlacesScreen(
+                                container = container,
+                                onOpenLocation = { secondaryPage = HomeSecondaryPage.TRACKING },
                             )
                         }
                     }
-                    HomeTab.MAP -> LiveMapScreen(container = container)
-                    HomeTab.HISTORY -> HistoryScreen(container = container)
-                    HomeTab.PLACES -> PlacesScreen(container = container)
                 }
             }
         }
@@ -298,7 +455,7 @@ private fun AccountContent(container: AppContainer) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
-        Text("Đang kiểm tra tài khoản…", Modifier.padding(16.dp))
+        Text(stringResource(R.string.home_checking_account), Modifier.padding(16.dp))
         return
     }
     val viewModel: HomeViewModel = viewModel(
@@ -321,10 +478,11 @@ private fun AccountContent(container: AppContainer) {
         onSignOut = { showSignOutDialog = true },
         onDeleteAccount = { showDeleteDialog = true },
         onRetry = viewModel::refresh,
-        avatarMessage = avatar.message,
+        avatarMessageRes = avatar.messageRes,
         avatarContent = {
+            val avatarEditLabel = stringResource(R.string.home_avatar_edit_desc)
             Box(Modifier.size(64.dp).clickable(role = Role.Button, onClick = avatarController::open)
-                .semantics { contentDescription = "Đổi ảnh đại diện" }) {
+                .semantics { contentDescription = avatarEditLabel }) {
                 AvatarImage(owner, owner, avatar.metadata?.imageId, visible.user?.displayName.orEmpty(), container.avatarRepository, Modifier.size(64.dp))
                 Surface(Modifier.align(Alignment.BottomEnd), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
@@ -375,7 +533,7 @@ fun HomeContent(
     onDeleteAccount: () -> Unit,
     onRetry: () -> Unit,
     avatarContent: (@Composable () -> Unit)? = null,
-    avatarMessage: String? = null,
+    avatarMessageRes: Int? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
@@ -406,21 +564,83 @@ fun HomeContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (state.error != null || state.message != null) {
+            val errorRes = state.errorRes
+            if (errorRes != null) {
                 item {
-                    Text(
-                        text = state.error ?: state.message ?: "",
-                        color = if (state.error != null) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    // Same error presentation as the sign-in screen: a
+                    // container card, not bare text — with the retry at hand,
+                    // since the failure can be a refresh while old data is
+                    // still on screen.
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = stringResource(errorRes),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(stringResource(R.string.action_retry))
+                            }
+                        }
+                    }
+                }
+            }
+            val messageRes = state.messageRes
+            if (messageRes != null) {
+                item {
+                    // Same notice presentation as the tracking message card.
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    ) {
+                        Text(
+                            text = stringResource(messageRes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+            }
+            val consentMessage = state.consentMessage
+            if (consentMessage != null) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    ) {
+                        Text(
+                            text = consentMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
             }
             item { ProfileCard(user = user, onRename = onRename, avatarContent = avatarContent) }
-            avatarMessage?.let { message -> item { Text(message, style = MaterialTheme.typography.bodyMedium) } }
+            avatarMessageRes?.let { res ->
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    ) {
+                        Text(
+                            text = stringResource(res),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+            }
             item {
                 ConsentCard(
                     user = user,
@@ -547,10 +767,12 @@ private fun ConsentCard(
                 )
             } else if (syncPending) {
                 Spacer(Modifier.height(8.dp))
+                // Waiting-for-server is attention, not failure: error stays
+                // reserved for the conflict branch above (DESIGN.md).
                 Text(
                     stringResource(R.string.home_sharing_pending_notice),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else if (user.locationSharingEnabled) {
                 Spacer(Modifier.height(8.dp))
@@ -573,13 +795,22 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(device.name.ifBlank { "Thiết bị" }, style = MaterialTheme.typography.titleSmall)
+                    Text(device.name.ifBlank { stringResource(R.string.home_device_fallback_name) }, style = MaterialTheme.typography.titleSmall)
                     if (device.session?.current == true) {
                         Spacer(Modifier.size(8.dp))
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(stringResource(R.string.home_device_this)) },
-                        )
+                        // A read-only label, not a chip: the device name is
+                        // informational and has no action behind it.
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ) {
+                            Text(
+                                stringResource(R.string.home_device_this),
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            )
+                        }
                     }
                 }
                 Text(
