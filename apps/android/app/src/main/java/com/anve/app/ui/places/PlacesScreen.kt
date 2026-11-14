@@ -85,6 +85,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
@@ -482,7 +483,15 @@ private fun ConsentNotice(onOpenLocation: () -> Unit) {
 private fun PlacePreview(place: PlaceDto) {
     val point = LatLng(place.latitude, place.longitude)
     val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(point, 14f) }
-    GoogleMap(modifier = Modifier.fillMaxWidth().height(200.dp), cameraPositionState = camera) {
+    // View-only preview of the selected place inside the details LazyColumn:
+    // there is nothing to operate on, so every gesture is off — a one-finger
+    // pan or a drag-zoom would swallow the list's scroll instead of moving
+    // this map.
+    GoogleMap(
+        modifier = Modifier.fillMaxWidth().height(200.dp),
+        cameraPositionState = camera,
+        uiSettings = MapUiSettings(scrollGesturesEnabled = false, zoomGesturesEnabled = false),
+    ) {
         val marker = remember(place.id, place.latitude, place.longitude) { MarkerState(position = point) }
         Marker(state = marker, title = place.name)
         Circle(center = point, radius = place.radiusMeters, strokeColor = MaterialTheme.colorScheme.primary, fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
@@ -597,9 +606,19 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
         item { OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.places_editor_name_label)) }, enabled = !pending, modifier = Modifier.fillMaxWidth()) }
         if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
             item {
-                GoogleMap(modifier = Modifier.fillMaxWidth().height(260.dp), cameraPositionState = camera, onMapClick = {
-                    if (!pending) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
-                }) {
+                // The editor's map is one item in the LazyColumn form, so pan
+                // would swallow the form's scroll. Tap-to-select stays wired
+                // through onMapClick, and the position can still be set with
+                // the current-location action and the coordinate fields, so
+                // free panning adds nothing here.
+                GoogleMap(
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
+                    cameraPositionState = camera,
+                    uiSettings = MapUiSettings(scrollGesturesEnabled = false),
+                    onMapClick = {
+                        if (!pending) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
+                    },
+                ) {
                     point?.let {
                         val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
                         Marker(state = marker, title = name)

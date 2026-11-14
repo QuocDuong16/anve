@@ -115,7 +115,10 @@ class HistoryViewModel(
         val cursor = if (append) current.nextCursor ?: return else null
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(loading = true, errorRes = null, points = emptyList()) }
+        // A page load appends into the timeline the reader already sees;
+        // clearing it here would blank the list (and jump the scroll position)
+        // every time the next page arrives. Only a fresh query starts empty.
+        mutable.update { it.copy(loading = true, errorRes = null, points = if (append) it.points else emptyList()) }
         loadJob = viewModelScope.launch {
             try {
                 val (from, to) = timeInterval(current.date, ZoneId.systemDefault(), current.startMinute, current.endMinute)
@@ -123,14 +126,35 @@ class HistoryViewModel(
                 val members = if (append) current.members else repository.members(owner)
                 val retention = if (append) null else repository.retention(owner)
                 if (generation != token || mutable.value.owner != owner) return@launch
-                mutable.update { it.copy(points = page.points, nextCursor = page.nextCursor, members = members, retentionDays = retention?.days ?: current.retentionDays, effectiveRetentionDays = retention?.effectiveDays ?: current.effectiveRetentionDays, loading = false) }
+                mutable.update {
+                    it.copy(
+                        points = if (append) it.points + page.points else page.points,
+                        nextCursor = page.nextCursor,
+                        members = members,
+                        retentionDays = retention?.days ?: current.retentionDays,
+                        effectiveRetentionDays = retention?.effectiveDays ?: current.effectiveRetentionDays,
+                        loading = false,
+                    )
+                }
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 val messageRes = when {
                     e is IOException -> R.string.history_error_offline
                     e is ApiException && e.httpStatus in listOf(403, 404) -> R.string.history_error_access_lost
                     else -> R.string.history_error_load_failed
                 }
-                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(points = emptyList(), nextCursor = null, members = emptyList(), loading = false, errorRes = messageRes) }
+                if (generation == token && mutable.value.owner == owner) mutable.update {
+                    it.copy(
+                        // A failed page keeps the pages already on screen and only
+                        // drops the cursor, so the scroll-triggered load-more cannot
+                        // retry itself into a loop; the error notice's refresh
+                        // reloads the query from the first page.
+                        points = if (append) it.points else emptyList(),
+                        nextCursor = null,
+                        members = if (append) it.members else emptyList(),
+                        loading = false,
+                        errorRes = messageRes,
+                    )
+                }
             }
         }
     }

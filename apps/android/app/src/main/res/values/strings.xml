@@ -324,7 +324,6 @@
     <string name="history_center_map">Đưa bản đồ tới điểm đã chọn</string>
     <string name="history_map_unconfigured">Bản đồ chưa được cấu hình; lịch sử vẫn hiển thị bên dưới.</string>
     <string name="history_empty_day">Không có điểm lịch sử trong ngày này.</string>
-    <string name="history_next_page">Trang tiếp theo</string>
     <string name="history_retention_title">Thời hạn lưu</string>
     <string name="history_retention_days_value">%1$s ngày</string>
     <string name="history_retention_chip_days">%1$d ngày</string>

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -55,6 +56,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -75,6 +77,7 @@ import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
@@ -89,11 +92,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 private const val MAX_GAP_SECONDS = 900L
 private const val MAX_ACCURACY_METERS = 100.0
 private const val MAX_SPEED_METERS_PER_SECOND = 70.0
+// Rows before the end of the timeline at which the next page starts loading,
+// so the reader reaches fresh content before hitting a hard stop.
+private const val LOAD_MORE_LAST_ROWS = 4
 private enum class DeletionScope { DAY, RANGE, ALL }
 
 private fun formatMinute(minute: Int): String = "%02d:%02d".format(minute / 60, minute % 60)
@@ -181,6 +188,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
     var showDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
     val camera = key(state.owner) { rememberCameraPositionState() }
     var mapLoaded by remember(state.owner) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -199,6 +207,23 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
         val message = retentionSavedMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         vm.consumeRetentionConfirmation()
+    }
+    // Auto load-more replaces the old "Trang tiếp theo" button: when the reader
+    // is within a few rows of the end, the next page is fetched. Loading and
+    // cursor guards are read from vm.state inside the combine — a captured
+    // `state` would go stale between recompositions — so a finished page cannot
+    // retrigger: success grows the list or exhausts the cursor, and a failure
+    // clears the cursor, which forces the condition back through false.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible >= 0 && lastVisible >= info.totalItemsCount - LOAD_MORE_LAST_ROWS
+        }
+            .combine(vm.state) { nearEnd, current ->
+                nearEnd && !current.loading && !current.mutationPending && current.nextCursor != null
+            }
+            .collect { ready -> if (ready) vm.next() }
     }
     val gapStarts = remember(state.points) {
         historySegments(state.points).drop(1).mapNotNull { it.firstOrNull()?.eventId }.toSet()
@@ -253,6 +278,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
         ) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                state = listState,
                 contentPadding = PaddingValues(top = 16.dp, bottom = HOME_FAB_CLEARANCE),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -316,9 +342,15 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 }
                 if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
                     item {
+                        // The map is one item inside the LazyColumn, so a
+                        // one-finger pan over it would swallow the list's
+                        // vertical scroll. Pinch zoom stays on because two
+                        // fingers never scroll the list, and camera placement
+                        // goes through the center action below the map.
                         GoogleMap(
                             modifier = Modifier.fillMaxWidth().height(220.dp),
                             cameraPositionState = camera,
+                            uiSettings = MapUiSettings(scrollGesturesEnabled = false, zoomGesturesEnabled = true),
                             onMapLoaded = { mapLoaded = true },
                         ) {
                             historySegments(state.points).filter { it.size > 1 }.forEach { segment ->
@@ -390,11 +422,6 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                             .padding(horizontal = 12.dp, vertical = 12.dp),
                         color = if (point.eventId == selectedId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
-                }
-                if (state.nextCursor != null) {
-                    item {
-                        TextButton(onClick = vm::next, enabled = !state.loading) { Text(stringResource(R.string.history_next_page)) }
-                    }
                 }
                 if (state.member == state.owner) {
                     item {

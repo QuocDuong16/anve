@@ -17,13 +17,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.anve.app.BuildConfig
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.theme.AnVeTheme
 
 /**
  * The AnVề splash screen shown while the app bootstraps.
  *
- * @param version the running build version, displayed under the wordmark.
+ * @param version the running build version. Rendered only in debug builds so
+ * developers can confirm which build they hold; production users see the
+ * brand surface without the developer label.
  */
 @Composable
 fun SplashScreen(
@@ -60,12 +63,18 @@ fun SplashScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
             )
-            Text(
-                text = SplashCopy.versionLabel(version),
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.padding(top = 40.dp),
-            )
+            // The version label is a developer aid, not brand copy: shipping it
+            // to production reads as a debug screen left on. Gate it on the
+            // build type instead of dropping the parameter so debug installs
+            // keep confirming which build they run.
+            if (BuildConfig.DEBUG) {
+                Text(
+                    text = SplashCopy.versionLabel(version),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 40.dp),
+                )
+            }
         }
     }
 }

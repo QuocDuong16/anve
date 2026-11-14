@@ -108,8 +108,24 @@ class HistoryViewModelTest {
         vm.activate("a")
         assertEquals("first", vm.state.value.points.single().eventId)
         vm.next()
-        assertEquals("second", vm.state.value.points.single().eventId)
+        // Load-more appends: the page the reader already saw stays on screen.
+        assertEquals(listOf("first", "second"), vm.state.value.points.map { it.eventId })
         assertEquals(null, vm.state.value.nextCursor)
+    }
+
+    @Test fun `failed next page keeps the loaded timeline and drops the cursor`() {
+        val first = point("first", "2026-10-29T00:00:00Z", 10.0)
+        source.fetchPage = { _, cursor ->
+            if (cursor == null) HistoryPageDto(listOf(first), "next") else throw IllegalStateException("offline")
+        }
+        vm.activate("a")
+        vm.next()
+        // The reader keeps what was already shown; dropping the cursor is what
+        // stops the scroll-triggered load-more from retrying itself in a loop.
+        // Recovery goes through the error notice's refresh.
+        assertEquals(listOf("first"), vm.state.value.points.map { it.eventId })
+        assertEquals(null, vm.state.value.nextCursor)
+        assertEquals(R.string.history_error_load_failed, vm.state.value.errorRes)
     }
 
     @Test fun `failed delete never claims success or retries`() {
