@@ -12,12 +12,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.anve.app.BuildConfig
+import com.anve.app.R
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.theme.AnVeTheme
 
@@ -49,15 +50,15 @@ fun SplashScreen(
             AnVeBrandMark(Modifier.size(112.dp))
             Text(
                 text = SplashCopy.displayName,
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 44.sp,
-                ),
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                 color = colors.primary,
                 modifier = Modifier.padding(top = 24.dp),
             )
+            // The tagline reads from strings.xml because SignInScreen renders
+            // the same line; keeping it in a resource prevents the two
+            // surfaces from drifting apart.
             Text(
-                text = SplashCopy.tagline,
+                text = stringResource(R.string.splash_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.onSurface,
                 textAlign = TextAlign.Center,

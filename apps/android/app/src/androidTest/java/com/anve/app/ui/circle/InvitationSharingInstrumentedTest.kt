@@ -3,12 +3,17 @@ package com.anve.app.ui.circle
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import com.anve.app.R
 import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.ui.captureNativeFixture
@@ -57,5 +62,37 @@ class InvitationSharingInstrumentedTest {
         assertNull(send.data)
         compose.runOnIdle { role.value = "member" }
         compose.onNodeWithText("Chia sẻ link mời").assertDoesNotExist()
+    }
+
+    @Test fun revokeInviteNeedsConfirmDialogAndMemberHasNoRevokeButton() {
+        val invite = InviteDto("invite", "circle", "ABCD234567", "owner", Instant.now().plusSeconds(3600).toString(), Instant.now().toString())
+        val role = mutableStateOf("owner")
+        var revoked: List<String> = emptyList()
+        compose.setContent { AnVeTheme { CircleContent(CircleUiState(loading = false,
+            circle = CircleDto("circle", "Nhà mình", "owner", "now"), myRole = role.value, invites = listOf(invite)),
+            {}, {}, {},
+            onRevokeInvite = { revoked += it },
+            onRemoveMember = {}, onLeave = {}, onRetry = {}) } }
+        val revokeLabel = compose.activity.getString(R.string.circle_invite_revoke)
+        val revokeTitle = compose.activity.getString(R.string.circle_invite_revoke_title)
+        val cancelLabel = compose.activity.getString(R.string.action_cancel)
+        compose.onNodeWithTag("circle-content").performScrollToNode(hasText(revokeLabel))
+        compose.onNodeWithText(revokeLabel).performClick()
+        compose.onNodeWithText(revokeTitle).assertIsDisplayed()
+        // Cancel keeps the invite alive: the dialog closes, no callback fires.
+        compose.onNodeWithText(cancelLabel).performClick()
+        compose.onNodeWithText(revokeTitle).assertDoesNotExist()
+        assertEquals(emptyList<String>(), revoked)
+        compose.onNodeWithText(revokeLabel).performClick()
+        // With the dialog open the label matches two nodes: the row button and
+        // the dialog's confirm, enumerated last because the dialog window is
+        // collected after the main window. A wrong click here would tap the
+        // scrim or the covered row, so the callback assertion below cannot
+        // pass by accident.
+        compose.onAllNodesWithText(revokeLabel).assertCountEquals(2)
+        compose.onAllNodesWithText(revokeLabel)[1].performClick()
+        assertEquals(listOf(invite.id), revoked)
+        compose.runOnIdle { role.value = "member" }
+        compose.onNodeWithText(revokeLabel).assertDoesNotExist()
     }
 }

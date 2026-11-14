@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.data.api.AvatarStateDto
+import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
@@ -68,7 +69,7 @@ fun AvatarSheet(state: AvatarUiState, online: Boolean, onDismiss: () -> Unit, on
                 item { Text(stringResource(R.string.avatar_privacy_note), Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium) }
                 if (state.removeDraft) item { Text(stringResource(R.string.avatar_remove_draft_note)) }
                 if (!online) item { Text(stringResource(R.string.avatar_offline)) }
-                state.errorRes?.let { res -> item { Text(stringResource(res), color = MaterialTheme.colorScheme.error) } }
+                state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                 if (state.busy) item { Text(stringResource(R.string.avatar_busy)) }
             }
             Spacer(Modifier.height(16.dp))

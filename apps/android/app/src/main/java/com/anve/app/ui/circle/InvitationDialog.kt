@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.data.api.InvitePreviewDto
+import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.isDarkSurface
@@ -67,7 +68,7 @@ fun InvitationDialog(state: InvitationUiState, online: Boolean, onDismiss: () ->
                     InvitationDetail(Icons.Default.Person, stringResource(R.string.invite_logged_in_as, state.accountLabel))
                 }
                 if (!online) Text(stringResource(R.string.invite_dialog_offline))
-                state.errorRes?.let { res -> Text(stringResource(res), color = colors.onSurface, style = MaterialTheme.typography.bodyMedium) }
+                state.errorRes?.let { res -> AnveErrorNotice(stringResource(res)) }
                 if (state.busy) Text(stringResource(R.string.invite_dialog_busy))
             }
         },

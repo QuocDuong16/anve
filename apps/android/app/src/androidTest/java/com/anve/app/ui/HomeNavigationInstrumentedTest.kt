@@ -31,7 +31,10 @@ class HomeNavigationInstrumentedTest {
         compose.onNodeWithText("Tài khoản").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Mở SOS").performClick()
+        // The SOS FAB now speaks its visible label once (the redundant
+        // contentDescription was removed with the TalkBack fix), so target
+        // the label text; the bottom bar has no SOS tab, so it is unique.
+        compose.onNodeWithText("SOS").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
     }

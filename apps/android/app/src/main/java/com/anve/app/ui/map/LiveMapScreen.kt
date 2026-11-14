@@ -12,16 +12,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -79,7 +82,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
 @Composable
-fun LiveMapScreen(container: AppContainer) {
+fun LiveMapScreen(container: AppContainer, onOpenLocation: () -> Unit = {}, onOpenAccount: () -> Unit = {}, onOpenCircle: () -> Unit = {}) {
     val viewModel: LiveMapViewModel = viewModel(
         factory = LiveMapViewModel.factory(container.visibleLocationRepository),
     )
@@ -108,6 +111,9 @@ fun LiveMapScreen(container: AppContainer) {
         onCloseSharing = { viewModel.showSharing(false, ownerId) },
         onToggleViewer = { member, enabled -> viewModel.toggleViewer(ownerId, member, enabled) },
         onRetrySharing = { viewModel.refreshSharing(ownerId) },
+        onOpenLocation = onOpenLocation,
+        onOpenAccount = onOpenAccount,
+        onOpenCircle = onOpenCircle,
     )
 }
 
@@ -120,6 +126,9 @@ private fun LiveMapContent(
     onCloseSharing: () -> Unit,
     onToggleViewer: (AudienceMember, Boolean) -> Unit,
     onRetrySharing: () -> Unit,
+    onOpenLocation: () -> Unit = {},
+    onOpenAccount: () -> Unit = {},
+    onOpenCircle: () -> Unit = {},
 ) {
     val snapshot = state.snapshot.takeIf { state.ownerId == ownerId }
     val locations = snapshot?.locations.orEmpty()
@@ -237,9 +246,12 @@ private fun LiveMapContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // Freshness, not danger: an unconnected feed borrows a
+                        // neutral tone — the error hue is reserved for failures
+                        // (DESIGN.md stale-data rule).
                         Box(Modifier.size(8.dp).background(
                             if (snapshot?.connected == true) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error,
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                             CircleShape,
                         ))
                         Text(
@@ -253,6 +265,26 @@ private fun LiveMapContent(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.map_audience_action))
                 }
+            }
+            // The home shell hides the sharing-settings card on the map tab so
+            // its overlay does not eat viewing space, which left this tab with
+            // no visible route to the screen where sharing decisions are made.
+            // One compact text pointer restores the path without re-adding the
+            // card; the label reuses the destination's own title.
+            TextButton(
+                onClick = onOpenLocation,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.tracking_title))
+            }
+            // Same reasoning for the account screen: with the sharing card
+            // hidden on this tab, sessions and account actions need their own
+            // compact pointer.
+            TextButton(
+                onClick = onOpenAccount,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.tab_account))
             }
             snapshot?.error?.let { message ->
                 // Same failure presentation as the other screens: the shared
@@ -310,6 +342,8 @@ private fun LiveMapContent(
             onDismiss = onCloseSharing,
             onToggle = onToggleViewer,
             onRetry = onRetrySharing,
+            onOpenLocation = onOpenLocation,
+            onOpenCircle = onOpenCircle,
         )
     }
 }
@@ -350,7 +384,9 @@ private fun MemberLocationCard(
                 }
             }
             IconButton(onClick = onRecenter, enabled = location.latLngOrNull() != null) {
-                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.map_recenter_content_desc))
+                // A refresh glyph reads as "reload the data"; MyLocation is the
+                // camera-recenter convention on map surfaces.
+                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.map_recenter_content_desc))
             }
         }
     }
@@ -364,6 +400,8 @@ private fun AudienceSheet(
     onDismiss: () -> Unit,
     onToggle: (AudienceMember, Boolean) -> Unit,
     onRetry: () -> Unit,
+    onOpenLocation: () -> Unit = {},
+    onOpenCircle: () -> Unit = {},
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -382,31 +420,79 @@ private fun AudienceSheet(
                 CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             }
             state.sharingErrorRes?.let { res ->
-                Text(stringResource(res), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                // Same failure presentation as the rest of the app; the sheet
+                // keeps its own retry below, so the notice takes no second retry.
+                AnveErrorNotice(stringResource(res))
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.map_retry)) }
             }
             val sharing = state.sharing
             when {
                 sharing == null -> Unit
-                !sharing.hasCircle -> Text(stringResource(R.string.map_no_circle), style = MaterialTheme.typography.bodyMedium)
-                !sharing.consentEnabled -> Text(
-                    stringResource(R.string.map_consent_off),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                // The two setup notices carry their own action: a pointer that
+                // only names the screen leaves the reader to close the sheet
+                // and hunt for the link underneath it.
+                !sharing.hasCircle -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.map_no_circle), style = MaterialTheme.typography.bodyMedium)
+                    TextButton(onClick = onOpenCircle, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.map_open_circle))
+                    }
+                }
+                !sharing.consentEnabled -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(R.string.map_consent_off),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    TextButton(onClick = onOpenLocation, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.action_open_location))
+                    }
+                }
                 sharing.members.none { it.userId != ownerId } -> Text(
                     stringResource(R.string.map_no_other_members),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(sharing.members.filter { it.userId != ownerId }, key = AudienceMember::userId) { member ->
+                        // The whole row toggles so TalkBack announces the member's
+                        // name together with the switch state instead of an
+                        // anonymous "on"; toggleable sits before padding so the
+                        // touch target covers the padded row (>= 48dp). The inner
+                        // switch stays indicative; unresolved members have no
+                        // control yet, so their row stays non-interactive.
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .then(
+                                    if (member.userId in state.unresolvedViewerIds) {
+                                        Modifier
+                                    } else {
+                                        Modifier.toggleable(
+                                            value = member.canViewLocation,
+                                            enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                            role = Role.Switch,
+                                            onValueChange = { onToggle(member, it) },
+                                        )
+                                    },
+                                )
+                                .padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
-                                Text(member.role, style = MaterialTheme.typography.bodySmall)
+                                // role ships as a raw "owner"/"member" contract
+                                // string; mapping it here instead of in the data
+                                // layer keeps AudienceMember faithful to the server
+                                // payload while reusing the Circle screen's
+                                // standardized labels, so one concept keeps one wording.
+                                Text(
+                                    text = if (member.role == "owner") {
+                                        stringResource(R.string.circle_role_owner)
+                                    } else {
+                                        stringResource(R.string.circle_role_member)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                             }
                             if (member.userId in state.unresolvedViewerIds) {
                                 Text(stringResource(R.string.map_viewer_unresolved), style = MaterialTheme.typography.bodySmall)
@@ -414,7 +500,7 @@ private fun AudienceSheet(
                                 Switch(
                                     checked = member.canViewLocation,
                                     enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
-                                    onCheckedChange = { enabled -> onToggle(member, enabled) },
+                                    onCheckedChange = null,
                                 )
                             }
                             if (member.userId in state.pendingViewerIds) {
@@ -455,7 +541,9 @@ private fun String.confidenceMarker(staleIcon: BitmapDescriptor): BitmapDescript
     "DELAYED" -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
     "STALE" -> staleIcon
     "OFFLINE" -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-    else -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)
+    // Unknown confidence has no visual story of its own; it falls back to the
+    // neutral gray pin instead of introducing an off-palette hue.
+    else -> staleIcon
 }
 
 @Composable

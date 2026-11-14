@@ -80,6 +80,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +104,7 @@ import com.anve.app.tracking.diagnostics.DiagnosticsAction
 import com.anve.app.tracking.diagnostics.SyncWorkStatus
 import com.anve.app.tracking.diagnostics.diagnoseTracking
 import com.anve.app.tracking.diagnostics.diagnosticAgeSeconds
+import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
@@ -317,8 +320,8 @@ fun DiagnosticsContent(
                     onAction = { onAction(diagnosis.action) },
                 )
             }
-            if (actionError != null) item { Text(actionError, color = MaterialTheme.colorScheme.error) }
-            if (state.readFailed) item { Text(stringResource(R.string.diag_details_failed), color = MaterialTheme.colorScheme.error) }
+            if (actionError != null) item { AnveErrorNotice(actionError) }
+            if (state.readFailed) item { AnveErrorNotice(stringResource(R.string.diag_details_failed)) }
             if (!showDetails) {
                 item { DiagnosticsSection(stringResource(R.string.diag_section_capture), Icons.Default.LocationOn) {
                     DiagnosticRow(stringResource(R.string.diag_row_service), if (status.activelyTracking) stringResource(R.string.diag_value_running) else if (status.serviceRunning) stringResource(R.string.diag_value_capture_unconfirmed) else stringResource(R.string.diag_value_stopped))
@@ -417,7 +420,10 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                // TalkBack's heading navigation is the fastest way through
+                // this, the app's longest screen: marking each section title
+                // lets users jump by section instead of swiping every row.
+                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             HorizontalDivider()
             content()
