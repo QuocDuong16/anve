@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import com.anve.app.R
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.PrivateInvitationRequestDto
@@ -18,9 +19,9 @@ import kotlinx.coroutines.launch
 
 data class PrivateInvitationsState(
     val open: Boolean = false, val mode: String = "EMAIL", val email: String = "", val hours: Int = 48,
-    val busy: Boolean = false, val unknown: Boolean = false, val error: String? = null, val message: String? = null,
+    val busy: Boolean = false, val unknown: Boolean = false, val errorRes: Int? = null, val messageRes: Int? = null,
     val received: List<ReceivedInvitationDto> = emptyList(), val loading: Boolean = true,
-    val inboxError: String? = null, val detailBusy: Boolean = false,
+    val inboxErrorRes: Int? = null, val detailBusy: Boolean = false,
 ) {
     override fun toString() = "PrivateInvitationsState(open=$open, busy=$busy, unknown=$unknown)"
 }
@@ -46,26 +47,26 @@ class PrivateInvitationsController(
     private suspend fun current(token: Long) = active && generation == token && sessions.current()?.userId == owner
     private fun deactivate() { active = false; generation++; pending = null; mutable.value = PrivateInvitationsState(loading = false) }
     fun dispose() { deactivate(); watch.cancel() }
-    fun open() { if (active) mutable.update { it.copy(open = true, message = null) } }
-    fun dismiss() { mutable.update { it.copy(open = false, email = "", error = null) } }
-    fun mode(value: String) { if (editable() && value in setOf("EMAIL", "LINK")) mutable.update { it.copy(mode = value, email = "", error = null) } }
-    fun email(value: String) { if (editable()) mutable.update { it.copy(email = value.take(254), error = null) } }
+    fun open() { if (active) mutable.update { it.copy(open = true, messageRes = null) } }
+    fun dismiss() { mutable.update { it.copy(open = false, email = "", errorRes = null) } }
+    fun mode(value: String) { if (editable() && value in setOf("EMAIL", "LINK")) mutable.update { it.copy(mode = value, email = "", errorRes = null) } }
+    fun email(value: String) { if (editable()) mutable.update { it.copy(email = value.take(254), errorRes = null) } }
     fun hours(value: Int) { if (editable() && value in setOf(24, 48, 168)) mutable.update { it.copy(hours = value) } }
     private fun editable() = active && !mutable.value.busy && !mutable.value.unknown
 
     fun create(circle: String?, online: Boolean) {
         if (!editable() || circle == null) return
-        if (!online) { mutable.update { it.copy(error = "Mất mạng. Kết nối lại trước khi tạo lời mời.") }; return }
+        if (!online) { mutable.update { it.copy(errorRes = R.string.invite_create_offline) }; return }
         val s = mutable.value
         val email = s.email.trim().lowercase()
         if (s.mode == "EMAIL" && (!EMAIL.matches(email) || email.any { it.code > 127 })) {
-            mutable.update { it.copy(error = "Nhập email hợp lệ, ví dụ ten@example.com.") }; return
+            mutable.update { it.copy(errorRes = R.string.invite_email_invalid) }; return
         }
         val request = PrivateInvitationRequestDto(UUID.randomUUID().toString(), s.mode, if (s.mode == "EMAIL") email else null, s.hours)
         val operation = Pending(circle, request)
         pending = operation
         val token = generation
-        mutable.update { it.copy(busy = true, error = null, message = null) }
+        mutable.update { it.copy(busy = true, errorRes = null, messageRes = null) }
         scope.launch {
             try {
                 if (!current(token)) return@launch
@@ -77,7 +78,7 @@ class PrivateInvitationsController(
                 if (!active || generation != token) return@launch
                 if (e is ApiException && (e.httpStatus ?: 0) in 400..499 && e.httpStatus != 408) {
                     pending = null
-                    mutable.update { it.copy(busy = false, error = if (e.httpStatus == 429) "Đã tạo nhiều lời mời. Thử lại sau." else "Chưa tạo được lời mời. Kiểm tra quyền chủ nhóm và email rồi thử lại.") }
+                    mutable.update { it.copy(busy = false, errorRes = if (e.httpStatus == 429) R.string.invite_create_rate_limited else R.string.invite_create_failed) }
                 } else uncertain(operation, token)
             }
         }
@@ -87,8 +88,8 @@ class PrivateInvitationsController(
         runCatching { Instant.parse(i.expiresAt).isAfter(Instant.now()) }.getOrDefault(false)
     private fun complete() {
         pending = null
-        mutable.update { it.copy(open = false, busy = false, unknown = false, email = "", error = null,
-            message = "Đã tạo lời mời. Email không xác nhận tài khoản hay trạng thái nhận thông báo.") }
+        mutable.update { it.copy(open = false, busy = false, unknown = false, email = "", errorRes = null,
+            messageRes = R.string.invite_created_notice) }
         onCreated()
     }
     private suspend fun uncertain(p: Pending, token: Long) {
@@ -103,26 +104,26 @@ class PrivateInvitationsController(
             if (matches(p, result)) { complete(); return }
         } catch (e: CancellationException) { throw e } catch (_: Exception) { /* only a matching read confirms creation */ }
         if (active && token == generation) mutable.update { it.copy(busy = false, unknown = true,
-            error = "Chưa rõ kết quả tạo lời mời. Kiểm tra kết quả; app không tự tạo lại.") }
+            errorRes = R.string.invite_create_unconfirmed) }
     }
     fun checkAgain(online: Boolean) {
         val operation = pending ?: return
         if (!active || !online || mutable.value.busy || !mutable.value.unknown) return
-        mutable.update { it.copy(busy = true, error = null) }
+        mutable.update { it.copy(busy = true, errorRes = null) }
         scope.launch { readBack(operation, generation) }
     }
     fun refresh() {
         if (!active || mutable.value.detailBusy) return
         val token = generation
         val inboxToken = ++inboxGeneration
-        mutable.update { it.copy(loading = true, inboxError = null) }
+        mutable.update { it.copy(loading = true, inboxErrorRes = null) }
         scope.launch {
             try {
                 if (!current(token)) return@launch
                 val result = gateway.received(owner)
                 if (current(token) && inboxToken == inboxGeneration) mutable.update { it.copy(loading = false, received = result) }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                if (active && token == generation && inboxToken == inboxGeneration) mutable.update { it.copy(loading = false, received = emptyList(), inboxError = "Chưa tải được lời mời. Kết nối lại rồi tải lại.") }
+                if (active && token == generation && inboxToken == inboxGeneration) mutable.update { it.copy(loading = false, received = emptyList(), inboxErrorRes = R.string.invite_received_load_failed) }
             }
         }
     }
@@ -130,7 +131,7 @@ class PrivateInvitationsController(
         if (!active || mutable.value.detailBusy) return
         val token = generation
         ++inboxGeneration
-        mutable.update { it.copy(loading = false, detailBusy = true, inboxError = null) }
+        mutable.update { it.copy(loading = false, detailBusy = true, inboxErrorRes = null) }
         scope.launch {
             try {
                 if (!current(token)) return@launch
@@ -146,7 +147,7 @@ class PrivateInvitationsController(
                 }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (active && token == generation) mutable.update { it.copy(detailBusy = false,
-                    inboxError = if (hide) "Chưa rõ kết quả ẩn lời mời. Tải lại để kiểm tra; app không tự gửi lại." else "Không mở được lời mời. Có thể đã hết hạn, bị thu hồi hoặc không dành cho tài khoản này. Tải lại để kiểm tra.") }
+                    inboxErrorRes = if (hide) R.string.invite_hide_unconfirmed else R.string.invite_open_failed) }
             }
         }
     }

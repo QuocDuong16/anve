@@ -39,7 +39,13 @@ class InvitationSharingInstrumentedTest {
         compose.runOnIdle { dark.value = true }
         compose.waitForIdle()
         captureNativeFixture("invitation-share-dark")
-        val chooser = requireNotNull(invitationShareIntent(invite))
+        val chooser = requireNotNull(
+            invitationShareIntent(
+                invite,
+                message = "Mời bạn tham gia gia đình trên AnVề:\n%1\$s\nNếu link không mở, nhập mã: %2\$s\nTham gia không tự bật chia sẻ vị trí.",
+                chooserTitle = "Gửi lời mời gia đình",
+            ),
+        )
         assertEquals(Intent.ACTION_CHOOSER, chooser.action)
         @Suppress("DEPRECATION") val send = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
         assertEquals(Intent.ACTION_SEND, send.action)

@@ -3,6 +3,7 @@ package com.anve.app.ui.places
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.PlaceInputDto
@@ -36,11 +37,13 @@ data class PlacesState(
     val loading: Boolean = false,
     val pending: Boolean = false,
     val confirmation: Long = 0,
-    val error: String? = null,
-    val notice: String? = null,
+    val errorRes: Int? = null,
+    val noticeRes: Int? = null,
 )
 
-class PlacesViewModel(private val repository: PlacesDataSource) : ViewModel() {
+class PlacesViewModel(
+    private val repository: PlacesDataSource,
+) : ViewModel() {
     private val mutable = MutableStateFlow(PlacesState())
     val state = mutable.asStateFlow()
     private var generation = 0L
@@ -57,7 +60,7 @@ class PlacesViewModel(private val repository: PlacesDataSource) : ViewModel() {
 
     fun select(id: String?) {
         if (mutable.value.pending) return
-        mutable.update { it.copy(selectedId = id, access = emptySet(), eligibleRecipients = emptySet(), monitor = null, error = null, notice = null) }
+        mutable.update { it.copy(selectedId = id, access = emptySet(), eligibleRecipients = emptySet(), monitor = null, errorRes = null, noticeRes = null) }
         refresh()
     }
 
@@ -67,7 +70,7 @@ class PlacesViewModel(private val repository: PlacesDataSource) : ViewModel() {
         if (current.pending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(loading = true, error = null) }
+        mutable.update { it.copy(loading = true, errorRes = null) }
         loadJob = viewModelScope.launch {
             try {
                 val places = repository.places(owner)
@@ -79,12 +82,12 @@ class PlacesViewModel(private val repository: PlacesDataSource) : ViewModel() {
                 val monitor = if (selected != null) repository.monitor(owner, selected.id) else null
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update { it.copy(places = places, events = events, sharing = sharing, selectedId = selected?.id,
-                    access = access, eligibleRecipients = eligible, monitor = monitor, loading = false, error = null) }
+                    access = access, eligibleRecipients = eligible, monitor = monitor, loading = false, errorRes = null) }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner) mutable.update {
                     it.copy(places = emptyList(), events = emptyList(), sharing = SharingManagementSnapshot(),
                         selectedId = null, access = emptySet(), eligibleRecipients = emptySet(), monitor = null, loading = false,
-                        error = "Không thể kiểm tra địa điểm và quyền hiện tại. Kiểm tra kết nối rồi thử lại.")
+                        errorRes = R.string.places_error_load_failed)
                 }
             }
         }
@@ -115,7 +118,7 @@ class PlacesViewModel(private val repository: PlacesDataSource) : ViewModel() {
         if (mutable.value.pending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(pending = true, loading = false, events = emptyList(), error = null, notice = null) }
+        mutable.update { it.copy(pending = true, loading = false, events = emptyList(), errorRes = null, noticeRes = null) }
         mutationJob = viewModelScope.launch {
             try {
                 action(owner)
@@ -125,7 +128,7 @@ class PlacesViewModel(private val repository: PlacesDataSource) : ViewModel() {
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner) {
                     mutable.update { it.copy(pending = false, events = emptyList(), access = emptySet(), eligibleRecipients = emptySet(), monitor = null,
-                        notice = "Chưa xác nhận thay đổi. Kiểm tra lại trước khi thực hiện thao tác mới.") }
+                        noticeRes = R.string.places_error_mutation_unconfirmed) }
                     refresh()
                 }
             }

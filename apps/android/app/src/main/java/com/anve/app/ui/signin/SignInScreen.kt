@@ -50,6 +50,7 @@ import com.anve.app.R
 import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.brand.AnVeBrandMark
+import com.anve.app.ui.common.UiMessage
 import com.anve.app.ui.theme.AnVeTheme
 
 
@@ -72,8 +73,6 @@ fun SignInScreen(
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val notice by container.sessionNotices.notice.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val genericSignInError = stringResource(R.string.signin_generic_error)
-    val incompleteSignIn = stringResource(R.string.signin_google_incomplete)
 
     LaunchedEffect(state) {
         if (state is SignInUiState.SignedIn) onSignedIn()
@@ -89,14 +88,18 @@ fun SignInScreen(
         onGoogleSignIn = {
             val activity = context.findActivity()
             if (activity == null) {
-                viewModel.reportError("Không mở được trình đăng nhập trên màn hình này.")
+                viewModel.reportError(R.string.signin_no_activity_resolver)
                 return@SignInContent
             }
             viewModel.signInWithGoogle(
                 fetchIdToken = { GoogleCredentialSource(activity).fetchIdToken() },
                 credentialError = { cause ->
                     // Providers also use cancellation for authorization/configuration failures.
-                    if (cause is GetCredentialCancellationException) incompleteSignIn else genericSignInError
+                    if (cause is GetCredentialCancellationException) {
+                        R.string.signin_google_incomplete
+                    } else {
+                        R.string.signin_generic_error
+                    }
                 },
             )
         },
@@ -108,7 +111,7 @@ fun SignInScreen(
 @Composable
 fun SignInContent(
     state: SignInUiState,
-    error: String?,
+    error: UiMessage?,
     busy: Boolean,
     notice: SessionNotice?,
     onDismissNotice: () -> Unit,
@@ -149,8 +152,10 @@ fun SignInContent(
                 Spacer(Modifier.height(32.dp))
 
                 if (invitationPending) {
-                    Text("Đăng nhập để kiểm tra lời mời gia đình. Lời mời chỉ được giữ tạm trên thiết bị; chưa tham gia nhóm hoặc bật chia sẻ vị trí.",
-                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth())
+                    Text(
+                        text = stringResource(R.string.signin_invitation_prompt),
+                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth(),
+                    )
                     Spacer(Modifier.height(16.dp))
                 }
 
@@ -168,7 +173,7 @@ fun SignInContent(
                         modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
                     ) {
                         Text(
-                            text = error,
+                            text = stringResource(error.id, *error.args.toTypedArray()),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(16.dp),
                         )
@@ -307,7 +312,7 @@ private fun SignInContentUnavailablePreview() {
     AnVeTheme {
         SignInContent(
             state = SignInUiState.Ready(googleSignIn = false, devLogin = false),
-            error = "Không kết nối được máy chủ.",
+            error = UiMessage(R.string.signin_network_failed),
             busy = false,
             notice = null,
             onDismissNotice = {},

@@ -45,15 +45,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.anve.app.R
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.isDarkSurface
+import com.anve.app.ui.theme.rememberInkOnSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,16 +65,16 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
     var showExpiry by remember { mutableStateOf(false) }
     val editable = !state.busy && !state.unknown
     val colors = MaterialTheme.colorScheme
-    val dark = colors.surface.luminance() < 0.5f
+    val dark = isDarkSurface()
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
             .padding(horizontal = 16.dp).testTag("email-invite-sheet")) {
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                item { Text("Mời người thân", style = MaterialTheme.typography.headlineSmall) }
+                item { Text(stringResource(R.string.invite_sheet_title), style = MaterialTheme.typography.headlineSmall) }
                 item { FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("EMAIL" to "Theo email", "LINK" to "Chỉ tạo link/mã").forEach { (mode, label) ->
+                    listOf("EMAIL" to stringResource(R.string.invite_mode_email), "LINK" to stringResource(R.string.invite_mode_link)).forEach { (mode, label) ->
                         Surface(Modifier.weight(1f).heightIn(min = 48.dp).selectable(state.mode == mode, enabled = editable,
                             role = Role.RadioButton, onClick = { onMode(mode) }), shape = RoundedCornerShape(12.dp),
                             border = if (state.mode == mode) null else BorderStroke(1.dp, colors.outline),
@@ -88,47 +91,54 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                 if (state.mode == "EMAIL") item {
                     Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, colors.outlineVariant)) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Email người nhận", style = MaterialTheme.typography.titleSmall,
-                                color = if (dark) colors.onSurface else colors.primary)
-                            OutlinedTextField(state.email, onEmail, placeholder = { Text("ten@example.com") },
-                                label = { Text("Email người được mời") }, singleLine = true, enabled = editable,
+                            Text(stringResource(R.string.invite_email_section), style = MaterialTheme.typography.titleSmall,
+                                color = rememberInkOnSurface())
+                            OutlinedTextField(state.email, onEmail, placeholder = { Text(stringResource(R.string.invite_email_placeholder)) },
+                                label = { Text(stringResource(R.string.invite_email_label)) }, singleLine = true, enabled = editable,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
                                 modifier = Modifier.fillMaxWidth().testTag("invite-email"))
-                            Text("Chỉ tài khoản có email này được tham gia.", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.invite_email_note), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
                 item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Outlined.Info, null, tint = if (dark) colors.onSurface else colors.primary)
+                    Icon(Icons.Outlined.Info, null, tint = rememberInkOnSurface())
                     Text(if (state.mode == "EMAIL")
-                        "Nếu có tài khoản AnVề và bật thông báo, người nhận có thể nhận lời mời. Bạn vẫn có thể gửi link. Đây không phải thư gửi qua email."
-                        else "Gửi mã hoặc liên kết qua ứng dụng bạn chọn sau khi tạo. Người nhận cần đăng nhập và xác nhận tham gia.",
+                        stringResource(R.string.invite_email_info)
+                        else stringResource(R.string.invite_link_info),
                         style = MaterialTheme.typography.bodyMedium)
                 } }
                 item { Surface(Modifier.fillMaxWidth(), color = if (dark) colors.surfaceVariant else colors.secondaryContainer,
                     contentColor = if (dark) colors.onSurfaceVariant else colors.onSecondaryContainer, shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.WarningAmber, null)
-                        Text("Không công khai email đã đăng ký. Tham gia không tự bật chia sẻ vị trí.", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.invite_privacy_warning), style = MaterialTheme.typography.bodyMedium)
                     }
                 } }
                 item { Box {
                     TextButton(onClick = { showExpiry = true }, enabled = editable,
-                        colors = ButtonDefaults.textButtonColors(contentColor = if (dark) colors.onSurface else colors.primary), modifier = Modifier.heightIn(min = 48.dp)) {
+                        colors = ButtonDefaults.textButtonColors(contentColor = rememberInkOnSurface()), modifier = Modifier.heightIn(min = 48.dp)) {
                         Icon(Icons.Outlined.Schedule, null, Modifier.size(20.dp))
-                        Text("Lời mời dùng một lần · " + if (state.hours == 168) "7 ngày" else "${state.hours} giờ", Modifier.padding(horizontal = 8.dp))
+                        Text(stringResource(
+                            R.string.invite_uses_summary,
+                            if (state.hours == 168) stringResource(R.string.invite_expiry_week) else stringResource(R.string.invite_expiry_hours, state.hours),
+                        ), Modifier.padding(horizontal = 8.dp))
                         Icon(Icons.Outlined.ArrowDropDown, null)
                     }
                     DropdownMenu(expanded = showExpiry && editable, onDismissRequest = { showExpiry = false }) {
-                        listOf(24 to "24 giờ", 48 to "48 giờ", 168 to "7 ngày").forEach { (hours, label) ->
+                        listOf(
+                            24 to stringResource(R.string.invite_expiry_hours, 24),
+                            48 to stringResource(R.string.invite_expiry_hours, 48),
+                            168 to stringResource(R.string.invite_expiry_week),
+                        ).forEach { (hours, label) ->
                             DropdownMenuItem(text = { Text(label) }, onClick = { onHours(hours); showExpiry = false })
                         }
                     }
                 } }
-                if (!online) item { Text("Mất mạng. Cần kết nối để tạo lời mời hoặc kiểm tra kết quả.") }
-                state.error?.let { item { Text(it, color = colors.onSurface) } }
+                if (!online) item { Text(stringResource(R.string.invite_offline)) }
+                state.errorRes?.let { res -> item { Text(stringResource(res), color = MaterialTheme.colorScheme.error) } }
                 if (state.busy) item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CircularProgressIndicator(Modifier.size(24.dp)); Text("Đang chờ máy chủ xác nhận. Đóng bảng không hủy thao tác đã gửi.")
+                    CircularProgressIndicator(Modifier.size(24.dp)); Text(stringResource(R.string.invite_busy))
                 } }
             }
             Spacer(Modifier.height(16.dp))
@@ -137,7 +147,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                 colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
                     contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("invite-submit")) {
-                Text(if (state.unknown) "Kiểm tra kết quả" else "Tạo lời mời")
+                Text(if (state.unknown) stringResource(R.string.invite_check_result) else stringResource(R.string.invite_create))
             }
             Spacer(Modifier.height(16.dp))
         }

@@ -27,6 +27,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class HistoryScreenInstrumentedTest {
+
     @get:Rule val compose = createComposeRule()
 
     @Test

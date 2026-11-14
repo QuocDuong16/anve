@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import com.anve.app.R
 import com.anve.app.data.api.AvatarStateDto
 import com.anve.app.data.avatar.AvatarGateway
 import java.io.ByteArrayOutputStream
@@ -66,7 +67,7 @@ class AvatarSheetInstrumentedTest {
         compose.runOnIdle { online.value = true; state.value = ready.copy(processing = true) }
         compose.onNodeWithTag("avatar-save").assertIsNotEnabled()
         compose.onNodeWithText("Đang xử lý ảnh…").performScrollTo().assertIsDisplayed()
-        compose.runOnIdle { state.value = ready.copy(unknown = true, error = "Chưa rõ kết quả lưu ảnh.") }
+        compose.runOnIdle { state.value = ready.copy(unknown = true, errorRes = R.string.avatar_unconfirmed_check) }
         compose.onNodeWithTag("avatar-save").assertDoesNotExist()
         compose.onNodeWithTag("avatar-check").performClick()
         compose.runOnIdle { assertEquals(0, saves); assertEquals(1, checks) }

@@ -3,6 +3,7 @@ package com.anve.app.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.HistoryPointDto
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.location.HistoryMember
@@ -32,8 +33,17 @@ data class HistoryState(
     val effectiveRetentionDays: Int? = null,
     val loading: Boolean = false,
     val mutationPending: Boolean = false,
-    val error: String? = null,
+    val errorRes: Int? = null,
 )
+
+/**
+ * One-shot signal for a retention change the server accepted. The chip state
+ * alone cannot prove the new horizon took effect (same reason PlacesViewModel
+ * counts confirmations), so the screen announces the outcome. [days] is the
+ * value the server returned, not the requested one; copy stays a resource id
+ * resolved at the screen.
+ */
+data class RetentionConfirmation(val messageRes: Int, val days: Int)
 
 fun dayInterval(day: LocalDate, zone: ZoneId): Pair<Instant, Instant> =
     day.atStartOfDay(zone).toInstant() to day.plusDays(1).atStartOfDay(zone).toInstant()
@@ -47,9 +57,20 @@ fun timeInterval(day: LocalDate, zone: ZoneId, startMinute: Int, endMinute: Int)
     return start to end
 }
 
-class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() {
+class HistoryViewModel(
+    private val repository: HistoryDataSource,
+) : ViewModel() {
     private val mutable = MutableStateFlow(HistoryState())
     val state = mutable.asStateFlow()
+
+    /** Event channel for the retention snackbar; the screen consumes after showing. */
+    private val mutableRetentionConfirmation = MutableStateFlow<RetentionConfirmation?>(null)
+    val retentionConfirmation = mutableRetentionConfirmation.asStateFlow()
+
+    fun consumeRetentionConfirmation() {
+        mutableRetentionConfirmation.value = null
+    }
+
     private var generation = 0L
     private var loadJob: Job? = null
     private var mutationJob: Job? = null
@@ -61,6 +82,9 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
         mutationJob?.cancel()
         accessJob?.cancel()
         mutable.value = HistoryState(owner = owner, member = owner)
+        // An unconsumed confirmation belongs to the session that earned it; a
+        // fresh owner must not see a stale "saved" announcement.
+        mutableRetentionConfirmation.value = null
         if (owner != null) refresh()
     }
 
@@ -76,7 +100,7 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
     fun selectTimes(start: Int, end: Int) {
         if (mutable.value.mutationPending) return
         if (runCatching { timeInterval(mutable.value.date, ZoneId.systemDefault(), start, end) }.isFailure) {
-            mutable.update { it.copy(error = "Khoảng giờ không hợp lệ.") }
+            mutable.update { it.copy(errorRes = R.string.history_error_invalid_interval) }
             return
         }
         mutable.update { it.copy(startMinute = start, endMinute = end, points = emptyList(), nextCursor = null) }
@@ -91,7 +115,7 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
         val cursor = if (append) current.nextCursor ?: return else null
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(loading = true, error = null, points = emptyList()) }
+        mutable.update { it.copy(loading = true, errorRes = null, points = emptyList()) }
         loadJob = viewModelScope.launch {
             try {
                 val (from, to) = timeInterval(current.date, ZoneId.systemDefault(), current.startMinute, current.endMinute)
@@ -101,12 +125,12 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update { it.copy(points = page.points, nextCursor = page.nextCursor, members = members, retentionDays = retention?.days ?: current.retentionDays, effectiveRetentionDays = retention?.effectiveDays ?: current.effectiveRetentionDays, loading = false) }
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
-                val message = when {
-                    e is IOException -> "Không có kết nối. Kiểm tra mạng rồi thử lại."
-                    e is ApiException && e.httpStatus in listOf(403, 404) -> "Không còn quyền xem lịch sử này."
-                    else -> "Không thể tải lịch sử. Vui lòng thử lại."
+                val messageRes = when {
+                    e is IOException -> R.string.history_error_offline
+                    e is ApiException && e.httpStatus in listOf(403, 404) -> R.string.history_error_access_lost
+                    else -> R.string.history_error_load_failed
                 }
-                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(points = emptyList(), nextCursor = null, members = emptyList(), loading = false, error = message) }
+                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(points = emptyList(), nextCursor = null, members = emptyList(), loading = false, errorRes = messageRes) }
             }
         }
     }
@@ -122,13 +146,13 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
                 if (members.none { it.ownerId == member }) {
                     generation++
                     loadJob?.cancel()
-                    mutable.update { it.copy(points = emptyList(), nextCursor = null, members = members, loading = false, error = "Quyền xem không còn hiệu lực.") }
+                    mutable.update { it.copy(points = emptyList(), nextCursor = null, members = members, loading = false, errorRes = R.string.history_error_viewer_revoked) }
                 }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner && mutable.value.member == member) {
                     generation++
                     loadJob?.cancel()
-                    mutable.update { it.copy(points = emptyList(), nextCursor = null, members = emptyList(), loading = false, error = "Không thể kiểm tra quyền xem. Thử lại khi có kết nối.") }
+                    mutable.update { it.copy(points = emptyList(), nextCursor = null, members = emptyList(), loading = false, errorRes = R.string.history_error_access_check_failed) }
                 }
             }
         }
@@ -140,7 +164,7 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
         if (current.member != owner || current.mutationPending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(points = emptyList(), nextCursor = null, mutationPending = true, error = null) }
+        mutable.update { it.copy(points = emptyList(), nextCursor = null, mutationPending = true, errorRes = null) }
         mutationJob = viewModelScope.launch {
             try {
                 val (from, end) = if (filtered) timeInterval(current.date, ZoneId.systemDefault(), current.startMinute, current.endMinute) else dayInterval(current.date, ZoneId.systemDefault())
@@ -151,7 +175,7 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
                 mutable.update { it.copy(mutationPending = false) }
                 refresh()
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(mutationPending = false, error = "Chưa xác nhận việc xóa. Kiểm tra lại lịch sử trước khi thực hiện thao tác mới.") }
+                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(mutationPending = false, errorRes = R.string.history_error_delete_unconfirmed) }
             }
         }
     }
@@ -161,15 +185,18 @@ class HistoryViewModel(private val repository: HistoryDataSource) : ViewModel() 
         if (mutable.value.mutationPending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(points = emptyList(), nextCursor = null, mutationPending = true, error = null) }
+        mutable.update { it.copy(points = emptyList(), nextCursor = null, mutationPending = true, errorRes = null) }
         mutationJob = viewModelScope.launch {
             try {
                 val result = repository.setRetention(owner, days)
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update { it.copy(retentionDays = result.days, effectiveRetentionDays = result.effectiveDays, mutationPending = false) }
+                // Announce only after the server accepted; failure keeps the
+                // chip unchanged and speaks through the existing error notice.
+                mutableRetentionConfirmation.value = RetentionConfirmation(R.string.history_retention_saved, result.days)
                 refresh()
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(mutationPending = false, retentionDays = null, effectiveRetentionDays = null, error = "Chưa xác nhận thời hạn lưu. Kiểm tra lại trước khi thay đổi.") }
+                if (generation == token && mutable.value.owner == owner) mutable.update { it.copy(mutationPending = false, retentionDays = null, effectiveRetentionDays = null, errorRes = R.string.history_error_retention_unconfirmed) }
             }
         }
     }

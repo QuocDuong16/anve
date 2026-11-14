@@ -1,5 +1,7 @@
 package com.anve.app.ui.places
 
+import android.content.Context
+
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,9 +14,11 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Surface
+import com.anve.app.R
 import com.anve.app.ui.captureNativeFixture
 import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.api.PlaceEventDto
@@ -28,6 +32,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class PlacesScreenInstrumentedTest {
+
     @get:Rule val compose = createComposeRule()
 
     @Test fun editorWorksWithoutMapsCredentials() {
@@ -57,9 +62,11 @@ class PlacesScreenInstrumentedTest {
         compose.onNodeWithContentDescription("Thao tác địa điểm").performClick()
         compose.onNodeWithText("Sửa địa điểm").performClick()
         compose.onNodeWithText("Sửa địa điểm").assertIsDisplayed()
-        compose.runOnIdle { state.value = state.value.copy(places = emptyList(), selectedId = null, error = "Không thể kiểm tra quyền") }
+        compose.runOnIdle { state.value = state.value.copy(places = emptyList(), selectedId = null, errorRes = R.string.places_error_load_failed) }
         compose.onNodeWithText("Sửa địa điểm").assertDoesNotExist()
-        compose.onNodeWithText("Không thể kiểm tra quyền").assertIsDisplayed()
+        compose.onNodeWithText(
+            ApplicationProvider.getApplicationContext<Context>().getString(R.string.places_error_load_failed),
+        ).assertIsDisplayed()
     }
 
     @Test fun lightLayout() = captureLayout(false)

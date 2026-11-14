@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,10 +51,10 @@ import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.InviteLink
+import com.anve.app.ui.common.AnveErrorNotice
+import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.theme.AnVeTheme
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.anve.app.ui.theme.rememberInkOnSurface
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -63,13 +62,26 @@ import kotlinx.coroutines.launch
  * The circle tab: create or join a circle when the account has none, then
  * members, invites (owner) and leaving. All authorization is server-side;
  * the UI only offers what the role allows.
+ *
+ * While the user is the circle's only member, [CircleContent] shows an
+ * activation checklist: [onOpenLocation] opens the location screen (consent),
+ * [onOpenMap] opens the map (viewer grants live there). Viewer grants are not
+ * readable from this screen's state, so the audience step hides once the user
+ * has gone through it ([audienceStepHidden]).
  */
 @Composable
-fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvitationConsumed: () -> Unit = {}) {
+fun CircleScreen(
+    container: AppContainer,
+    invitationId: String? = null,
+    onInvitationConsumed: () -> Unit = {},
+    onOpenLocation: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    audienceStepHidden: Boolean = false,
+) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
-        Text("Đang kiểm tra phiên đăng nhập. Mở Tài khoản nếu chưa tải được.", Modifier.padding(24.dp))
+        Text(stringResource(R.string.invite_session_checking), Modifier.padding(24.dp))
         return
     }
     val viewModel: CircleViewModel = viewModel(
@@ -81,9 +93,11 @@ fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvita
     var showDissolveDialog by remember(owner) { mutableStateOf(false) }
     var showLeaveDialog by remember(owner) { mutableStateOf(false) }
     var removeTarget by remember(owner) { mutableStateOf<MemberDto?>(null) }
-    var shareError by remember(owner) { mutableStateOf<String?>(null) }
+    var shareError by remember(owner) { mutableStateOf<Int?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val shareMessage = stringResource(R.string.invite_share_message)
+    val shareTitle = stringResource(R.string.invite_share_chooser_title)
     val invitationsController = remember(owner) {
         PrivateInvitationsController(owner, container.sessionStore, container.privateInvitationRepository, scope,
             onCreated = viewModel::refresh, onReview = { code ->
@@ -104,7 +118,7 @@ fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvita
     }
 
     CircleContent(
-        state = state.copy(error = shareError ?: state.error),
+        state = state.copy(errorRes = shareError ?: state.errorRes),
         memberAvatar = { member ->
             com.anve.app.ui.avatar.AvatarImage(owner, member.userId, member.avatarId, member.displayName,
                 container.avatarRepository, Modifier.size(40.dp))
@@ -117,7 +131,7 @@ fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvita
                     container.invitationInbox.offer(InviteLink.create(code.trim().uppercase()) ?: "")
                 }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                shareError = "Chưa kiểm tra được tài khoản. Mở lại lời mời khi phiên đăng nhập sẵn sàng."
+                shareError = R.string.invite_join_session_error
             }
         } },
         onCreateInvite = invitationsController::open,
@@ -132,13 +146,18 @@ fun CircleScreen(container: AppContainer, invitationId: String? = null, onInvita
         onShareInvite = { invite -> scope.launch {
             try {
                 if (container.sessionStore.current()?.userId != owner) return@launch
-                val chooser = invitationShareIntent(invite) ?: return@launch
+                val chooser = invitationShareIntent(invite, shareMessage, shareTitle) ?: return@launch
                 context.startActivity(chooser)
                 shareError = null
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                shareError = "Không mở được trình chia sẻ. Bạn có thể gửi mã mời đang hiển thị."
+                shareError = R.string.invite_share_error
             }
         } },
+        hasOtherMembers = state.members.any { it.userId != owner },
+        consentEnabled = tracking.consentEnabled,
+        audienceStepHidden = audienceStepHidden,
+        onOpenLocation = onOpenLocation,
+        onOpenMap = onOpenMap,
     )
     if (privateInvites.open) EmailInvitationSheet(privateInvites, tracking.online, invitationsController::dismiss,
         invitationsController::mode, invitationsController::email, invitationsController::hours,
@@ -219,6 +238,11 @@ fun CircleContent(
     onShareInvite: (InviteDto) -> Unit = {},
     memberAvatar: (@Composable (MemberDto) -> Unit)? = null,
     receivedContent: (@Composable () -> Unit)? = null,
+    hasOtherMembers: Boolean = false,
+    consentEnabled: Boolean = false,
+    audienceStepHidden: Boolean = false,
+    onOpenLocation: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
@@ -230,7 +254,8 @@ fun CircleContent(
 
         val circle = state.circle
         if (circle == null) {
-            CircleSetup(onCreate = onCreate, onJoin = onJoin, busy = state.busy, error = state.error, receivedContent = receivedContent)
+            CircleSetup(onCreate = onCreate, onJoin = onJoin, busy = state.busy, errorRes = state.errorRes,
+                onRetry = onRetry, receivedContent = receivedContent)
             return@Surface
         }
 
@@ -239,21 +264,46 @@ fun CircleContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (state.error != null || state.message != null) {
+            val errorRes = state.errorRes
+            if (errorRes != null) {
                 item {
-                    Text(
-                        text = state.error ?: state.message ?: "",
-                        color = if (state.error != null) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    // Failures use the shared errorContainer notice with retry,
+                    // like the home and sign-in screens; success messages keep
+                    // the plain primary text below.
+                    AnveErrorNotice(stringResource(errorRes), onRetry = onRetry)
+                }
+            } else {
+                val messageRes = state.messageRes
+                if (messageRes != null) {
+                    item {
+                        Text(
+                            text = stringResource(messageRes),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
             }
             if (receivedContent != null) item { receivedContent() }
             item { CircleHeaderCard(name = circle.name, isOwner = state.isOwner, onLeave = onLeave) }
+            // Activation steps render only while the user is the circle's only
+            // member, and only once the member list has been fetched, so "no
+            // other members yet" is verified state rather than a loading gap.
+            val showInviteStep = state.isOwner && !hasOtherMembers
+            if (state.membersLoaded && !hasOtherMembers &&
+                (showInviteStep || !consentEnabled || !audienceStepHidden)
+            ) {
+                item {
+                    CircleActivationChecklist(
+                        showInvite = showInviteStep,
+                        showSharing = !consentEnabled,
+                        showAudience = !audienceStepHidden,
+                        onInvite = onCreateInvite,
+                        onOpenLocation = onOpenLocation,
+                        onOpenMap = onOpenMap,
+                    )
+                }
+            }
             item {
                 Text(
                     text = stringResource(R.string.circle_members_title),
@@ -276,7 +326,7 @@ fun CircleContent(
                     )
                 }
                 items(state.invites, key = { it.id }) { invite ->
-                    InviteRow(invite = invite, onRevoke = { onRevokeInvite(invite.id) }, onShare = { onShareInvite(invite) })
+                    InviteRow(invite = invite, busy = state.busy, onRevoke = { onRevokeInvite(invite.id) }, onShare = { onShareInvite(invite) })
                 }
                 item {
                     OutlinedButton(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth()) {
@@ -293,7 +343,8 @@ private fun CircleSetup(
     onCreate: (String) -> Unit,
     onJoin: (String) -> Unit,
     busy: Boolean,
-    error: String?,
+    errorRes: Int?,
+    onRetry: () -> Unit = {},
     receivedContent: (@Composable () -> Unit)? = null,
 ) {
     var circleName by remember { mutableStateOf("") }
@@ -316,9 +367,11 @@ private fun CircleSetup(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (error != null) {
+        if (errorRes != null) {
             item {
-                Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                // Setup failures stay actionable too: the same errorContainer
+                // notice and retry affordance as the loaded-circle branch.
+                AnveErrorNotice(stringResource(errorRes), onRetry = onRetry)
             }
         }
         item {
@@ -366,7 +419,7 @@ private fun CircleSetup(
                         enabled = !busy && code.isNotBlank(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Xem lời mời")
+                        Text(stringResource(R.string.invite_view))
                     }
                     Text(
                         text = stringResource(R.string.circle_join_caption),
@@ -415,6 +468,104 @@ private fun CircleHeaderCard(name: String, isOwner: Boolean, onLeave: () -> Unit
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+        }
+    }
+}
+
+/** One activation step; step numbers are fixed, so they live in the copy. */
+private data class CircleActivationStep(
+    val title: String,
+    val supporting: String,
+    val actionLabel: String,
+    val action: () -> Unit,
+)
+
+/**
+ * Post-circle-creation activation: the three steps that make family location
+ * sharing real (invite, consent, viewer grant), each collapsing on actual
+ * progress instead of being dismissed. The first remaining step is the
+ * primary action; later steps stay outlined.
+ */
+@Composable
+private fun CircleActivationChecklist(
+    showInvite: Boolean,
+    showSharing: Boolean,
+    showAudience: Boolean,
+    onInvite: () -> Unit,
+    onOpenLocation: () -> Unit,
+    onOpenMap: () -> Unit,
+) {
+    val inviteTitle = stringResource(R.string.circle_activation_invite_title)
+    val inviteBody = stringResource(R.string.circle_activation_invite_body)
+    val inviteAction = stringResource(R.string.circle_activation_invite_action)
+    val shareTitle = stringResource(R.string.circle_activation_share_title)
+    val shareBody = stringResource(R.string.circle_activation_share_body)
+    val shareAction = stringResource(R.string.circle_activation_share_action)
+    val audienceTitle = stringResource(R.string.circle_activation_audience_title)
+    val audienceBody = stringResource(R.string.circle_activation_audience_body)
+    val audienceAction = stringResource(R.string.circle_activation_audience_action)
+    val steps = buildList {
+        if (showInvite) {
+            add(CircleActivationStep(inviteTitle, inviteBody, inviteAction, onInvite))
+        }
+        if (showSharing) {
+            add(CircleActivationStep(shareTitle, shareBody, shareAction, onOpenLocation))
+        }
+        if (showAudience) {
+            add(CircleActivationStep(audienceTitle, audienceBody, audienceAction, onOpenMap))
+        }
+    }
+    if (steps.isEmpty()) return
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = stringResource(R.string.circle_activation_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.circle_activation_intro),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            steps.forEachIndexed { index, step ->
+                if (index > 0) HorizontalDivider()
+                CircleActivationStepRow(
+                    title = step.title,
+                    supporting = step.supporting,
+                    actionLabel = step.actionLabel,
+                    primary = index == 0,
+                    action = step.action,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CircleActivationStepRow(
+    title: String,
+    supporting: String,
+    actionLabel: String,
+    primary: Boolean,
+    action: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                supporting,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (primary) {
+            Button(onClick = action) { Text(actionLabel) }
+        } else {
+            OutlinedButton(onClick = action) { Text(actionLabel) }
         }
     }
 }
@@ -469,7 +620,7 @@ private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Uni
 }
 
 @Composable
-private fun InviteRow(invite: InviteDto, onRevoke: () -> Unit, onShare: () -> Unit) {
+private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, onShare: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -481,15 +632,20 @@ private fun InviteRow(invite: InviteDto, onRevoke: () -> Unit, onShare: () -> Un
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "Hết hạn: " + runCatching { DateTimeFormatter.ofPattern("dd/MM, HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(invite.expiresAt)) }.getOrDefault("Chưa đọc được"),
+                    text = stringResource(
+                        R.string.invite_expiry_prefix,
+                        AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unreadable)),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor =
-                    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary)) { Text("Chia sẻ link mời") }
-                TextButton(onClick = onRevoke) {
+                    rememberInkOnSurface())) { Text(stringResource(R.string.invite_share_link)) }
+                // Revocation runs through setBusy like the other mutations, so
+                // the button locks to prevent a double-tap double revoke.
+                TextButton(onClick = onRevoke, enabled = !busy) {
                 Text(
                     stringResource(R.string.circle_invite_revoke),
                     color = MaterialTheme.colorScheme.error,
@@ -504,7 +660,7 @@ private fun InviteRow(invite: InviteDto, onRevoke: () -> Unit, onShare: () -> Un
 @Composable
 private fun CircleSetupPreview() {
     AnVeTheme {
-        CircleSetup(onCreate = {}, onJoin = {}, busy = false, error = null)
+        CircleSetup(onCreate = {}, onJoin = {}, busy = false, errorRes = null)
     }
 }
 
@@ -532,6 +688,37 @@ private fun CircleActivePreview() {
             onRemoveMember = {},
             onLeave = {},
             onRetry = {},
+            hasOtherMembers = true,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CircleActivationPreview() {
+    AnVeTheme {
+        CircleContent(
+            state = CircleUiState(
+                loading = false,
+                circle = CircleDto("c1", "Gia đình mình", "u1", "2026-10-25T00:00:00Z"),
+                myRole = "owner",
+                members = listOf(
+                    MemberDto("u1", "Mai", "owner", "2026-10-25T00:00:00Z"),
+                ),
+                membersLoaded = true,
+            ),
+            onCreate = {},
+            onJoin = {},
+            onCreateInvite = {},
+            onRevokeInvite = {},
+            onRemoveMember = {},
+            onLeave = {},
+            onRetry = {},
+            hasOtherMembers = false,
+            consentEnabled = false,
+            audienceStepHidden = false,
+            onOpenLocation = {},
+            onOpenMap = {},
         )
     }
 }

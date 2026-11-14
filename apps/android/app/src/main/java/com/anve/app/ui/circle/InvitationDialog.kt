@@ -26,59 +26,60 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.anve.app.R
 import com.anve.app.data.api.InvitePreviewDto
+import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.theme.AnVeTheme
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.anve.app.ui.theme.isDarkSurface
+import com.anve.app.ui.theme.rememberInkOnSurface
 
 @Composable
 fun InvitationDialog(state: InvitationUiState, online: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit, onRetry: () -> Unit, onCheck: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val dark = colors.surface.luminance() < 0.5f
-    val action = if (dark) colors.onSurface else colors.primary
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Tham gia nhóm?") },
+    val dark = isDarkSurface()
+    val action = rememberInkOnSurface()
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.invite_dialog_title)) },
         containerColor = colors.surface, tonalElevation = 0.dp,
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()).testTag("invitation-details"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (state.loading) {
                     CircularProgressIndicator()
-                    Text("Đang kiểm tra lời mời với máy chủ…")
+                    Text(stringResource(R.string.invite_dialog_checking))
                 }
                 state.preview?.let { preview ->
                     Text(preview.circleName, style = MaterialTheme.typography.headlineSmall)
-                    InvitationDetail(Icons.Default.Email, "Lời mời dùng một lần.")
-                    val expiry = runCatching { DateTimeFormatter.ofPattern("dd/MM, HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(preview.expiresAt)) }.getOrDefault("Chưa đọc được thời hạn")
-                    InvitationDetail(Icons.Default.DateRange, "Hết hạn: $expiry")
+                    InvitationDetail(Icons.Default.Email, stringResource(R.string.invite_single_use))
+                    val expiry = AnveTime.full(preview.expiresAt, stringResource(R.string.invite_expiry_unreadable_detail))
+                    InvitationDetail(Icons.Default.DateRange, stringResource(R.string.invite_expiry_prefix, expiry))
                 }
                 Surface(color = if (dark) colors.secondary else colors.secondaryContainer, contentColor = if (dark) colors.onSecondary else colors.onSecondaryContainer, shape = MaterialTheme.shapes.medium) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Default.Info, null)
-                        Text("Tham gia nhóm không tự bật chia sẻ vị trí.", Modifier.weight(1f))
+                        Text(stringResource(R.string.invite_join_consent_note), Modifier.weight(1f))
                     }
                 }
                 if (state.accountLabel.isNotEmpty()) {
                     HorizontalDivider(color = colors.onSurface.copy(alpha = 0.2f))
-                    InvitationDetail(Icons.Default.Person, "Đang đăng nhập: ${state.accountLabel}")
+                    InvitationDetail(Icons.Default.Person, stringResource(R.string.invite_logged_in_as, state.accountLabel))
                 }
-                if (!online) Text("Mất mạng. Kết nối lại để kiểm tra hoặc xác nhận lời mời.")
-                state.error?.let { Text(it, color = colors.onSurface, style = MaterialTheme.typography.bodyMedium) }
-                if (state.busy) Text("Đang chờ máy chủ xác nhận…")
+                if (!online) Text(stringResource(R.string.invite_dialog_offline))
+                state.errorRes?.let { res -> Text(stringResource(res), color = colors.onSurface, style = MaterialTheme.typography.bodyMedium) }
+                if (state.busy) Text(stringResource(R.string.invite_dialog_busy))
             }
         },
         confirmButton = {
             when {
-                state.unknown -> TextButton(onClick = onCheck, enabled = online && !state.busy, colors = ButtonDefaults.textButtonColors(contentColor = action)) { Text("Kiểm tra kết quả") }
-                state.retryable -> TextButton(onClick = onRetry, enabled = online && !state.loading && !state.busy, colors = ButtonDefaults.textButtonColors(contentColor = action)) { Text("Thử lại") }
+                state.unknown -> TextButton(onClick = onCheck, enabled = online && !state.busy, colors = ButtonDefaults.textButtonColors(contentColor = action)) { Text(stringResource(R.string.invite_check_result)) }
+                state.retryable -> TextButton(onClick = onRetry, enabled = online && !state.loading && !state.busy, colors = ButtonDefaults.textButtonColors(contentColor = action)) { Text(stringResource(R.string.action_retry)) }
                 state.preview != null && !state.blocked -> Button(onClick = onConfirm, enabled = online && !state.loading && !state.busy,
-                    colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary, contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary)) { Text("Tham gia nhóm") }
+                    colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary, contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary)) { Text(stringResource(R.string.invite_dialog_join)) }
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Để sau", color = action) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.invite_dialog_later), color = action) } },
     )
 }
 

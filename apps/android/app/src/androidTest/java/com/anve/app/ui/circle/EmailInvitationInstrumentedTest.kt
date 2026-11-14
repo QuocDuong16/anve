@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.WindowCompat
+import com.anve.app.R
 import com.anve.app.data.api.ReceivedInvitationDto
 import com.anve.app.ui.captureNativeFixture
 import com.anve.app.ui.diagnostics.LargeFontScale
@@ -43,7 +44,7 @@ class EmailInvitationInstrumentedTest {
         compose.onNodeWithTag("invite-submit").performClick()
         compose.runOnIdle { assertEquals(1, creates); online.value = false }
         compose.onNodeWithTag("invite-submit").assertIsNotEnabled()
-        compose.runOnIdle { online.value = true; state.value = state.value.copy(unknown = true, error = "Chưa rõ kết quả tạo lời mời.") }
+        compose.runOnIdle { online.value = true; state.value = state.value.copy(unknown = true, errorRes = R.string.invite_create_unconfirmed) }
         compose.onNodeWithTag("invite-submit").performClick()
         compose.runOnIdle { assertEquals(1, checks); assertEquals(1, creates) }
         captureNativeFixture("email-invitation-unknown")

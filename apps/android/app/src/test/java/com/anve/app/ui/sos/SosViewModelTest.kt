@@ -1,5 +1,6 @@
 package com.anve.app.ui.sos
 
+import com.anve.app.R
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.api.SosEventDto
 import com.anve.app.data.api.SosRecipientDto
@@ -63,7 +64,7 @@ class SosViewModelTest {
         vm.send(setOf("b"))
         assertTrue(box.items.isEmpty())
         assertEquals(0, scheduled)
-        assertTrue(vm.state.value.error?.contains("Không xác nhận được việc lưu SOS") == true)
+        assertEquals(R.string.sos_error_queue_failed, vm.state.value.errorRes)
     }
 
     @Test fun `offline uses owner scoped cached members and clears server events`() {
@@ -100,7 +101,7 @@ class SosViewModelTest {
         vm.recheckUnknown("missing")
         assertEquals(SosLocalState.UNKNOWN, box.items.single().state)
         assertEquals(0, scheduled)
-        assertTrue(vm.state.value.error != null)
+        assertTrue(vm.state.value.errorRes != null)
     }
 
     @Test fun `server expiry is distinct from an unsent local request`() {
@@ -115,7 +116,7 @@ class SosViewModelTest {
         vm.activate("a")
         vm.revokeRecipient("event", "b")
         assertEquals(1, source.revokeCalls)
-        assertTrue(vm.state.value.error != null)
+        assertTrue(vm.state.value.errorRes != null)
     }
 
     private class FakeSource : SosDataSource {

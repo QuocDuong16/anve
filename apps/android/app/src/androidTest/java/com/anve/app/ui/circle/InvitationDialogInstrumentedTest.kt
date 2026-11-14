@@ -9,6 +9,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.anve.app.R
 import com.anve.app.data.api.InvitePreviewDto
 import com.anve.app.ui.captureNativeFixture
 import com.anve.app.ui.diagnostics.LargeFontScale
@@ -49,14 +52,14 @@ class InvitationDialogInstrumentedTest {
         captureNativeFixture("invitation-loading-offline")
         compose.runOnIdle { state.value = ready }
         compose.onNodeWithText("Tham gia nhóm").assertIsNotEnabled()
-        compose.runOnIdle { online.value = true; state.value = InvitationUiState(loading = false, retryable = true, error = "Chưa tải được lời mời. Kiểm tra mạng rồi thử lại.") }
+        compose.runOnIdle { online.value = true; state.value = InvitationUiState(loading = false, retryable = true, errorRes = R.string.invite_load_failed) }
         compose.onNodeWithText("Thử lại").performClick()
-        compose.runOnIdle { assertEquals(1, retries); state.value = ready.copy(unknown = true, error = "Máy chủ chưa xác nhận tham gia.") }
+        compose.runOnIdle { assertEquals(1, retries); state.value = ready.copy(unknown = true, errorRes = R.string.invite_join_unconfirmed) }
         compose.onNodeWithText("Tham gia nhóm").assertDoesNotExist()
         compose.onNodeWithText("Kiểm tra kết quả").performClick()
         compose.runOnIdle { assertEquals(1, checks); assertEquals(0, joins) }
         captureNativeFixture("invitation-unknown")
-        compose.runOnIdle { state.value = InvitationUiState(loading = false, error = "Lời mời không còn dùng được. Nhờ người thân gửi lời mời mới.") }
+        compose.runOnIdle { state.value = InvitationUiState(loading = false, errorRes = R.string.invite_unavailable_detail) }
         compose.onNodeWithText("Tham gia nhóm").assertDoesNotExist()
         compose.onNodeWithText("Thử lại").assertDoesNotExist()
         captureNativeFixture("invitation-unavailable")
@@ -75,9 +78,10 @@ class InvitationDialogInstrumentedTest {
     }
 
     @Test fun existingCircleBlocksJoinWithoutOfferingImplicitLeave() {
-        compose.setContent { AnVeTheme { InvitationDialog(ready.copy(blocked = true, error = "Bạn đang ở trong một nhóm gia đình."), true, {}, {}, {}, {}) } }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        compose.setContent { AnVeTheme { InvitationDialog(ready.copy(blocked = true, errorRes = R.string.invite_active_circle_exists), true, {}, {}, {}, {}) } }
         compose.onNodeWithText("Tham gia nhóm").assertDoesNotExist()
-        compose.onNodeWithText("Bạn đang ở trong một nhóm gia đình.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.invite_active_circle_exists), substring = true).performScrollTo().assertIsDisplayed()
         captureNativeFixture("invitation-existing-circle")
     }
 }

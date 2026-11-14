@@ -1,5 +1,6 @@
 package com.anve.app.ui.map
 
+import com.anve.app.R
 import com.anve.app.data.api.VisibleLocationDto
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.data.location.AudienceMutationOutcome
@@ -82,7 +83,7 @@ class LiveMapViewModelTest {
         assertTrue(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
         assertFalse("viewer-a" in viewModel.state.value.unresolvedViewerIds)
         assertFalse("viewer-a" in viewModel.state.value.pendingViewerIds)
-        assertTrue(viewModel.state.value.sharingError.orEmpty().contains("vẫn cho biết"))
+        assertEquals(R.string.map_error_revoke_unconfirmed, viewModel.state.value.sharingErrorRes)
         assertEquals(1, repository.mutationCalls)
         repository.mutation = { _, _, _ ->
             repository.current = sharing(grants = emptySet())
@@ -109,7 +110,13 @@ class LiveMapViewModelTest {
 
         assertTrue("viewer-a" in viewModel.state.value.pendingViewerIds)
         assertTrue("viewer-a" in viewModel.state.value.unresolvedViewerIds)
-        assertTrue(viewModel.state.value.sharingError.orEmpty().contains("chờ đối chiếu"))
+        // The reconciliation read may fail before this assertion runs; both the
+        // mutation-outcome and load-failure variants communicate "unresolved,
+        // keep waiting", so either ID satisfies the contract here.
+        assertTrue(
+            viewModel.state.value.sharingErrorRes == R.string.map_error_outcome_unresolved ||
+                viewModel.state.value.sharingErrorRes == R.string.map_error_outcome_load_failed,
+        )
         assertEquals(1, repository.mutationCalls)
         viewModel.toggleViewer("owner-a", member("viewer-a"), true)
         assertEquals(1, repository.mutationCalls)
@@ -119,7 +126,7 @@ class LiveMapViewModelTest {
 
         assertFalse("viewer-a" in viewModel.state.value.pendingViewerIds)
         assertFalse("viewer-a" in viewModel.state.value.unresolvedViewerIds)
-        assertTrue(viewModel.state.value.sharingError.orEmpty().contains("chưa hiển thị"))
+        assertEquals(R.string.map_error_grant_unconfirmed, viewModel.state.value.sharingErrorRes)
         assertEquals(1, repository.mutationCalls)
         repository.mutation = { _, _, _ ->
             repository.current = sharing(grants = setOf("viewer-a"))
@@ -291,7 +298,7 @@ class LiveMapViewModelTest {
         viewModel.toggleViewer("owner-a", member("viewer-a"), true)
 
         assertFalse(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
-        assertTrue(viewModel.state.value.sharingError.orEmpty().contains("từ chối"))
+        assertEquals(R.string.map_error_grant_rejected, viewModel.state.value.sharingErrorRes)
         assertFalse("viewer-a" in viewModel.state.value.unresolvedViewerIds)
     }
 

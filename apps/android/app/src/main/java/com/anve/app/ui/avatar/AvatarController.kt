@@ -1,5 +1,6 @@
 package com.anve.app.ui.avatar
 
+import com.anve.app.R
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.AvatarStateDto
 import com.anve.app.data.auth.SessionStorage
@@ -23,8 +24,8 @@ data class AvatarUiState(
     val selection: ByteArray? = null,
     val removeDraft: Boolean = false,
     val unknown: Boolean = false,
-    val error: String? = null,
-    val message: String? = null,
+    val errorRes: Int? = null,
+    val messageRes: Int? = null,
 ) {
     val changed: Boolean get() = selection != null || (removeDraft && metadata?.imageId != null)
     override fun toString() = "AvatarUiState(open=$open, busy=$busy, selected=${selection != null}, unknown=$unknown)"
@@ -82,7 +83,7 @@ class AvatarController(
         if (!active || mutable.value.busy || mutable.value.processing || mutable.value.unknown) return
         val revision = ++sequence
         work?.cancel()
-        mutable.update { it.copy(loading = true, error = null) }
+        mutable.update { it.copy(loading = true, errorRes = null) }
         work = scope.launch {
             try {
                 if (!current(revision)) return@launch
@@ -90,7 +91,7 @@ class AvatarController(
                 if (current(revision)) mutable.update { it.copy(loading = false, metadata = result) }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (active && revision == sequence) mutable.update { it.copy(loading = false, error = "Chưa tải được ảnh đại diện. Kiểm tra mạng rồi thử lại.") }
+                if (active && revision == sequence) mutable.update { it.copy(loading = false, errorRes = R.string.avatar_load_failed) }
             }
         }
     }
@@ -104,7 +105,7 @@ class AvatarController(
     fun picked(ticket: Long, prepare: suspend () -> ByteArray?) {
         if (!active || picker != ticket || sequence != ticket) return
         picker = null
-        mutable.update { it.copy(processing = true, error = null, message = null) }
+        mutable.update { it.copy(processing = true, errorRes = null, messageRes = null) }
         work = scope.launch {
             try {
                 if (!current(ticket)) return@launch
@@ -117,7 +118,7 @@ class AvatarController(
                 mutable.update { it.copy(processing = false) }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (active && ticket == sequence) mutable.update { it.copy(processing = false, error = "Không đọc được ảnh này. Chọn một ảnh khác hoặc ảnh nhỏ hơn.") }
+                if (active && ticket == sequence) mutable.update { it.copy(processing = false, errorRes = R.string.avatar_decode_failed) }
             }
         }
     }
@@ -125,7 +126,7 @@ class AvatarController(
     fun pickerUnavailable(ticket: Long) {
         if (!active || picker != ticket) return
         picker = null
-        mutable.update { it.copy(error = "Không mở được trình chọn ảnh. Thử lại hoặc kiểm tra ứng dụng hệ thống.") }
+        mutable.update { it.copy(errorRes = R.string.avatar_picker_unavailable) }
     }
 
     fun chooseRemoval() {
@@ -133,20 +134,20 @@ class AvatarController(
         if (!active || s.loading || s.busy || s.processing || s.unknown) return
         picker = null
         sequence++
-        mutable.update { it.copy(selection = null, removeDraft = it.metadata?.imageId != null, error = null, message = null) }
+        mutable.update { it.copy(selection = null, removeDraft = it.metadata?.imageId != null, errorRes = null, messageRes = null) }
     }
 
     fun save(online: Boolean) {
         val s = mutable.value
         if (!active || s.loading || s.processing || s.busy || s.unknown || !s.changed) return
-        if (!online) { mutable.update { it.copy(error = "Mất mạng. Ảnh chưa được gửi; kết nối lại trước khi lưu.") }; return }
+        if (!online) { mutable.update { it.copy(errorRes = R.string.avatar_save_offline) }; return }
         val metadata = s.metadata ?: return
         val operation = Pending(UUID.randomUUID().toString(), metadata.revision, s.removeDraft)
         val bytes = s.selection
         pending = operation
         picker = null
         val revision = ++sequence
-        mutable.update { it.copy(busy = true, error = null, message = null) }
+        mutable.update { it.copy(busy = true, errorRes = null, messageRes = null) }
         work = scope.launch {
             try {
                 if (!current(revision)) return@launch
@@ -165,7 +166,7 @@ class AvatarController(
                         readBack(operation, revision)
                     } else {
                         pending = null
-                        mutable.update { it.copy(busy = false, error = "Chưa lưu được ảnh. Kiểm tra ảnh, tài khoản hoặc thử lại sau.") }
+                        mutable.update { it.copy(busy = false, errorRes = R.string.avatar_save_failed) }
                     }
                 } else {
                     mutable.update { it.copy(unknown = true) }
@@ -179,7 +180,7 @@ class AvatarController(
         val operation = pending ?: return
         if (!active || !online || mutable.value.busy || !mutable.value.unknown) return
         val revision = ++sequence
-        mutable.update { it.copy(busy = true, error = null) }
+        mutable.update { it.copy(busy = true, errorRes = null) }
         work = scope.launch { readBack(operation, revision) }
     }
 
@@ -197,19 +198,19 @@ class AvatarController(
                 result.revision > operation.revision -> {
                     pending = null
                     mutable.update { it.copy(busy = false, unknown = false, metadata = result, selection = null, removeDraft = false,
-                        error = "Ảnh hiện tại đã thay đổi. Kiểm tra trước khi chọn thao tác mới.") }
+                        errorRes = R.string.avatar_changed_externally) }
                 }
-                else -> mutable.update { it.copy(busy = false, unknown = true, error = "Máy chủ chưa xác nhận thay đổi ảnh. Kiểm tra kết quả; app không tự gửi lại.") }
+                else -> mutable.update { it.copy(busy = false, unknown = true, errorRes = R.string.avatar_unconfirmed_check) }
             }
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) {
             if (active && revision == sequence) mutable.update { it.copy(busy = false, unknown = true,
-                error = "Máy chủ chưa xác nhận thay đổi ảnh. Kết nối lại rồi kiểm tra kết quả.") }
+                errorRes = R.string.avatar_unconfirmed_reconnect) }
         }
     }
 
     private fun complete(result: AvatarStateDto, removal: Boolean) {
         pending = null
-        mutable.value = AvatarUiState(loading = false, metadata = result, message = if (removal) "Đã xóa ảnh đại diện." else "Đã cập nhật ảnh đại diện.")
+        mutable.value = AvatarUiState(loading = false, metadata = result, messageRes = if (removal) R.string.avatar_removed_notice else R.string.avatar_updated_notice)
     }
 }

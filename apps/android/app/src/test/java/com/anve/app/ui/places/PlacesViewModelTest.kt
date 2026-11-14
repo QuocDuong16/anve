@@ -1,5 +1,6 @@
 package com.anve.app.ui.places
 
+import com.anve.app.R
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.PlaceInputDto
@@ -23,6 +24,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlacesViewModelTest {
+
     private val dispatcher = UnconfinedTestDispatcher()
     private val source = FakePlaces()
     private lateinit var vm: PlacesViewModel
@@ -58,7 +60,7 @@ class PlacesViewModelTest {
         vm.refresh()
         assertTrue(vm.state.value.events.isEmpty())
         assertTrue(vm.state.value.places.isEmpty())
-        assertTrue(vm.state.value.error != null)
+        assertTrue(vm.state.value.errorRes != null)
     }
 
     @Test fun `unknown monitor result is not replayed and requires explicit action`() {
@@ -67,7 +69,7 @@ class PlacesViewModelTest {
         vm.select("p")
         vm.configure("p", setOf("viewer"))
         assertEquals(1, source.mutations)
-        assertTrue(vm.state.value.notice.orEmpty().contains("Chưa xác nhận"))
+        assertEquals(R.string.places_error_mutation_unconfirmed, vm.state.value.noticeRes)
         vm.refresh()
         assertEquals(1, source.mutations)
     }

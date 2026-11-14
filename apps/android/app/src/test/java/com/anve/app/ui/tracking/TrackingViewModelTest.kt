@@ -1,5 +1,6 @@
 package com.anve.app.ui.tracking
 
+import com.anve.app.R
 import com.anve.app.tracking.ConsentResult
 import com.anve.app.tracking.TrackingControl
 import com.anve.app.tracking.TrackingStatus
@@ -94,7 +95,7 @@ class TrackingViewModelTest {
         assertEquals(1, control.stops)
         assertEquals(1, control.retries)
         assertTrue(control.refreshes >= 1)
-        assertTrue(viewModel.state.value.message.orEmpty().contains("Đã yêu cầu đồng bộ"))
+        assertEquals(R.string.tracking_retry_sync_queued, viewModel.state.value.messageRes)
     }
 
     @Test
@@ -110,7 +111,7 @@ class TrackingViewModelTest {
         control.statusFlow.value = TrackingStatus(consentEnabled = false)
 
         assertFalse(viewModel.state.value.status.consentEnabled)
-        assertEquals("Không bật được chia sẻ vị trí.", viewModel.state.value.message)
+        assertEquals("Không bật được chia sẻ vị trí.", viewModel.state.value.consentMessage)
         assertEquals(true, control.consent)
     }
 
@@ -121,6 +122,7 @@ class TrackingViewModelTest {
 
         viewModel.consumeMessage()
 
-        assertTrue(viewModel.state.value.message == null)
+        assertTrue(viewModel.state.value.messageRes == null)
+        assertTrue(viewModel.state.value.consentMessage == null)
     }
 }

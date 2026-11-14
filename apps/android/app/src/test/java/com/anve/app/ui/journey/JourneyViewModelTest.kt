@@ -38,6 +38,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class JourneyViewModelTest {
+
     private val dispatcher = UnconfinedTestDispatcher()
     private val sessions = InMemorySessionStorage()
     private val repository = Source()

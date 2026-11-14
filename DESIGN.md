@@ -111,6 +111,8 @@ are adjusted to keep readable text while retaining the existing brand hues.
 
 **The Paired Roles Rule.** Choose a container and its corresponding content role together; verify the resulting pair in both themes. A role name alone is not proof of contrast.
 
+**Emergency roles.** SOS surfaces use a dedicated emergency pair derived from the brand amber (`emergency`/`onEmergency` and `emergencyContainer`/`onEmergencyContainer` in `Theme.kt`), covered by `ThemeContrastTest` like the scheme pairs. Emergency is not `error`: amber urgency asks the user to act, while `error` stays reserved for failures. Stale map markers render in neutral gray for the same reason — the age of a location is not evidence of danger.
+
 Diagnostics currently uses `primary`/`onPrimary` for its light app bar and selected segment, and `primaryContainer`/`onPrimaryContainer` in dark mode. Attention notices use `secondaryContainer`/`onSecondaryContainer` in light and `secondary`/`onSecondary` in dark. Dark text actions use `onSurface`. These are source-specific accessibility treatments, not a replacement global theme. Their final rendered review is separate from this extraction.
 
 ## Typography
@@ -163,6 +165,13 @@ Use `Card` and `OutlinedCard` rather than drawing controls into a raster. Diagno
 
 The home screen uses `NavigationBar`/`NavigationBarItem` with Material vector icons and Vietnamese labels. This extraction records the current primitive, not a verification of its destination count or tablet behavior. Diagnostics has a top app bar with Back/refresh and a local `SingleChoiceSegmentedButtonRow`; it does not add a main navigation destination. Preserve system Back behavior.
 
+**Top app bar treatment.** Which screen gets a top bar, and which color it wears, is a deliberate rule per surface kind:
+
+- Secondary pages inside the home shell (Vị trí, Tài khoản, SOS) use the default surface `TopAppBar` with a title and a back action. They read as part of the app chrome, not as a destination of their own.
+- Full-screen overlay flows (Hành trình, Chẩn đoán) use a `TopAppBar` in brand primary (light) / `primaryContainer` (dark). The color marks a focused, branded moment that covers the shell.
+- SOS keeps its emergency amber treatment in the bottom bar (urgency ≠ failure); the top-bar rule does not recolor it, and amber urgency stays distinct from `error`.
+- Every other screen is a tab inside the home shell and carries no top bar of its own unless actions are needed: History and Places use a surface `TopAppBar` inside their tab content for refresh and overflow actions.
+
 ### Report review
 
 Diagnostics uses `AlertDialog` to disclose the report’s contents before the Android share chooser. The report is selectable and internally scrollable, with an observed maximum height of 240dp. Cancel and confirm remain native text actions. Exporting remains a deliberate user action and excludes coordinates and credentials under the product privacy contract.
@@ -178,6 +187,7 @@ Diagnostics uses `AlertDialog` to disclose the report’s contents before the An
 - **Do** use native Compose controls, real Vietnamese text and Android dp/sp units.
 - **Do** preserve explicit unknown, loading, offline and permission states.
 - **Do** keep consent, system permissions, capture state and viewer access distinguishable.
+- **Do** keep emergency (amber, for SOS urgency) distinct from `error` (failures), and render stale location data in neutral gray so old data never reads as danger.
 - **Do** follow the configured comp-first workflow for every UI surface, including Android, and keep the approved surface reference scoped.
 - **Do** verify rendered screens, enlarged text and interactions on an emulator or device.
 

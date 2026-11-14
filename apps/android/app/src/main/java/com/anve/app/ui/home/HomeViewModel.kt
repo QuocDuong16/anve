@@ -3,6 +3,7 @@ package com.anve.app.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.UserDto
@@ -32,8 +33,15 @@ data class HomeUiState(
     val loading: Boolean = true,
     val user: UserDto? = null,
     val devices: List<DeviceDto> = emptyList(),
-    val message: String? = null,
-    val error: String? = null,
+    /** Outcome copy this ViewModel owns; the screen resolves it from resources. */
+    val messageRes: Int? = null,
+    /**
+     * Consent outcome text handed over by the tracking layer (`ConsentResult`).
+     * That contract still reports resolved copy, so it passes through verbatim
+     * until `ConsentResult` itself becomes resource-backed.
+     */
+    val consentMessage: String? = null,
+    val errorRes: Int? = null,
     val busy: Boolean = false,
     val locationSharingRequested: Boolean? = null,
     val consentSyncPending: Boolean = false,
@@ -66,7 +74,7 @@ class HomeViewModel internal constructor(
     fun refresh() {
         val generationAtStart = consentGeneration
         scope.launch {
-            _state.update { it.copy(loading = true, error = null) }
+            _state.update { it.copy(loading = true, errorRes = null) }
             try {
                 val user = repository.me()
                 val devices = repository.devices().devices
@@ -97,10 +105,10 @@ class HomeViewModel internal constructor(
                             pendingConsent != null
                         },
                         consentConflict = if (newerIntentExists) it.consentConflict else consentConflict,
-                        message = if (consentConflict && !newerIntentExists) {
-                            "Chia sẻ đã thay đổi trên một thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới."
+                        messageRes = if (consentConflict && !newerIntentExists) {
+                            R.string.home_conflict_reload_notice
                         } else {
-                            it.message
+                            it.messageRes
                         },
                     )
                 }
@@ -112,7 +120,7 @@ class HomeViewModel internal constructor(
                 _state.update {
                     it.copy(
                         loading = false,
-                        error = "Không tải được thông tin tài khoản. Kiểm tra kết nối và thử lại.",
+                        errorRes = R.string.home_load_failed_retry,
                     )
                 }
             }
@@ -129,8 +137,9 @@ class HomeViewModel internal constructor(
                 consentBusy = true,
                 consentSyncPending = true,
                 consentConflict = false,
-                error = null,
-                message = null,
+                errorRes = null,
+                messageRes = null,
+                consentMessage = null,
             )
         }
         scope.launch {
@@ -156,7 +165,7 @@ class HomeViewModel internal constructor(
                                 consentSyncPending = !result.serverConfirmed && result.pendingOperationPersisted,
                                 consentConflict = result.conflict,
                                 consentBusy = false,
-                                message = result.message,
+                                consentMessage = result.message,
                             )
                         } else {
                             current.copy(user = serverUser)
@@ -172,11 +181,7 @@ class HomeViewModel internal constructor(
                                 consentSyncPending = false,
                                 consentConflict = false,
                                 consentBusy = false,
-                                error = if (enabled) {
-                                    "Không bật được chia sẻ vị trí. Vui lòng thử lại."
-                                } else {
-                                    "Đã dừng theo dõi trên thiết bị này; chưa xác nhận được với máy chủ."
-                                },
+                                errorRes = if (enabled) R.string.home_enable_failed else R.string.home_disable_unconfirmed,
                             )
                         }
                     }
@@ -190,11 +195,11 @@ class HomeViewModel internal constructor(
         scope.launch {
             try {
                 val user = repository.updateDisplayName(displayName.trim())
-                _state.update { it.copy(user = user, message = "Đã cập nhật tên hiển thị.") }
+                _state.update { it.copy(user = user, consentMessage = null, messageRes = R.string.home_rename_done) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(error = "Không cập nhật được tên hiển thị.") }
+                _state.update { it.copy(errorRes = R.string.home_rename_failed) }
             }
         }
     }
@@ -206,13 +211,14 @@ class HomeViewModel internal constructor(
                 _state.update {
                     it.copy(
                         devices = it.devices.filterNot { d -> d.id == deviceId },
-                        message = "Đã đăng xuất thiết bị.",
+                        consentMessage = null,
+                        messageRes = R.string.home_device_revoked,
                     )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(error = "Không đăng xuất được thiết bị.") }
+                _state.update { it.copy(errorRes = R.string.home_device_revoke_failed) }
             }
         }
     }
@@ -226,7 +232,7 @@ class HomeViewModel internal constructor(
     fun signOut() {
         if (_state.value.busy) return
         scope.launch {
-            _state.update { it.copy(busy = true, error = null) }
+            _state.update { it.copy(busy = true, errorRes = null) }
             try {
                 repository.signOut()
                 _state.update { it.copy(busy = false) }
@@ -234,7 +240,7 @@ class HomeViewModel internal constructor(
                 throw e
             } catch (_: Exception) {
                 _state.update {
-                    it.copy(busy = false, error = "Không đăng xuất được. Vui lòng thử lại.")
+                    it.copy(busy = false, errorRes = R.string.home_sign_out_failed)
                 }
             }
         }
@@ -244,7 +250,7 @@ class HomeViewModel internal constructor(
         while (true) {
             val current = _state.value
             if (current.busy || current.user == null) return
-            if (_state.compareAndSet(current, current.copy(busy = true, error = null))) break
+            if (_state.compareAndSet(current, current.copy(busy = true, errorRes = null))) break
         }
         scope.launch {
             try {
@@ -254,7 +260,7 @@ class HomeViewModel internal constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ApiException) {
-                _state.update { it.copy(busy = false, error = deleteErrorMessage(e.code)) }
+                _state.update { it.copy(busy = false, errorRes = deleteErrorMessage(e.code)) }
             } catch (e: IOException) {
                 // Unknown outcome: the server may have deleted the account
                 // without the response arriving. Keep the session and
@@ -264,12 +270,12 @@ class HomeViewModel internal constructor(
                 _state.update {
                     it.copy(
                         busy = false,
-                        error = "Chưa xác nhận được kết quả xóa tài khoản. Đang kiểm tra lại với máy chủ…",
+                        errorRes = R.string.home_delete_unconfirmed,
                     )
                 }
                 reconcileAfterUnknownDeletion()
             } catch (e: Exception) {
-                _state.update { it.copy(busy = false, error = "Không xóa được tài khoản. Vui lòng thử lại.") }
+                _state.update { it.copy(busy = false, errorRes = R.string.home_delete_failed) }
             }
         }
     }
@@ -285,16 +291,14 @@ class HomeViewModel internal constructor(
         }
     }
 
-    private fun deleteErrorMessage(code: String): String = when (code) {
-        "CIRCLE_HAS_MEMBERS" ->
-            "Tài khoản của bạn đang quản lý một nhóm gia đình có thành viên. Bạn cần giải tán nhóm trước khi xóa tài khoản."
-        "UNAUTHENTICATED" ->
-            "Phiên đăng nhập không còn hiệu lực. Vui lòng đăng nhập lại."
-        else -> "Không xóa được tài khoản. Vui lòng thử lại."
+    private fun deleteErrorMessage(code: String): Int = when (code) {
+        "CIRCLE_HAS_MEMBERS" -> R.string.home_delete_circle_has_members
+        "UNAUTHENTICATED" -> R.string.home_delete_unauthenticated
+        else -> R.string.home_delete_failed
     }
 
     fun consumeMessage() {
-        _state.update { it.copy(message = null, error = null) }
+        _state.update { it.copy(messageRes = null, consentMessage = null, errorRes = null) }
     }
 
     companion object {
