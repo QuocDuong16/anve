@@ -6,13 +6,15 @@ package com.anve.app.ui.splash
  * The wordmark is kept in Kotlin rather than in `strings.xml` because it is a
  * product name that must never be translated, and because keeping it here
  * makes the copy assertable from a plain JVM unit test.
+ *
+ * The tagline deliberately does NOT live here: it is `splash_tagline` in
+ * `strings.xml` because `SignInScreen` renders the same line — shared copy
+ * needs one source of truth, and resources are the one Kotlin and
+ * instrumented tests can both reach.
  */
 object SplashCopy {
     /** The product wordmark. Not translatable. */
     const val displayName = "AnVề"
-
-    /** Short Vietnamese tagline shown under the wordmark. */
-    const val tagline = "Đường về nhà, gần hơn mỗi ngày"
 
     /**
      * Formats the build version for display under the wordmark.

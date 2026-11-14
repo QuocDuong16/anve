@@ -2,6 +2,7 @@ package com.anve.app.ui
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -31,7 +32,11 @@ class HomeNavigationInstrumentedTest {
         compose.onNodeWithText("Tài khoản").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Mở SOS").performClick()
+        // The SOS FAB now speaks its visible label once (the redundant
+        // contentDescription was removed with the TalkBack fix). The label is
+        // an unmerged leaf inside the FAB's merged clickable node, so the
+        // finder reads the unmerged tree; the click still lands on the FAB.
+        compose.onNode(hasText("SOS"), true).performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("Cài đặt chia sẻ").assertIsDisplayed()
     }

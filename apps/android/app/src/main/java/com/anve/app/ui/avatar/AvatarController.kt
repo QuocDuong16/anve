@@ -184,6 +184,13 @@ class AvatarController(
         work = scope.launch { readBack(operation, revision) }
     }
 
+    // The save/remove result notice has no dismissal path — complete() sets
+    // it and only a new operation would overwrite it — so the Tài khoản card
+    // needs an explicit ack that clears it without touching the metadata.
+    fun consumeMessage() {
+        mutable.update { it.copy(messageRes = null) }
+    }
+
     private fun matches(operation: Pending, result: AvatarStateDto): Boolean =
         result.revision == operation.revision + 1 && result.operationId == operation.id &&
             if (operation.removal) result.imageId == null else result.imageId == operation.id

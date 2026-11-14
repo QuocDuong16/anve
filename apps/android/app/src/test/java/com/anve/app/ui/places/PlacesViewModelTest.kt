@@ -52,14 +52,19 @@ class PlacesViewModelTest {
         assertTrue(vm.state.value.events.isEmpty())
     }
 
-    @Test fun `failed recheck clears previously visible event metadata`() {
+    @Test fun `failed recheck keeps the last good snapshot and the open selection`() {
         source.eventList = listOf(event())
         vm.activate("a")
+        vm.select("p")
         assertEquals(1, vm.state.value.events.size)
         source.failRead = true
         vm.refresh()
-        assertTrue(vm.state.value.events.isEmpty())
-        assertTrue(vm.state.value.places.isEmpty())
+        // A transient poll failure must not throw the reader out of the detail
+        // they are reading: the loaded snapshot and the selection survive and
+        // only the error flag appears. "No longer available" is reserved for a
+        // successful load that really lacks the place.
+        assertEquals(1, vm.state.value.events.size)
+        assertEquals("p", vm.state.value.selectedId)
         assertTrue(vm.state.value.errorRes != null)
     }
 

@@ -92,6 +92,26 @@ class AvatarControllerTest {
         controller.dispose()
     }
 
+    /**
+     * A completed save leaves a result notice (`complete` sets messageRes and
+     * nothing else clears it), so the account card's 'Đã hiểu' acks it via
+     * consumeMessage without touching the stored metadata.
+     */
+    @Test fun `consumeMessage clears the result notice and keeps the metadata`() = runTest(dispatcher) {
+        login()
+        val gateway = Gateway()
+        val controller = AvatarController("owner", sessions, gateway, backgroundScope)
+        controller.open()
+        controller.picked(controller.beginPicker()!!) { byteArrayOf(3) }
+        controller.save(true)
+        assertEquals(1, gateway.writes)
+        assertNotNull(controller.state.value.messageRes)
+        controller.consumeMessage()
+        assertNull(controller.state.value.messageRes)
+        assertNotNull(controller.state.value.metadata?.imageId)
+        controller.dispose()
+    }
+
     private class Gateway : AvatarGateway {
         var value = AvatarStateDto(0)
         var writes = 0

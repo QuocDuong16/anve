@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import com.anve.app.R
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.PrivateInvitationRequestDto
 import com.anve.app.data.api.ReceivedInvitationDto
@@ -16,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -78,6 +80,21 @@ class PrivateInvitationsControllerTest {
         controller.review("invite")
         assertEquals("ABCD234567", code)
         assertEquals(0, gateway.creates)
+        controller.dispose()
+    }
+
+    @Test fun `created notice is consumed once shown without touching error notices`() = runTest(dispatcher) {
+        login(); val gateway = Gateway()
+        val controller = PrivateInvitationsController("owner", sessions, gateway, backgroundScope, {}, {})
+        controller.open(); controller.email("Mai@example.test")
+        controller.create("circle", true)
+        assertEquals(R.string.invite_created_notice, controller.state.value.messageRes)
+        assertNull(controller.state.value.errorRes)
+        controller.consumeResult()
+        assertNull(controller.state.value.messageRes)
+        // consumeResult owns only messageRes: the sheet's errorRes and the
+        // inbox card's inboxErrorRes keep clearing through their own flows.
+        assertNull(controller.state.value.errorRes)
         controller.dispose()
     }
 

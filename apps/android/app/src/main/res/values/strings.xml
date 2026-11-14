@@ -10,17 +10,26 @@
     <string name="signin_generic_error">Đăng nhập chưa thành công. Vui lòng thử lại.</string>
     <string name="signin_google_incomplete">Chưa đăng nhập. Google chưa hoàn tất xác nhận tài khoản. Bạn có thể thử lại; nếu vẫn gặp lỗi, hãy liên hệ hỗ trợ AnVề.</string>
     <string name="signin_in_progress">Đang hoàn tất đăng nhập…</string>
-    <string name="signin_google_unavailable">Đăng nhập Google chưa sẵn sàng trên máy chủ hoặc trên bản cài này. Kiểm tra kết nối tới máy chủ, hoặc xem hướng dẫn cấu hình.</string>
+    <!-- signin_google_unavailable and signin_auth_not_configured (below) are
+         deliberately self-contained: the product ships no help screen or setup
+         guide to open, so these errors name the real support contact — whoever
+         installed the server — instead of promising a path that does not exist. -->
+    <string name="signin_google_unavailable">Đăng nhập Google chưa sẵn sàng trên máy chủ hoặc trên bản cài này. Kiểm tra kết nối tới máy chủ và thử lại; nếu vẫn lỗi, hãy liên hệ người cài đặt AnVề.</string>
     <string name="signin_retry">Thử lại</string>
     <string name="signin_no_activity_resolver">Không mở được trình đăng nhập trên màn hình này.</string>
     <string name="signin_invitation_prompt">Đăng nhập để kiểm tra lời mời gia đình. Lời mời chỉ được giữ tạm trên thiết bị; chưa tham gia nhóm hoặc bật chia sẻ vị trí.</string>
     <!-- Copy SignInViewModel reports as resource IDs, resolved at the screen. -->
     <string name="signin_credential_incomplete">Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.</string>
     <string name="signin_unauthenticated">Đăng nhập không thành công. Vui lòng thử lại.</string>
-    <string name="signin_auth_not_configured">Máy chủ chưa cấu hình đăng nhập Google. Hãy xem hướng dẫn thiết lập.</string>
+    <string name="signin_auth_not_configured">Máy chủ chưa cấu hình đăng nhập Google. Hãy liên hệ người cài đặt AnVề để bật đăng nhập.</string>
     <string name="signin_rate_limited">Bạn đã thử quá nhiều lần. Vui lòng đợi một lát.</string>
     <string name="signin_validation_failed">Thông tin đăng nhập chưa hợp lệ.</string>
+    <!-- Dev panel only (SignInScreen gates it behind state.devLogin and
+         BuildConfig.DEBUG): interpolates the raw server message, which is
+         technical text in another language. Release flows report
+         signin_server_unexpected instead of embedding server text. -->
     <string name="signin_server_error">Máy chủ báo lỗi: %1$s</string>
+    <string name="signin_server_unexpected">Máy chủ báo lỗi chưa rõ. Vui lòng thử lại. Nếu vẫn gặp lỗi, hãy liên hệ hỗ trợ AnVề.</string>
     <string name="signin_network_failed">Không kết nối được máy chủ. Kiểm tra mạng và thử lại.</string>
     <string name="signin_dev_title">Đăng nhập phát triển (chỉ máy chủ dev)</string>
     <string name="signin_dev_email">Email</string>
@@ -62,11 +71,14 @@
     <!-- Home / account -->
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
     <string name="home_quick_settings_title">Cài đặt chia sẻ</string>
-    <string name="sos_open">Mở SOS</string>
     <string name="action_back">Quay lại</string>
     <string name="action_retry">Thử lại</string>
     <string name="action_open_location">Mở màn Vị trí</string>
     <string name="action_loading">Đang tải…</string>
+    <!-- stateDescription for disclosure toggles (Tracking technical details,
+         Places notes): TalkBack announces the panel state, not just the icon. -->
+    <string name="action_state_expanded">Đang mở rộng</string>
+    <string name="action_state_collapsed">Đang thu gọn</string>
     <string name="action_processing">Đang xử lý…</string>
     <string name="action_rename">Đổi tên</string>
     <string name="action_save">Lưu</string>
@@ -81,6 +93,11 @@
     <!-- Distinguishes revoking one listed session from signing this device
          out entirely (home_sign_out). -->
     <string name="home_device_revoke">Thu hồi phiên</string>
+    <!-- Confirmation for the revoke row above. Truthful phrasing: a revoked
+         device can sign back in, so unlike account deletion nothing here
+         claims the action is irreversible. -->
+    <string name="home_device_revoke_title">Thu hồi phiên đăng nhập này?</string>
+    <string name="home_device_revoke_body">Phiên của thiết bị này sẽ bị xóa khỏi máy chủ. Người dùng thiết bị đó sẽ phải đăng nhập lại để tiếp tục dùng AnVề.</string>
     <string name="home_sign_out">Đăng xuất</string>
     <string name="home_checking_account">Đang kiểm tra tài khoản…</string>
     <string name="home_avatar_edit_desc">Đổi ảnh đại diện</string>
@@ -122,13 +139,19 @@
     <string name="circle_create_button">Tạo nhóm</string>
     <string name="circle_join_title">Tham gia bằng mã mời</string>
     <string name="circle_code_label">Mã mời</string>
-    <string name="circle_join_button">Tham gia nhóm</string>
+    <!-- Dead key `circle_join_button` removed in critique round 3: no Kotlin
+         reference and lint reports it unused; the join card keeps `invite_view`. -->
     <string name="circle_join_caption">Mã mời do chủ nhóm tạo, chỉ dùng được một lần.</string>
     <string name="circle_privacy_note">Tham gia nhóm KHÔNG tự bật chia sẻ vị trí. Mỗi người tự bật chia sẻ của mình và có thể tắt bất cứ lúc nào.</string>
     <string name="circle_members_title">Thành viên</string>
     <string name="circle_invites_title">Mã mời</string>
     <string name="circle_invite_create">Tạo mã mời mới</string>
     <string name="circle_invite_revoke">Thu hồi</string>
+    <!-- Revoke confirmation. Truthful boundaries: only the unredeemed code
+         stops working — used invitations are unaffected — and a new code can
+         always be created. -->
+    <string name="circle_invite_revoke_title">Thu hồi mã mời này?</string>
+    <string name="circle_invite_revoke_body">Mã sẽ hết hiệu lực ngay và người chưa tham gia sẽ không vào được nhóm qua mã này. Bạn có thể tạo mã mời mới bất cứ lúc nào.</string>
     <string name="circle_invite_expires">Hiệu lực 48 giờ, dùng một lần</string>
     <string name="circle_role_owner">Chủ nhóm</string>
     <string name="circle_role_member">Thành viên</string>
@@ -212,7 +235,7 @@
     <string name="tracking_start">Bắt đầu theo dõi</string>
     <string name="tracking_resume">Tiếp tục theo dõi</string>
     <string name="tracking_stop">Dừng theo dõi</string>
-    <string name="tracking_enable_consent">Bật chia sẻ vị trí</string>
+    <string name="tracking_enable_consent">Bật chia sẻ và theo dõi</string>
     <string name="tracking_permissions_title">Quyền hệ thống</string>
     <string name="tracking_permission_location">Quyền vị trí</string>
     <string name="tracking_permission_precise">Chính xác</string>
@@ -298,6 +321,7 @@
 
     <!-- Home tabs -->
     <string name="tab_circle">Nhóm</string>
+    <string name="map_open_circle">Mở màn Nhóm</string>
     <string name="tab_history">Lịch sử</string>
     <string name="tab_places">Địa điểm</string>
     <string name="tab_map">Bản đồ</string>
@@ -323,10 +347,19 @@
     <string name="history_point_row">%1$s%2$s · ±%3$d m%4$s%5$s</string>
     <string name="history_center_map">Đưa bản đồ tới điểm đã chọn</string>
     <string name="history_map_unconfigured">Bản đồ chưa được cấu hình; lịch sử vẫn hiển thị bên dưới.</string>
+    <!-- Tap hint over the point list, rendered only when the day has points:
+         an empty day has nothing to tap, so the hint would be false. -->
+    <string name="history_hint_select_point">Chạm một điểm để xem vị trí của nó trên bản đồ.</string>
     <string name="history_empty_day">Không có điểm lịch sử trong ngày này.</string>
     <string name="history_retention_title">Thời hạn lưu</string>
     <string name="history_retention_days_value">%1$s ngày</string>
     <string name="history_retention_chip_days">%1$d ngày</string>
+    <!-- Reducing retention destroys server data permanently, which differs
+         from the delete-scope dialog below, so it carries its own confirm
+         wording and a label naming the actual action instead of "Xóa". -->
+    <string name="history_retention_confirm_title">Giảm thời hạn lưu?</string>
+    <string name="history_retention_confirm_body">Lịch sử cũ hơn thời hạn mới sẽ bị xóa vĩnh viễn khỏi máy chủ. Tăng thời hạn lưu sau này không lấy lại dữ liệu đã xóa.</string>
+    <string name="history_retention_confirm">Giảm thời hạn</string>
     <string name="history_delete_range_menu">Xóa khoảng giờ</string>
     <string name="history_delete_day_menu">Xóa ngày này</string>
     <string name="history_delete_all_menu">Xóa toàn bộ lịch sử</string>
@@ -359,12 +392,13 @@
     <string name="sos_notifications_later">Để sau</string>
     <string name="sos_title">Yêu cầu hỗ trợ</string>
     <string name="sos_emergency_disclaimer">AnVề không tự gọi 113, 114 hoặc 115. Hãy gọi dịch vụ cấp cứu nếu cần.</string>
+    <string name="sos_call_number">Gọi %1$d</string>
     <string name="sos_push_configured">Máy chủ đã cấu hình gửi thông báo. Điều này chưa chứng minh thông báo đã đến người nhận.</string>
     <string name="sos_push_unconfigured">Máy chủ chưa cài đặt việc gửi thông báo. Hãy liên hệ trực tiếp với người thân cần hỗ trợ.</string>
     <string name="sos_push_unknown">Chưa kiểm tra được trạng thái gửi thông báo. Nếu cần hỗ trợ khẩn cấp, hãy liên hệ trực tiếp.</string>
     <string name="sos_offline_notice">Đang dùng danh sách đã lưu; quyền thành viên sẽ được kiểm tra khi kết nối lại.</string>
     <string name="sos_recipients_title">Chọn người nhận</string>
-    <string name="sos_recipients_empty">Không có danh sách người nhận. Hãy kết nối để tải thành viên Circle.</string>
+    <string name="sos_recipients_empty">Không có danh sách người nhận. Hãy kết nối để tải thành viên nhóm.</string>
     <string name="sos_outbox_title">Yêu cầu trên thiết bị</string>
     <string name="sos_outbox_row_meta">Tạo lúc %1$s · %2$d người nhận đã chọn</string>
     <string name="sos_outbox_empty">Chưa có yêu cầu SOS nào được lưu trên thiết bị.</string>
@@ -468,7 +502,7 @@
     <string name="map_audience_explainer_offline">• Một số vị trí chưa đồng bộ khi mất mạng có thể bị bỏ, để bảo vệ quyền riêng tư.</string>
     <string name="map_retry">Kiểm tra lại</string>
     <string name="map_no_circle">Bạn chưa tham gia nhóm gia đình.</string>
-    <string name="map_consent_off">Chia sẻ vị trí đang tắt. Bật trong Tài khoản trước khi chọn người xem.</string>
+    <string name="map_consent_off">Chia sẻ vị trí đang tắt. Bật ở màn Vị trí trước khi chọn người xem.</string>
     <string name="map_no_other_members">Nhóm chưa có thành viên khác.</string>
     <string name="map_viewer_unresolved">Chưa xác định</string>
     <string name="map_confidence_fresh">Vị trí mới</string>
@@ -546,7 +580,7 @@
     <string name="journey_arrival_no_infer">Không tự suy diễn đến nơi từ GPS.</string>
     <string name="journey_arrival_owner_confirm">Bạn chủ động xác nhận khi đã đến.</string>
     <string name="journey_arrival_waiting_confirm">Chủ hành trình sẽ tự xác nhận khi đã đến.</string>
-    <string name="journey_stale_notice">Hành trình chưa có cập nhật mới — hãy liên hệ. Không suy diễn có tai nạn.</string>
+    <string name="journey_stale_notice">Hành trình chưa có cập nhật mới — hãy gọi điện hoặc nhắn tin trực tiếp cho người đó để hỏi thăm. Không suy diễn có tai nạn.</string>
     <string name="journey_config_line">Cho hành trình này: %1$s%2$s.</string>
     <string name="journey_config_auto">tự nhận diện đến nơi (ước tính)</string>
     <string name="journey_config_manual">xác nhận thủ công</string>
@@ -566,12 +600,15 @@
     <string name="journey_no_places">Chưa có địa điểm được phép chọn. Tạo hoặc chia sẻ địa điểm trước khi bắt đầu.</string>
     <string name="journey_manage_places">Quản lý địa điểm</string>
     <string name="journey_step_expiry">2. Tự kết thúc sau</string>
+    <!-- Kept in critique round 4: renders the stale-threshold chips in
+         JourneyOptionsSheet (5/10/15/30 minutes). The expiry step moved to
+         journey_chip_hours, so never treat this key as dead. -->
     <string name="journey_chip_minutes">%1$d phút</string>
     <string name="journey_chip_hours">%1$d giờ</string>
     <string name="journey_expiry_note">Đây là thời hạn chia sẻ, không phải giờ dự kiến đến.</string>
     <string name="journey_step_viewers">3. Chọn người theo dõi</string>
     <string name="journey_viewers_note">Chỉ hiện người bạn đã cấp quyền xem vị trí.</string>
-    <string name="journey_no_viewers">Chưa có người được cấp quyền. Mở màn Vị trí để chọn người xem trước.</string>
+    <string name="journey_no_viewers">Chưa có người được cấp quyền. Mở màn Bản đồ → Quyền xem để cấp quyền xem trước.</string>
     <string name="journey_options_entry">Tự động và nhắc nhở</string>
     <string name="journey_option_off">Đang tắt</string>
     <string name="journey_option_auto_summary">Tự đến nơi (ước tính)</string>
@@ -625,6 +662,9 @@
     <string name="places_radius">Bán kính %1$d m</string>
     <string name="places_share_with">Chia sẻ địa điểm với</string>
     <string name="places_share_notice">Thành viên vẫn phải tự bật theo dõi cho bản thân; chia sẻ địa điểm không cấp quyền xem sự kiện.</string>
+    <!-- Label of the expandable explanation toggle: the explainer sits behind
+         it instead of a paragraph placed before the action rows. -->
+    <string name="places_notes_toggle">Giải thích</string>
     <string name="places_access_supporting">Quyền xem địa điểm</string>
     <string name="places_monitor_mine_title">Theo dõi vị trí của tôi tại đây</string>
     <string name="places_monitor_mine_notice">Chỉ bạn bật theo dõi cho mình. Người nhận cần được bạn cấp quyền vị trí và được chia sẻ địa điểm này.</string>
@@ -633,6 +673,7 @@
     <string name="places_consent_notice">Cần bật chia sẻ vị trí ở màn Vị trí trước khi bật theo dõi tại đây. Theo dõi không tự bật GPS.</string>
     <!-- Copy PlacesViewModel/PlacesEditor feedback, resolved at the screen. -->
     <string name="places_editor_invalid_coords">Vĩ độ hoặc Kinh độ chưa hợp lệ. Kiểm tra lại số đã nhập.</string>
+    <string name="places_editor_invalid_name">Tên địa điểm cần từ 1 đến 80 ký tự.</string>
     <string name="places_save_confirmed">Đã lưu địa điểm.</string>
     <string name="places_error_load_failed">Không thể kiểm tra địa điểm và quyền hiện tại. Kiểm tra kết nối rồi thử lại.</string>
     <string name="places_error_mutation_unconfirmed">Chưa xác nhận thay đổi. Kiểm tra lại trước khi thực hiện thao tác mới.</string>
@@ -800,6 +841,12 @@
     <string name="invite_received_empty">Chưa có lời mời đang hiệu lực.</string>
     <string name="invite_received_intro">%1$s mời bạn tham gia</string>
     <string name="invite_hide">Ẩn với tôi</string>
+    <!-- Hide confirmation. Truthful boundaries: hiding only removes the row
+         from this account's inbox; the sender is never told, and the
+         invitation stays usable through its link or code. -->
+    <string name="invite_hide_title">Ẩn lời mời này?</string>
+    <string name="invite_hide_body">Lời mời sẽ biến mất khỏi hộp thư “Lời mời dành cho bạn” của tài khoản này. Bạn vẫn có thể tham gia bằng link hoặc mã mời mà người thân đã gửi.</string>
+    <string name="invite_hide_confirm">Ẩn lời mời</string>
     <string name="invite_reload">Tải lại lời mời</string>
     <!-- Copy InvitationViewModel reports as resource IDs, resolved at InvitationHost. -->
     <string name="invite_session_check_failed">Chưa kiểm tra được tài khoản. Đóng lời mời và mở lại khi phiên đăng nhập sẵn sàng.</string>

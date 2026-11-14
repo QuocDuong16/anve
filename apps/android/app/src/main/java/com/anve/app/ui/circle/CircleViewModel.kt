@@ -21,6 +21,10 @@ import kotlinx.coroutines.launch
 /** Everything the circle tab renders. */
 data class CircleUiState(
     val loading: Boolean = true,
+    /** True while a user-triggered refresh is in flight. It stays on across
+     *  the circle snapshot and clears only when that refresh's member fetch
+     *  settles — members are what the user is waiting to see change. */
+    val refreshing: Boolean = false,
     val circle: CircleDto? = null,
     val myRole: String? = null,
     val members: List<MemberDto> = emptyList(),
@@ -53,11 +57,17 @@ class CircleViewModel internal constructor(
 
     fun refresh() {
         val expected = ++revision
+        // Set synchronously, before the launch, so the pull-to-refresh spinner
+        // shows on the same frame as the gesture. The latest refresh owns the
+        // flag; stale revisions returning late never touch it.
+        _state.update { it.copy(refreshing = true) }
         scope.launch {
             try {
                 val mine = repository.myCircle()
                 if (expected != revision) return@launch
                 if (mine.circle == null || mine.membership == null) {
+                    // A fresh state also resets refreshing: with no circle there
+                    // is nothing to keep spinning for.
                     _state.update { CircleUiState(loading = false) }
                     return@launch
                 }
@@ -65,6 +75,7 @@ class CircleViewModel internal constructor(
                     // Keep the previously loaded members of the same circle while
                     // refreshing, so the activation checklist does not flash back
                     // on between the circle snapshot and the member list arriving.
+                    // refreshing stays on: the spinner runs until loadDetails lands.
                     val sameCircle = it.circle?.id == mine.circle.id
                     it.copy(
                         loading = false,
@@ -77,7 +88,9 @@ class CircleViewModel internal constructor(
                 }
                 loadDetails(mine.circle.id, expected)
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
-                if (expected == revision) _state.update { it.copy(loading = false, errorRes = R.string.circle_load_failed) }
+                if (expected == revision) {
+                    _state.update { it.copy(loading = false, errorRes = R.string.circle_load_failed, refreshing = false) }
+                }
             }
         }
     }
@@ -96,7 +109,11 @@ class CircleViewModel internal constructor(
             try {
                 val members = repository.members(circleId)
                 if (expected != revision || _state.value.circle?.id != circleId) return@launch
-                _state.update { it.copy(members = members, membersLoaded = true) }
+                // Clearing refreshing here also covers mutation-driven loads
+                // (create/join/accept/revoke/remove): those never set the flag,
+                // and when a mutation response races a pull-refresh the newer
+                // member list wins, so stopping the spinner is honest.
+                _state.update { it.copy(members = members, membersLoaded = true, refreshing = false) }
                 if (_state.value.isOwner) {
                     // Non-owners get FORBIDDEN here; only owners ask.
                     runCatching { repository.invites(circleId) }.onSuccess { invites ->
@@ -106,7 +123,7 @@ class CircleViewModel internal constructor(
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 // Members are the core content; invites are owner extras.
                 if (expected == revision && _state.value.circle?.id == circleId) {
-                    _state.update { it.copy(errorRes = R.string.circle_members_failed, membersLoaded = true) }
+                    _state.update { it.copy(errorRes = R.string.circle_members_failed, membersLoaded = true, refreshing = false) }
                 }
             }
         }
@@ -171,12 +188,17 @@ class CircleViewModel internal constructor(
     fun removeMember(userId: String) {
         val circle = _state.value.circle ?: return
         scope.launch {
+            // Like every other mutation, a new one supersedes a still-open
+            // failure. Without this reset a removal succeeding after an old
+            // error keeps errorRes set, and the snackbar effect (which skips
+            // messages while an error is showing) drops the result forever.
+            setBusy(messageRes = null, errorRes = null)
             try {
                 repository.removeMember(circle.id, userId)
                 loadDetails(circle.id)
-                _state.update { it.copy(messageRes = R.string.circle_member_removed) }
+                _state.update { it.copy(busy = false, messageRes = R.string.circle_member_removed) }
             } catch (e: Exception) {
-                _state.update { it.copy(errorRes = circleError(e, R.string.circle_error_remove_member_failed)) }
+                _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_remove_member_failed)) }
             }
         }
     }
@@ -194,8 +216,14 @@ class CircleViewModel internal constructor(
         }
     }
 
+    /**
+     * Acknowledges a one-shot result after its snackbar finishes (Result
+     * Notice Rule). Only the message clears: the error notice owns its own
+     * retry/dismiss, so consuming a result must not silently discard an open
+     * failure.
+     */
     fun consumeMessage() {
-        _state.update { it.copy(messageRes = null, errorRes = null) }
+        _state.update { it.copy(messageRes = null) }
     }
 
     private fun setBusy(messageRes: Int?, errorRes: Int?) {

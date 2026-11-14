@@ -78,7 +78,7 @@ class SignInViewModel internal constructor(
     }
 
     /** Own the whole attempt so leaving the composition for Google's UI does not lose its result. */
-    fun signInWithGoogle(fetchIdToken: suspend () -> Result<String>, credentialError: (Throwable) -> Int) {
+    fun signInWithGoogle(fetchIdToken: suspend () -> Result<String>, credentialError: (Throwable) -> Int?) {
         if (_busy.value) return
         _busy.value = true
         _error.value = null
@@ -88,7 +88,10 @@ class SignInViewModel internal constructor(
                 val failure = credential.exceptionOrNull()
                 if (failure is CancellationException) throw failure
                 if (failure != null) {
-                    _error.value = UiMessage(credentialError(failure))
+                    // null means the caller classified this failure as an
+                    // intentional user action (e.g. closing the account
+                    // chooser), not an error to surface.
+                    credentialError(failure)?.let { _error.value = UiMessage(it) }
                     return@launch
                 }
                 val idToken = credential.getOrThrow()
@@ -113,7 +116,9 @@ class SignInViewModel internal constructor(
                 val user = repository.signInDev(email.trim())
                 _state.update { SignInUiState.SignedIn(user.displayName) }
             } catch (e: Exception) {
-                _error.value = friendly(e)
+                // Only reachable from the dev panel (BuildConfig.DEBUG-gated),
+                // where seeing the server's raw message is the point.
+                _error.value = friendly(e, keepServerDetail = true)
             } finally {
                 _busy.value = false
             }
@@ -130,14 +135,24 @@ class SignInViewModel internal constructor(
         _error.value = UiMessage(resId)
     }
 
-    /** Maps contract errors to resource-backed copy; unknown codes keep the server's message. */
-    private fun friendly(e: Exception): UiMessage = when (e) {
+    /**
+     * Maps contract errors to resource-backed copy. Unknown codes interpolate
+     * the server's message only when [keepServerDetail] is set: raw server
+     * text is technical and in another language, not user copy, so it stays
+     * behind the dev-login panel while release flows get a generic sentence.
+     */
+    internal fun friendly(e: Exception, keepServerDetail: Boolean = false): UiMessage = when (e) {
         is ApiException -> when (e.code) {
             "UNAUTHENTICATED" -> UiMessage(R.string.signin_unauthenticated)
             "AUTH_NOT_CONFIGURED" -> UiMessage(R.string.signin_auth_not_configured)
             "RATE_LIMITED" -> UiMessage(R.string.signin_rate_limited)
             "VALIDATION" -> UiMessage(R.string.signin_validation_failed)
-            else -> UiMessage(R.string.signin_server_error, listOf(e.message ?: ""))
+            else ->
+                if (keepServerDetail) {
+                    UiMessage(R.string.signin_server_error, listOf(e.message ?: ""))
+                } else {
+                    UiMessage(R.string.signin_server_unexpected)
+                }
         }
         else -> UiMessage(R.string.signin_network_failed)
     }

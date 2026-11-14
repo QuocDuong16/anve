@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
@@ -40,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -63,6 +65,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,7 +96,9 @@ import com.anve.app.data.sos.authorizedJourneySignal
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 import java.time.Instant
@@ -100,7 +106,7 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 
 @Composable
-fun JourneyScreen(container: AppContainer, onBack: () -> Unit, onPlaces: () -> Unit, onLocation: () -> Unit, journeyId: String? = null) {
+fun JourneyScreen(container: AppContainer, onBack: () -> Unit, onPlaces: () -> Unit, onLocation: () -> Unit, onOpenMap: () -> Unit = {}, onOpenSos: () -> Unit = {}, journeyId: String? = null) {
     val model: JourneyViewModel = viewModel(key = "journey-$journeyId", factory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -116,12 +122,20 @@ fun JourneyScreen(container: AppContainer, onBack: () -> Unit, onPlaces: () -> U
         onDispose { lifecycle.removeObserver(observer); model.visible(false) }
     }
     key(state.owner) {
-        JourneyContent(state, tracking, onBack, model::reload, model::select, model::create, model::action, model::resumePriority, onPlaces, onLocation,
+        JourneyContent(state, tracking, onBack, model::reload, model::select, model::create, model::action, model::resumePriority, onPlaces, onLocation, onOpenMap, onOpenSos,
             onCreateWithOptions = model::createWithOptions)
     }
 }
 
 private data class Confirmation(val journey: JourneyDto, val action: JourneyAction, val recipient: String? = null, val name: String? = null)
+
+// The draft viewer set is stored as a plain ArrayList on the way out because
+// autoSaver does not promise a Set survives the Bundle round trip; restore
+// maps it back (same approach as the HomeScreen savers).
+private val recipientsSaver = Saver<Set<String>, ArrayList<String>>(
+    save = { ArrayList(it) },
+    restore = { it.toSet() },
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,32 +150,64 @@ fun JourneyContent(
     onResume: (String) -> Unit = {},
     onPlaces: () -> Unit = {},
     onLocation: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    onOpenSos: () -> Unit = {},
     initiallyCreating: Boolean = false,
     onCreateWithOptions: ((PlaceDto, Int, Set<String>, Boolean, Int) -> Unit)? = null,
 ) {
-    var creating by remember(state.owner) { mutableStateOf(initiallyCreating) }
+    // Survives process death so a reclaim mid-form does not silently drop the
+    // flow; the draft fields inside JourneyCreateForm share that guarantee,
+    // which is what makes the discard prompt below honest rather than
+    // cosmetic.
+    var creating by rememberSaveable(state.owner) { mutableStateOf(initiallyCreating) }
     var confirmation by remember(state.owner) { mutableStateOf<Confirmation?>(null) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(10_000) } }
     val selected = state.journeys.firstOrNull { it.id == state.selectedId }
     LaunchedEffect(selected?.id) { if (selected != null) creating = false }
-    BackHandler { if (creating) creating = false else onBack() }
+    // Back must not delete a half-filled draft without asking — same contract
+    // as the PlaceEditor discard dialog in PlacesScreen. A pristine form (or
+    // no form at all) still closes silently.
+    var discardDraft by rememberSaveable { mutableStateOf(false) }
+    var createDraftDirty by rememberSaveable { mutableStateOf(false) }
+    val handleBack = {
+        if (creating) {
+            if (createDraftDirty) discardDraft = true else creating = false
+        } else onBack()
+    }
+    BackHandler(onBack = handleBack)
     val colors = MaterialTheme.colorScheme
     val dark = isDarkSurface()
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(if (creating) stringResource(R.string.journey_creating_title) else stringResource(R.string.journey_title)) },
-            navigationIcon = { IconButton(onClick = { if (creating) creating = false else onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
+            navigationIcon = { IconButton(onClick = handleBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
             actions = { IconButton(onClick = onReload, enabled = !state.loading && !state.busy) { Icon(Icons.Default.Refresh, stringResource(R.string.journey_reload_content_desc)) } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
                 titleContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
                 navigationIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
                 actionIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
         )
-    }) { padding ->
-        LazyColumn(Modifier.padding(padding).testTag("journey-content"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        },
+        floatingActionButton = {
+            // The overlay's own Scaffold replaces the home shell, whose FAB is
+            // otherwise hidden with it — the emergency affordance must survive
+            // the highest-risk scenario: while following a journey home.
+            val emergency = LocalEmergencyColors.current
+            ExtendedFloatingActionButton(
+                onClick = onOpenSos,
+                containerColor = emergency.emergency,
+                contentColor = emergency.onEmergency,
+                icon = { Icon(Icons.Default.Sos, contentDescription = null) },
+                text = { Text(stringResource(R.string.tab_sos)) },
+            )
+        },
+    ) { padding ->
+        // Bottom clearance mirrors the shell (HOME_FAB_CLEARANCE): the FAB
+        // below must not cover the last card while scrolling.
+        LazyColumn(Modifier.padding(padding).testTag("journey-content"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + HOME_FAB_CLEARANCE), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (state.loading || state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            state.errorRes?.let { res -> item { JourneyNotice(stringResource(res)) { ink -> JourneyTextAction(stringResource(R.string.journey_reload_action), onReload, !state.busy, ink) } } }
+            state.errorRes?.let { res -> item { JourneyNotice(stringResource(res), failure = true) { ink -> JourneyTextAction(stringResource(R.string.journey_reload_action), onReload, !state.busy, ink) } } }
             if (!tracking.online && !state.loading && (selected == null || creating)) item {
                 JourneyNotice(stringResource(R.string.journey_offline_end_notice), Icons.Default.WifiOff)
             }
@@ -182,10 +228,10 @@ fun JourneyContent(
             }
             when {
                 creating -> item {
-                    JourneyCreateForm(state, tracking, { place, minutes, recipients, automatic, stale ->
+                    JourneyCreateForm(state, tracking, { createDraftDirty = it }, { place, minutes, recipients, automatic, stale ->
                         if (onCreateWithOptions != null) onCreateWithOptions(place, minutes, recipients, automatic, stale)
                         else onCreate(place, minutes, recipients)
-                    }, onPlaces, onLocation)
+                    }, onPlaces, onLocation, onOpenMap)
                 }
                 selected != null -> item {
                     JourneyDetails(selected, state.owner == selected.ownerId, tracking, now, state.busy,
@@ -241,9 +287,35 @@ fun JourneyContent(
                 else -> stringResource(R.string.journey_confirm_end_body)
             }) },
             dismissButton = { JourneyTextAction(stringResource(R.string.action_cancel), { confirmation = null }) },
-            confirmButton = { JourneyTextAction(label, { confirmation = null; onAction(choice.journey.id, choice.action, choice.recipient) }, !state.busy) },
+            // Destructive-confirm convention (error confirm + neutral Hủy,
+            // cf. the RevokeSessionDialog/DeleteAccountDialog pair in
+            // HomeScreen): REVOKE_RECIPIENT and END destroy access or the
+            // journey itself, so they take the error pair. ARRIVE is the one
+            // exception — a positive one-way acknowledgement, not a
+            // destruction — so it keeps the neutral ink.
+            confirmButton = {
+                JourneyTextAction(
+                    label,
+                    { confirmation = null; onAction(choice.journey.id, choice.action, choice.recipient) },
+                    !state.busy,
+                    color = if (choice.action == JourneyAction.ARRIVE) null else MaterialTheme.colorScheme.error,
+                )
+            },
         )
     }
+    if (discardDraft) AlertDialog(
+        onDismissRequest = { discardDraft = false },
+        title = { Text(stringResource(R.string.places_discard_title)) },
+        text = { Text(stringResource(R.string.places_discard_body)) },
+        confirmButton = {
+            // Discard is destructive to the drafted journey; same confirm
+            // pattern as the PlaceEditor discard dialog in PlacesScreen.
+            TextButton(onClick = { creating = false; createDraftDirty = false; discardDraft = false }) {
+                Text(stringResource(R.string.places_discard_confirm), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { JourneyTextAction(stringResource(R.string.action_cancel), { discardDraft = false }) },
+    )
 }
 
 @Composable
@@ -324,7 +396,14 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 if (people) journey.recipients.forEach { recipient ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(recipient.displayName, Modifier.weight(1f))
-                        JourneyTextAction(stringResource(R.string.journey_revoke_row), { onConfirm(JourneyAction.REVOKE_RECIPIENT, recipient.userId, recipient.displayName) }, !busy && !pending)
+                        // Destructive trigger carries the error color, same as
+                        // the revoke rows in Home/Circle/Places.
+                        JourneyTextAction(
+                            stringResource(R.string.journey_revoke_row),
+                            { onConfirm(JourneyAction.REVOKE_RECIPIENT, recipient.userId, recipient.displayName) },
+                            !busy && !pending,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
             }
@@ -369,13 +448,23 @@ private fun JourneyStep(title: String, current: Boolean = false, completed: Bool
 }
 
 @Composable
-private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, onCreate: (PlaceDto, Int, Set<String>, Boolean, Int) -> Unit, onPlaces: () -> Unit, onLocation: () -> Unit) {
-    var destination by remember(state.owner) { mutableStateOf<String?>(null) }
-    var minutes by remember(state.owner) { mutableStateOf(120) }
-    var recipients by remember(state.owner) { mutableStateOf(emptySet<String>()) }
-    var automatic by remember(state.owner) { mutableStateOf(false) }
-    var staleMinutes by remember(state.owner) { mutableStateOf(0) }
-    var optionsOpen by remember(state.owner) { mutableStateOf(false) }
+private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, onDraftDirtyChange: (Boolean) -> Unit = {},
+    onCreate: (PlaceDto, Int, Set<String>, Boolean, Int) -> Unit, onPlaces: () -> Unit, onLocation: () -> Unit, onOpenMap: () -> Unit = {}) {
+    // Draft fields survive process death through rememberSaveable, so a
+    // reclaim mid-form does not drop what was typed; the viewer set needs a
+    // custom saver because autoSaver does not promise a Set round-trips
+    // through the saved instance state.
+    var destination by rememberSaveable(state.owner) { mutableStateOf<String?>(null) }
+    var minutes by rememberSaveable(state.owner) { mutableStateOf(120) }
+    var recipients by rememberSaveable(state.owner, stateSaver = recipientsSaver) { mutableStateOf(emptySet<String>()) }
+    var automatic by rememberSaveable(state.owner) { mutableStateOf(false) }
+    var staleMinutes by rememberSaveable(state.owner) { mutableStateOf(0) }
+    var optionsOpen by rememberSaveable(state.owner) { mutableStateOf(false) }
+    // Pristine shape: no destination, no viewers, manual arrival, no stale
+    // reminder, default 120 minutes. Anything else is typed input the back
+    // guard must ask about before dropping.
+    val dirty = destination != null || recipients.isNotEmpty() || automatic || staleMinutes != 0 || minutes != 120
+    LaunchedEffect(dirty) { onDraftDirtyChange(dirty) }
     val ready = !state.busy && state.pending.isEmpty() && state.consentEnabled && tracking.ownerUserId == state.owner && tracking.activelyTracking && tracking.online
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -391,10 +480,15 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
         } }
         OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.journey_step_expiry), style = MaterialTheme.typography.titleMedium)
+            // Every other single-choice group in the app offers at most four
+            // options (retention, invitation expiry); 30 minutes sits below
+            // the useful horizon of a journey, so the set starts at one hour.
+            // journey_chip_minutes stays alive for the stale-threshold chips
+            // in JourneyOptionsSheet.
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(30, 60, 120, 240, 480).forEach { value ->
+                listOf(60, 120, 240, 480).forEach { value ->
                     FilterChip(minutes == value, onClick = { minutes = value }, label = {
-                        Text(if (value < 60) stringResource(R.string.journey_chip_minutes, value) else stringResource(R.string.journey_chip_hours, value / 60))
+                        Text(stringResource(R.string.journey_chip_hours, value / 60))
                     },
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer))
                 }
@@ -404,7 +498,12 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
         OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.journey_step_viewers), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.journey_viewers_note), style = MaterialTheme.typography.bodySmall)
-            if (state.members.isEmpty()) Text(stringResource(R.string.journey_no_viewers))
+            // The audience grants live on the map tab (Quyền xem), not on the
+            // location screen the old copy pointed at — send the reader there
+            // with an actionable affordance instead of a dead end.
+            if (state.members.isEmpty()) JourneyNotice(stringResource(R.string.journey_no_viewers)) { ink ->
+                JourneyTextAction(stringResource(R.string.circle_activation_audience_action), onOpenMap, color = ink)
+            }
             state.members.forEach { member ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(member.userId in recipients, role = Role.Checkbox,
                     onClick = { recipients = if (member.userId in recipients) recipients - member.userId else recipients + member.userId }), verticalAlignment = Alignment.CenterVertically) {
@@ -455,12 +554,28 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
     })
 }
 
+// Attention notices (offline, pending operations, capture stopped) keep the
+// secondary pair; a failed operation must read as an error, so failure=true
+// swaps to the error pair per the Failure Notice Rule (DESIGN.md). The
+// composable stays instead of AnveErrorNotice because the reload action rides
+// inside the notice and needs the matching content color as its ink.
 @Composable
-private fun JourneyNotice(text: String, icon: ImageVector = Icons.Default.Info, actions: @Composable (Color) -> Unit = {}) {
+private fun JourneyNotice(text: String, icon: ImageVector = Icons.Default.Info, failure: Boolean = false, actions: @Composable (Color) -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
     val dark = isDarkSurface()
-    val ink = if (dark) colors.onSecondary else colors.onSecondaryContainer
-    Surface(color = if (dark) colors.secondary else colors.secondaryContainer, contentColor = ink, shape = MaterialTheme.shapes.medium) {
+    val container = when {
+        failure && dark -> colors.error
+        failure -> colors.errorContainer
+        dark -> colors.secondary
+        else -> colors.secondaryContainer
+    }
+    val ink = when {
+        failure && dark -> colors.onError
+        failure -> colors.onErrorContainer
+        dark -> colors.onSecondary
+        else -> colors.onSecondaryContainer
+    }
+    Surface(color = container, contentColor = ink, shape = MaterialTheme.shapes.medium) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(icon, null, Modifier.size(24.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(text); actions(ink) }

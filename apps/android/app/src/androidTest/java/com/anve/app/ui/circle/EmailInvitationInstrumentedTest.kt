@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.WindowCompat
+import androidx.test.core.app.ApplicationProvider
 import com.anve.app.R
 import com.anve.app.data.api.ReceivedInvitationDto
 import com.anve.app.ui.captureNativeFixture
@@ -70,6 +72,7 @@ class EmailInvitationInstrumentedTest {
                 isAppearanceLightNavigationBars = true
             }
         }
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val state = PrivateInvitationsState(loading = false, received = listOf(ReceivedInvitationDto(
             "synthetic-invite", "synthetic-circle", "Nhà mình", "Mai", Instant.now().plusSeconds(3600).toString())))
         compose.setContent { AnVeTheme { Scaffold { insets ->
@@ -77,8 +80,15 @@ class EmailInvitationInstrumentedTest {
         } } }
         compose.onNodeWithText("Mai mời bạn tham gia").assertIsDisplayed()
         compose.onNodeWithText("Xem lời mời").performClick()
-        compose.onNodeWithText("Ẩn với tôi").performClick()
-        compose.runOnIdle { assertEquals(1, reviews); assertEquals(1, hides) }
+        // Hiding now confirms first: cancelling the dialog must leave the inbox
+        // untouched, and only the dialog's confirm button performs the mutation.
+        compose.onNodeWithText(context.getString(R.string.invite_hide)).performClick()
+        compose.onNodeWithText(context.getString(R.string.invite_hide_title)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.action_cancel)).performClick()
+        compose.runOnIdle { assertEquals(1, reviews); assertEquals(0, hides) }
+        compose.onNodeWithText(context.getString(R.string.invite_hide)).performClick()
+        compose.onNodeWithText(context.getString(R.string.invite_hide_confirm)).performClick()
+        compose.runOnIdle { assertEquals(1, hides) }
         captureNativeFixture("received-invitation-context")
     }
 }
