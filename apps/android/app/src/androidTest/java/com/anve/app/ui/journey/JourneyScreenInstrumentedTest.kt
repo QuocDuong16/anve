@@ -1,5 +1,6 @@
 package com.anve.app.ui.journey
 
+import android.content.Context
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -16,8 +17,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.platform.graphics.HardwareRendererCompat
+import com.anve.app.R
 import com.anve.app.data.api.JourneyDestinationDto
 import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.JourneyProgressDto
@@ -57,7 +60,11 @@ class JourneyScreenInstrumentedTest {
         compose.onNode(hasText("Đã đến nơi") and hasClickAction()).performClick()
         compose.onNodeWithText("Xác nhận đã đến nơi?").assertIsDisplayed()
         capture("arrival-dialog-light")
-        compose.onNodeWithText("Quay lại").performClick()
+        // The confirmation dialog follows the shared destructive-confirm
+        // convention: a neutral "Hủy" dismiss, resolved from resources.
+        compose.onNodeWithText(
+            ApplicationProvider.getApplicationContext<Context>().getString(R.string.action_cancel),
+        ).performClick()
         compose.runOnIdle { assertNull(action) }
         compose.onNode(hasText("Đã đến nơi") and hasClickAction()).performClick()
         compose.onAllNodes(hasText("Đã đến nơi") and hasClickAction())[1].performClick()
@@ -123,7 +130,9 @@ class JourneyScreenInstrumentedTest {
         scrollTo("Đã đến nơi")
         compose.onNode(hasText("Đã đến nơi") and hasClickAction()).performClick()
         compose.onNodeWithText("Xác nhận đã đến nơi?").assertIsDisplayed()
-        compose.onNodeWithText("Quay lại").assertIsDisplayed()
+        compose.onNodeWithText(
+            ApplicationProvider.getApplicationContext<Context>().getString(R.string.action_cancel),
+        ).assertIsDisplayed()
         capture("arrival-dialog-dark-font130")
     }
 

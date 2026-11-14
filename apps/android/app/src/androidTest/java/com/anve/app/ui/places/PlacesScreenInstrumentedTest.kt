@@ -87,7 +87,9 @@ class PlacesScreenInstrumentedTest {
         compose.onNodeWithText("Nhà").performClick()
         compose.onNodeWithText("Theo dõi vị trí của tôi tại đây").performScrollTo().assertIsDisplayed()
         captureNativeFixture("places-detail-$suffix")
-        compose.onNodeWithContentDescription("Quay lại địa điểm").performScrollTo().performClick()
+        // The back control lives in the top app bar, outside the scrolling
+        // list, so it is always visible and must not be scrolled to.
+        compose.onNodeWithContentDescription("Quay lại địa điểm").performClick()
         compose.onNodeWithText("Thêm địa điểm").assertIsDisplayed()
     }
 
