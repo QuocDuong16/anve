@@ -16,7 +16,10 @@ interface HistoryDataSource {
     suspend fun delete(owner: String, from: String?, to: String)
 }
 
-class HistoryRepository(private val api: AnveApi) : HistoryDataSource {
+class HistoryRepository(
+    private val api: AnveApi,
+    private val onCaptureCheckpointChanged: suspend (String) -> Unit = {},
+) : HistoryDataSource {
     override suspend fun members(owner: String): List<HistoryMember> =
         api.latestVisibleLocations(expectedOwner = owner).orThrow().locations.map { HistoryMember(it.ownerId, it.displayName) }
 
@@ -25,10 +28,14 @@ class HistoryRepository(private val api: AnveApi) : HistoryDataSource {
 
     override suspend fun retention(owner: String): HistoryRetentionDto = api.historyRetention(owner).orThrow()
 
-    override suspend fun setRetention(owner: String, days: Int): HistoryRetentionDto =
-        api.setHistoryRetention(owner, HistoryRetentionUpdateDto(days)).orThrow()
+    override suspend fun setRetention(owner: String, days: Int): HistoryRetentionDto {
+        val updated = api.setHistoryRetention(owner, HistoryRetentionUpdateDto(days)).orThrow()
+        onCaptureCheckpointChanged(owner)
+        return updated
+    }
 
     override suspend fun delete(owner: String, from: String?, to: String) {
         api.deleteHistory(owner, from, to).orThrow()
+        onCaptureCheckpointChanged(owner)
     }
 }

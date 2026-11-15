@@ -14,8 +14,13 @@ class PlacesRepositoryTest {
         val server = MockWebServer()
         server.start()
         try {
+            val notifiedOwners = mutableListOf<String>()
             val api = ApiFactory.api(ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())))
-            val repository = PlacesRepository(api, VisibleLocationRepository(api))
+            val repository = PlacesRepository(
+                api = api,
+                sharing = VisibleLocationRepository(api),
+                onCaptureCheckpointChanged = { notifiedOwners += it },
+            )
             server.enqueue(MockResponse().setBody("""{"places":[]}"""))
             assertEquals(emptyList<Any>(), repository.places("owner"))
             assertEquals("owner", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
@@ -27,6 +32,7 @@ class PlacesRepositoryTest {
             assertEquals("owner", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
             server.enqueue(MockResponse().setBody("""{"placeId":"place","ownerId":"owner","recipientIds":["viewer"],"active":true}"""))
             assertEquals(listOf("viewer"), repository.configure("owner", "place", listOf("viewer")).recipientIds)
+            assertEquals(listOf("owner"), notifiedOwners)
             val request = server.takeRequest()
             assertEquals("PUT", request.method)
             assertEquals("owner", request.getHeader("X-Anve-Expected-Owner"))

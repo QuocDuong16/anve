@@ -3,14 +3,17 @@ package com.anve.app.tracking
 import android.content.Context
 import android.location.Location
 import android.os.Looper
+import android.os.SystemClock
 import androidx.core.location.LocationCompat
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -29,9 +32,9 @@ interface LocationProvider {
 }
 
 /**
- * Fused provider implementation. It never calls `getLastLocation()`: a
- * cached fix is not realtime, and presenting one as current is exactly the
- * mistake the policy is designed to avoid.
+ * Fused provider implementation. It rejects pre-subscription cached fixes so
+ * a fresh start or capture-checkpoint roll only receives live fixes recorded
+ * after subscription.
  */
 class FusedLocationProvider(context: Context) : LocationProvider {
 
@@ -43,35 +46,57 @@ class FusedLocationProvider(context: Context) : LocationProvider {
             .isGooglePlayServicesAvailable(appContext) == ConnectionResult.SUCCESS
 
     override fun updates(options: LocationRequestOptions): Flow<LocationFix> = callbackFlow {
+        val subscribedAtNanos = SystemClock.elapsedRealtimeNanos()
         val priority = if (options.highAccuracy) {
             Priority.PRIORITY_HIGH_ACCURACY
         } else {
             Priority.PRIORITY_BALANCED_POWER_ACCURACY
         }
+
+        fun deliverIfFresh(location: Location) {
+            // Ignore cached fixes recorded before this subscription so starting
+            // or re-priming does not immediately replay a pre-checkpoint point.
+            if (location.elapsedRealtimeNanos <= subscribedAtNanos) return
+            trySend(location.toFix())
+        }
+
+        // Play Services treats minUpdateDistanceMeters as an AND gate with
+        // intervalMillis, starving stationary heartbeats; AdaptiveTrackingPolicy
+        // handles displacement vs. heartbeat filtering instead.
         val request = LocationRequest.Builder(priority, options.intervalMillis)
-            .setMinUpdateDistanceMeters(options.minDistanceMeters)
+            .setMinUpdateDistanceMeters(0f)
+            .setMaxUpdateAgeMillis(0L)
             .setWaitForAccurateLocation(false)
             .build()
 
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                result.locations.forEach { location ->
-                    trySend(location.toFix())
-                }
+                result.locations.forEach(::deliverIfFresh)
             }
         }
+        val currentLocationToken = CancellationTokenSource()
 
         try {
             client.requestLocationUpdates(request, callback, Looper.getMainLooper())
                 .addOnFailureListener { error ->
                     close(error)
                 }
+            val currentRequest = CurrentLocationRequest.Builder()
+                .setPriority(priority)
+                .setMaxUpdateAgeMillis(0L)
+                .build()
+            client.getCurrentLocation(currentRequest, currentLocationToken.token)
+                .addOnSuccessListener { location ->
+                    if (location != null) deliverIfFresh(location)
+                }
         } catch (e: SecurityException) {
+            currentLocationToken.cancel()
             close(e)
             return@callbackFlow
         }
 
         awaitClose {
+            currentLocationToken.cancel()
             client.removeLocationUpdates(callback)
         }
     }

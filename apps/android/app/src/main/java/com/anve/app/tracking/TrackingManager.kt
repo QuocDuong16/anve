@@ -124,10 +124,15 @@ class TrackingManager(
     private val _status = MutableStateFlow(TrackingStatus())
     override val status: StateFlow<TrackingStatus> = _status.asStateFlow()
 
+    private data class ProviderSubscription(
+        val options: LocationRequestOptions,
+        val revision: Long = 0L,
+    )
+
     private val policy = AdaptiveTrackingPolicy()
     private val journeyLease = JourneyPriorityLease(elapsedNow)
     private var journeyConfirmationJob: Job? = null
-    private val requestOptions = MutableStateFlow(policy.requestOptions())
+    private val providerSubscription = MutableStateFlow(ProviderSubscription(policy.requestOptions()))
 
     private var collectionJob: Job? = null
     private var tickerJob: Job? = null
@@ -187,9 +192,22 @@ class TrackingManager(
         applyJourneyPolicy()
     }
 
+    private fun updateRequestOptions(
+        options: LocationRequestOptions = policy.requestOptions(batterySaver()),
+        forceResubscribe: Boolean = false,
+    ) {
+        providerSubscription.update { current ->
+            if (forceResubscribe || current.options != options) {
+                ProviderSubscription(options, current.revision + 1)
+            } else {
+                current
+            }
+        }
+    }
+
     private fun applyJourneyPolicy() {
         policy.setJourney(journeyLease.active(sessionOwner) && status.value.activelyTracking)
-        requestOptions.value = policy.requestOptions(batterySaver())
+        updateRequestOptions()
         _status.update { it.copy(motion = policy.motion) }
     }
 
@@ -239,7 +257,10 @@ class TrackingManager(
                         conflictServerConsent = pendingConsent?.conflictServerEnabled,
                         trackingRequested = ownerMatches && local.trackingRequested,
                         lastUploadAtMillis = if (ownerMatches) local.lastSuccessfulUploadAtMillis else null,
-                        privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf("LOCATION_CAPTURE_GENERATION_EXPIRED", "LOCATION_HISTORY_DELETED", "LOCATION_CAPTURE_CHECKPOINT_MISSING"),
+                        privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf(
+                            "LOCATION_CAPTURE_GENERATION_EXPIRED",
+                            "LOCATION_HISTORY_DELETED",
+                        ),
                         recoveryRequired = if (wasInitial && ownerMatches && local.trackingRequested && !current.running) {
                             true
                         } else {
@@ -1250,6 +1271,69 @@ class TrackingManager(
         }
     }
 
+    /**
+     * Resets duplicate/stationary hysteresis and re-subscribes the active
+     * provider when the server's capture checkpoint advances so a fresh
+     * post-checkpoint fix is requested immediately rather than suppressed.
+     */
+    fun onCaptureGenerationAdvanced(ownerUserId: String) {
+        if (ownerUserId.isBlank()) return
+        scope.launch {
+            if (sessionOwner != ownerUserId) return@launch
+            policy.reset()
+            policy.setJourney(journeyLease.active(sessionOwner) && _status.value.activelyTracking)
+            _status.update { it.copy(motion = policy.motion) }
+            if (collectionJob?.isActive == true && _status.value.running &&
+                !consentMutations.isLocationAdmissionClosed(ownerUserId)
+            ) {
+                updateRequestOptions(forceResubscribe = true)
+            } else {
+                updateRequestOptions()
+            }
+        }
+    }
+
+    /**
+     * Refreshes the local capture checkpoint after a client-initiated privacy
+     * mutation (such as granting an audience member) so active tracking
+     * re-primes immediately with the new server generation.
+     */
+    suspend fun refreshCaptureCheckpoint(ownerUserId: String) {
+        if (ownerUserId.isBlank()) return
+        if (currentOwnerId() != ownerUserId || consentMutations.isLocationAdmissionClosed(ownerUserId)) return
+        if (!connectivity.isOnline()) return
+        val revision = captureGenerations.revision()
+        val fetched = try {
+            fetchCaptureGeneration(ownerUserId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            return
+        }
+        if (fetched <= 0L) return
+        val advanced = consentMutations.withLocalMutation {
+            val currentSession = sessions.current()
+            val localState = store.current()
+            val pending = sessions.pendingConsentOperations().any { it.ownerUserId == ownerUserId }
+            val currentOwner = currentSession?.userId ?: sessionOwner
+            if (currentSession == null ||
+                currentOwner != ownerUserId ||
+                pending ||
+                consentMutations.isLocationAdmissionClosed(ownerUserId) ||
+                localState.consentOwnerUserId != ownerUserId ||
+                !localState.localConsentConfirmed ||
+                localState.pendingConsentRevocation
+            ) {
+                false
+            } else {
+                captureGenerations.advanceIfCurrent(ownerUserId, fetched, revision)
+            }
+        }
+        if (advanced) {
+            onCaptureGenerationAdvanced(ownerUserId)
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun startAcquisition(ownerUserId: String, generation: Long) {
         if (collectionJob?.isActive == true) return
@@ -1258,15 +1342,15 @@ class TrackingManager(
             stopForPermissionLoss(TrackingProblem.PERMISSION_REVOKED)
             return
         }
-        requestOptions.value = policy.requestOptions(batterySaver())
+        updateRequestOptions()
         lastMetricsTickElapsed = elapsedNow()
         _status.update {
             it.copy(providerActive = true, motion = policy.motion, batterySaver = batterySaver())
         }
         collectionJob = scope.launch {
             try {
-                requestOptions
-                    .flatMapLatest { options -> provider.updates(options) }
+                providerSubscription
+                    .flatMapLatest { sub -> provider.updates(sub.options) }
                     .collect { fix -> handleFix(fix, ownerUserId, generation) }
             } catch (e: CancellationException) {
                 throw e
@@ -1312,15 +1396,26 @@ class TrackingManager(
         val owner = callbackOwner
         val device = clientDeviceId ?: return
         if (!queue.hasCaptureProvenance(owner, fix)) {
-            store.setLastSyncError("LOCATION_CAPTURE_CHECKPOINT_MISSING")
             // A generation roll (new audience grant, retention change, history
             // deletion) landed between two fixes: this fix predates the new
-            // checkpoint and the server would reject it. Network and OS
-            // permission are irrelevant here, so the problem must not borrow
-            // CHECKPOINT_UNAVAILABLE's "connect to the internet" copy; the
-            // next fix with valid provenance clears it.
-            _status.update { it.copy(lastError = TrackingProblem.CHECKPOINT_ROLLED, lastErrorAtMillis = now()) }
+            // checkpoint and the server would reject it. Reset policy state so
+            // the next post-checkpoint fix at the same stationary coordinates
+            // is not dropped as a duplicate, and keep this transient in status
+            // rather than persisting a sticky network/retry error code.
+            policy.reset()
+            policy.setJourney(journeyLease.active(sessionOwner) && _status.value.activelyTracking)
+            updateRequestOptions()
+            _status.update {
+                it.copy(
+                    motion = policy.motion,
+                    lastError = TrackingProblem.CHECKPOINT_ROLLED,
+                    lastErrorAtMillis = now(),
+                )
+            }
             return
+        }
+        if (store.current().lastSyncErrorCode == "LOCATION_CAPTURE_CHECKPOINT_MISSING") {
+            store.setLastSyncError(null)
         }
         if (_status.value.lastError == TrackingProblem.CHECKPOINT_ROLLED) {
             _status.update { it.copy(lastError = null, lastErrorAtMillis = null) }
@@ -1378,11 +1473,7 @@ class TrackingManager(
             }
             syncScheduler.ensureScheduled()
         }
-        if (decision.request != requestOptions.value) {
-            // flatMapLatest unregisters the old callback and registers the
-            // new request; no listener is leaked.
-            requestOptions.value = decision.request
-        }
+        updateRequestOptions(decision.request)
     }
 
     /** Internal for deterministic tests of permission/location loss. */
@@ -1406,8 +1497,7 @@ class TrackingManager(
             stopForDeviceLimitation(TrackingProblem.LOCATION_DISABLED)
             return
         }
-        val options = policy.requestOptions(batterySaver())
-        if (options != requestOptions.value) requestOptions.value = options
+        updateRequestOptions()
         _status.update {
             val degraded = snapshot.location == LocationPermissionState.GRANTED_APPROXIMATE ||
                 batterySaver()
@@ -1519,11 +1609,12 @@ class TrackingManager(
             scope.launch { metrics.recordStateSlice(motion, operational, slice) }
         }
         policy.setJourney(false)
+        policy.reset()
         collectionJob?.cancel()
         collectionJob = null
         tickerJob?.cancel()
         tickerJob = null
-        requestOptions.value = policy.requestOptions()
+        updateRequestOptions(policy.requestOptions())
         _status.update { it.copy(providerActive = false, motion = policy.motion) }
     }
 

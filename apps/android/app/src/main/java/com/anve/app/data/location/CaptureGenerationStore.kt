@@ -23,15 +23,19 @@ class CaptureGenerationStore(private val nowNanos: () -> Long = SystemClock::ela
     @Synchronized
     fun revision(): Long = revision
 
+    /** Records [generation] if it matches [expectedRevision] and advances the owner's checkpoint. */
     @Synchronized
-    fun advanceIfCurrent(owner: String, generation: Long, expectedRevision: Long) {
-        if (revision == expectedRevision) advance(owner, generation)
+    fun advanceIfCurrent(owner: String, generation: Long, expectedRevision: Long): Boolean {
+        if (revision != expectedRevision) return false
+        return advance(owner, generation)
     }
 
+    /** Records [generation] for [owner] when it advances past any stored checkpoint. */
     @Synchronized
-    fun advance(owner: String, generation: Long) {
-        if (generation > (checkpoints[owner]?.generation ?: 0)) {
-            checkpoints[owner] = Checkpoint(generation, nowNanos())
-        }
+    fun advance(owner: String, generation: Long): Boolean {
+        val current = checkpoints[owner]?.generation ?: 0L
+        if (generation <= current) return false
+        checkpoints[owner] = Checkpoint(generation, nowNanos())
+        return true
     }
 }

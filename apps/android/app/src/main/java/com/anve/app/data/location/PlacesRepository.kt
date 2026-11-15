@@ -23,7 +23,11 @@ interface PlacesDataSource {
     suspend fun stop(owner: String, place: String)
 }
 
-class PlacesRepository(private val api: AnveApi, private val sharing: SharingManagementDataSource) : PlacesDataSource {
+class PlacesRepository(
+    private val api: AnveApi,
+    private val sharing: SharingManagementDataSource,
+    private val onCaptureCheckpointChanged: suspend (String) -> Unit = {},
+) : PlacesDataSource {
     override suspend fun places(owner: String) = api.places(owner).orThrow().places
     override suspend fun events(owner: String) = api.placeEvents(owner).orThrow().events
     override suspend fun members(owner: String) = sharing.sharingManagement(owner)
@@ -39,7 +43,10 @@ class PlacesRepository(private val api: AnveApi, private val sharing: SharingMan
     override suspend fun share(owner: String, place: String, member: String, enabled: Boolean) {
         (if (enabled) api.sharePlace(owner, place, member) else api.unsharePlace(owner, place, member)).orThrow()
     }
-    override suspend fun configure(owner: String, place: String, recipients: List<String>) =
-        api.setPlaceMonitor(owner, place, PlaceMonitorRequestDto(recipients)).orThrow()
+    override suspend fun configure(owner: String, place: String, recipients: List<String>): PlaceMonitorDto {
+        val monitor = api.setPlaceMonitor(owner, place, PlaceMonitorRequestDto(recipients)).orThrow()
+        onCaptureCheckpointChanged(owner)
+        return monitor
+    }
     override suspend fun stop(owner: String, place: String) { api.stopPlaceMonitor(owner, place).orThrow() }
 }

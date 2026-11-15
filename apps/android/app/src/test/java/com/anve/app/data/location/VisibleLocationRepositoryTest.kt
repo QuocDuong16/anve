@@ -20,9 +20,11 @@ class VisibleLocationRepositoryTest {
 
     private lateinit var server: MockWebServer
     private lateinit var repository: VisibleLocationRepository
+    private val checkpointRefreshes = mutableListOf<String>()
 
     @Before
     fun setUp() {
+        checkpointRefreshes.clear()
         server = MockWebServer()
         server.start()
         val api = ApiFactory.api(
@@ -36,6 +38,7 @@ class VisibleLocationRepositoryTest {
             nowMillis = { 1_000L },
             elapsedMillis = { 50_000L },
             pollIntervalMillis = 1L,
+            onCaptureCheckpointChanged = { checkpointRefreshes += it },
         )
     }
 
@@ -174,6 +177,7 @@ class VisibleLocationRepositoryTest {
         assertTrue(management.members.single { it.userId == "viewer-1" }.canViewLocation.not())
         assertTrue(repository.setViewerGrant("owner-1", "viewer-1", true) is AudienceMutationOutcome.Confirmed)
         assertTrue(repository.setViewerGrant("owner-1", "viewer-1", false) is AudienceMutationOutcome.Confirmed)
+        assertEquals(listOf("owner-1"), checkpointRefreshes)
 
         listOf(
             "/api/v1/me",

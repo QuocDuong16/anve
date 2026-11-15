@@ -1021,4 +1021,88 @@ class TrackingManagerTest {
         assertTrue(manager.status.value.running)
         assertEquals(OperationalState.DEGRADED, manager.status.value.operational)
     }
+
+    @Test
+    fun `stationary fix at the same coordinates after checkpoint roll is accepted and never sets privacy discarded`() = runBlocking {
+        store.setLastSyncError("LOCATION_CAPTURE_CHECKPOINT_MISSING")
+        assertFalse(manager.status.value.privacyDiscardedPoints)
+
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        emitFix(eventId = "before-roll")
+        awaitUntil { dao.rows.containsKey("before-roll") }
+        assertEquals(null, store.current().lastSyncErrorCode)
+        assertEquals(MotionState.STATIONARY, manager.status.value.motion)
+
+        now += 5_000
+        elapsed += 5_000
+        checkpoints.advance("u1", 2)
+        provider.emit(
+            testFix(
+                eventId = "pre-checkpoint",
+                recordedAtMillis = now - 2_000,
+                elapsedRealtimeNanos = (elapsed - 3_000) * 1_000_000,
+            ),
+        )
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_ROLLED }
+        assertFalse(manager.status.value.privacyDiscardedPoints)
+        assertEquals(null, store.current().lastSyncErrorCode)
+
+        now += 2_000
+        elapsed += 2_000
+        emitFix(eventId = "after-roll")
+        awaitUntil { dao.rows.containsKey("after-roll") }
+        assertEquals(2L, dao.rows.getValue("after-roll").captureGeneration)
+        assertEquals(null, manager.status.value.lastError)
+        assertFalse(manager.status.value.privacyDiscardedPoints)
+    }
+
+    @Test
+    fun `refreshCaptureCheckpoint advances generation and re-subscribes stationary provider immediately`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        emitFix(eventId = "initial")
+        awaitUntil { dao.rows.containsKey("initial") }
+        awaitUntil { manager.status.value.motion == MotionState.STATIONARY }
+        val subscriptionsBefore = provider.optionsHistory.size
+
+        now += 5_000
+        elapsed += 5_000
+        fetchCheckpoint = { 2L }
+        manager.refreshCaptureCheckpoint("u1")
+
+        awaitUntil {
+            provider.optionsHistory.size > subscriptionsBefore &&
+                manager.status.value.motion == MotionState.IDLE
+        }
+        assertEquals(60_000L, provider.lastOptions?.intervalMillis)
+
+        now += 3_000
+        elapsed += 3_000
+        emitFix(eventId = "post-grant")
+        awaitUntil { dao.rows.containsKey("post-grant") }
+        assertEquals(2L, dao.rows.getValue("post-grant").captureGeneration)
+    }
+
+    @Test
+    fun `stopping and restarting within same-place window accepts stationary fix`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        emitFix(eventId = "session-1")
+        awaitUntil { dao.rows.containsKey("session-1") }
+
+        manager.stopTracking()
+        awaitUntil { !manager.status.value.running && provider.activeCollectors == 0 }
+        assertEquals(MotionState.IDLE, manager.status.value.motion)
+
+        now += 5_000
+        elapsed += 5_000
+        manager.startTracking()
+        awaitUntil { service.starts == 2 }
+        manager.onServiceStarted()
+        awaitUntil { manager.status.value.providerActive && provider.activeCollectors == 1 }
+
+        emitFix(eventId = "session-2")
+        awaitUntil { dao.rows.containsKey("session-2") }
+    }
 }

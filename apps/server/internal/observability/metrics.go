@@ -56,6 +56,7 @@ func New() *Registry {
 // RegisterRoute admits only application-owned templates. Request URLs must never
 // call this function; a missing or full registration falls back to unmatched.
 func (r *Registry) RegisterRoute(method, route string) {
+	route = canonicalRoute(route)
 	if canonicalMethod(method) == "OTHER" || !strings.HasPrefix(route, "/") || len(route) > 256 || strings.ContainsAny(route, "\"\n\r\t") {
 		return
 	}
@@ -73,6 +74,7 @@ func (r *Registry) Begin() { r.inFlight.Inc() }
 // cannot accidentally fall back to the request's raw path or method.
 func (r *Registry) End(method, route string, status int, duration time.Duration, panicked, aborted bool) Labels {
 	defer r.inFlight.Dec()
+	route = canonicalRoute(route)
 	labels := Labels{Method: canonicalMethod(method), Route: "unmatched"}
 	r.mu.RLock()
 	_, registered := r.routes[routeKey{labels.Method, route}]
@@ -92,6 +94,13 @@ func (r *Registry) End(method, route string, status int, duration time.Duration,
 		r.aborted.Inc()
 	}
 	return labels
+}
+
+func canonicalRoute(route string) string {
+	if len(route) > 1 {
+		return strings.TrimSuffix(route, "/")
+	}
+	return route
 }
 
 func canonicalMethod(method string) string {

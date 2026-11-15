@@ -119,13 +119,6 @@ class AppContainer(application: Application) {
 
     val avatarRepository = com.anve.app.data.avatar.AvatarRepository(profileApi, sessionStore)
 
-    val historyRepository = com.anve.app.data.location.HistoryRepository(authApi)
-
-    /** Location read API calls are screen-scoped; this repository stores no coordinates. */
-    val visibleLocationRepository: VisibleLocationRepository = VisibleLocationRepository(api = authApi)
-
-    val placesRepository = com.anve.app.data.location.PlacesRepository(authApi, visibleLocationRepository)
-
     val sosOutbox by lazy { EncryptedSosOutbox(application) }
     val sosSyncScheduler by lazy { WorkManagerSosSyncScheduler(application) }
     val sosSyncEngine by lazy { SosSyncEngine(sosOutbox, sessionStore, ApiSosGateway(authApi)) }
@@ -216,7 +209,28 @@ class AppContainer(application: Application) {
         consentMutations = consentMutationCoordinator,
         expectedClientDeviceId = { deviceIdentity.registration().clientDeviceId },
         captureCheckpointRevision = captureGenerations::revision,
-        onCaptureGeneration = captureGenerations::advanceIfCurrent,
+        onCaptureGeneration = { owner, generation, revision ->
+            if (captureGenerations.advanceIfCurrent(owner, generation, revision)) {
+                trackingManager.onCaptureGenerationAdvanced(owner)
+            }
+        },
+    )
+
+    val historyRepository = com.anve.app.data.location.HistoryRepository(
+        api = authApi,
+        onCaptureCheckpointChanged = trackingManager::refreshCaptureCheckpoint,
+    )
+
+    /** Location read API calls are screen-scoped; this repository stores no coordinates. */
+    val visibleLocationRepository: VisibleLocationRepository = VisibleLocationRepository(
+        api = authApi,
+        onCaptureCheckpointChanged = trackingManager::refreshCaptureCheckpoint,
+    )
+
+    val placesRepository = com.anve.app.data.location.PlacesRepository(
+        api = authApi,
+        sharing = visibleLocationRepository,
+        onCaptureCheckpointChanged = trackingManager::refreshCaptureCheckpoint,
     )
 
     companion object {

@@ -150,8 +150,16 @@ func TestRouterWalkRegistersNestedPrivateTemplate(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 	require.Equal(t, 404, response.Code, response.Body.String())
+
+	meRequest := httptest.NewRequest("GET", "/api/v1/me", nil)
+	meRequest.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
+	meResponse := httptest.NewRecorder()
+	router.ServeHTTP(meResponse, meRequest)
+	require.Equal(t, 200, meResponse.Code, meResponse.Body.String())
+
 	text := scrape(t, metrics)
 	assert.Contains(t, text, `route="/api/v1/devices/{deviceId}",status_class="4xx"`)
+	assert.Contains(t, text, `route="/api/v1/me",status_class="2xx"`)
 	assert.NotContains(t, logs.String()+text, deviceID)
 	assert.NotContains(t, logs.String()+text, tokens.AccessToken)
 }

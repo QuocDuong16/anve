@@ -70,6 +70,7 @@ class VisibleLocationRepository(
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val elapsedMillis: () -> Long = { System.nanoTime() / 1_000_000 },
     private val pollIntervalMillis: Long = DEFAULT_POLL_INTERVAL_MILLIS,
+    private val onCaptureCheckpointChanged: suspend (String) -> Unit = {},
 ) : SharingManagementDataSource {
 
     fun observeLatest(ownerId: String): Flow<VisibleLocationSnapshot> = flow {
@@ -205,7 +206,7 @@ class VisibleLocationRepository(
         } catch (_: Exception) {
             null
         }
-        return when (attempt) {
+        val outcome = when (attempt) {
             MutationAttempt.Confirmed -> AudienceMutationOutcome.Confirmed(snapshot)
             is MutationAttempt.Rejected -> AudienceMutationOutcome.Rejected(snapshot, attempt.message)
             MutationAttempt.Unknown -> {
@@ -218,6 +219,10 @@ class VisibleLocationRepository(
                 }
             }
         }
+        if (enabled && outcome is AudienceMutationOutcome.Confirmed) {
+            onCaptureCheckpointChanged(ownerId)
+        }
+        return outcome
     }
 
     private fun backoffMillis(failures: Int): Long =

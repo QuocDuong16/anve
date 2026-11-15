@@ -316,7 +316,7 @@
          TalkBack focus) carries the server-vs-device distinction. -->
     <string name="tracking_consent_server_value">Đồng ý chia sẻ: %1$s</string>
     <string name="tracking_consent_server_note">Đồng ý trên máy chủ khác với việc điện thoại đang ghi vị trí.</string>
-    <string name="tracking_privacy_discarded_notice">Một số điểm không được đồng bộ vì không xác minh được quyền riêng tư. Hãy kiểm tra kết nối và thử lại.</string>
+    <string name="tracking_privacy_discarded_notice">Một số điểm vị trí ghi trước khi cài đặt quyền riêng tư thay đổi đã được bỏ qua để bảo vệ quyền riêng tư.</string>
     <!-- Copy TrackingViewModel reports as resource IDs, resolved at the screen. -->
     <string name="tracking_retry_sync_queued">Đã yêu cầu đồng bộ lại. AnVề sẽ gửi các điểm đang chờ khi có mạng.</string>
     <string name="tracking_consent_enable_failed">Không bật được chia sẻ vị trí. Vui lòng thử lại.</string>

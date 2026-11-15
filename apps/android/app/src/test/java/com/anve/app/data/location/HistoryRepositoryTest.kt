@@ -14,8 +14,12 @@ class HistoryRepositoryTest {
         val server = MockWebServer()
         server.start()
         try {
+            val notifiedOwners = mutableListOf<String>()
             val api = ApiFactory.api(ApiFactory.retrofit(server.url("/").toString(), ApiFactory.okHttp(ApiFactory.passThrough())))
-            val repository = HistoryRepository(api)
+            val repository = HistoryRepository(
+                api = api,
+                onCaptureCheckpointChanged = { notifiedOwners += it },
+            )
             server.enqueue(MockResponse().setBody("""{"points":[],"nextCursor":"cursor"}"""))
             assertEquals("cursor", repository.page("viewer", "member", "2026-10-28T00:00:00Z", "2026-10-29T00:00:00Z", null).nextCursor)
             val history = server.takeRequest()
@@ -34,6 +38,7 @@ class HistoryRepositoryTest {
             val deletion = server.takeRequest()
             assertEquals("DELETE", deletion.method)
             assertEquals("viewer", deletion.getHeader("X-Anve-Expected-Owner"))
+            assertEquals(listOf("viewer", "viewer"), notifiedOwners)
         } finally {
             server.shutdown()
         }

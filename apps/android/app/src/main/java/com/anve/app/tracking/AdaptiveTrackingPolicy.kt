@@ -19,6 +19,7 @@ class AdaptiveTrackingPolicy(
     private val clockMillis: () -> Long = { System.nanoTime() / 1_000_000 },
 ) {
 
+    @Volatile
     var motion: MotionState = MotionState.IDLE
         private set
 
@@ -27,7 +28,17 @@ class AdaptiveTrackingPolicy(
     private var lastAcceptedAtMillis: Long = 0
     private var lastMovementAtMillis: Long = 0
 
+    /** Clears accepted-fix history and stationary state for a new session or checkpoint. */
+    @Synchronized
+    fun reset() {
+        motion = if (journeyActive) MotionState.JOURNEY else MotionState.IDLE
+        lastAccepted = null
+        lastAcceptedAtMillis = 0L
+        lastMovementAtMillis = 0L
+    }
+
     /** M7 hook; M3 never enters JOURNEY automatically. */
+    @Synchronized
     fun setJourney(active: Boolean) {
         journeyActive = active
         if (active) {
@@ -37,6 +48,7 @@ class AdaptiveTrackingPolicy(
         }
     }
 
+    @Synchronized
     fun onFix(
         fix: LocationFix,
         nowElapsedMillis: Long = clockMillis(),
@@ -77,6 +89,7 @@ class AdaptiveTrackingPolicy(
     }
 
     /** Current request parameters; the coordinator restarts the provider when they change. */
+    @Synchronized
     fun requestOptions(batterySaver: Boolean = false): LocationRequestOptions =
         baseOptions(motion, batterySaver)
 

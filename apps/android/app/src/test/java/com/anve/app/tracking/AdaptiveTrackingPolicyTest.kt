@@ -177,4 +177,23 @@ class AdaptiveTrackingPolicyTest {
         val distance = distanceMeters(a, b)
         assertEquals(111_195.0, distance, 500.0)
     }
+
+    @Test
+    fun `reset clears duplicate and stationary hysteresis for same-place fixes`() {
+        val policy = AdaptiveTrackingPolicy()
+        val first = policy.onFix(fix(baseElapsed, speed = 0.0), baseElapsed)
+        assertTrue(first.accepted)
+        assertEquals(MotionState.STATIONARY, first.motion)
+
+        val suppressed = policy.onFix(fix(baseElapsed + 5_000), baseElapsed + 5_000)
+        assertFalse(suppressed.accepted)
+        assertEquals(FixRejection.DUPLICATE, suppressed.rejection)
+
+        policy.reset()
+        assertEquals(MotionState.IDLE, policy.motion)
+
+        val acceptedAfterReset = policy.onFix(fix(baseElapsed + 10_000), baseElapsed + 10_000)
+        assertTrue(acceptedAfterReset.accepted)
+        assertEquals(MotionState.STATIONARY, acceptedAfterReset.motion)
+    }
 }
