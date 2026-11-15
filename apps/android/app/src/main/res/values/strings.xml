@@ -224,7 +224,7 @@
     <string name="tracking_consent_conflict">Có thay đổi mới trên thiết bị khác</string>
     <string name="tracking_problem_consent_conflict">Máy chủ có quyết định mới hơn. Vị trí vẫn dừng trên thiết bị này; chọn lại trạng thái để xác nhận.</string>
     <string name="tracking_problem_consent_storage">Đã dừng theo dõi trên thiết bị này, nhưng không lưu được yêu cầu tắt chia sẻ. Máy chủ chưa được xác nhận; hãy kiểm tra ứng dụng và thử lại.</string>
-    <string name="tracking_problem_consent_queue">Đã dừng theo dõi, nhưng chưa xóa được hàng đợi vị trí. AnVề sẽ không tải các điểm này lên.</string>
+    <string name="tracking_problem_consent_queue">Đã dừng theo dõi, nhưng chưa xóa được các điểm vị trí đã ghi chờ gửi. AnVề sẽ không tải các điểm này lên.</string>
     <string name="tracking_problem_service_stop">Đã chặn nhận điểm vị trí mới, nhưng không xác nhận được việc dừng dịch vụ định vị. Hãy kiểm tra ứng dụng.</string>
     <string name="tracking_state_title">Theo dõi trên thiết bị</string>
     <string name="tracking_state_active">Đang cập nhật vị trí</string>
@@ -291,7 +291,7 @@
     <string name="tracking_motion_journey">Hành trình</string>
     <string name="tracking_operational_active">Đang hoạt động</string>
     <string name="tracking_operational_degraded">Đang hoạt động (hạn chế)</string>
-    <string name="tracking_operational_offline">Ngoại tuyến — vẫn ghi vào hàng đợi</string>
+    <string name="tracking_operational_offline">Ngoại tuyến — vẫn ghi và sẽ gửi khi có mạng</string>
     <string name="tracking_operational_paused">Đã dừng</string>
     <string name="tracking_accuracy_value">±%1$d m</string>
     <string name="tracking_problem_permission">Quyền vị trí chưa được cấp hoặc đã bị thu hồi. Cấp lại quyền để tiếp tục.</string>
@@ -311,7 +311,9 @@
     <string name="tracking_disclosure_accept">Đồng ý và tiếp tục</string>
     <string name="tracking_disclosure_later">Để sau</string>
     <string name="tracking_message_dismiss">Đã hiểu</string>
-    <string name="tracking_consent_server_value">Đồng ý chia sẻ (máy chủ): %1$s</string>
+    <!-- The label stays jargon-free; the note below (merged into the same
+         TalkBack focus) carries the server-vs-device distinction. -->
+    <string name="tracking_consent_server_value">Đồng ý chia sẻ: %1$s</string>
     <string name="tracking_consent_server_note">Đồng ý trên máy chủ khác với việc điện thoại đang ghi vị trí.</string>
     <string name="tracking_privacy_discarded_notice">Một số điểm không được đồng bộ vì không xác minh được quyền riêng tư. Hãy kiểm tra kết nối và thử lại.</string>
     <!-- Copy TrackingViewModel reports as resource IDs, resolved at the screen. -->

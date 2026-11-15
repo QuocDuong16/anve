@@ -482,7 +482,7 @@ class TrackingManager(
                         off.queuePurged ->
                         "Máy chủ đã xác nhận trạng thái chia sẻ, nhưng trạng thái cục bộ chưa được lưu đầy đủ. Theo dõi vẫn đang dừng trên thiết bị này."
                         else ->
-                            "Máy chủ đã xác nhận trạng thái chia sẻ, nhưng chưa xóa được hàng đợi vị trí trên thiết bị. AnVề sẽ không tải các điểm này lên."
+                            "Máy chủ đã xác nhận trạng thái chia sẻ, nhưng chưa xóa được các điểm vị trí đã ghi chờ gửi trên thiết bị. AnVề sẽ không tải các điểm này lên."
                     },
                 )
             } else {

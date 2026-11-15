@@ -589,7 +589,7 @@ class TrackingManagerTest {
         val result = manager.setConsent(false)
 
         assertTrue(result.serverConfirmed)
-        assertTrue(result.message.orEmpty().contains("hàng đợi vị trí"))
+        assertTrue(result.message.orEmpty().contains("điểm vị trí đã ghi chờ gửi"))
         assertEquals(1, dao.rows.size)
         assertEquals(0, provider.activeCollectors)
         assertTrue(service.stops >= 1)

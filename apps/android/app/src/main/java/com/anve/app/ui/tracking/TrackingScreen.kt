@@ -549,8 +549,9 @@ private fun TrackingControlCard(
             Text(stateLabel, style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider()
             // The server-consent switch is the product's most consequential
-            // decision, so TalkBack must read 'Đồng ý chia sẻ (máy chủ): …'
-            // + state from ONE focus — row-toggleable with the switch itself
+            // decision, so TalkBack must read 'Đồng ý chia sẻ: …' + the
+            // server-vs-device note + state from ONE focus — row-toggleable
+            // with the switch itself
             // indicative, not an anonymous "bật" (conventions toggleable-row).
             // heightIn and toggleable sit before any padding so the touch
             // target covers the whole row (≥48dp).
