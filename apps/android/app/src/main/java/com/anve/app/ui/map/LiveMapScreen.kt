@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -63,6 +64,8 @@ import com.anve.app.data.api.VisibleLocationDto
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.data.location.VisibleLocationSnapshot
 import com.anve.app.data.location.displayLocationConfidence
+import com.anve.app.tracking.AndroidLocationPermissions
+import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -132,6 +135,9 @@ private fun LiveMapContent(
 ) {
     val snapshot = state.snapshot.takeIf { state.ownerId == ownerId }
     val locations = snapshot?.locations.orEmpty()
+    val context = LocalContext.current
+    val permissions = remember(context) { AndroidLocationPermissions(context) }
+    var myLocationLayerEnabled by remember { mutableStateOf(false) }
     var selectedOwner by remember(ownerId) { mutableStateOf<String?>(null) }
     var cameraInitialized by remember(ownerId) { mutableStateOf(false) }
     var mapLoaded by remember(ownerId) { mutableStateOf(false) }
@@ -145,6 +151,14 @@ private fun LiveMapContent(
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            // The blue dot is the device's own position, read locally by the
+            // Maps SDK: it follows the OS location permission, not consent —
+            // consent stays the gate for anything recorded or uploaded. Read
+            // fresh on every START because permissions can be revoked while
+            // the app runs (AndroidLocationPermissions contract), and only a
+            // precise grant enables the layer (coarse alone throws).
+            myLocationLayerEnabled =
+                permissions.permissionState() == LocationPermissionState.GRANTED_PRECISE
             nowElapsedMillis = monotonicNowMillis()
             while (true) {
                 delay(15_000)
@@ -163,10 +177,17 @@ private fun LiveMapContent(
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraState,
-                properties = MapProperties(isBuildingEnabled = false),
+                properties = MapProperties(
+                    isBuildingEnabled = false,
+                    isMyLocationEnabled = myLocationLayerEnabled,
+                ),
                 uiSettings = MapUiSettings(
                     compassEnabled = true,
                     zoomControlsEnabled = false,
+                    // The Maps SDK locate button sits bottom-right, where the
+                    // status and member cards live; the dot itself answers
+                    // "where am I" without a second recenter control fighting
+                    // them for space.
                     myLocationButtonEnabled = false,
                     mapToolbarEnabled = false,
                 ),

@@ -161,6 +161,10 @@ biết có cần liên hệ hay hỗ trợ không.*
 **Yêu cầu chức năng.**
 
 - Google Maps Compose hiển thị marker của các thành viên được cấp quyền.
+- Bản đồ hiển thị vị trí của chính người xem bằng chấm xanh my-location của
+  Maps SDK khi quyền hệ thống vị trí chính xác đã được cấp; đây là hiển thị
+  cục bộ trên thiết bị — không ghi điểm, không tải lên và không phụ thuộc
+  consent chia sẻ (consent chỉ gate việc ghi và tải lên).
 - Chọn thành viên từ marker hoặc danh sách; xem thời điểm, accuracy và
   freshness; có nút focus tường minh để không giành camera khi người dùng pan.
 - Snapshot cập nhật khi màn hình ở foreground qua HTTPS polling 10 giây với
@@ -191,7 +195,9 @@ PostGIS ở tầng database.
 
 **Privacy/security.** Bản đồ chỉ render thành viên có quyền; việc tắt chia sẻ
 phải làm marker biến mất hoặc chuyển trạng thái rõ ràng ở phía người xem, được
-backend đảm bảo (không gửi dữ liệu cho người không còn quyền).
+backend đảm bảo (không gửi dữ liệu cho người không còn quyền). Chấm xanh vị trí
+của chính người xem là dữ liệu cục bộ của thiết bị theo quyền hệ thống, tách bạch
+với consent chia sẻ.
 
 **Edge cases.** Mất kết nối giữa chừng (fallback last known); GPS jitter làm
 marker nhảy; nhiều thiết bị cùng tài khoản; dữ liệu quá cũ (chuyển sang trạng
