@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Typeface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +28,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -102,6 +106,7 @@ fun LiveMapScreen(
     container: AppContainer,
     onOpenLocation: () -> Unit = {},
     onOpenCircle: () -> Unit = {},
+    onOpenJourney: () -> Unit = {},
     openSharingRequest: Boolean = false,
     onSharingRequestConsumed: () -> Unit = {},
 ) {
@@ -142,6 +147,7 @@ fun LiveMapScreen(
         onRetrySharing = { viewModel.refreshSharing(ownerId) },
         onOpenLocation = onOpenLocation,
         onOpenCircle = onOpenCircle,
+        onOpenJourney = onOpenJourney,
     )
 }
 
@@ -156,6 +162,7 @@ private fun LiveMapContent(
     onRetrySharing: () -> Unit,
     onOpenLocation: () -> Unit = {},
     onOpenCircle: () -> Unit = {},
+    onOpenJourney: () -> Unit = {},
 ) {
     val snapshot = state.snapshot.takeIf { state.ownerId == ownerId }
     val locations = snapshot?.locations.orEmpty()
@@ -217,17 +224,18 @@ private fun LiveMapContent(
                 ),
                 onMapLoaded = { mapLoaded = true },
             ) {
-                val staleMarkerIcon = rememberStaleMarkerIcon()
                 locations.forEach { location ->
                     val point = location.latLngOrNull() ?: return@forEach
                     key(location.ownerId) {
                         val markerState = remember(point) { MarkerState(position = point) }
                         val confidence = location.displayConfidence(snapshot, nowElapsedMillis)
+                        val initial = location.displayName.trim().take(1).uppercase().ifBlank { "?" }
+                        val pinIcon = rememberMemberMarkerIcon(initial = initial, confidence = confidence)
                         Marker(
                             state = markerState,
                             title = location.displayName,
                             snippet = confidence.toConfidenceLabel(),
-                            icon = confidence.confidenceMarker(staleMarkerIcon),
+                            icon = pinIcon,
                             onClick = {
                                 selectedOwner = location.ownerId
                                 true
@@ -307,8 +315,12 @@ private fun LiveMapContent(
                         )
                     }
                 }
-                OutlinedButton(onClick = onOpenSharing) {
-                    Icon(Icons.Default.Group, contentDescription = null)
+                FilledTonalButton(
+                    onClick = onOpenSharing,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.map_audience_action))
                 }
@@ -353,7 +365,10 @@ private fun LiveMapContent(
             }
             else -> {
                 Column(
-                    modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 12.dp, end = 12.dp, bottom = HOME_FAB_CLEARANCE),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -376,6 +391,19 @@ private fun LiveMapContent(
                                 }
                             },
                         )
+                    }
+                    Button(
+                        onClick = onOpenJourney,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                        ),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.map_start_journey))
                     }
                 }
             }
@@ -456,7 +484,7 @@ private fun MemberLocationCard(
         else -> colors.surfaceVariant to colors.onSurfaceVariant
     }
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, colors.outlineVariant),
         colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
         modifier = modifier.fillMaxWidth(),
@@ -703,63 +731,63 @@ private fun VisibleLocationDto.displayConfidence(
 
 private fun monotonicNowMillis(): Long = System.nanoTime() / 1_000_000
 
-// STALE renders as a neutral gray pin: the age of a location says nothing
-// about whether someone is safe or in danger, so it must not borrow an alarm
-// hue like red. DELAYED keeps yellow, FRESH green and OFFLINE azure.
-private fun String.confidenceMarker(staleIcon: BitmapDescriptor): BitmapDescriptor = when (this) {
-    "FRESH" -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
-    "DELAYED" -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
-    "STALE" -> staleIcon
-    "OFFLINE" -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-    // Unknown confidence has no visual story of its own; it falls back to the
-    // neutral gray pin instead of introducing an off-palette hue.
-    else -> staleIcon
-}
-
+// Each family member pin is drawn as a warm circular badge with their initial
+// and a semantic ring color: deep teal for FRESH, warm amber for DELAYED,
+// neutral gray for STALE/unknown (age is never danger), and slate-teal for
+// OFFLINE.
 @Composable
-private fun rememberStaleMarkerIcon(): BitmapDescriptor {
+private fun rememberMemberMarkerIcon(initial: String, confidence: String): BitmapDescriptor {
     val density = LocalDensity.current.density
-    return remember(density) { staleMarkerIcon(density) }
+    return remember(initial, confidence, density) { memberMarkerIcon(initial, confidence, density) }
 }
 
-// The Maps SDK hue ramp cannot express a neutral gray — every defaultMarker
-// hue stays fully saturated — so the stale pin is drawn as its own bitmap,
-// shaped like the default marker and anchored at its bottom tip.
-private fun staleMarkerIcon(density: Float): BitmapDescriptor {
-    val widthPx = (STALE_MARKER_WIDTH_DP * density).roundToInt().coerceAtLeast(1)
-    val heightPx = (STALE_MARKER_HEIGHT_DP * density).roundToInt().coerceAtLeast(1)
+private fun memberMarkerIcon(initial: String, confidence: String, density: Float): BitmapDescriptor {
+    val widthPx = (MEMBER_MARKER_WIDTH_DP * density).roundToInt().coerceAtLeast(1)
+    val heightPx = (MEMBER_MARKER_HEIGHT_DP * density).roundToInt().coerceAtLeast(1)
     val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
     bitmap.density = Bitmap.DENSITY_NONE
     val canvas = Canvas(bitmap)
     val cx = widthPx / 2f
-    val radius = widthPx / 2f - 1f
-    val circleCenterY = radius + 1f
-    val tipY = heightPx - 1f
+    val radius = widthPx / 2f - 2f * density
+    val circleCenterY = radius + 2f * density
+    val tipY = heightPx - 1f * density
     val drop = tipY - circleCenterY
-    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = STALE_MARKER_GRAY }
+    val badgeColor = when (confidence) {
+        "FRESH" -> MEMBER_MARKER_TEAL
+        "DELAYED" -> MEMBER_MARKER_AMBER
+        "OFFLINE" -> MEMBER_MARKER_SLATE
+        else -> MEMBER_MARKER_GRAY
+    }
+    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = MEMBER_MARKER_SAND }
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = badgeColor }
     val tail = Path().apply {
-        moveTo(cx - radius, circleCenterY)
-        cubicTo(cx - radius, circleCenterY + drop * 0.4f, cx, tipY, cx, tipY)
-        cubicTo(cx, tipY, cx + radius, circleCenterY + drop * 0.4f, cx + radius, circleCenterY)
+        moveTo(cx - radius * 0.72f, circleCenterY + radius * 0.45f)
+        lineTo(cx, tipY)
+        lineTo(cx + radius * 0.72f, circleCenterY + radius * 0.45f)
         close()
     }
-    canvas.drawCircle(cx, circleCenterY, radius, fill)
-    canvas.drawPath(tail, fill)
-    canvas.drawCircle(
-        cx,
-        circleCenterY,
-        radius * STALE_MARKER_HOLE_RATIO,
-        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = STALE_MARKER_HOLE },
-    )
+    canvas.drawPath(tail, borderPaint)
+    canvas.drawCircle(cx, circleCenterY, radius + 2f * density, borderPaint)
+    canvas.drawCircle(cx, circleCenterY, radius, fillPaint)
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = MEMBER_MARKER_TEXT
+        textAlign = Paint.Align.CENTER
+        textSize = 15f * density
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    val textY = circleCenterY - (textPaint.descent() + textPaint.ascent()) / 2f
+    canvas.drawText(initial, cx, textY, textPaint)
     return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
 
-// Default marker proportions (~22x37dp).
-private const val STALE_MARKER_WIDTH_DP = 22f
-private const val STALE_MARKER_HEIGHT_DP = 37f
-private const val STALE_MARKER_HOLE_RATIO = 0.36f
-private val STALE_MARKER_GRAY = 0xFF757575.toInt()
-private val STALE_MARKER_HOLE = 0xFFFFFFFF.toInt()
+private const val MEMBER_MARKER_WIDTH_DP = 36f
+private const val MEMBER_MARKER_HEIGHT_DP = 44f
+private val MEMBER_MARKER_TEAL = 0xFF00505A.toInt()
+private val MEMBER_MARKER_AMBER = 0xFFD98E32.toInt()
+private val MEMBER_MARKER_SLATE = 0xFF4A7C88.toInt()
+private val MEMBER_MARKER_GRAY = 0xFF757575.toInt()
+private val MEMBER_MARKER_SAND = 0xFFFBF7F0.toInt()
+private val MEMBER_MARKER_TEXT = 0xFFFBF7F0.toInt()
 
 @Composable
 private fun String.toConfidenceLabel(): String = when (this) {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -27,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -35,7 +38,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -80,9 +85,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -112,6 +120,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -314,15 +323,19 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     state.noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                     state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                     item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = {
-                                    editingPlace = null
-                                    editConfirmation = state.confirmation
-                                    editing = true
-                                },
-                                enabled = !state.pending,
-                            ) { Text(stringResource(R.string.places_add)) }
+                        Button(
+                            onClick = {
+                                editingPlace = null
+                                editConfirmation = state.confirmation
+                                editing = true
+                            },
+                            enabled = !state.pending,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.places_add))
                         }
                     }
                     if (state.loading || state.pending) item {
@@ -369,7 +382,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 }
                             },
                             enabled = !state.pending,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(1.dp, colors.outlineVariant),
                             colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
                             modifier = Modifier.fillMaxWidth(),
@@ -402,7 +415,12 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 ) {
                                     Text(place.name, style = MaterialTheme.typography.titleSmall)
                                     Text(
-                                        stringResource(R.string.places_radius_of, label, place.radiusMeters.toInt()),
+                                        stringResource(
+                                            R.string.places_radius_of_walk,
+                                            label,
+                                            place.radiusMeters.toInt(),
+                                            maxOf(1, (place.radiusMeters / 80.0).roundToInt()),
+                                        ),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.onSurfaceVariant,
                                     )
@@ -758,6 +776,9 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
     val lat = latitude.toDoubleOrNull()
     val lon = longitude.toDoubleOrNull()
     val valid = validPlaceInput(name, lat, lon, radius)
+    var searchQuery by rememberSaveable(place?.id) { mutableStateOf("") }
+    var searchOutcome by remember(place?.id) { mutableStateOf<PlaceSearchOutcome?>(null) }
+    var searching by remember(place?.id) { mutableStateOf(false) }
     val point = if (lat != null && lon != null && lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0) LatLng(lat, lon) else null
     // Composed after the outer BackHandler, so this handler wins while the
     // editor is on screen; it only asks when the draft actually differs from
@@ -786,6 +807,21 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
     // keeps believing it may collect (AndroidLocationPermissions contract).
     val permissions = remember(context) { AndroidLocationPermissions(context) }
     val provider = remember(context) { FusedLocationProvider(context) }
+    val searcher = remember(context) { AndroidPlaceSearcher(context) }
+    // Debounced so typing never fires one lookup per keystroke; a newer query
+    // cancels the older one, so a slow answer cannot overwrite a fresher one.
+    LaunchedEffect(searchQuery) {
+        val normalized = normalizePlaceQuery(searchQuery)
+        if (normalized == null) {
+            searchOutcome = null
+            searching = false
+            return@LaunchedEffect
+        }
+        searching = true
+        delay(SEARCH_DEBOUNCE_MS)
+        searchOutcome = searcher.search(normalized)
+        searching = false
+    }
     var locationNote by remember(place?.id) { mutableStateOf<Int?>(null) }
     var locationError by remember(place?.id) { mutableStateOf<Int?>(null) }
     var locating by remember(place?.id) { mutableStateOf(false) }
@@ -870,6 +906,25 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                 stringResource(if (place == null) R.string.places_add else R.string.places_edit),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
+            )
+        }
+        item {
+            PlaceSearchCard(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                outcome = searchOutcome,
+                searching = searching,
+                enabled = !pending,
+                onPick = { suggestion ->
+                    latitude = suggestion.latitude.toString()
+                    longitude = suggestion.longitude.toString()
+                    if (name.isBlank()) name = suggestion.title.take(80)
+                    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+                        camera.position = CameraPosition.fromLatLngZoom(LatLng(suggestion.latitude, suggestion.longitude), 16f)
+                    }
+                    searchQuery = ""
+                    searchOutcome = null
+                },
             )
         }
         item {
@@ -996,7 +1051,9 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        stringResource(R.string.places_radius, radius.toInt()),
+                        // About 80 m per minute at an ordinary walking pace, so the
+                        // radius reads as something a family member can picture.
+                        stringResource(R.string.places_radius_walk, radius.toInt(), maxOf(1, (radius / 80.0).roundToInt())),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Slider(
@@ -1114,5 +1171,81 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             }
         },
         dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
+
+private const val SEARCH_DEBOUNCE_MS = 400L
+
+@Composable
+private fun PlaceSearchCard(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    outcome: PlaceSearchOutcome?,
+    searching: Boolean,
+    enabled: Boolean,
+    onPick: (PlaceSuggestion) -> Unit,
+) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                enabled = enabled,
+                singleLine = true,
+                label = { Text(stringResource(R.string.places_search_label)) },
+                placeholder = { Text(stringResource(R.string.places_search_hint)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.places_search_clear))
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (searching) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text(
+                        stringResource(R.string.places_search_loading),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            when (outcome) {
+                is PlaceSearchOutcome.Found -> if (!searching) {
+                    outcome.suggestions.forEach { suggestion ->
+                        ListItem(
+                            headlineContent = { Text(suggestion.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            supportingContent = {
+                                Text(suggestion.subtitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            },
+                            leadingContent = { Icon(Icons.Default.Place, contentDescription = null) },
+                            modifier = Modifier.heightIn(min = 56.dp).clickable(enabled = enabled) { onPick(suggestion) },
+                        )
+                    }
+                }
+                PlaceSearchOutcome.NoResult -> if (!searching) SearchNote(R.string.places_search_none)
+                PlaceSearchOutcome.Failed -> if (!searching) SearchNote(R.string.places_search_failed)
+                PlaceSearchOutcome.Unavailable -> if (!searching) SearchNote(R.string.places_search_unavailable)
+                null -> Unit
+            }
+            Text(
+                stringResource(R.string.places_search_privacy),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchNote(res: Int) {
+    Text(
+        stringResource(res),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }

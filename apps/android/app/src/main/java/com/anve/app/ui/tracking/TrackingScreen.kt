@@ -488,14 +488,48 @@ fun TrackingContent(
                     onOpenLocationSettings = onOpenLocationSettings,
                 )
             }
-            item { StatusCard(status = status, onRetrySync = onRetrySync) }
-            item { DiagnosticsCard(status = status) }
+            // Technical status stays one tap away instead of competing with the
+            // one decision a family member came here to make.
             item {
-                OutlinedButton(
-                    onClick = onOpenDiagnostics,
-                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
-                ) {
-                    Text(stringResource(R.string.diag_title))
+                var showDetails by rememberSaveable { mutableStateOf(false) }
+                val detailsState = stringResource(
+                    if (showDetails) R.string.action_state_expanded else R.string.action_state_collapsed,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = showDetails,
+                                role = Role.Button,
+                                onValueChange = { showDetails = it },
+                            )
+                            .semantics { stateDescription = detailsState },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.tracking_details_toggle),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Icon(
+                            imageVector = if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                        )
+                    }
+                    AnimatedVisibility(visible = showDetails) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            StatusCard(status = status, onRetrySync = onRetrySync)
+                            DiagnosticsCard(status = status)
+                            OutlinedButton(
+                                onClick = onOpenDiagnostics,
+                                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                            ) {
+                                Text(stringResource(R.string.diag_title))
+                            }
+                        }
+                    }
                 }
             }
         }

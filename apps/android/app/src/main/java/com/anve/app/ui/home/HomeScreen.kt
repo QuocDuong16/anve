@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
@@ -46,7 +47,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -57,6 +58,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -121,13 +123,13 @@ import java.io.Serializable
 private enum class HomeTab(val labelRes: Int) {
     MAP(R.string.tab_map),
     CIRCLE(R.string.tab_circle),
-    LOCATION(R.string.tab_location),
     PLACES(R.string.tab_places),
     HISTORY(R.string.tab_history),
 }
 
 private enum class HomeSecondaryPage(val titleRes: Int) {
     ACCOUNT(R.string.tab_account),
+    SHARING(R.string.sharing_title),
     SOS(R.string.tab_sos),
 }
 
@@ -277,7 +279,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             sosReturnPage = null
             selectedInvitation = if (destination.kind == "CIRCLE_INVITE") destination.eventId else null
             tab = when {
-                showJourneys -> HomeTab.LOCATION
+                showJourneys -> HomeTab.MAP
                 destination.kind == "SOS" || destination.kind == "CIRCLE_INVITE" -> HomeTab.CIRCLE
                 else -> HomeTab.PLACES
             }
@@ -319,7 +321,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             container,
             onBack = { showJourneys = false },
             onPlaces = { showJourneys = false; secondaryPage = null; tab = HomeTab.PLACES },
-            onLocation = { showJourneys = false; secondaryPage = null; tab = HomeTab.LOCATION },
+            onLocation = { showJourneys = false; secondaryPage = HomeSecondaryPage.SHARING },
             // The overlay Scaffold carries its own SOS FAB; opening SOS leaves
             // the overlay (the journey keeps running server-side), and the
             // return lands on the shell tabs.
@@ -376,7 +378,6 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 imageVector = when (entry) {
                                     HomeTab.MAP -> Icons.Default.Map
                                     HomeTab.CIRCLE -> Icons.Default.Groups
-                                    HomeTab.LOCATION -> Icons.Default.LocationOn
                                     HomeTab.PLACES -> Icons.Default.Place
                                     HomeTab.HISTORY -> Icons.Default.History
                                 },
@@ -399,19 +400,21 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 // SOS is urgent-but-not-a-failure, so it uses the emergency
                 // amber role instead of error.
                 val emergency = LocalEmergencyColors.current
-                // The visible 'SOS' text is the accessible name; a separate
-                // contentDescription would make TalkBack read it twice.
-                ExtendedFloatingActionButton(
+                // Keep the emergency trigger compact (48dp) so it stays
+                // reachable without covering cards or list actions beneath it.
+                FloatingActionButton(
                     onClick = {
                         sosReturnPage = secondaryPage
                         selectedSos = null
                         secondaryPage = HomeSecondaryPage.SOS
                     },
+                    shape = RoundedCornerShape(16.dp),
                     containerColor = emergency.emergency,
                     contentColor = emergency.onEmergency,
-                    icon = { Icon(Icons.Default.Sos, contentDescription = null) },
-                    text = { Text(stringResource(R.string.tab_sos)) },
-                )
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(Icons.Default.Sos, contentDescription = stringResource(R.string.tab_sos))
+                }
             }
         },
     ) { padding ->
@@ -420,26 +423,45 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 HomeSecondaryPage.ACCOUNT -> AccountContent(
                     container = container,
                     onOpenTracking = {
+                        secondaryPage = HomeSecondaryPage.SHARING
+                    },
+                    onOpenDiagnostics = { showDiagnostics = true },
+                )
+                HomeSecondaryPage.SHARING -> TrackingScreen(
+                    container = container,
+                    onOpenDiagnostics = { showDiagnostics = true },
+                    onOpenJourney = {
+                        selectedJourney = null
+                        showJourneys = true
+                    },
+                    onOpenAudience = {
+                        openMapAudience = true
+                        tab = HomeTab.MAP
                         secondaryPage = null
-                        tab = HomeTab.LOCATION
                     },
                 )
                 HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
                 null -> Column(Modifier.fillMaxSize()) {
+                    val trackingStatus by container.trackingManager.status.collectAsStateWithLifecycle()
                     AnVeShellHeader(
+                        sharing = trackingStatus.activelyTracking,
                         onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
+                        onOpenSharing = { secondaryPage = HomeSecondaryPage.SHARING },
                     )
                     Box(Modifier.fillMaxWidth().weight(1f)) {
                         when (tab) {
                             HomeTab.MAP -> LiveMapScreen(
                                 container = container,
                                 onOpenLocation = {
-                                    secondaryPage = null
-                                    tab = HomeTab.LOCATION
+                                    secondaryPage = HomeSecondaryPage.SHARING
                                 },
                                 onOpenCircle = {
                                     secondaryPage = null
                                     tab = HomeTab.CIRCLE
+                                },
+                                onOpenJourney = {
+                                    selectedJourney = null
+                                    showJourneys = true
                                 },
                                 openSharingRequest = openMapAudience,
                                 onSharingRequestConsumed = { openMapAudience = false },
@@ -449,8 +471,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 invitationId = selectedInvitation,
                                 onInvitationConsumed = { selectedInvitation = null },
                                 onOpenLocation = {
-                                    secondaryPage = null
-                                    tab = HomeTab.LOCATION
+                                    secondaryPage = HomeSecondaryPage.SHARING
                                 },
                                 onOpenMap = {
                                     circleAudienceStepHidden = true
@@ -463,24 +484,10 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 audienceStepHidden = circleAudienceStepHidden,
                                 snackbarHostState = snackbarHostState,
                             )
-                            HomeTab.LOCATION -> TrackingScreen(
-                                container = container,
-                                onOpenDiagnostics = { showDiagnostics = true },
-                                onOpenJourney = {
-                                    selectedJourney = null
-                                    showJourneys = true
-                                },
-                                onOpenAudience = {
-                                    openMapAudience = true
-                                    tab = HomeTab.MAP
-                                    secondaryPage = null
-                                },
-                            )
                             HomeTab.PLACES -> PlacesScreen(
                                 container = container,
                                 onOpenLocation = {
-                                    secondaryPage = null
-                                    tab = HomeTab.LOCATION
+                                    secondaryPage = HomeSecondaryPage.SHARING
                                 },
                             )
                             HomeTab.HISTORY -> HistoryScreen(container = container)
@@ -493,7 +500,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
 }
 
 @Composable
-private fun AnVeShellHeader(onOpenAccount: () -> Unit) {
+private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenSharing: () -> Unit) {
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth(),
@@ -533,13 +540,33 @@ private fun AnVeShellHeader(onOpenAccount: () -> Unit) {
                     Text(stringResource(R.string.tab_account), maxLines = 1)
                 }
             }
+            // One obvious door to everything about the user's own sharing; it
+            // replaces the old "Vị trí" tab so family members never have to
+            // guess which tab holds the on/off control.
+            AssistChip(
+                onClick = onOpenSharing,
+                label = {
+                    Text(
+                        stringResource(if (sharing) R.string.sharing_chip_on else R.string.sharing_chip_off),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                trailingIcon = { Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp).heightIn(min = 48.dp),
+            )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }
     }
 }
 
 @Composable
-private fun AccountContent(container: AppContainer, onOpenTracking: () -> Unit) {
+private fun AccountContent(
+    container: AppContainer,
+    onOpenTracking: () -> Unit,
+    onOpenDiagnostics: () -> Unit = {},
+) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
@@ -571,6 +598,7 @@ private fun AccountContent(container: AppContainer, onOpenTracking: () -> Unit) 
         // dismissing any notice acknowledges the whole batch.
         onDismissMessage = viewModel::consumeMessage,
         onOpenTracking = onOpenTracking,
+        onOpenDiagnostics = onOpenDiagnostics,
         avatarMessageRes = avatar.messageRes,
         // The controller owns this message: complete() sets it and only a new
         // operation would overwrite it, so acknowledge it here (same batch
@@ -631,6 +659,7 @@ fun HomeContent(
     onRetry: () -> Unit,
     onDismissMessage: () -> Unit = {},
     onOpenTracking: () -> Unit = {},
+    onOpenDiagnostics: () -> Unit = {},
     avatarContent: (@Composable () -> Unit)? = null,
     avatarMessageRes: Int? = null,
     onDismissAvatarMessage: () -> Unit = {},
@@ -730,6 +759,47 @@ fun HomeContent(
                     device = device,
                     onRevoke = { revokeDeviceId = device.id },
                 )
+            }
+            item {
+                OutlinedCard(
+                    onClick = onOpenDiagnostics,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 56.dp)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.diag_account_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
             item {
                 OutlinedCard(

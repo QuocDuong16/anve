@@ -46,7 +46,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -201,13 +201,15 @@ fun JourneyContent(
             // otherwise hidden with it — the emergency affordance must survive
             // the highest-risk scenario: while following a journey home.
             val emergency = LocalEmergencyColors.current
-            ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = onOpenSos,
+                shape = RoundedCornerShape(16.dp),
                 containerColor = emergency.emergency,
                 contentColor = emergency.onEmergency,
-                icon = { Icon(Icons.Default.Sos, contentDescription = null) },
-                text = { Text(stringResource(R.string.tab_sos)) },
-            )
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(Icons.Default.Sos, contentDescription = stringResource(R.string.tab_sos))
+            }
         },
     ) { padding ->
         // Bottom clearance mirrors the shell (HOME_FAB_CLEARANCE): the FAB

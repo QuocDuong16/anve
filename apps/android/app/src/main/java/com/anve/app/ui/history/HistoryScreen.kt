@@ -552,7 +552,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     val isSelected = point.eventId == selectedId
                     val colors = MaterialTheme.colorScheme
                     OutlinedCard(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(18.dp),
                         border = BorderStroke(1.dp, if (isSelected) colors.primary else colors.outlineVariant),
                         colors = CardDefaults.outlinedCardColors(
                             containerColor = if (isSelected) colors.primaryContainer.copy(alpha = 0.28f) else colors.surface,
@@ -572,11 +572,21 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (isSelected) colors.primary else colors.outlineVariant,
-                                modifier = Modifier.size(10.dp),
-                            ) {}
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(20.dp),
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) colors.primaryContainer else colors.surfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                ) {}
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(8.dp),
+                                ) {}
+                            }
                             Text(
                                 text = stringResource(
                                     R.string.history_point_row,

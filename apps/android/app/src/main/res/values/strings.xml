@@ -72,7 +72,7 @@
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
     <string name="action_back">Quay lại</string>
     <string name="action_retry">Thử lại</string>
-    <string name="action_open_location">Mở màn Vị trí</string>
+    <string name="action_open_location">Mở Chia sẻ của tôi</string>
     <string name="action_loading">Đang tải…</string>
     <!-- stateDescription for disclosure toggles (Tracking technical details,
          Places notes): TalkBack announces the panel state, not just the icon. -->
@@ -84,10 +84,10 @@
     <string name="action_cancel">Hủy</string>
     <string name="home_sharing_title">Chia sẻ vị trí của tôi</string>
     <string name="home_sharing_subtitle">Bạn quyết định khi nào vị trí của mình được chia sẻ với nhóm. Tắt bất cứ lúc nào.</string>
-    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở màn Vị trí để bật theo dõi và cấp quyền hệ thống.</string>
-    <string name="home_sharing_pending_notice">Thay đổi đã lưu trên thiết bị nhưng máy chủ chưa xác nhận. Quyền chia sẻ đang chờ đồng bộ; trạng thái này chưa có hiệu lực trên máy chủ.</string>
-    <string name="home_sharing_conflict_notice">Chia sẻ đã thay đổi trên thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới; vị trí vẫn dừng trên thiết bị này.</string>
-    <string name="home_devices_title">Thiết bị &amp; phiên đăng nhập</string>
+    <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở “Chia sẻ của tôi” để bắt đầu chia sẻ và cấp quyền cho điện thoại.</string>
+    <string name="home_sharing_pending_notice">Đã lưu trên điện thoại, đang chờ gửi lên khi có mạng.</string>
+    <string name="home_sharing_conflict_notice">Chia sẻ đã thay đổi trên điện thoại khác. Chọn lại trạng thái để xác nhận quyết định mới; vị trí vẫn dừng trên máy này.</string>
+    <string name="home_devices_title">Điện thoại đang đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
     <!-- Distinguishes revoking one listed session from signing this device
          out entirely (home_sign_out). -->
@@ -142,9 +142,9 @@
          reference and lint reports it unused; the join card keeps `invite_view`. -->
     <string name="circle_join_caption">Mã mời do chủ nhóm tạo, chỉ dùng được một lần.</string>
     <string name="circle_privacy_note">Tham gia nhóm KHÔNG tự bật chia sẻ vị trí. Mỗi người tự bật chia sẻ của mình và có thể tắt bất cứ lúc nào.</string>
-    <string name="circle_members_title">Thành viên</string>
-    <string name="circle_invites_title">Mã mời</string>
-    <string name="circle_invite_create">Tạo mã mời mới</string>
+    <string name="circle_members_title">Cả nhà</string>
+    <string name="circle_invites_title">Lời mời đang chờ</string>
+    <string name="circle_invite_create">Gửi lời mời mới</string>
     <string name="circle_invite_revoke">Thu hồi</string>
     <!-- Revoke confirmation. Truthful boundaries: only the unredeemed code
          stops working — used invitations are unaffected — and a new code can
@@ -192,16 +192,17 @@
          Steps collapse on real progress: another member joined (invite),
          consent turned on (sharing), or the user went to the map to pick
          viewers (audience; grants are not readable from this screen). -->
-    <string name="circle_activation_intro">Để người thân xem được vị trí của bạn:</string>
-    <string name="circle_activation_invite_title">1. Mời người thân</string>
-    <string name="circle_activation_invite_body">Tạo mã mời hoặc liên kết để gửi cho người thân; họ tự xác nhận tham gia.</string>
-    <string name="circle_activation_invite_action">Tạo lời mời</string>
-    <string name="circle_activation_share_title">2. Bật chia sẻ vị trí của bạn</string>
-    <string name="circle_activation_share_body">Chọn đồng ý chia sẻ ở màn Vị trí. AnVề không ghi vị trí khi bạn chưa đồng ý.</string>
-    <string name="circle_activation_share_action">Mở màn Vị trí</string>
-    <string name="circle_activation_audience_title">3. Chọn ai được xem vị trí của bạn</string>
-    <string name="circle_activation_audience_body">Trong phần “Quyền xem” ở màn Bản đồ, chọn từng người được xem vị trí của bạn.</string>
-    <string name="circle_activation_audience_action">Mở màn Bản đồ</string>
+    <string name="circle_activation_progress">Bước %1$d/%2$d</string>
+    <string name="circle_activation_intro">Vài bước nhỏ để cả nhà luôn an tâm.</string>
+    <string name="circle_activation_invite_title">Mời người thân</string>
+    <string name="circle_activation_invite_body">Gửi lời mời qua tin nhắn hoặc mã. Người thân tự xác nhận tham gia.</string>
+    <string name="circle_activation_invite_action">Gửi lời mời</string>
+    <string name="circle_activation_share_title">Bạn chọn khi nào chia sẻ</string>
+    <string name="circle_activation_share_body">Không ai xem được vị trí của bạn nếu bạn chưa đồng ý. Dừng lại được bất cứ lúc nào.</string>
+    <string name="circle_activation_share_action">Mở Chia sẻ của tôi</string>
+    <string name="circle_activation_audience_title">Chọn ai được xem</string>
+    <string name="circle_activation_audience_body">Chọn từng người thân được xem vị trí của bạn trên màn Nhà.</string>
+    <string name="circle_activation_audience_action">Mở màn Nhà</string>
 
     <!-- Tracking (M3) -->
     <string name="tracking_notification_channel">Theo dõi vị trí</string>
@@ -213,12 +214,12 @@
 
     <!-- Tracking screen -->
     <string name="tracking_title">Vị trí &amp; chia sẻ</string>
-    <string name="tracking_subtitle">Bạn quyết định khi nào vị trí được ghi và chia sẻ. AnVề không theo dõi khi bạn chưa đồng ý.</string>
+    <string name="tracking_subtitle">Bạn quyết định khi nào chia sẻ và ai được xem. Chưa đồng ý thì AnVề không ghi vị trí của bạn.</string>
     <string name="tracking_consent_title">Đồng ý chia sẻ vị trí</string>
     <string name="tracking_consent_subtitle">Đây là sự đồng ý của bạn trên máy chủ, chưa phải điện thoại đang ghi vị trí. Việc ghi vị trí chỉ bắt đầu khi bạn bật theo dõi và cấp quyền.</string>
-    <string name="tracking_consent_on">Đã đồng ý</string>
-    <string name="tracking_consent_off">Chưa đồng ý</string>
-    <string name="tracking_consent_pending">Đã tắt trên thiết bị; chưa đồng bộ máy chủ</string>
+    <string name="tracking_consent_on">Đã cho phép</string>
+    <string name="tracking_consent_off">Chưa cho phép</string>
+    <string name="tracking_consent_pending">Đã tắt trên điện thoại, đang chờ gửi đi khi có mạng</string>
     <string name="tracking_consent_conflict">Có thay đổi mới trên thiết bị khác</string>
     <string name="tracking_problem_consent_conflict">Máy chủ có quyết định mới hơn. Vị trí vẫn dừng trên thiết bị này; chọn lại trạng thái để xác nhận.</string>
     <string name="tracking_problem_consent_storage">Đã dừng theo dõi trên thiết bị này, nhưng không lưu được yêu cầu tắt chia sẻ. Máy chủ chưa được xác nhận; hãy kiểm tra ứng dụng và thử lại.</string>
@@ -226,36 +227,36 @@
     <string name="tracking_problem_service_stop">Đã chặn nhận điểm vị trí mới, nhưng không xác nhận được việc dừng dịch vụ định vị. Hãy kiểm tra ứng dụng.</string>
     <string name="tracking_state_title">Theo dõi trên thiết bị</string>
     <string name="tracking_state_active">Đang cập nhật vị trí</string>
-    <string name="tracking_state_waiting">Đang chờ vị trí đầu tiên</string>
-    <string name="tracking_state_requested">Đã yêu cầu, chưa hoạt động</string>
-    <string name="tracking_state_stopped">Chưa theo dõi</string>
+    <string name="tracking_state_waiting">Đang chờ vị trí đầu tiên của bạn</string>
+    <string name="tracking_state_requested">Đã yêu cầu, chưa bắt đầu</string>
+    <string name="tracking_state_stopped">Chưa chia sẻ</string>
     <string name="tracking_state_recovery">Theo dõi đã dừng khi ứng dụng bị đóng</string>
-    <string name="tracking_start">Bắt đầu theo dõi</string>
-    <string name="tracking_resume">Tiếp tục theo dõi</string>
-    <string name="tracking_stop">Dừng theo dõi</string>
-    <string name="tracking_enable_consent">Bật chia sẻ và theo dõi</string>
-    <string name="tracking_permissions_title">Quyền hệ thống</string>
+    <string name="tracking_start">Bắt đầu chia sẻ</string>
+    <string name="tracking_resume">Tiếp tục chia sẻ</string>
+    <string name="tracking_stop">Tạm dừng chia sẻ</string>
+    <string name="tracking_enable_consent">Bật chia sẻ với gia đình</string>
+    <string name="tracking_permissions_title">Điện thoại của bạn</string>
     <string name="tracking_permission_location">Quyền vị trí</string>
     <string name="tracking_permission_precise">Chính xác</string>
     <string name="tracking_permission_approximate">Gần đúng</string>
     <string name="tracking_permission_denied">Chưa được cấp</string>
     <string name="tracking_permission_grant">Cấp quyền vị trí</string>
     <string name="tracking_permission_permanently_denied">Quyền vị trí đã bị từ chối nhiều lần. Mở Cài đặt ứng dụng để bật lại nếu bạn muốn chia sẻ vị trí.</string>
-    <string name="tracking_permission_background">Vị trí khi ứng dụng ở nền</string>
+    <string name="tracking_permission_background">Chia sẻ khi tắt màn hình</string>
     <string name="tracking_permission_background_granted">Đã cho phép</string>
-    <string name="tracking_permission_background_missing">Chưa được cấp quyền nền</string>
-    <string name="tracking_permission_background_grant">Cho phép vị trí nền</string>
-    <string name="tracking_permission_background_explainer">Quyền nền giúp AnVề tiếp tục chia sẻ khi bạn không mở ứng dụng. Nếu chưa cấp, việc cập nhật nền có thể bị giới hạn; bạn vẫn dùng được các chức năng khác.</string>
+    <string name="tracking_permission_background_missing">Chưa bật</string>
+    <string name="tracking_permission_background_grant">Cho phép luôn luôn</string>
+    <string name="tracking_permission_background_explainer">Giúp AnVề vẫn cập nhật khi bạn cất điện thoại vào túi. Nếu chưa bật, vị trí chỉ cập nhật khi bạn mở ứng dụng.</string>
     <string name="tracking_background_settings_title">Cho phép vị trí khi chạy nền</string>
     <string name="tracking_background_settings_body">AnVề cần quyền này để tiếp tục chia sẻ vị trí khi ứng dụng không mở. Trong phần quyền vị trí của AnVề, chọn “%1$s”. Bạn có thể quay lại và đổi lựa chọn bất cứ lúc nào.</string>
     <string name="tracking_background_settings_open">Mở cài đặt ứng dụng</string>
     <string name="tracking_background_option_fallback">Cho phép mọi lúc</string>
     <string name="tracking_permission_notifications">Thông báo</string>
     <string name="tracking_permission_notifications_granted">Đã cho phép</string>
-    <string name="tracking_permission_notifications_missing">Chưa cho phép — thông báo theo dõi có thể không hiển thị</string>
+    <string name="tracking_permission_notifications_missing">Chưa bật — bạn có thể bỏ lỡ thông báo</string>
     <string name="tracking_permission_notifications_grant">Bật thông báo</string>
     <string name="tracking_permission_settings">Mở cài đặt quyền</string>
-    <string name="tracking_permissions_ok">Đủ ✓</string>
+    <string name="tracking_permissions_ok">Sẵn sàng ✓</string>
     <string name="tracking_location_services_off">Vị trí của điện thoại đang tắt.</string>
     <string name="tracking_location_services_settings">Mở cài đặt vị trí</string>
     <string name="tracking_status_title">Trạng thái gần nhất</string>
@@ -312,8 +313,8 @@
     <string name="tracking_message_dismiss">Đã hiểu</string>
     <!-- The label stays jargon-free; the note below (merged into the same
          TalkBack focus) carries the server-vs-device distinction. -->
-    <string name="tracking_consent_server_value">Đồng ý chia sẻ: %1$s</string>
-    <string name="tracking_consent_server_note">Đồng ý trên máy chủ khác với việc điện thoại đang ghi vị trí.</string>
+    <string name="tracking_consent_server_value">Cho phép chia sẻ: %1$s</string>
+    <string name="tracking_consent_server_note">Đây là lựa chọn của bạn. Điện thoại chỉ bắt đầu gửi vị trí khi bạn bấm bắt đầu.</string>
     <string name="tracking_privacy_discarded_notice">Một số điểm vị trí ghi trước khi cài đặt quyền riêng tư thay đổi đã được bỏ qua để bảo vệ quyền riêng tư.</string>
     <!-- Copy TrackingViewModel reports as resource IDs, resolved at the screen. -->
     <string name="tracking_retry_sync_queued">Đã yêu cầu đồng bộ lại. AnVề sẽ gửi các điểm đang chờ khi có mạng.</string>
@@ -322,15 +323,17 @@
 
     <!-- Home tabs -->
     <string name="tab_circle">Gia đình</string>
-    <string name="map_open_circle">Mở màn Gia đình</string>
+    <string name="map_open_circle">Mở tab Gia đình</string>
     <string name="tab_history">Lịch sử</string>
     <string name="tab_places">Địa điểm</string>
-    <string name="tab_map">Bản đồ</string>
-    <string name="tab_location">Vị trí</string>
+    <string name="tab_map">Nhà</string>
+    <string name="sharing_title">Chia sẻ của tôi</string>
+    <string name="sharing_chip_on">Bạn đang chia sẻ với gia đình · Tạm dừng</string>
+    <string name="sharing_chip_off">Bạn chưa chia sẻ vị trí · Bật</string>
     <string name="tab_account">Tài khoản</string>
 
     <!-- History (M4) -->
-    <string name="history_title">Lịch sử vị trí</string>
+    <string name="history_title">Một ngày của gia đình</string>
     <string name="history_refresh_content_desc">Làm mới</string>
     <string name="history_actions_content_desc">Thao tác lịch sử</string>
     <string name="history_member_self">Của tôi</string>
@@ -342,16 +345,16 @@
     <string name="history_time_from">Từ %1$s</string>
     <string name="history_time_to">Đến %1$s</string>
     <string name="history_time_all_day">Cả ngày</string>
-    <string name="history_gap_prefix">Gián đoạn · </string>
-    <string name="history_backfill_suffix"> · đồng bộ trễ</string>
-    <string name="history_mock_suffix"> · nguồn mô phỏng</string>
-    <string name="history_point_row">%1$s%2$s · ±%3$d m%4$s%5$s</string>
+    <string name="history_gap_prefix">Không có vị trí · </string>
+    <string name="history_backfill_suffix"> · gửi trễ</string>
+    <string name="history_mock_suffix"> · vị trí thử nghiệm</string>
+    <string name="history_point_row">%1$s%2$s · sai số ~%3$d m%4$s%5$s</string>
     <string name="history_center_map">Đưa bản đồ tới điểm đã chọn</string>
-    <string name="history_map_unconfigured">Bản đồ chưa được cấu hình; lịch sử vẫn hiển thị bên dưới.</string>
+    <string name="history_map_unconfigured">Bản đồ chưa sẵn sàng; lịch sử vẫn hiển thị bên dưới.</string>
     <!-- Tap hint over the point list, rendered only when the day has points:
          an empty day has nothing to tap, so the hint would be false. -->
-    <string name="history_hint_select_point">Chạm một điểm để xem vị trí của nó trên bản đồ.</string>
-    <string name="history_empty_day">Không có điểm lịch sử trong ngày này.</string>
+    <string name="history_hint_select_point">Chạm vào một mốc để xem chỗ đó trên bản đồ.</string>
+    <string name="history_empty_day">Chưa có chuyến đi nào trong ngày này.</string>
     <string name="history_retention_title">Thời hạn lưu</string>
     <string name="history_retention_days_value">%1$s ngày</string>
     <string name="history_retention_chip_days">%1$d ngày</string>
@@ -359,7 +362,7 @@
          from the delete-scope dialog below, so it carries its own confirm
          wording and a label naming the actual action instead of "Xóa". -->
     <string name="history_retention_confirm_title">Giảm thời hạn lưu?</string>
-    <string name="history_retention_confirm_body">Lịch sử cũ hơn thời hạn mới sẽ bị xóa vĩnh viễn khỏi máy chủ. Tăng thời hạn lưu sau này không lấy lại dữ liệu đã xóa.</string>
+    <string name="history_retention_confirm_body">Lịch sử cũ hơn thời hạn mới sẽ bị xóa vĩnh viễn. Tăng thời hạn lại sau này cũng không lấy lại được phần đã xóa.</string>
     <string name="history_retention_confirm">Giảm thời hạn</string>
     <string name="history_delete_range_menu">Xóa khoảng giờ</string>
     <string name="history_delete_day_menu">Xóa ngày này</string>
@@ -368,7 +371,7 @@
     <string name="history_delete_scope_all">Xóa lịch sử đến lúc này.</string>
     <string name="history_delete_scope_day">Xóa lịch sử ngày đã chọn.</string>
     <string name="history_delete_scope_range">Xóa lịch sử trong khoảng giờ đã chọn.</string>
-    <string name="history_delete_privacy_note">Để bảo vệ quyền riêng tư, các điểm chưa đồng bộ trên thiết bị khác có thể bị bỏ, kể cả điểm mới ghi khi thiết bị offline.</string>
+    <string name="history_delete_privacy_note">Để bảo vệ quyền riêng tư, vị trí chưa kịp gửi đi từ các điện thoại khác có thể bị bỏ.</string>
     <string name="history_delete_confirm">Xóa</string>
     <!-- Copy HistoryViewModel reports as resource IDs, resolved at the screen. -->
     <string name="history_error_invalid_interval">Khoảng giờ không hợp lệ.</string>
@@ -406,12 +409,12 @@
     <string name="sos_state_queued">Đang chờ mạng</string>
     <string name="sos_state_sending">Đang gửi</string>
     <string name="sos_state_unknown">Chưa biết kết quả gửi</string>
-    <string name="sos_state_confirmed">Máy chủ đã ghi nhận</string>
+    <string name="sos_state_confirmed">Hệ thống đã ghi nhận</string>
     <string name="sos_state_cancel_requested">Chưa xác nhận được việc hủy</string>
     <string name="sos_state_cancelled">Đã hủy</string>
     <string name="sos_state_resolved">Đã kết thúc</string>
     <string name="sos_state_expired">Yêu cầu chưa gửi đã hết hạn</string>
-    <string name="sos_state_server_expired">Sự kiện đã hết hạn trên máy chủ</string>
+    <string name="sos_state_server_expired">Lời nhắn đã hết hạn</string>
     <string name="sos_cancel_action">Hủy yêu cầu</string>
     <string name="sos_cancel_recheck">Kiểm tra lại việc hủy</string>
     <string name="sos_recheck">Kiểm tra lại yêu cầu</string>
@@ -450,14 +453,14 @@
     <string name="sos_resolve">Kết thúc</string>
     <string name="sos_acknowledge">Tôi đã biết</string>
     <string name="sos_check_again">Kiểm tra lại</string>
-    <string name="sos_snackbar_queued">Yêu cầu đã được lưu trên thiết bị; máy chủ chưa xác nhận.</string>
+    <string name="sos_snackbar_queued">Lời nhắn đã lưu trên máy; đang chờ gửi khi có mạng.</string>
     <string name="sos_snackbar_view_status">Xem trạng thái</string>
     <string name="sos_bottom_pending">Đang xử lý yêu cầu…</string>
     <string name="sos_bottom_no_recipients">Không có người nhận để chọn</string>
     <string name="sos_bottom_none_selected">Chưa chọn người nhận nào</string>
     <string name="sos_bottom_ready">Sẵn sàng gửi đến %1$d người đã chọn</string>
     <string name="sos_send_button">Gửi yêu cầu SOS</string>
-    <string name="sos_bottom_disclaimer">Lời nhắn không đính kèm vị trí và không bật GPS.</string>
+    <string name="sos_bottom_disclaimer">Lời nhắn không đính kèm vị trí và không tự bật định vị.</string>
     <string name="sos_confirm_title">Gửi yêu cầu hỗ trợ?</string>
     <string name="sos_confirm_body">Yêu cầu sẽ được gửi đến %1$d người đã chọn khi có kết nối. Không đính kèm vị trí.</string>
     <string name="sos_confirm_send">Xác nhận gửi</string>
@@ -484,27 +487,28 @@
     <string name="sos_error_action_failed">Chưa xác nhận được thao tác. Hãy kiểm tra trạng thái trước khi thử lại.</string>
 
     <!-- Live Map -->
-    <string name="map_unconfigured_message">Bản đồ chưa được cấu hình cho bản dựng này. Bạn vẫn có thể quản lý quyền chia sẻ.</string>
+    <string name="map_unconfigured_message">Bản đồ chưa sẵn sàng trên bản cài này. Bạn vẫn chọn được ai xem vị trí của bạn.</string>
     <string name="map_status_updating">Đang cập nhật</string>
-    <string name="map_status_disconnected">Chưa kết nối</string>
+    <string name="map_status_disconnected">Chưa có mạng</string>
     <!-- Quoted so the two leading spaces (icon gap) survive resource compile. -->
-    <string name="map_audience_action">Quyền xem</string>
-    <string name="map_no_locations_notice">Chưa có thành viên nào cấp quyền xem vị trí cho bạn.</string>
+    <string name="map_audience_action">Ai được xem</string>
+    <string name="map_start_journey">Bắt đầu hành trình về nhà</string>
+    <string name="map_no_locations_notice">Chưa có người thân nào chia sẻ vị trí với bạn.</string>
     <string name="map_unavailable_title">Bản đồ chưa sẵn sàng</string>
-    <string name="map_updated_at">Cập nhật: %1$s</string>
-    <string name="map_accuracy">Độ chính xác: ±%1$d m</string>
+    <string name="map_updated_at">Cập nhật lúc %1$s</string>
+    <string name="map_accuracy">Sai lệch khoảng %1$d m</string>
     <string name="map_recenter_content_desc">Đưa bản đồ tới vị trí thành viên</string>
     <string name="map_audience_title">Ai có thể xem vị trí của bạn?</string>
     <!-- The old single 60+ word paragraph is split into short bullets; each
          keeps one truthful fact: consent is not a grant, grants start at the
          moment they are made and are revocable, offline points can be missed. -->
-    <string name="map_audience_explainer_consent">• Bật chia sẻ chỉ ghi nhận sự đồng ý của bạn — chọn tiếp từng người được xem ở đây.</string>
-    <string name="map_audience_explainer_timing">• Quyền mới chỉ có hiệu lực từ lúc cấp, và bạn có thể thu hồi bất cứ lúc nào.</string>
-    <string name="map_audience_explainer_offline">• Một số vị trí chưa đồng bộ khi mất mạng có thể bị bỏ, để bảo vệ quyền riêng tư.</string>
+    <string name="map_audience_explainer_consent">• Bật chia sẻ là bạn đồng ý; sau đó chọn từng người được xem ở đây.</string>
+    <string name="map_audience_explainer_timing">• Quyền mới chỉ có hiệu lực từ lúc cấp, và bạn thu hồi được bất cứ lúc nào.</string>
+    <string name="map_audience_explainer_offline">• Vị trí chưa kịp gửi khi mất mạng có thể bị bỏ để bảo vệ quyền riêng tư.</string>
     <string name="map_retry">Kiểm tra lại</string>
     <string name="map_no_circle">Bạn chưa tham gia nhóm gia đình.</string>
-    <string name="map_consent_off">Chia sẻ vị trí đang tắt. Bật ở màn Vị trí trước khi chọn người xem.</string>
-    <string name="map_no_other_members">Nhóm chưa có thành viên khác.</string>
+    <string name="map_consent_off">Bạn đang tạm dừng chia sẻ. Hãy bật trong “Chia sẻ của tôi” trước khi chọn người xem.</string>
+    <string name="map_no_other_members">Nhóm chưa có người thân nào khác.</string>
     <string name="map_viewer_unresolved">Chưa xác định</string>
     <string name="map_confidence_fresh">Vị trí mới</string>
     <string name="map_confidence_delayed">Vị trí cập nhật chậm</string>
@@ -513,13 +517,13 @@
     <string name="map_confidence_unknown">Chưa có vị trí</string>
     <string name="map_time_unavailable">chưa có dữ liệu</string>
     <!-- Copy LiveMapViewModel reports as resource IDs, resolved at the screen. -->
-    <string name="map_error_grant_rejected">Máy chủ từ chối thay đổi quyền xem.</string>
-    <string name="map_error_revoke_unconfirmed">Yêu cầu thu hồi trước chưa đạt: máy chủ vẫn cho biết người này có quyền xem.</string>
-    <string name="map_error_grant_unconfirmed">Yêu cầu cấp quyền trước chưa đạt: máy chủ hiện chưa hiển thị quyền này.</string>
-    <string name="map_error_outcome_unresolved">Chưa xác định kết quả thay đổi quyền xem. Đang giữ trạng thái chờ đối chiếu.</string>
-    <string name="map_error_outcome_load_failed">Chưa xác định kết quả thay đổi quyền xem. Không tải được trạng thái máy chủ; quyền vẫn đang chờ đối chiếu.</string>
-    <string name="map_error_grants_load_pending">Chưa tải được danh sách quyền hiện tại. Thay đổi vẫn đang chờ đối chiếu với máy chủ.</string>
-    <string name="map_error_grants_load_failed">Không tải được danh sách quyền xem. Thử lại khi có kết nối.</string>
+    <string name="map_error_grant_rejected">Chưa đổi được quyền xem. Vui lòng thử lại.</string>
+    <string name="map_error_revoke_unconfirmed">Chưa thu hồi được quyền xem. Người này vẫn đang được xem; hãy thử lại.</string>
+    <string name="map_error_grant_unconfirmed">Chưa cấp được quyền xem. Hãy thử lại.</string>
+    <string name="map_error_outcome_unresolved">Chưa rõ thay đổi quyền xem đã xong hay chưa. Ứng dụng đang kiểm tra lại.</string>
+    <string name="map_error_outcome_load_failed">Chưa rõ thay đổi quyền xem đã xong hay chưa và chưa kiểm tra lại được. Hãy thử lại khi có mạng.</string>
+    <string name="map_error_grants_load_pending">Chưa tải được danh sách quyền xem. Thay đổi của bạn đang được kiểm tra lại.</string>
+    <string name="map_error_grants_load_failed">Chưa tải được danh sách quyền xem. Thử lại khi có mạng.</string>
 
     <!-- Journey (M7) -->
     <string name="journey_title">Hành trình</string>
@@ -592,10 +596,10 @@
     <string name="journey_collapse_viewers">Thu gọn người xem</string>
     <string name="journey_manage_viewers">Quản lý người xem</string>
     <string name="journey_revoke_row">Thu hồi</string>
-    <string name="journey_capture_stopped_notice">Thu thập vị trí đang dừng trên thiết bị. Mở màn Vị trí để tiếp tục; hành trình không tự bật GPS.</string>
-    <string name="journey_open_location">Mở màn Vị trí</string>
+    <string name="journey_capture_stopped_notice">Thu thập vị trí đang dừng trên thiết bị. Mở “Chia sẻ của tôi” để tiếp tục; hành trình không tự bật định vị.</string>
+    <string name="journey_open_location">Mở Chia sẻ của tôi</string>
     <string name="journey_resume_priority">Tiếp tục ưu tiên hành trình</string>
-    <string name="journey_end_priority_note">Kết thúc hành trình dừng ưu tiên. Bạn quản lý chia sẻ vị trí thông thường ở màn Vị trí.</string>
+    <string name="journey_end_priority_note">Kết thúc hành trình dừng ưu tiên. Bạn quản lý chia sẻ vị trí thông thường trong “Chia sẻ của tôi”.</string>
     <string name="journey_viewer_manages_arrival">Chủ hành trình quản lý việc xác nhận đến nơi hoặc kết thúc. Dữ liệu cũ không chứng minh người đó gặp sự cố.</string>
     <string name="journey_step_destination">1. Chọn điểm đến</string>
     <string name="journey_no_places">Chưa có địa điểm được phép chọn. Tạo hoặc chia sẻ địa điểm trước khi bắt đầu.</string>
@@ -618,7 +622,7 @@
     <string name="journey_option_stale_summary"> · Nhắc sau %1$d phút</string>
     <string name="journey_auto_caveat">Bạn vẫn có thể xác nhận thủ công. Tự đến nơi chỉ là ước tính; hành trình không tự phát hiện sự cố.</string>
     <string name="journey_manual_caveat">Bạn sẽ tự xác nhận khi đến nơi. Hành trình không tự phát hiện sự cố.</string>
-    <string name="journey_requires_capture">Cần bật chia sẻ và thu thập vị trí trước khi bắt đầu. Hành trình không tự bật GPS.</string>
+    <string name="journey_requires_capture">Hãy bật chia sẻ vị trí trước khi bắt đầu. Hành trình không tự bật định vị.</string>
     <string name="journey_requires_network">Cần có mạng để bắt đầu.</string>
     <string name="journey_state_active">Đang trong hành trình</string>
     <string name="journey_state_ended">Đã kết thúc, chưa xác nhận đến nơi</string>
@@ -638,7 +642,7 @@
     <string name="journey_reload_failed">Chưa đọc được trạng thái mới. Kiểm tra mạng rồi thử lại; dữ liệu đang hiển thị có thể cũ.</string>
     <string name="journey_start_unconfirmed">Chưa xác nhận bắt đầu. Đọc lại trạng thái hoặc hủy yêu cầu đang chờ; không tạo lại hành trình mới.</string>
     <string name="journey_action_unconfirmed">Máy chủ chưa xác nhận thao tác. Ưu tiên hành trình đã dừng trên thiết bị; chia sẻ thông thường được quản lý riêng.</string>
-    <string name="journey_priority_capture_off">Bật thu thập vị trí ở màn Vị trí trước khi tiếp tục ưu tiên hành trình.</string>
+    <string name="journey_priority_capture_off">Hãy bật chia sẻ trong “Chia sẻ của tôi” trước khi tiếp tục ưu tiên hành trình.</string>
     <string name="journey_priority_unconfirmed">Chưa xác nhận hành trình còn hoạt động. Thử đọc lại trạng thái.</string>
     <!-- Shown above the disabled Start button when no viewer is picked. -->
     <string name="journey_no_recipients_selected">Chọn ít nhất một người theo dõi để bắt đầu.</string>
@@ -651,27 +655,29 @@
     <string name="places_actions_content_desc">Thao tác địa điểm</string>
     <string name="places_edit">Sửa địa điểm</string>
     <string name="places_delete_menu">Xóa địa điểm</string>
-    <string name="places_monitoring_notice">Theo dõi dùng các mẫu vị trí đã chia sẻ; sự kiện có thể trễ hoặc bị bỏ lỡ.</string>
+    <string name="places_monitoring_notice">Nhận thông báo nhẹ nhàng khi người thân đến hoặc rời đi. Thông báo dựa trên vị trí đã chia sẻ nên đôi khi có thể trễ.</string>
     <string name="places_add">Thêm địa điểm</string>
     <string name="places_refresh">Làm mới</string>
-    <string name="places_empty">Chưa có địa điểm nào. Thêm một địa điểm để tự quản lý các vùng đã lưu.</string>
+    <string name="places_empty">Chưa có địa điểm nào. Thêm nhà, trường học hay cơ quan để nhận thông báo nhẹ nhàng khi người thân đến hoặc rời đi.</string>
     <string name="places_owner_you">Của tôi</string>
     <string name="places_member_fallback">Thành viên</string>
-    <string name="places_radius_of">%1$s · bán kính %2$d m</string>
+    <string name="places_radius_of">%1$s · vùng an toàn %2$d m</string>
+    <string name="places_radius_of_walk">%1$s · %2$d m (~%3$d phút đi bộ)</string>
     <string name="places_missing">Địa điểm không còn khả dụng. Làm mới danh sách để kiểm tra lại.</string>
     <string name="places_refresh_list">Làm mới danh sách</string>
+    <string name="places_radius_walk">Vùng an toàn: %1$d m (khoảng %2$d phút đi bộ)</string>
     <string name="places_radius">Bán kính %1$d m</string>
     <string name="places_share_with">Chia sẻ địa điểm với</string>
     <string name="places_share_notice">Thành viên vẫn phải tự bật theo dõi cho bản thân; chia sẻ địa điểm không cấp quyền xem sự kiện.</string>
     <!-- Label of the expandable explanation toggle: the explainer sits behind
          it instead of a paragraph placed before the action rows. -->
-    <string name="places_notes_toggle">Giải thích</string>
+    <string name="places_notes_toggle">Cách hoạt động</string>
     <string name="places_access_supporting">Quyền xem địa điểm</string>
     <string name="places_monitor_mine_title">Theo dõi vị trí của tôi tại đây</string>
     <string name="places_monitor_mine_notice">Chỉ bạn bật theo dõi cho mình. Người nhận cần được bạn cấp quyền vị trí và được chia sẻ địa điểm này.</string>
     <!-- Shown next to the disabled "Bật theo dõi" button so a first-time user
          (consent is off by default) does not hit a silent dead end. -->
-    <string name="places_consent_notice">Cần bật chia sẻ vị trí ở màn Vị trí trước khi bật theo dõi tại đây. Theo dõi không tự bật GPS.</string>
+    <string name="places_consent_notice">Hãy bật chia sẻ trong “Chia sẻ của tôi” trước khi nhận thông báo đến và rời tại đây.</string>
     <!-- Copy PlacesViewModel/PlacesEditor feedback, resolved at the screen. -->
     <string name="places_editor_invalid_coords">Vĩ độ hoặc Kinh độ chưa hợp lệ. Kiểm tra lại số đã nhập.</string>
     <string name="places_editor_invalid_name">Tên địa điểm cần từ 1 đến 80 ký tự.</string>
@@ -688,12 +694,12 @@
     <string name="places_monitor_enable">Bật theo dõi</string>
     <string name="places_monitor_save">Lưu người nhận</string>
     <string name="places_monitor_stop">Dừng</string>
-    <string name="places_events_title">Sự kiện</string>
-    <string name="places_events_empty">Chưa có sự kiện được phép xem.</string>
+    <string name="places_events_title">Đến và rời gần đây</string>
+    <string name="places_events_empty">Chưa có lần đến hay rời nào.</string>
     <string name="places_event_enter">Đến</string>
     <string name="places_event_exit">Rời</string>
-    <string name="places_event_unknown">Không rõ</string>
-    <string name="places_event_delayed"> · xử lý trễ</string>
+    <string name="places_event_unknown">Chưa rõ</string>
+    <string name="places_event_delayed"> · báo trễ</string>
     <string name="places_confidence_observed"> · nhiều mẫu GPS</string>
     <string name="places_confidence_unknown"> · độ tin cậy chưa rõ</string>
     <string name="places_event_title">%1$s · %2$s %3$s</string>
@@ -703,8 +709,8 @@
     <string name="places_editor_name_label">Tên địa điểm</string>
     <!-- Tell the person what touching the map does and what the number
          fields below are for, without assuming map or coordinate literacy. -->
-    <string name="places_editor_map_hint">Chạm vào một chỗ trên bản đồ để đặt địa điểm — ô Vĩ độ và Kinh độ bên dưới sẽ tự điền theo. Bạn cũng có thể gõ số vào hai ô đó nếu muốn chỉnh chính xác.</string>
-    <string name="places_editor_no_map">Bản đồ chưa được cấu hình; nhập tọa độ bên dưới.</string>
+    <string name="places_editor_map_hint">Chạm lên bản đồ để chọn đúng chỗ, hoặc tìm địa chỉ ở trên.</string>
+    <string name="places_editor_no_map">Bản đồ chưa sẵn sàng. Hãy tìm địa chỉ ở trên hoặc dùng vị trí hiện tại.</string>
     <string name="places_editor_lat_label">Vĩ độ</string>
     <string name="places_editor_lon_label">Kinh độ</string>
     <string name="places_editor_radius_note">Thay đổi địa điểm sẽ dừng các cấu hình theo dõi hiện tại; mỗi người cần bật lại.</string>
@@ -724,13 +730,14 @@
     <string name="diag_export_review_title">Kiểm tra báo cáo trước khi gửi</string>
     <string name="diag_export_review_body">Báo cáo gồm phiên bản, quyền, trạng thái dịch vụ/mạng/pin, số điểm chờ, tuổi dữ liệu và trạng thái thông báo. Không chứa tọa độ, tên, tài khoản hay thông tin đăng nhập.</string>
     <string name="diag_export_share">Chọn nơi gửi</string>
-    <string name="diag_title">Chẩn đoán vị trí</string>
-    <string name="diag_refresh_content_desc">Làm mới chẩn đoán</string>
-    <string name="diag_not_ready">Đang đọc trạng thái tài khoản. Quay lại màn Vị trí nếu phiên đăng nhập đã thay đổi.</string>
+    <string name="diag_title">Kiểm tra kết nối</string>
+    <string name="diag_account_subtitle">Xem vì sao vị trí chưa cập nhật</string>
+    <string name="diag_refresh_content_desc">Kiểm tra lại</string>
+    <string name="diag_not_ready">Đang đọc trạng thái tài khoản. Quay lại “Chia sẻ của tôi” nếu phiên đăng nhập đã thay đổi.</string>
     <string name="diag_segment_overview">Tổng quan</string>
     <string name="diag_segment_details">Chi tiết</string>
     <string name="diag_network_title">Mất kết nối mạng</string>
-    <string name="diag_details_failed">Chưa đọc được chẩn đoán bổ sung. Dùng nút Làm mới để thử lại.</string>
+    <string name="diag_details_failed">Chưa kiểm tra thêm được lúc này. Bấm Kiểm tra lại để thử lại.</string>
     <string name="diag_section_capture">Thu thập vị trí</string>
     <string name="diag_section_sync">Đồng bộ</string>
     <string name="diag_section_permissions">Quyền &amp; thiết bị</string>
@@ -878,38 +885,47 @@
     <!-- Warm Illustrated Family Redesign ("An Về") -->
     <string name="home_brand_name">AnVề</string>
     <string name="home_brand_tagline">Đường về nhà, gần hơn mỗi ngày</string>
+    <string name="tracking_details_toggle">Xem chi tiết kỹ thuật</string>
     <string name="tracking_hero_active_title">Đang chia sẻ vị trí</string>
     <string name="tracking_hero_active_body">Gia đình được chọn có thể xem vị trí mới nhất của bạn khi đang di chuyển.</string>
     <string name="tracking_hero_idle_title">Chia sẻ vị trí đang tạm nghỉ</string>
-    <string name="tracking_hero_idle_body">Bật đồng ý và theo dõi khi bạn muốn báo bình an cho người thân.</string>
-    <string name="tracking_hero_paused_body">Bạn đã đồng ý chia sẻ; nhấn Bắt đầu theo dõi để thiết bị gửi vị trí khi ra ngoài.</string>
-    <string name="tracking_step_audience_action">Chọn người thân được xem vị trí</string>
+    <string name="tracking_hero_idle_body">Bật chia sẻ khi bạn muốn báo bình an cho người thân.</string>
+    <string name="tracking_hero_paused_body">Bạn đã cho phép chia sẻ. Bấm Bắt đầu chia sẻ để gia đình thấy vị trí khi bạn ra ngoài.</string>
+    <string name="tracking_step_audience_action">Chọn ai được xem vị trí của bạn</string>
     <string name="tracking_journey_card_title">Hành trình An Về</string>
     <string name="tracking_journey_card_body">Báo điểm đến và để người thân an tâm trên đường về nhà</string>
     <string name="tracking_journey_card_cta">Bắt đầu hành trình</string>
     <string name="circle_header_warm_subtitle">Giữ nhịp kết nối ấm áp và minh bạch quyền riêng tư</string>
-    <string name="circle_activation_warm_title">Bước tiếp theo · Để gia đình cùng an tâm</string>
+    <string name="circle_activation_warm_title">Chào mừng đến AnVề</string>
     <string name="places_quick_name_title">Chọn nhanh tên địa điểm</string>
+    <string name="places_search_label">Tìm địa chỉ</string>
+    <string name="places_search_hint">Ví dụ: Trường Tiểu học Nguyễn Du</string>
+    <string name="places_search_clear">Xóa nội dung tìm kiếm</string>
+    <string name="places_search_loading">Đang tìm…</string>
+    <string name="places_search_none">Chưa thấy địa chỉ này. Thử gõ thêm tên đường hoặc quận, hoặc chọn trên bản đồ.</string>
+    <string name="places_search_failed">Chưa tìm được lúc này, có thể do mạng. Bạn vẫn có thể chọn trên bản đồ hoặc dùng vị trí hiện tại.</string>
+    <string name="places_search_unavailable">Điện thoại này chưa có dịch vụ tìm địa chỉ. Hãy chọn trên bản đồ hoặc dùng vị trí hiện tại.</string>
+    <string name="places_search_privacy">Địa chỉ bạn gõ được gửi tới dịch vụ bản đồ của Android để tìm. AnVề không lưu lại.</string>
     <string name="places_preset_home">Nhà</string>
     <string name="places_preset_school">Trường học</string>
     <string name="places_preset_work">Cơ quan</string>
     <string name="places_preset_grandparents">Nhà ông bà</string>
-    <string name="places_manual_coords_toggle">Nhập tọa độ thủ công</string>
+    <string name="places_manual_coords_toggle">Nâng cao: nhập tọa độ</string>
     <string name="places_map_cta_hint">Chạm trên bản đồ hoặc dùng vị trí hiện tại để đặt tâm vùng an toàn.</string>
     <string name="places_share_section_title">Chia sẻ địa điểm với người thân</string>
-    <string name="places_alerts_section_title">Nhận thông báo ra vào cho riêng tôi</string>
+    <string name="places_alerts_section_title">Báo cho tôi khi người thân đến hoặc rời</string>
     <string name="history_empty_warm_title">Một ngày bình yên trên đường về</string>
-    <string name="history_empty_warm_body">Chưa có điểm vị trí nào được ghi hoặc đồng bộ trong ngày này.</string>
+    <string name="history_empty_warm_body">Chưa có vị trí nào được chia sẻ trong ngày này.</string>
     <string name="journey_intro_warm_title">Đi đâu cũng báo về một tiếng</string>
     <string name="journey_intro_warm_body">Chọn điểm đến quen thuộc để người thân dõi theo chặng đường về nhà, không cần nhắn hỏi liên tục.</string>
     <string name="home_sharing_state_on">Đang bật</string>
     <string name="home_sharing_state_off">Đang tắt</string>
-    <string name="home_sharing_state_syncing">Chờ đồng bộ</string>
+    <string name="home_sharing_state_syncing">Đang chờ mạng</string>
     <string name="home_account_security_title">Tài khoản &amp; bảo mật</string>
     <string name="home_account_security_subtitle">Quản lý phiên đăng nhập và dữ liệu tài khoản của bạn.</string>
     <string name="tracking_state_active_pill">Đang theo dõi</string>
     <string name="tracking_state_paused_pill">Đã dừng</string>
-    <string name="tracking_permissions_need_attention">Cần cấp quyền</string>
+    <string name="tracking_permissions_need_attention">Cần bật thêm</string>
     <string name="sos_hero_title">Cần người thân hỗ trợ ngay?</string>
     <string name="sos_emergency_calls_label">Số khẩn cấp toàn quốc</string>
 </resources>

@@ -34,6 +34,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -419,7 +420,7 @@ fun CircleContent(
                         InviteRow(invite = invite, busy = state.busy, onRevoke = { revokeInviteId = invite.id }, onShare = { onShareInvite(invite) })
                     }
                     item {
-                        OutlinedButton(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                             Text(stringResource(R.string.circle_invite_create))
                         }
                     }
@@ -665,20 +666,39 @@ private fun CircleActivationChecklist(
         }
     }
     if (steps.isEmpty()) return
-    OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    val total = 3
+    // Steps already done collapse away, so the remaining count is the honest
+    // progress: "Bước 2/3" appears once the first step has been completed.
+    val currentStep = total - steps.size + 1
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnVeSectionHeader(
-                icon = Icons.Default.Groups,
-                title = stringResource(R.string.circle_activation_warm_title),
-                subtitle = stringResource(R.string.circle_activation_intro),
+            AnVeFamilySceneIllustration(modifier = Modifier.fillMaxWidth().height(120.dp))
+            Text(
+                stringResource(R.string.circle_activation_warm_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                stringResource(R.string.circle_activation_intro),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.circle_activation_progress, currentStep.coerceAtMost(total), total),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            LinearProgressIndicator(
+                progress = { (currentStep - 1).coerceIn(0, total) / total.toFloat() },
+                modifier = Modifier.fillMaxWidth(),
             )
             steps.forEachIndexed { index, step ->
                 CircleActivationStepRow(
-                    stepNumber = index + 1,
+                    stepNumber = total - steps.size + index + 1,
                     title = step.title,
                     supporting = step.supporting,
                     actionLabel = step.actionLabel,
