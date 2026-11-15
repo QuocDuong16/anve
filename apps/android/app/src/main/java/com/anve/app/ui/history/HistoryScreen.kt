@@ -1,46 +1,58 @@
 package com.anve.app.ui.history
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -61,10 +73,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -76,6 +88,8 @@ import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
 import com.anve.app.R
 import com.anve.app.data.api.HistoryPointDto
+import com.anve.app.ui.brand.AnVeHistorySceneIllustration
+import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
@@ -321,36 +335,69 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     }
                 }
                 item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val colors = MaterialTheme.colorScheme
+                    OutlinedCard(
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, colors.outlineVariant),
+                        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 IconButton(
                                     onClick = { vm.select(member, state.date.minusDays(1)) },
                                     enabled = !state.mutationPending,
                                 ) { Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(R.string.history_prev_day_content_desc)) }
-                                TextButton(
+                                FilledTonalButton(
                                     onClick = { showDatePicker = true },
                                     enabled = !state.mutationPending,
-                                    modifier = Modifier.weight(1f),
-                                ) { Text(historyDateFormatter.format(state.date)) }
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                ) {
+                                    Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(historyDateFormatter.format(state.date))
+                                }
                                 IconButton(
                                     onClick = { vm.select(member, state.date.plusDays(1)) },
                                     enabled = !state.mutationPending && state.date < LocalDate.now(),
                                 ) { Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.history_next_day_content_desc)) }
                             }
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 item {
-                                    OutlinedButton(onClick = { showStartTimePicker = true }, enabled = !state.mutationPending) {
+                                    OutlinedButton(
+                                        onClick = { showStartTimePicker = true },
+                                        enabled = !state.mutationPending,
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) {
+                                        Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
                                         Text(stringResource(R.string.history_time_from, formatMinute(state.startMinute)))
                                     }
                                 }
                                 item {
-                                    OutlinedButton(onClick = { showEndTimePicker = true }, enabled = !state.mutationPending) {
+                                    OutlinedButton(
+                                        onClick = { showEndTimePicker = true },
+                                        enabled = !state.mutationPending,
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) {
                                         Text(stringResource(R.string.history_time_to, formatMinute(state.endMinute)))
                                     }
                                 }
                                 item {
-                                    TextButton(onClick = { vm.selectTimes(0, 1440) }, enabled = !state.mutationPending) {
+                                    TextButton(
+                                        onClick = { vm.selectTimes(0, 1440) },
+                                        enabled = !state.mutationPending,
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) {
                                         Text(stringResource(R.string.history_time_all_day))
                                     }
                                 }
@@ -365,37 +412,73 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         // vertical scroll. Pinch zoom stays on because two
                         // fingers never scroll the list, and camera placement
                         // goes through the center action below the map.
-                        GoogleMap(
-                            modifier = Modifier.fillMaxWidth().height(220.dp),
-                            cameraPositionState = camera,
-                            uiSettings = MapUiSettings(scrollGesturesEnabled = false, zoomGesturesEnabled = true),
-                            onMapLoaded = { mapLoaded = true },
+                        OutlinedCard(
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            historySegments(state.points).filter { it.size > 1 }.forEach { segment ->
-                                Polyline(points = segment.map { LatLng(it.latitude, it.longitude) })
-                            }
-                            selected?.takeIf {
-                                it.latitude.isFinite() && it.longitude.isFinite() &&
-                                    it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0
-                            }?.let { point ->
-                                val marker = remember(point.eventId, point.latitude, point.longitude) {
-                                    MarkerState(position = LatLng(point.latitude, point.longitude))
+                            Column {
+                                GoogleMap(
+                                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                                    cameraPositionState = camera,
+                                    uiSettings = MapUiSettings(scrollGesturesEnabled = false, zoomGesturesEnabled = true),
+                                    onMapLoaded = { mapLoaded = true },
+                                ) {
+                                    historySegments(state.points).filter { it.size > 1 }.forEach { segment ->
+                                        Polyline(points = segment.map { LatLng(it.latitude, it.longitude) })
+                                    }
+                                    selected?.takeIf {
+                                        it.latitude.isFinite() && it.longitude.isFinite() &&
+                                            it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0
+                                    }?.let { point ->
+                                        val marker = remember(point.eventId, point.latitude, point.longitude) {
+                                            MarkerState(position = LatLng(point.latitude, point.longitude))
+                                        }
+                                        // Never leak the raw ISO string as marker copy.
+                                        Marker(state = marker, title = AnveTime.full(point.recordedAt, point.recordedAt))
+                                    }
                                 }
-                                // Never leak the raw ISO string as marker copy.
-                                Marker(state = marker, title = AnveTime.full(point.recordedAt, point.recordedAt))
+                                TextButton(
+                                    onClick = {
+                                        val point = selected ?: state.points.lastOrNull()
+                                        if (mapLoaded && point != null && point.latitude in -90.0..90.0 && point.longitude in -180.0..180.0) {
+                                            scope.launch {
+                                                camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), 14f))
+                                            }
+                                        }
+                                    },
+                                    enabled = mapLoaded && state.points.isNotEmpty(),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                ) {
+                                    Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(stringResource(R.string.history_center_map))
+                                }
                             }
                         }
-                        TextButton(onClick = {
-                            val point = selected ?: state.points.lastOrNull()
-                            if (mapLoaded && point != null && point.latitude in -90.0..90.0 && point.longitude in -180.0..180.0) {
-                                scope.launch {
-                                    camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), 14f))
-                                }
-                            }
-                        }, enabled = mapLoaded && state.points.isNotEmpty()) { Text(stringResource(R.string.history_center_map)) }
                     }
                 } else {
-                    item { Text(stringResource(R.string.history_map_unconfigured)) }
+                    item {
+                        OutlinedCard(
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                AnVeHistorySceneIllustration(
+                                    modifier = Modifier.fillMaxWidth().height(92.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.history_map_unconfigured),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
                 state.errorRes?.let { res ->
                     item {
@@ -418,7 +501,32 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     }
                 }
                 if (state.points.isEmpty() && !state.loading && state.errorRes == null && !state.mutationPending) {
-                    item { Text(stringResource(R.string.history_empty_day), modifier = Modifier.padding(vertical = 12.dp)) }
+                    item {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                AnVeHistorySceneIllustration(
+                                    modifier = Modifier.fillMaxWidth().height(112.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.history_empty_warm_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = stringResource(R.string.history_empty_day),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    text = stringResource(R.string.history_empty_warm_body),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
                 if (state.points.isNotEmpty()) {
                     // Teach the tab's primary interaction once, ahead of the
@@ -441,41 +549,68 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     val gap = if (point.eventId in gapStarts) stringResource(R.string.history_gap_prefix) else ""
                     val delayed = if (point.backfill) stringResource(R.string.history_backfill_suffix) else ""
                     val mock = if (point.isMock) stringResource(R.string.history_mock_suffix) else ""
-                    Text(
-                        stringResource(
-                            R.string.history_point_row,
-                            gap,
-                            time,
-                            point.horizontalAccuracyMeters.toInt(),
-                            delayed,
-                            mock,
+                    val isSelected = point.eventId == selectedId
+                    val colors = MaterialTheme.colorScheme
+                    OutlinedCard(
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, if (isSelected) colors.primary else colors.outlineVariant),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = if (isSelected) colors.primaryContainer.copy(alpha = 0.28f) else colors.surface,
                         ),
-                        Modifier.fillMaxWidth()
-                            .defaultMinSize(minHeight = 48.dp)
-                            // Selection must not depend on text color alone:
-                            // selectable() carries the state in semantics for
-                            // accessibility services, and the surfaceVariant
-                            // background keeps it visible regardless of hue.
-                            .selectable(selected = point.eventId == selectedId, onClick = { selectedId = point.eventId })
-                            .background(
-                                color = if (point.eventId == selectedId) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
-                                shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 48.dp)
+                                // Selection must not depend on text color alone:
+                                // selectable() carries the state in semantics for
+                                // accessibility services, and card border + container
+                                // highlight keep it visible regardless of hue.
+                                .selectable(selected = isSelected, onClick = { selectedId = point.eventId })
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isSelected) colors.primary else colors.outlineVariant,
+                                modifier = Modifier.size(10.dp),
+                            ) {}
+                            Text(
+                                text = stringResource(
+                                    R.string.history_point_row,
+                                    gap,
+                                    time,
+                                    point.horizontalAccuracyMeters.toInt(),
+                                    delayed,
+                                    mock,
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isSelected) colors.primary else colors.onSurface,
+                                modifier = Modifier.weight(1f),
                             )
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        color = if (point.eventId == selectedId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    )
+                        }
+                    }
                 }
                 if (state.member == state.owner) {
                     item {
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    stringResource(R.string.history_retention_title),
-                                    Modifier.semantics { heading() },
-                                    style = MaterialTheme.typography.titleSmall,
+                        OutlinedCard(
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                AnVeSectionHeader(
+                                    icon = Icons.Default.Schedule,
+                                    title = stringResource(R.string.history_retention_title),
                                 )
                                 val currentDays = state.effectiveRetentionDays ?: state.retentionDays
-                                Text(stringResource(R.string.history_retention_days_value, currentDays?.toString() ?: "—"))
+                                Text(
+                                    stringResource(R.string.history_retention_days_value, currentDays?.toString() ?: "—"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(listOf(1, 7, 30)) { days ->
                                         FilterChip(

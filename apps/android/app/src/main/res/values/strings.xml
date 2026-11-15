@@ -70,7 +70,6 @@
 
     <!-- Home / account -->
     <string name="home_load_failed">Không tải được thông tin tài khoản.</string>
-    <string name="home_quick_settings_title">Cài đặt chia sẻ</string>
     <string name="action_back">Quay lại</string>
     <string name="action_retry">Thử lại</string>
     <string name="action_open_location">Mở màn Vị trí</string>
@@ -189,11 +188,10 @@
     <string name="circle_error_remove_member_failed">Không xóa được thành viên. Vui lòng thử lại.</string>
     <string name="circle_error_leave_failed">Không rời được nhóm. Vui lòng thử lại.</string>
 
-    <!-- Activation checklist shown while the user is the only member of their
-         circle. Steps collapse on real progress: another member joined
-         (invite), consent turned on (sharing), or the user went to the map to
-         pick viewers (audience; grants are not readable from this screen). -->
-    <string name="circle_activation_title">Bước tiếp theo</string>
+    <!-- Activation checklist shown while onboarding or missing consent/viewer grants.
+         Steps collapse on real progress: another member joined (invite),
+         consent turned on (sharing), or the user went to the map to pick
+         viewers (audience; grants are not readable from this screen). -->
     <string name="circle_activation_intro">Để người thân xem được vị trí của bạn:</string>
     <string name="circle_activation_invite_title">1. Mời người thân</string>
     <string name="circle_activation_invite_body">Tạo mã mời hoặc liên kết để gửi cho người thân; họ tự xác nhận tham gia.</string>
@@ -323,8 +321,8 @@
     <string name="tracking_consent_disable_unconfirmed">Đã dừng theo dõi trên thiết bị này. Chưa xác nhận được với máy chủ.</string>
 
     <!-- Home tabs -->
-    <string name="tab_circle">Nhóm</string>
-    <string name="map_open_circle">Mở màn Nhóm</string>
+    <string name="tab_circle">Gia đình</string>
+    <string name="map_open_circle">Mở màn Gia đình</string>
     <string name="tab_history">Lịch sử</string>
     <string name="tab_places">Địa điểm</string>
     <string name="tab_map">Bản đồ</string>
@@ -876,4 +874,42 @@
     <!-- Sharesheet copy the recipient actually reads, resolved at the screen. -->
     <string name="invite_share_message">Mời bạn tham gia gia đình trên AnVề:\n%1$s\nNếu link không mở, nhập mã: %2$s\nTham gia không tự bật chia sẻ vị trí.</string>
     <string name="invite_share_chooser_title">Gửi lời mời gia đình</string>
+
+    <!-- Warm Illustrated Family Redesign ("An Về") -->
+    <string name="home_brand_name">AnVề</string>
+    <string name="home_brand_tagline">Đường về nhà, gần hơn mỗi ngày</string>
+    <string name="tracking_hero_active_title">Đang chia sẻ vị trí</string>
+    <string name="tracking_hero_active_body">Gia đình được chọn có thể xem vị trí mới nhất của bạn khi đang di chuyển.</string>
+    <string name="tracking_hero_idle_title">Chia sẻ vị trí đang tạm nghỉ</string>
+    <string name="tracking_hero_idle_body">Bật đồng ý và theo dõi khi bạn muốn báo bình an cho người thân.</string>
+    <string name="tracking_hero_paused_body">Bạn đã đồng ý chia sẻ; nhấn Bắt đầu theo dõi để thiết bị gửi vị trí khi ra ngoài.</string>
+    <string name="tracking_step_audience_action">Chọn người thân được xem vị trí</string>
+    <string name="tracking_journey_card_title">Hành trình An Về</string>
+    <string name="tracking_journey_card_body">Báo điểm đến và để người thân an tâm trên đường về nhà</string>
+    <string name="tracking_journey_card_cta">Bắt đầu hành trình</string>
+    <string name="circle_header_warm_subtitle">Giữ nhịp kết nối ấm áp và minh bạch quyền riêng tư</string>
+    <string name="circle_activation_warm_title">Bước tiếp theo · Để gia đình cùng an tâm</string>
+    <string name="places_quick_name_title">Chọn nhanh tên địa điểm</string>
+    <string name="places_preset_home">Nhà</string>
+    <string name="places_preset_school">Trường học</string>
+    <string name="places_preset_work">Cơ quan</string>
+    <string name="places_preset_grandparents">Nhà ông bà</string>
+    <string name="places_manual_coords_toggle">Nhập tọa độ thủ công</string>
+    <string name="places_map_cta_hint">Chạm trên bản đồ hoặc dùng vị trí hiện tại để đặt tâm vùng an toàn.</string>
+    <string name="places_share_section_title">Chia sẻ địa điểm với người thân</string>
+    <string name="places_alerts_section_title">Nhận thông báo ra vào cho riêng tôi</string>
+    <string name="history_empty_warm_title">Một ngày bình yên trên đường về</string>
+    <string name="history_empty_warm_body">Chưa có điểm vị trí nào được ghi hoặc đồng bộ trong ngày này.</string>
+    <string name="journey_intro_warm_title">Đi đâu cũng báo về một tiếng</string>
+    <string name="journey_intro_warm_body">Chọn điểm đến quen thuộc để người thân dõi theo chặng đường về nhà, không cần nhắn hỏi liên tục.</string>
+    <string name="home_sharing_state_on">Đang bật</string>
+    <string name="home_sharing_state_off">Đang tắt</string>
+    <string name="home_sharing_state_syncing">Chờ đồng bộ</string>
+    <string name="home_account_security_title">Tài khoản &amp; bảo mật</string>
+    <string name="home_account_security_subtitle">Quản lý phiên đăng nhập và dữ liệu tài khoản của bạn.</string>
+    <string name="tracking_state_active_pill">Đang theo dõi</string>
+    <string name="tracking_state_paused_pill">Đã dừng</string>
+    <string name="tracking_permissions_need_attention">Cần cấp quyền</string>
+    <string name="sos_hero_title">Cần người thân hỗ trợ ngay?</string>
+    <string name="sos_emergency_calls_label">Số khẩn cấp toàn quốc</string>
 </resources>

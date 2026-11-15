@@ -1,0 +1,7 @@
+{
+  "prompt": "An Về warm illustrated family Material 3 Android Places editor comp: warm sand #FBF7F0 background, Thêm địa điểm header, quick place-name filter chips (Nhà, Trường học, Cơ quan, Nhà ông bà), visual map picker with 150m safe circle and house pin, Dùng vị trí hiện tại button, radius slider, collapsed Nhập tọa độ thủ công toggle, Lưu địa điểm & Hủy actions, 5-tab NavigationBar.",
+  "approved": true,
+  "approval": "user_delegated",
+  "purpose": "Approved visual comp for An Về warm illustrated family Android Compose redesign",
+  "reference": "DESIGN.md"
+}

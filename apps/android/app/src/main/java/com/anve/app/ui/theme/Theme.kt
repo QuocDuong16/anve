@@ -2,7 +2,9 @@ package com.anve.app.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -12,6 +14,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 internal val LightColors = lightColorScheme(
     primary = Teal700,
@@ -90,6 +93,12 @@ internal val DarkEmergencyColors = EmergencyColors(
 
 internal val LocalEmergencyColors = staticCompositionLocalOf { LightEmergencyColors }
 
+internal val AnVeShapes = Shapes(
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+)
+
 @Composable
 fun AnVeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -111,7 +120,7 @@ fun AnVeTheme(
     // safety action must stay recognizable regardless of the wallpaper.
     val emergencyColors = if (darkTheme) DarkEmergencyColors else LightEmergencyColors
 
-    MaterialTheme(colorScheme = colorScheme) {
+    MaterialTheme(colorScheme = colorScheme, typography = AnVeTypography, shapes = AnVeShapes) {
         CompositionLocalProvider(LocalEmergencyColors provides emergencyColors, content = content)
     }
 }

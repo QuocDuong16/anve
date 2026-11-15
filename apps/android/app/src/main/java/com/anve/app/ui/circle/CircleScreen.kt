@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,19 +11,30 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -40,12 +52,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,6 +70,9 @@ import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.InviteLink
+import com.anve.app.ui.brand.AnVeFamilySceneIllustration
+import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
@@ -316,15 +333,11 @@ fun CircleContent(
                 onMessageConsumed()
             }
         }
-        // Activation steps render only while the user is the circle's only
-        // member, and only once the member list has been fetched, so "no
-        // other members yet" is verified state rather than a loading gap.
-        // The visibility is reported up: the shell hides its sharing card
-        // while the checklist shows, because both carry the same pointers
-        // ("Mở màn Vị trí" / "Tạo lời mời") and stacking them reads as two
-        // decision points for one task.
+        // Keep activation steps visible after a 2nd member joins until the user
+        // has actually turned on sharing consent and visited viewer grants; only
+        // Step 1 ("invite") collapses once another member is present.
         val showInviteStep = state.isOwner && !hasOtherMembers
-        val checklistVisible = state.membersLoaded && !hasOtherMembers &&
+        val checklistVisible = state.membersLoaded &&
             (showInviteStep || !consentEnabled || !audienceStepHidden)
         LaunchedEffect(checklistVisible) { onChecklistVisibleChange(checklistVisible) }
 
@@ -458,15 +471,21 @@ private fun CircleSetup(
     ) {
         if (receivedContent != null) item { receivedContent() }
         item {
-            Text(
-                text = stringResource(R.string.circle_setup_title),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                text = stringResource(R.string.circle_setup_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AnVeFamilySceneIllustration(
+                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                )
+                Text(
+                    text = stringResource(R.string.circle_setup_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.circle_setup_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         if (errorRes != null) {
             item {
@@ -545,29 +564,58 @@ private fun CircleSetup(
 @Composable
 private fun CircleHeaderCard(name: String, isOwner: Boolean, onLeave: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.titleLarge)
-                Text(
-                    text = if (isOwner) {
-                        stringResource(R.string.circle_role_owner)
-                    } else {
-                        stringResource(R.string.circle_role_member)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            TextButton(onClick = onLeave) {
-                Text(
-                    text = stringResource(
-                        if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
-                    ),
-                    color = MaterialTheme.colorScheme.error,
-                )
+        Column {
+            AnVeFamilySceneIllustration(
+                modifier = Modifier.fillMaxWidth().height(124.dp),
+            )
+            Row(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ) {
+                            Text(
+                                text = if (isOwner) {
+                                    stringResource(R.string.circle_role_owner)
+                                } else {
+                                    stringResource(R.string.circle_role_member)
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.circle_header_warm_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = onLeave) {
+                    Text(
+                        text = stringResource(
+                            if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
+                        ),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }
@@ -617,20 +665,20 @@ private fun CircleActivationChecklist(
         }
     }
     if (steps.isEmpty()) return
-    Card(modifier = Modifier.fillMaxWidth()) {
+    OutlinedCard(
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = stringResource(R.string.circle_activation_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(R.string.circle_activation_intro),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AnVeSectionHeader(
+                icon = Icons.Default.Groups,
+                title = stringResource(R.string.circle_activation_warm_title),
+                subtitle = stringResource(R.string.circle_activation_intro),
             )
             steps.forEachIndexed { index, step ->
-                if (index > 0) HorizontalDivider()
                 CircleActivationStepRow(
+                    stepNumber = index + 1,
                     title = step.title,
                     supporting = step.supporting,
                     actionLabel = step.actionLabel,
@@ -644,76 +692,125 @@ private fun CircleActivationChecklist(
 
 @Composable
 private fun CircleActivationStepRow(
+    stepNumber: Int,
     title: String,
     supporting: String,
     actionLabel: String,
     primary: Boolean,
     action: () -> Unit,
 ) {
-    Row(
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = colors.surfaceVariant.copy(alpha = 0.42f),
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                supporting,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (primary) {
-            Button(onClick = action) { Text(actionLabel) }
-        } else {
-            OutlinedButton(onClick = action) { Text(actionLabel) }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = if (primary) colors.primaryContainer else colors.surface,
+                contentColor = if (primary) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                border = if (primary) null else BorderStroke(1.dp, colors.outlineVariant),
+                modifier = Modifier.size(30.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = stepNumber.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            if (primary) {
+                Button(
+                    onClick = action,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(actionLabel)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = action,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(actionLabel)
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Unit, avatar: (@Composable () -> Unit)? = null) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    val colors = MaterialTheme.colorScheme
+    val isOwner = member.role == "owner"
+    OutlinedCard(
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, colors.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (avatar != null) avatar() else Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    member.displayName.take(1).uppercase().ifBlank { "?" },
-                    style = MaterialTheme.typography.titleMedium,
-                )
+            if (avatar != null) {
+                avatar()
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(
+                            color = colors.secondaryContainer,
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        member.displayName.take(1).uppercase().ifBlank { "?" },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onSecondaryContainer,
+                    )
+                }
             }
             Column(
-                Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(member.displayName, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    text = if (member.role == "owner") {
+                AnVeStatusPill(
+                    text = if (isOwner) {
                         stringResource(R.string.circle_role_owner)
                     } else {
                         stringResource(R.string.circle_role_member)
                     },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    containerColor = if (isOwner) colors.secondaryContainer else colors.surfaceVariant,
+                    contentColor = if (isOwner) colors.onSecondaryContainer else colors.onSurfaceVariant,
                 )
             }
             if (canRemove) {
-                TextButton(onClick = onRemove) {
-                    Text(
-                        stringResource(R.string.circle_remove_short),
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                OutlinedButton(
+                    onClick = onRemove,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.circle_remove_short))
                 }
             }
         }
@@ -722,36 +819,76 @@ private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Uni
 
 @Composable
 private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, onShare: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedCard(
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, colors.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Column(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(14.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column {
-                Text(
-                    invite.code,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = stringResource(
-                        R.string.invite_expiry_prefix,
-                        AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unreadable)),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer,
+                ) {
+                    Text(
+                        text = invite.code,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = colors.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.invite_expiry_prefix,
+                            AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unreadable)),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
             }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor =
-                    rememberInkOnSurface())) { Text(stringResource(R.string.invite_share_link)) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = onShare,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.invite_share_link))
+                }
                 // The row button only arms the confirm dialog; once confirmed,
                 // revocation still runs through setBusy like the other
                 // mutations, so the button locks to prevent a double-tap
                 // double revoke.
-                TextButton(onClick = onRevoke, enabled = !busy) {
+                TextButton(
+                    onClick = onRevoke,
+                    enabled = !busy,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(
                         stringResource(R.string.circle_invite_revoke),
-                        color = MaterialTheme.colorScheme.error,
+                        color = colors.error,
                     )
                 }
             }

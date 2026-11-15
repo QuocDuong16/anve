@@ -7,26 +7,45 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Outbox
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -47,11 +66,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
@@ -64,6 +85,9 @@ import com.anve.app.AppContainer
 import com.anve.app.R
 import com.anve.app.data.sos.FirebaseSetup
 import com.anve.app.data.sos.SosLocalState
+import com.anve.app.ui.brand.AnVeSosCareIllustration
+import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.theme.LocalEmergencyColors
@@ -157,12 +181,29 @@ private const val DETAIL_CARD_KEY = "detail-card"
  * reads as grouped sections instead of flat text.
  */
 @Composable
-private fun SosCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    OutlinedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // TalkBack heading navigation; same treatment as the other
-            // screens' section titles (Journey, Places, History, Diagnostics).
-            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+private fun SosCard(
+    title: String,
+    icon: ImageVector? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedCard(
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, colors.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (icon != null) {
+                AnVeSectionHeader(
+                    icon = icon,
+                    title = title,
+                )
+            } else {
+                // TalkBack heading navigation; same treatment as the other
+                // screens' section titles (Journey, Places, History, Diagnostics).
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            }
             content()
         }
     }
@@ -189,23 +230,75 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
     val queuedEventId by vm.queuedEventId.collectAsStateWithLifecycle()
 
     val rows = buildList {
-        add(SosRow("title") { Text(stringResource(R.string.sos_title), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }) })
-        add(SosRow("emergency-disclaimer") {
-            Text(stringResource(R.string.sos_emergency_disclaimer))
-        })
-        add(SosRow("emergency-call") {
-            // The disclaimer asks the user to call the official emergency
-            // numbers, so the dial affordances sit right beside it: ACTION_DIAL
-            // only pre-fills the dialer — AnVề still never places the call.
+        add(SosRow("title") {
+            val colors = MaterialTheme.colorScheme
             val dialer = LocalContext.current
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Numbers as Int so the %1$d placeholder in sos_call_number
-                // formats without an IllegalFormatConversionException.
-                listOf(113, 114, 115).forEach { number ->
-                    TextButton(
-                        onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    ) { Text(stringResource(R.string.sos_call_number, number)) }
+            OutlinedCard(
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.45f)),
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = emergency.emergencyContainer.copy(alpha = 0.28f),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    AnVeSosCareIllustration(
+                        modifier = Modifier.fillMaxWidth().height(116.dp),
+                    )
+                    Text(
+                        stringResource(R.string.sos_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        stringResource(R.string.sos_hero_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.surface.copy(alpha = 0.85f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            stringResource(R.string.sos_emergency_disclaimer),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.sos_emergency_calls_label),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    // The disclaimer asks the user to call the official emergency
+                    // numbers, so the dial affordances sit right beside it: ACTION_DIAL
+                    // only pre-fills the dialer — AnVề still never places the call.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // Numbers as Int so the %1$d placeholder in sos_call_number
+                        // formats without an IllegalFormatConversionException.
+                        listOf(113, 114, 115).forEach { number ->
+                            FilledTonalButton(
+                                onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = emergency.emergencyContainer,
+                                    contentColor = emergency.onEmergencyContainer,
+                                ),
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.sos_call_number, number))
+                            }
+                        }
+                    }
                 }
             }
         })
@@ -231,63 +324,104 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             })
         }
         if (state.offline) add(SosRow("offline") {
-            Text(stringResource(R.string.sos_offline_notice))
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    stringResource(R.string.sos_offline_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
         })
         add(SosRow("recipients-card") {
-            SosCard(stringResource(R.string.sos_recipients_title)) {
+            val colors = MaterialTheme.colorScheme
+            SosCard(stringResource(R.string.sos_recipients_title), Icons.Default.Groups) {
                 if (state.members.isEmpty()) {
-                    Text(stringResource(R.string.sos_recipients_empty))
+                    Text(stringResource(R.string.sos_recipients_empty), color = colors.onSurfaceVariant)
                 }
                 state.members.forEach { member ->
+                    val checked = member.userId in selected
                     // The whole row toggles so the checkbox target is not the only
                     // touchable point; the checkbox itself stays indicative.
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .toggleable(
-                                value = member.userId in selected,
-                                enabled = !state.pending,
-                                role = Role.Checkbox,
-                                onValueChange = { checked -> selected = if (checked) selected + member.userId else selected - member.userId },
-                            )
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (checked) emergency.emergencyContainer.copy(alpha = 0.45f) else colors.surfaceVariant.copy(alpha = 0.38f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (checked) emergency.emergency.copy(alpha = 0.6f) else colors.outlineVariant.copy(alpha = 0.5f),
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(member.displayName, Modifier.weight(1f))
-                        Checkbox(checked = member.userId in selected, enabled = !state.pending, onCheckedChange = null)
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .toggleable(
+                                    value = checked,
+                                    enabled = !state.pending,
+                                    role = Role.Checkbox,
+                                    onValueChange = { isChecked -> selected = if (isChecked) selected + member.userId else selected - member.userId },
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = colors.secondaryContainer,
+                                contentColor = colors.onSecondaryContainer,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        member.displayName.take(1).uppercase().ifBlank { "?" },
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                            Text(member.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Checkbox(checked = checked, enabled = !state.pending, onCheckedChange = null)
+                        }
                     }
                 }
             }
         })
         add(SosRow(OUTBOX_TITLE_KEY) {
-            SosCard(stringResource(R.string.sos_outbox_title)) {
+            SosCard(stringResource(R.string.sos_outbox_title), Icons.Default.Outbox) {
                 if (state.outbox.isEmpty()) {
-                    Text(stringResource(R.string.sos_outbox_empty))
+                    Text(stringResource(R.string.sos_outbox_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 state.outbox.forEach { item ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        // Time and audience separate the attempts from each
-                        // other; two "Đang chờ mạng" rows must stay
-                        // distinguishable on a safety feature.
-                        Text(
-                            stringResource(R.string.sos_outbox_row_meta, sosTime(item.recordedAt, stringResource(R.string.journey_time_unknown)), item.recipientIds.size),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        // The status label gets a state-dependent surface so
-                        // the list is scanned by color: confirmed (the server
-                        // records an open event) stays emergency amber,
-                        // in-flight requests read as attention, finished ones
-                        // go neutral. The wording is untouched.
-                        val (statusContainer, statusContent) = when (item.state) {
-                            SosLocalState.CONFIRMED -> emergency.emergencyContainer to emergency.onEmergencyContainer
-                            SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CANCEL_REQUESTED ->
-                                MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
-                            else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                        Surface(color = statusContainer, contentColor = statusContent, shape = MaterialTheme.shapes.small) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // Time and audience separate the attempts from each
+                            // other; two "Đang chờ mạng" rows must stay
+                            // distinguishable on a safety feature.
                             Text(
-                                when (item.state) {
+                                stringResource(R.string.sos_outbox_row_meta, sosTime(item.recordedAt, stringResource(R.string.journey_time_unknown)), item.recipientIds.size),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            // The status label gets a state-dependent surface so
+                            // the list is scanned by color: confirmed (the server
+                            // records an open event) stays emergency amber,
+                            // in-flight requests read as attention, finished ones
+                            // go neutral. The wording is untouched.
+                            val (statusContainer, statusContent) = when (item.state) {
+                                SosLocalState.CONFIRMED -> emergency.emergencyContainer to emergency.onEmergencyContainer
+                                SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CANCEL_REQUESTED ->
+                                    MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            AnVeStatusPill(
+                                text = when (item.state) {
                                     SosLocalState.QUEUED -> stringResource(R.string.sos_state_queued)
                                     SosLocalState.SENDING -> stringResource(R.string.sos_state_sending)
                                     SosLocalState.UNKNOWN -> stringResource(R.string.sos_state_unknown)
@@ -298,27 +432,28 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                                     SosLocalState.EXPIRED -> stringResource(R.string.sos_state_expired)
                                     SosLocalState.SERVER_EXPIRED -> stringResource(R.string.sos_state_server_expired)
                                 },
-                                Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                containerColor = statusContainer,
+                                contentColor = statusContent,
                             )
-                        }
-                        if (item.state in setOf(SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CONFIRMED)) {
-                            TextButton(onClick = { action = item.eventId to "cancel" }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_action)) }
-                        }
-                        if (item.state == SosLocalState.CANCEL_REQUESTED) {
-                            TextButton(onClick = { vm.recheckCancel(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_recheck)) }
-                        }
-                        if (item.state == SosLocalState.UNKNOWN) {
-                            TextButton(onClick = { vm.recheckUnknown(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_recheck)) }
-                        }
-                        if (item.state in setOf(SosLocalState.CANCELLED, SosLocalState.RESOLVED, SosLocalState.EXPIRED, SosLocalState.SERVER_EXPIRED)) {
-                            TextButton(onClick = { vm.clearFinished(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_clear_finished)) }
+                            if (item.state in setOf(SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CONFIRMED)) {
+                                TextButton(onClick = { action = item.eventId to "cancel" }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_action)) }
+                            }
+                            if (item.state == SosLocalState.CANCEL_REQUESTED) {
+                                TextButton(onClick = { vm.recheckCancel(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_recheck)) }
+                            }
+                            if (item.state == SosLocalState.UNKNOWN) {
+                                TextButton(onClick = { vm.recheckUnknown(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_recheck)) }
+                            }
+                            if (item.state in setOf(SosLocalState.CANCELLED, SosLocalState.RESOLVED, SosLocalState.EXPIRED, SosLocalState.SERVER_EXPIRED)) {
+                                TextButton(onClick = { vm.clearFinished(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_clear_finished)) }
+                            }
                         }
                     }
                 }
             }
         })
         add(SosRow("notifications-card") {
-            SosCard(stringResource(R.string.sos_notifications_section)) {
+            SosCard(stringResource(R.string.sos_notifications_section), Icons.Default.Notifications) {
                 // Server-side push configuration lives here, next to the
                 // device registration it enables; the top of the screen keeps
                 // its focus on picking who receives the request.
@@ -334,16 +469,26 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                 })
                 // Status rows use plain language; the acceptance-vs-delivery
                 // distinction stays explicit in this technical annotation.
-                Text(stringResource(R.string.sos_notifications_technical_note), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(R.string.sos_notifications_technical_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 pushMessage?.let { message -> Text(message) }
-                OutlinedButton(onClick = onNotifications) { Text(stringResource(R.string.sos_notifications_setup)) }
-                if (!notificationPermission) TextButton(onClick = onSystemSettings) { Text(stringResource(R.string.sos_open_notification_settings)) }
+                OutlinedButton(
+                    onClick = onNotifications,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.sos_notifications_setup)) }
+                if (!notificationPermission) TextButton(onClick = onSystemSettings, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.sos_open_notification_settings))
+                }
             }
         })
         add(SosRow("events-card") {
-            SosCard(stringResource(R.string.sos_events_title)) {
+            SosCard(stringResource(R.string.sos_events_title), Icons.Default.History) {
                 if (state.events.isEmpty() && !state.loading) {
-                    Text(stringResource(R.string.sos_events_empty))
+                    Text(stringResource(R.string.sos_events_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 state.events.forEach { event ->
                     val person = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member)
@@ -359,12 +504,12 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                         onClick = { scrollToDetailCount++; vm.select(event.id) },
                         color = rowContainer,
                         contentColor = rowContent,
-                        shape = MaterialTheme.shapes.small,
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) {
                         Text(
                             "$person · ${sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown))} · ${sosState(event.state)}",
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                         )
                     }
                 }
@@ -372,7 +517,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         })
         state.selected?.let { event ->
             add(SosRow(DETAIL_CARD_KEY) {
-                SosCard(stringResource(R.string.sos_detail_title)) {
+                SosCard(stringResource(R.string.sos_detail_title), Icons.Default.Info) {
                     val sender = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member_unnamed)
                     Text(stringResource(R.string.sos_detail_sender, sender))
                     Text(stringResource(
@@ -473,6 +618,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             Surface(
                 color = emergency.emergencyContainer,
                 contentColor = emergency.onEmergencyContainer,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                 tonalElevation = 3.dp,
             ) {
                 Column(
@@ -487,11 +633,13 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                             else -> stringResource(R.string.sos_bottom_ready, selected.size)
                         },
                         style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
                     )
                     Button(
                         onClick = { confirmSend = true },
                         enabled = !state.pending && selected.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                     ) { Text(stringResource(R.string.sos_send_button)) }
                     Text(stringResource(R.string.sos_bottom_disclaimer), style = MaterialTheme.typography.bodySmall)
                 }

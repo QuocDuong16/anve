@@ -18,10 +18,11 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MailOutline
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
+import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.isDarkSurface
@@ -72,7 +74,12 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
         Column(Modifier.fillMaxWidth().heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
             .padding(horizontal = 16.dp).testTag("email-invite-sheet")) {
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                item { Text(stringResource(R.string.invite_sheet_title), style = MaterialTheme.typography.headlineSmall) }
+                item {
+                    AnVeSectionHeader(
+                        icon = Icons.Outlined.MailOutline,
+                        title = stringResource(R.string.invite_sheet_title),
+                    )
+                }
                 item { FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("EMAIL" to stringResource(R.string.invite_mode_email), "LINK" to stringResource(R.string.invite_mode_link)).forEach { (mode, label) ->
@@ -160,11 +167,16 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                 } }
             }
             Spacer(Modifier.height(16.dp))
-            Button(onClick = if (state.unknown) onCheck else onCreate,
+            Button(
+                onClick = if (state.unknown) onCheck else onCreate,
                 enabled = online && !state.busy && (state.unknown || state.mode == "LINK" || inviteEmailValid(state.email.trim().lowercase())),
-                colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
-                    contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("invite-submit")) {
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (dark) colors.primaryContainer else colors.primary,
+                    contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
+                ),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("invite-submit"),
+            ) {
                 Text(if (state.unknown) stringResource(R.string.invite_check_result) else stringResource(R.string.invite_create))
             }
             Spacer(Modifier.height(16.dp))

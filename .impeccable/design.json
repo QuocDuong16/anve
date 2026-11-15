@@ -352,8 +352,8 @@
     }
   ],
   "narrative": {
-    "northStar": "AnVề native Material 3",
-    "overview": "AnVề uses a native Android Material 3 system: deep teal, warm amber, sand surfaces and ink text. The palette source describes a Vietnamese lacquerware influence (sơn mài); this is an existing palette rationale, not a new decorative direction. The default is the static brand scheme, with separate light and dark mappings. Material You is an explicit opt-in on supported Android versions.\n\nThe interface uses Vietnamese text and familiar Compose controls to make voluntary location sharing understandable. State, freshness and uncertainty must be legible without implying that a missing update proves harm. This document records the incumbent system; the Diagnostics overview/details composition belongs to its approved surface brief, not to every screen.",
+    "northStar": "AnVề — Warm Illustrated Family Material 3",
+    "overview": "AnVề uses a native Android Material 3 system: deep teal, warm amber, sand surfaces and ink text, extended with an approved Warm Illustrated Family craft layer (AnVeShapes 12/18/24dp, AnVeIllustrations vector scenes, and a 5-tab family shell with Tài khoản header access). Material You remains an explicit opt-in on supported Android versions.\n\nThe interface uses warm Vietnamese text and familiar Compose controls to make voluntary location sharing understandable. State, freshness and uncertainty must be legible without implying that a missing update proves harm.",
     "keyCharacteristics": [
       "Native Material 3 components and semantic theme roles.",
       "Deep teal with warm amber, sand and ink neutrals.",

@@ -1,20 +1,35 @@
 package com.anve.app.ui.common
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,30 +57,155 @@ fun AnveErrorNotice(
     onRetry: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
 ) {
+    val colors = MaterialTheme.colorScheme
     Card(
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, colors.error.copy(alpha = 0.28f)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            containerColor = colors.errorContainer,
+            contentColor = colors.onErrorContainer,
         ),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = colors.error.copy(alpha = 0.14f),
+                    contentColor = colors.onErrorContainer,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.ErrorOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(top = 4.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
             when {
                 onRetry != null && onDismiss != null -> Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    NoticeAction(stringResource(R.string.action_retry), onRetry)
+                    RetryAction(stringResource(R.string.action_retry), onRetry)
                     NoticeAction(stringResource(R.string.action_dismiss), onDismiss)
                 }
-                onRetry != null -> NoticeAction(stringResource(R.string.action_retry), onRetry)
+                onRetry != null -> RetryAction(stringResource(R.string.action_retry), onRetry)
                 onDismiss != null -> NoticeAction(stringResource(R.string.action_dismiss), onDismiss)
             }
         }
+    }
+}
+
+/** Consistent warm card header with an icon badge, heading semantics, and optional status pill. */
+@Composable
+fun AnVeSectionHeader(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    badgeText: String? = null,
+    badgeContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    badgeContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    iconContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    iconContentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = iconContainerColor,
+            contentColor = iconContentColor,
+            modifier = Modifier.size(40.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (badgeText != null) {
+            AnVeStatusPill(
+                text = badgeText,
+                containerColor = badgeContainerColor,
+                contentColor = badgeContentColor,
+            )
+        }
+    }
+}
+
+/** Compact pill badge for state, role, freshness, and sync labels. */
+@Composable
+fun AnVeStatusPill(
+    text: String,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/** Primary error recovery action inside notices. */
+@Composable
+private fun RetryAction(label: String, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    FilledTonalButton(
+        onClick = onClick,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = colors.surface.copy(alpha = 0.85f),
+            contentColor = colors.onErrorContainer,
+        ),
+        modifier = Modifier.heightIn(min = 48.dp),
+    ) {
+        Text(label)
     }
 }
 

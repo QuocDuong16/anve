@@ -5,43 +5,54 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
@@ -71,6 +82,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -87,6 +99,7 @@ import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.LocationRequestOptions
+import com.anve.app.ui.brand.AnVePlacesSceneIllustration
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
@@ -324,32 +337,83 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     }
                     if (state.places.isEmpty() && !state.loading && state.errorRes == null) {
                         item {
-                            Text(
-                                stringResource(R.string.places_empty),
-                                modifier = Modifier.padding(vertical = 12.dp),
-                            )
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    AnVePlacesSceneIllustration(
+                                        modifier = Modifier.fillMaxWidth().height(124.dp),
+                                    )
+                                    Text(
+                                        stringResource(R.string.places_empty),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
                         }
                     }
                     items(state.places, key = { it.id }) { place ->
-                        val label = if (place.ownerId == owner) {
+                        val isMine = place.ownerId == owner
+                        val label = if (isMine) {
                             stringResource(R.string.places_owner_you)
                         } else {
                             state.sharing.members.firstOrNull { it.userId == place.ownerId }?.displayName ?: stringResource(R.string.places_member_fallback)
                         }
-                        ListItem(
-                            headlineContent = { Text(place.name) },
-                            supportingContent = { Text(stringResource(R.string.places_radius_of, label, place.radiusMeters.toInt())) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !state.pending) {
+                        val colors = MaterialTheme.colorScheme
+                        OutlinedCard(
+                            onClick = {
+                                if (!state.pending) {
                                     vm.select(place.id)
                                     showDetails = true
-                                },
-                            trailingContent = {
-                                Icon(Icons.Default.ChevronRight, contentDescription = null)
+                                }
                             },
-                        )
-                        HorizontalDivider()
+                            enabled = !state.pending,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, colors.outlineVariant),
+                            colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isMine) colors.primaryContainer else colors.secondaryContainer,
+                                    contentColor = if (isMine) colors.onPrimaryContainer else colors.onSecondaryContainer,
+                                    modifier = Modifier.size(40.dp),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = if (isMine) Icons.Default.Home else Icons.Default.Place,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    }
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(place.name, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        stringResource(R.string.places_radius_of, label, place.radiusMeters.toInt()),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = colors.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 } else if (selected == null) {
                     state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
@@ -377,107 +441,133 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                     }
                     if (selected.ownerId == owner) {
-                        // TalkBack heading navigation; same treatment as
-                        // JourneyScreen's section titles.
+                        val otherMembers = state.sharing.members.filter { it.userId != owner }
                         item {
-                            Text(
-                                stringResource(R.string.places_share_with),
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.semantics { heading() },
-                            )
-                        }
-                        // The share notice sits inline above the toggles it
-                        // explains: the rebuttal of the most dangerous
-                        // misreading (sharing a place does not grant
-                        // event-viewing rights) must be readable where the
-                        // sharing decision happens, not behind the notes
-                        // toggle further down the list.
-                        item { Text(stringResource(R.string.places_share_notice)) }
-                        items(state.sharing.members.filter { it.userId != owner }, key = { "access-${it.userId}" }) { person ->
-                            // The whole row toggles so TalkBack announces the member's
-                            // name together with the switch state; the switch itself
-                            // stays indicative (same pattern as SosScreen's rows).
-                            ListItem(
-                                modifier = Modifier.toggleable(
-                                    value = person.userId in state.access,
-                                    enabled = !state.pending && !state.loading,
-                                    role = Role.Switch,
-                                    onValueChange = { vm.share(selected.id, person.userId, it) },
-                                ),
-                                headlineContent = { Text(person.displayName) },
-                                supportingContent = { Text(stringResource(R.string.places_access_supporting)) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = person.userId in state.access,
-                                        enabled = !state.pending && !state.loading,
-                                        onCheckedChange = null,
+                            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.places_share_with),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.semantics { heading() },
                                     )
-                                },
-                            )
+                                    Text(
+                                        stringResource(R.string.places_share_section_title),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    // The share notice sits inline above the toggles it
+                                    // explains: the rebuttal of the most dangerous
+                                    // misreading (sharing a place does not grant
+                                    // event-viewing rights) must be readable where the
+                                    // sharing decision happens, not behind the notes
+                                    // toggle further down the list.
+                                    Text(
+                                        stringResource(R.string.places_share_notice),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                    otherMembers.forEach { person ->
+                                        // The whole row toggles so TalkBack announces the member's
+                                        // name together with the switch state; the switch itself
+                                        // stays indicative (same pattern as SosScreen's rows).
+                                        ListItem(
+                                            modifier = Modifier.toggleable(
+                                                value = person.userId in state.access,
+                                                enabled = !state.pending && !state.loading,
+                                                role = Role.Switch,
+                                                onValueChange = { vm.share(selected.id, person.userId, it) },
+                                            ),
+                                            headlineContent = { Text(person.displayName) },
+                                            supportingContent = { Text(stringResource(R.string.places_access_supporting)) },
+                                            trailingContent = {
+                                                Switch(
+                                                    checked = person.userId in state.access,
+                                                    enabled = !state.pending && !state.loading,
+                                                    onCheckedChange = null,
+                                                )
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                         }
+                    }
+                    val eligibleMembers = state.sharing.members.filter {
+                        it.userId != owner && it.userId in state.eligibleRecipients
                     }
                     item {
-                        // Same TalkBack heading treatment as the share title.
-                        Text(
-                            stringResource(R.string.places_monitor_mine_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                    }
-                    items(
-                        state.sharing.members.filter { it.userId != owner && it.userId in state.eligibleRecipients },
-                        key = { "recipient-${it.userId}" },
-                    ) { person ->
-                        // Row-level checkbox for the same TalkBack reason as the
-                        // share rows above; the inner checkbox stays indicative.
-                        ListItem(
-                            modifier = Modifier.toggleable(
-                                value = person.userId in recipients,
-                                enabled = !state.pending,
-                                role = Role.Checkbox,
-                                onValueChange = { checked ->
-                                    recipients = if (checked) recipients + person.userId else recipients - person.userId
-                                },
-                            ),
-                            headlineContent = { Text(person.displayName) },
-                            supportingContent = { Text(stringResource(R.string.places_recipient_supporting)) },
-                            trailingContent = {
-                                Checkbox(
-                                    checked = person.userId in recipients,
-                                    enabled = !state.pending,
-                                    onCheckedChange = null,
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                // Same TalkBack heading treatment as the share title.
+                                Text(
+                                    stringResource(R.string.places_monitor_mine_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.semantics { heading() },
                                 )
-                            },
-                        )
-                    }
-                    // The enable button below is locked while consent is off; the
-                    // notice next to it keeps the way out visible instead of a
-                    // silent dead end for first-time users (consent defaults to
-                    // off). Same pattern as JourneyScreen's requires-capture notice.
-                    if (!state.sharing.consentEnabled) item {
-                        ConsentNotice(onOpenLocation)
+                                Text(
+                                    stringResource(R.string.places_alerts_section_title),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                eligibleMembers.forEach { person ->
+                                    // Row-level checkbox for the same TalkBack reason as the
+                                    // share rows above; the inner checkbox stays indicative.
+                                    ListItem(
+                                        modifier = Modifier.toggleable(
+                                            value = person.userId in recipients,
+                                            enabled = !state.pending,
+                                            role = Role.Checkbox,
+                                            onValueChange = { checked ->
+                                                recipients = if (checked) recipients + person.userId else recipients - person.userId
+                                            },
+                                        ),
+                                        headlineContent = { Text(person.displayName) },
+                                        supportingContent = { Text(stringResource(R.string.places_recipient_supporting)) },
+                                        trailingContent = {
+                                            Checkbox(
+                                                checked = person.userId in recipients,
+                                                enabled = !state.pending,
+                                                onCheckedChange = null,
+                                            )
+                                        },
+                                    )
+                                }
+                                // The enable button below is locked while consent is off; the
+                                // notice next to it keeps the way out visible instead of a
+                                // silent dead end for first-time users (consent defaults to
+                                // off). Same pattern as JourneyScreen's requires-capture notice.
+                                if (!state.sharing.consentEnabled) {
+                                    ConsentNotice(onOpenLocation)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = {
+                                            configureBaseline = state.confirmation
+                                            vm.configure(selected.id, recipients.intersect(state.eligibleRecipients))
+                                        },
+                                        enabled = !state.pending && state.sharing.consentEnabled,
+                                    ) {
+                                        Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))
+                                    }
+                                    if (state.monitor != null) {
+                                        TextButton(onClick = { vm.stop(selected.id) }, enabled = !state.pending) { Text(stringResource(R.string.places_monitor_stop)) }
+                                    }
+                                }
+                            }
+                        }
                     }
                     item(key = "places-notes") {
                         PlacesNotesCard(
                             expanded = notesExpanded,
                             onToggle = { notesExpanded = !notesExpanded },
                         )
-                    }
-                    item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = {
-                                    configureBaseline = state.confirmation
-                                    vm.configure(selected.id, recipients.intersect(state.eligibleRecipients))
-                                },
-                                enabled = !state.pending && state.sharing.consentEnabled,
-                            ) {
-                                Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))
-                            }
-                            if (state.monitor != null) {
-                                TextButton(onClick = { vm.stop(selected.id) }, enabled = !state.pending) { Text(stringResource(R.string.places_monitor_stop)) }
-                            }
-                        }
                     }
                 }
                 if (!showDetails || selected != null) {
@@ -503,10 +593,49 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                         val delayed = if (event.delayed) stringResource(R.string.places_event_delayed) else ""
                         val confidence = if (event.confidence == "OBSERVED") stringResource(R.string.places_confidence_observed) else stringResource(R.string.places_confidence_unknown)
-                        ListItem(
-                            headlineContent = { Text(stringResource(R.string.places_event_title, event.ownerName, transition, event.placeName)) },
-                            supportingContent = { Text("$at$delayed$confidence") },
-                        )
+                        val colors = MaterialTheme.colorScheme
+                        val isEnter = event.type == "ENTER"
+                        OutlinedCard(
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, colors.outlineVariant),
+                            colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isEnter) colors.primaryContainer else colors.secondaryContainer,
+                                    contentColor = if (isEnter) colors.onPrimaryContainer else colors.onSecondaryContainer,
+                                    modifier = Modifier.size(34.dp),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.places_event_title, event.ownerName, transition, event.placeName),
+                                        style = MaterialTheme.typography.titleSmall,
+                                    )
+                                    Text(
+                                        "$at$delayed$confidence",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -722,55 +851,163 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             fixLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { Text(stringResource(if (place == null) R.string.places_add else R.string.places_edit), style = MaterialTheme.typography.headlineSmall) }
-        item { OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.places_editor_name_label)) }, enabled = !pending, modifier = Modifier.fillMaxWidth()) }
-        if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-            item {
-                // The editor's map is one item in the LazyColumn form, so pan
-                // would swallow the form's scroll. Tap-to-select stays wired
-                // through onMapClick, and the position can still be set with
-                // the current-location action and the coordinate fields, so
-                // free panning adds nothing here.
-                GoogleMap(
-                    modifier = Modifier.fillMaxWidth().height(260.dp),
-                    cameraPositionState = camera,
-                    uiSettings = MapUiSettings(scrollGesturesEnabled = false),
-                    onMapClick = {
-                        if (!pending) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
-                    },
+    var showManualCoords by rememberSaveable(place?.id) {
+        mutableStateOf(BuildConfig.MAPS_API_KEY.isBlank())
+    }
+    val presetNames = listOf(
+        stringResource(R.string.places_preset_home),
+        stringResource(R.string.places_preset_school),
+        stringResource(R.string.places_preset_work),
+        stringResource(R.string.places_preset_grandparents),
+    )
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Text(
+                stringResource(if (place == null) R.string.places_add else R.string.places_edit),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        item {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    point?.let {
-                        val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
-                        Marker(state = marker, title = name)
-                        Circle(center = it, radius = radius, strokeColor = MaterialTheme.colorScheme.primary, fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+                    Text(
+                        stringResource(R.string.places_quick_name_title),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        presetNames.forEach { preset ->
+                            FilterChip(
+                                selected = name.trim() == preset,
+                                onClick = { if (!pending) name = preset },
+                                enabled = !pending,
+                                label = { Text(preset) },
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.places_editor_name_label)) },
+                        enabled = !pending,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+        item {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+                        // The editor's map is one item in the LazyColumn form, so pan
+                        // would swallow the form's scroll. Tap-to-select stays wired
+                        // through onMapClick, and the position can still be set with
+                        // the current-location action and the coordinate fields.
+                        GoogleMap(
+                            modifier = Modifier.fillMaxWidth().height(240.dp),
+                            cameraPositionState = camera,
+                            uiSettings = MapUiSettings(scrollGesturesEnabled = false),
+                            onMapClick = {
+                                if (!pending) {
+                                    latitude = it.latitude.toString()
+                                    longitude = it.longitude.toString()
+                                }
+                            },
+                        ) {
+                            point?.let {
+                                val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
+                                Marker(state = marker, title = name)
+                                Circle(
+                                    center = it,
+                                    radius = radius,
+                                    strokeColor = MaterialTheme.colorScheme.primary,
+                                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
+                                )
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.places_editor_map_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        AnVePlacesSceneIllustration(
+                            modifier = Modifier.fillMaxWidth().height(128.dp),
+                        )
+                        Text(
+                            stringResource(R.string.places_editor_no_map),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            stringResource(R.string.places_map_cta_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { useCurrentLocation() },
+                        enabled = !pending && !locating,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.places_editor_use_current_location))
+                    }
+                    locationNote?.let { res ->
+                        Text(
+                            stringResource(res),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
+                    if (locating) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(Modifier.size(24.dp))
+                            Text(
+                                stringResource(R.string.action_processing),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
-            item { Text(stringResource(R.string.places_editor_map_hint)) }
-        } else item { Text(stringResource(R.string.places_editor_no_map)) }
+        }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedButton(onClick = { useCurrentLocation() }, enabled = !pending && !locating) {
-                    Text(stringResource(R.string.places_editor_use_current_location))
-                }
-                // The permission note stays informational (onSurfaceVariant);
-                // the fetch failure goes through the shared AnveErrorNotice per
-                // DESIGN.md's Failure Notice Rule — the editor's manual
-                // coordinate fields are the recovery path, so no retry row here.
-                locationNote?.let { res ->
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(
-                        stringResource(res),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        stringResource(R.string.places_radius, radius.toInt()),
+                        style = MaterialTheme.typography.titleSmall,
                     )
-                }
-                locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
-                if (locating) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(24.dp))
+                    Slider(
+                        value = radius.toFloat(),
+                        onValueChange = { radius = it.toDouble() },
+                        valueRange = 50f..5000f,
+                        enabled = !pending,
+                    )
+                    if (place != null) {
                         Text(
-                            stringResource(R.string.action_processing),
+                            stringResource(R.string.places_editor_radius_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -778,11 +1015,49 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                 }
             }
         }
-        item { OutlinedTextField(latitude, { latitude = it }, label = { Text(stringResource(R.string.places_editor_lat_label)) }, enabled = !pending, modifier = Modifier.fillMaxWidth()) }
-        item { OutlinedTextField(longitude, { longitude = it }, label = { Text(stringResource(R.string.places_editor_lon_label)) }, enabled = !pending, modifier = Modifier.fillMaxWidth()) }
-        item { Text(stringResource(R.string.places_radius, radius.toInt())) }
-        item { Slider(value = radius.toFloat(), onValueChange = { radius = it.toDouble() }, valueRange = 50f..5000f, enabled = !pending) }
-        if (place != null) item { Text(stringResource(R.string.places_editor_radius_note)) }
+        item {
+            val coordsToggleState = stringResource(
+                if (showManualCoords) R.string.action_state_expanded else R.string.action_state_collapsed,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clickable { showManualCoords = !showManualCoords }
+                        .semantics { stateDescription = coordsToggleState },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.places_manual_coords_toggle),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Icon(
+                        imageVector = if (showManualCoords) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                    )
+                }
+                AnimatedVisibility(visible = showManualCoords) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = latitude,
+                            onValueChange = { latitude = it },
+                            label = { Text(stringResource(R.string.places_editor_lat_label)) },
+                            enabled = !pending,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = longitude,
+                            onValueChange = { longitude = it },
+                            label = { Text(stringResource(R.string.places_editor_lon_label)) },
+                            enabled = !pending,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
         noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
         // The Save button locks on invalid coordinates; say what is wrong while
         // the user is still in the fields, not only through a disabled button.

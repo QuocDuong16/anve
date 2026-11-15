@@ -143,9 +143,17 @@ The approved Diagnostics reference is `.impeccable/mocks/m7-diagnostics-c.png` w
 
 The inspected screen groups content through native outlined cards, tonal headers, dividers and a Material dialog. There are no custom shadow or elevation tokens in the inspected theme. Preserve Material component defaults and semantic surface relationships; this document does not assert a product-wide ban on shadows or invent a web shadow scale. Motion is likewise inherited from the native controls; no custom duration/easing scale was extracted.
 
+## Warm Illustrated Family Extension (Approved Redesign)
+
+AnVề extends native Material 3 with a **Warm Illustrated Family** craft layer grounded in `.impeccable/mocks/anve-warm-redesign/`:
+
+- **Shapes (`AnVeShapes` in `Theme.kt`):** Gentle, approachable rounded corners — `small = 12.dp`, `medium = 18.dp`, `large = 24.dp` — while retaining all Material color roles, `ThemeContrastTest` >= 4.5:1 contrast pairs, and emergency vs `error` separation.
+- **Brand & Vector Scenes (`AnVeBrandMark` & `AnVeIllustrations.kt`):** Warm theme-aware Compose `Canvas` illustrations depicting lighted homes, winding evening roads, family silhouettes, and safe-zone pins. Illustrations clarify emotional context (sharing active vs paused, empty day, empty circle, journey home) without obscuring truth or substituting for observed timestamps/states.
+- **Navigation Shell (`HomeScreen`):** Five primary tabs in `NavigationBar` (`Bản đồ`, `Gia đình`, `Vị trí`, `Địa điểm`, `Lịch sử`), paired with a compact top shell header displaying `AnVeBrandMark`, `"AnVề"`, and direct `"Tài khoản"` access across tabs, plus the amber `SOS` `ExtendedFloatingActionButton`. `Hành trình An Về` is surfaced directly from `Vị trí` (`TrackingScreen`), keeping `Tài khoản` and `SOS` as secondary shell routes with system Back return.
+
 ## Shapes
 
-`AnVeTheme` provides no custom `Shapes` override. Buttons, segmented choices, cards, fields and dialogs retain the installed Material 3 component shapes. Diagnostics uses `CircleShape` for its status icon surface. No application-specific numeric radius scale was extracted. Keep Android touch targets at least 48dp; the export action explicitly sets that minimum, while standard controls retain native minimum interaction sizing.
+`AnVeTheme` applies `AnVeShapes` (`small = 12.dp`, `medium = 18.dp`, `large = 24.dp`) on top of Material 3 component defaults. Status badges and avatar badges use `CircleShape`. Keep Android touch targets at least 48dp; interactive controls retain native minimum interaction sizing.
 
 ## Components
 
@@ -167,11 +175,11 @@ Use `Card` and `OutlinedCard` rather than drawing controls into a raster. Diagno
 
 ### Navigation
 
-The home screen uses `NavigationBar`/`NavigationBarItem` with Material vector icons and Vietnamese labels. This extraction records the current primitive, not a verification of its destination count or tablet behavior. Diagnostics has a top app bar with Back/refresh and a local `SingleChoiceSegmentedButtonRow`; it does not add a main navigation destination. Preserve system Back behavior.
+The home screen uses `NavigationBar`/`NavigationBarItem` with Material vector icons and five Vietnamese tabs (`Bản đồ`, `Gia đình`, `Vị trí`, `Địa điểm`, `Lịch sử`). A compact shell header exposes `Tài khoản` across tabs without adding a sixth bottom destination. Diagnostics has a top app bar with Back/refresh and a local `SingleChoiceSegmentedButtonRow`; it does not add a main navigation destination. Preserve system Back behavior.
 
 **Top app bar treatment.** Which screen gets a top bar, and which color it wears, is a deliberate rule per surface kind:
 
-- Secondary pages inside the home shell (Vị trí, Tài khoản, SOS) use the default surface `TopAppBar` with a title and a back action. They read as part of the app chrome, not as a destination of their own.
+- Secondary pages inside the home shell (Tài khoản, SOS) use the default surface `TopAppBar` with a title and a back action. They read as part of the app chrome, not as a destination of their own.
 - Full-screen overlay flows (Hành trình, Chẩn đoán) use a `TopAppBar` in brand primary (light) / `primaryContainer` (dark). The color marks a focused, branded moment that covers the shell.
 - SOS keeps its emergency amber treatment in the bottom bar (urgency ≠ failure); the top-bar rule does not recolor it, and amber urgency stays distinct from `error`.
 - Every other screen is a tab inside the home shell and carries no top bar of its own unless actions are needed: History and Places use a surface `TopAppBar` inside their tab content for refresh and overflow actions.

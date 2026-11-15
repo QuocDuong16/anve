@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -104,6 +105,8 @@ import com.anve.app.tracking.diagnostics.DiagnosticsAction
 import com.anve.app.tracking.diagnostics.SyncWorkStatus
 import com.anve.app.tracking.diagnostics.diagnoseTracking
 import com.anve.app.tracking.diagnostics.diagnosticAgeSeconds
+import com.anve.app.ui.brand.AnVeDiagnosticsIllustration
+import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.isDarkSurface
@@ -281,16 +284,58 @@ fun DiagnosticsContent(
                 return@LazyColumn
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(Modifier.size(56.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.LocationOn, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                OutlinedCard(
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = if (diagnosis.attention) {
+                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f)
+                        } else {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
+                        },
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        AnVeDiagnosticsIllustration(
+                            attention = diagnosis.attention,
+                            modifier = Modifier.fillMaxWidth().height(92.dp),
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                Modifier.size(48.dp),
+                                shape = CircleShape,
+                                color = if (diagnosis.attention) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                },
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        null,
+                                        Modifier.size(24.dp),
+                                        tint = if (diagnosis.attention) {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        },
+                                    )
+                                }
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(diagnosis.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.height(4.dp))
+                                Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                    }
-                    Column {
-                        Text(diagnosis.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                        Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -385,27 +430,52 @@ fun DiagnosticsContent(
 
 @Composable
 private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: Boolean, background: Color, foreground: Color, onAction: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = background, contentColor = foreground)) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(12.dp)) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = background, contentColor = foreground),
+    ) {
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(14.dp)) {
             val icon = if (networkIssue) Icons.Default.WifiOff else Icons.Default.Info
             val action: @Composable (Modifier) -> Unit = { modifier ->
-                OutlinedButton(onClick = onAction, modifier = modifier, border = BorderStroke(1.dp, foreground), colors = ButtonDefaults.outlinedButtonColors(contentColor = foreground)) {
+                OutlinedButton(
+                    onClick = onAction,
+                    modifier = modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, foreground),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = foreground),
+                ) {
                     Icon(Icons.Default.Settings, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(actionLabel)
                 }
             }
             if (maxWidth < 340.dp || LocalDensity.current.fontScale > 1.15f) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(icon, null)
+                        Surface(
+                            shape = CircleShape,
+                            color = foreground.copy(alpha = 0.14f),
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(icon, null, Modifier.size(20.dp), tint = foreground)
+                            }
+                        }
                         Text(title, style = MaterialTheme.typography.titleMedium)
                     }
                     action(Modifier.fillMaxWidth())
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(icon, null)
+                    Surface(
+                        shape = CircleShape,
+                        color = foreground.copy(alpha = 0.14f),
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(icon, null, Modifier.size(20.dp), tint = foreground)
+                        }
+                    }
                     Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     action(Modifier)
                 }
@@ -416,26 +486,68 @@ private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: 
 
 @Composable
 private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Composable () -> Unit) {
-    OutlinedCard(colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    OutlinedCard(
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
         Column(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(icon, null, modifier = Modifier.size(18.dp))
+                    }
+                }
                 // TalkBack's heading navigation is the fastest way through
                 // this, the app's longest screen: marking each section title
                 // lets users jump by section instead of swiping every row.
-                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
             }
-            HorizontalDivider()
-            content()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            Column(Modifier.padding(vertical = 4.dp)) {
+                content()
+            }
         }
     }
 }
 
 @Composable
 private fun DiagnosticRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (value.length <= 22) {
+            AnVeStatusPill(
+                text = value,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                value,
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.End,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

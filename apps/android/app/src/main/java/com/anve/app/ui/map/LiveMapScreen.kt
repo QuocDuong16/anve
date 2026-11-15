@@ -4,14 +4,17 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,18 +24,23 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,8 +74,13 @@ import com.anve.app.data.location.VisibleLocationSnapshot
 import com.anve.app.data.location.displayLocationConfidence
 import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.LocationPermissionState
+import com.anve.app.ui.brand.AnVePlacesSceneIllustration
+import com.anve.app.ui.brand.AnVeSharingHeroIllustration
+import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -85,7 +98,13 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
 @Composable
-fun LiveMapScreen(container: AppContainer, onOpenLocation: () -> Unit = {}, onOpenAccount: () -> Unit = {}, onOpenCircle: () -> Unit = {}) {
+fun LiveMapScreen(
+    container: AppContainer,
+    onOpenLocation: () -> Unit = {},
+    onOpenCircle: () -> Unit = {},
+    openSharingRequest: Boolean = false,
+    onSharingRequestConsumed: () -> Unit = {},
+) {
     val viewModel: LiveMapViewModel = viewModel(
         factory = LiveMapViewModel.factory(container.visibleLocationRepository),
     )
@@ -106,6 +125,13 @@ fun LiveMapScreen(container: AppContainer, onOpenLocation: () -> Unit = {}, onOp
         }
     }
 
+    LaunchedEffect(openSharingRequest, ownerId) {
+        if (openSharingRequest && ownerId != null) {
+            viewModel.showSharing(true, ownerId)
+            onSharingRequestConsumed()
+        }
+    }
+
     LiveMapContent(
         state = state.takeIf { it.ownerId == ownerId } ?: LiveMapUiState(ownerId = ownerId),
         ownerId = ownerId,
@@ -115,7 +141,6 @@ fun LiveMapScreen(container: AppContainer, onOpenLocation: () -> Unit = {}, onOp
         onToggleViewer = { member, enabled -> viewModel.toggleViewer(ownerId, member, enabled) },
         onRetrySharing = { viewModel.refreshSharing(ownerId) },
         onOpenLocation = onOpenLocation,
-        onOpenAccount = onOpenAccount,
         onOpenCircle = onOpenCircle,
     )
 }
@@ -130,7 +155,6 @@ private fun LiveMapContent(
     onToggleViewer: (AudienceMember, Boolean) -> Unit,
     onRetrySharing: () -> Unit,
     onOpenLocation: () -> Unit = {},
-    onOpenAccount: () -> Unit = {},
     onOpenCircle: () -> Unit = {},
 ) {
     val snapshot = state.snapshot.takeIf { state.ownerId == ownerId }
@@ -248,7 +272,9 @@ private fun LiveMapContent(
         } else {
             MapUnavailableCard(
                 message = stringResource(R.string.map_unconfigured_message),
-                modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                onOpenSharing = onOpenSharing,
+                onOpenLocation = onOpenLocation,
+                modifier = Modifier.align(Alignment.Center).padding(20.dp),
             )
         }
 
@@ -287,26 +313,6 @@ private fun LiveMapContent(
                     Text(stringResource(R.string.map_audience_action))
                 }
             }
-            // The home shell hides the sharing-settings card on the map tab so
-            // its overlay does not eat viewing space, which left this tab with
-            // no visible route to the screen where sharing decisions are made.
-            // One compact text pointer restores the path without re-adding the
-            // card; the label reuses the destination's own title.
-            TextButton(
-                onClick = onOpenLocation,
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.tracking_title))
-            }
-            // Same reasoning for the account screen: with the sharing card
-            // hidden on this tab, sessions and account actions need their own
-            // compact pointer.
-            TextButton(
-                onClick = onOpenAccount,
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.tab_account))
-            }
             snapshot?.error?.let { message ->
                 // Same failure presentation as the other screens: the shared
                 // errorContainer notice, not a bare text card.
@@ -318,12 +324,32 @@ private fun LiveMapContent(
             snapshot?.loading == true -> CircularProgressIndicator(
                 Modifier.align(Alignment.Center),
             )
-            locations.isEmpty() -> Card(Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
-                Text(
-                    stringResource(R.string.map_no_locations_notice),
-                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+            locations.isEmpty() -> Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, bottom = HOME_FAB_CLEARANCE),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.map_no_locations_notice),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        OutlinedButton(onClick = onOpenSharing, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(stringResource(R.string.map_audience_action))
+                        }
+                        TextButton(onClick = onOpenLocation, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(stringResource(R.string.action_open_location))
+                        }
+                    }
+                }
             }
             else -> {
                 Column(
@@ -370,15 +396,48 @@ private fun LiveMapContent(
 }
 
 @Composable
-private fun MapUnavailableCard(message: String, modifier: Modifier = Modifier) {
-    Card(modifier) {
+private fun MapUnavailableCard(
+    message: String,
+    modifier: Modifier = Modifier,
+    onOpenSharing: () -> Unit = {},
+    onOpenLocation: () -> Unit = {},
+) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedCard(
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, colors.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        modifier = modifier.fillMaxWidth(),
+    ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            AnVePlacesSceneIllustration(
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+            )
             Text(stringResource(R.string.map_unavailable_title), style = MaterialTheme.typography.titleMedium)
-            Text(message, style = MaterialTheme.typography.bodyMedium)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onOpenSharing,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.map_audience_action))
+                }
+                FilledTonalButton(
+                    onClick = onOpenLocation,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.action_open_location))
+                }
+            }
         }
     }
 }
@@ -390,21 +449,70 @@ private fun MemberLocationCard(
     modifier: Modifier = Modifier,
     onRecenter: () -> Unit,
 ) {
-    Card(modifier.fillMaxWidth()) {
+    val colors = MaterialTheme.colorScheme
+    val pillColors = when (confidence) {
+        "FRESH" -> colors.primaryContainer to colors.onPrimaryContainer
+        "DELAYED" -> colors.secondaryContainer to colors.onSecondaryContainer
+        else -> colors.surfaceVariant to colors.onSurfaceVariant
+    }
+    OutlinedCard(
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, colors.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        modifier = modifier.fillMaxWidth(),
+    ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(location.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(confidence.toConfidenceLabel(), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.map_updated_at, location.recordedAt.toVietnameseTime(stringResource(R.string.map_time_unavailable))), style = MaterialTheme.typography.bodySmall)
-                location.horizontalAccuracyMeters?.let {
-                    Text(stringResource(R.string.map_accuracy, it.toInt()), style = MaterialTheme.typography.bodySmall)
+            Surface(
+                shape = CircleShape,
+                color = colors.primaryContainer,
+                contentColor = colors.onPrimaryContainer,
+                modifier = Modifier.size(44.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = location.displayName.take(1).uppercase().ifBlank { "?" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
-            IconButton(onClick = onRecenter, enabled = location.latLngOrNull() != null) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(location.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    AnVeStatusPill(
+                        text = confidence.toConfidenceLabel(),
+                        containerColor = pillColors.first,
+                        contentColor = pillColors.second,
+                    )
+                }
+                Text(
+                    stringResource(R.string.map_updated_at, location.recordedAt.toVietnameseTime(stringResource(R.string.map_time_unavailable))),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+                location.horizontalAccuracyMeters?.let {
+                    Text(
+                        stringResource(R.string.map_accuracy, it.toInt()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
+            FilledTonalIconButton(
+                onClick = onRecenter,
+                enabled = location.latLngOrNull() != null,
+                modifier = Modifier.size(48.dp),
+            ) {
                 // A refresh glyph reads as "reload the data"; MyLocation is the
                 // camera-recenter convention on map surfaces.
                 Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.map_recenter_content_desc))
@@ -424,18 +532,35 @@ private fun AudienceSheet(
     onOpenLocation: () -> Unit = {},
     onOpenCircle: () -> Unit = {},
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val colors = MaterialTheme.colorScheme
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.map_audience_title), style = MaterialTheme.typography.titleLarge)
+            AnVeSharingHeroIllustration(
+                active = state.sharing?.consentEnabled ?: true,
+                modifier = Modifier.fillMaxWidth().height(96.dp),
+            )
+            AnVeSectionHeader(
+                icon = Icons.Default.Group,
+                title = stringResource(R.string.map_audience_title),
+            )
             // One fact per line: the old 60+ word paragraph asked readers to
             // hold consent, timing and offline behavior at once.
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.map_audience_explainer_consent), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.map_audience_explainer_timing), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.map_audience_explainer_offline), style = MaterialTheme.typography.bodyMedium)
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = colors.surfaceVariant.copy(alpha = 0.42f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(stringResource(R.string.map_audience_explainer_consent), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.map_audience_explainer_timing), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.map_audience_explainer_offline), style = MaterialTheme.typography.bodySmall)
+                }
             }
             if (state.sharingLoading && state.sharing == null) {
                 CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
@@ -444,7 +569,9 @@ private fun AudienceSheet(
                 // Same failure presentation as the rest of the app; the sheet
                 // keeps its own retry below, so the notice takes no second retry.
                 AnveErrorNotice(stringResource(res))
-                TextButton(onClick = onRetry) { Text(stringResource(R.string.map_retry)) }
+                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.map_retry))
+                }
             }
             val sharing = state.sharing
             when {
@@ -471,7 +598,7 @@ private fun AudienceSheet(
                     stringResource(R.string.map_no_other_members),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(sharing.members.filter { it.userId != ownerId }, key = AudienceMember::userId) { member ->
                         // The whole row toggles so TalkBack announces the member's
                         // name together with the switch state instead of an
@@ -479,58 +606,80 @@ private fun AudienceSheet(
                         // touch target covers the padded row (>= 48dp). The inner
                         // switch stays indicative; unresolved members have no
                         // control yet, so their row stays non-interactive.
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .then(
-                                    if (member.userId in state.unresolvedViewerIds) {
-                                        Modifier
-                                    } else {
-                                        Modifier.toggleable(
-                                            value = member.canViewLocation,
-                                            enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
-                                            role = Role.Switch,
-                                            onValueChange = { onToggle(member, it) },
-                                        )
-                                    },
-                                )
-                                .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                        OutlinedCard(
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, colors.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
-                                // role ships as a raw "owner"/"member" contract
-                                // string; mapping it here instead of in the data
-                                // layer keeps AudienceMember faithful to the server
-                                // payload while reusing the Circle screen's
-                                // standardized labels, so one concept keeps one wording.
-                                Text(
-                                    text = if (member.role == "owner") {
-                                        stringResource(R.string.circle_role_owner)
-                                    } else {
-                                        stringResource(R.string.circle_role_member)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                            if (member.userId in state.unresolvedViewerIds) {
-                                Text(stringResource(R.string.map_viewer_unresolved), style = MaterialTheme.typography.bodySmall)
-                            } else {
-                                Switch(
-                                    checked = member.canViewLocation,
-                                    enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
-                                    onCheckedChange = null,
-                                )
-                            }
-                            if (member.userId in state.pendingViewerIds) {
-                                CircularProgressIndicator(Modifier.size(18.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .then(
+                                        if (member.userId in state.unresolvedViewerIds) {
+                                            Modifier
+                                        } else {
+                                            Modifier.toggleable(
+                                                value = member.canViewLocation,
+                                                enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                                role = Role.Switch,
+                                                onValueChange = { onToggle(member, it) },
+                                            )
+                                        },
+                                    )
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = colors.secondaryContainer,
+                                    contentColor = colors.onSecondaryContainer,
+                                    modifier = Modifier.size(38.dp),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = member.displayName.take(1).uppercase().ifBlank { "?" },
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
+                                    // role ships as a raw "owner"/"member" contract
+                                    // string; mapping it here instead of in the data
+                                    // layer keeps AudienceMember faithful to the server
+                                    // payload while reusing the Circle screen's
+                                    // standardized labels, so one concept keeps one wording.
+                                    Text(
+                                        text = if (member.role == "owner") {
+                                            stringResource(R.string.circle_role_owner)
+                                        } else {
+                                            stringResource(R.string.circle_role_member)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                                if (member.userId in state.unresolvedViewerIds) {
+                                    Text(stringResource(R.string.map_viewer_unresolved), style = MaterialTheme.typography.bodySmall)
+                                } else {
+                                    Switch(
+                                        checked = member.canViewLocation,
+                                        enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                        onCheckedChange = null,
+                                    )
+                                }
+                                if (member.userId in state.pendingViewerIds) {
+                                    CircularProgressIndicator(Modifier.size(18.dp))
+                                }
                             }
                         }
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.anve.app.ui.avatar
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,9 +8,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.data.avatar.AvatarGateway
@@ -67,12 +69,30 @@ fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, 
 }
 
 @Composable
-fun AvatarFrame(name: String, image: ImageBitmap?, modifier: Modifier = Modifier, overlay: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {}) {
+fun AvatarFrame(
+    name: String,
+    image: ImageBitmap?,
+    modifier: Modifier = Modifier,
+    overlay: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {},
+) {
+    val colors = MaterialTheme.colorScheme
     Box(modifier, contentAlignment = Alignment.Center) {
-        Surface(Modifier.fillMaxSize(), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = CircleShape,
+            color = colors.primaryContainer,
+            contentColor = colors.onPrimaryContainer,
+            border = BorderStroke(2.dp, colors.primary.copy(alpha = 0.22f)),
+        ) {
             Box(contentAlignment = Alignment.Center) {
-                if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Text(name.take(1).uppercase().ifBlank { "?" }, style = MaterialTheme.typography.titleLarge)
+                if (image != null) {
+                    Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                } else {
+                    Text(
+                        text = name.take(1).uppercase().ifBlank { "?" },
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                }
             }
         }
         // Recovery controls retain their full target outside the photo's circular clip.

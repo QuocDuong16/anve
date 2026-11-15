@@ -3,21 +3,31 @@ package com.anve.app.ui.signin
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +58,7 @@ import com.anve.app.R
 import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.brand.AnVeBrandMark
+import com.anve.app.ui.brand.AnVeFamilySceneIllustration
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.UiMessage
 import com.anve.app.ui.theme.AnVeTheme
@@ -132,90 +143,158 @@ fun SignInContent(
                 CircularProgressIndicator()
             }
 
-            is SignInUiState.Ready -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                AnVeBrandMark(Modifier.size(80.dp))
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.displaySmall,
-                )
-                Text(
-                    text = stringResource(R.string.splash_tagline),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Spacer(Modifier.height(32.dp))
-
-                if (invitationPending) {
-                    Text(
-                        text = stringResource(R.string.signin_invitation_prompt),
-                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(16.dp))
-                }
-
-                if (notice != null) {
-                    SignOutNoticeCard(notice = notice, onDismiss = onDismissNotice)
-                    Spacer(Modifier.height(16.dp))
-                }
-
-                if (error != null) {
-                    // No retry inside the notice: the main button below already
-                    // relabels to "Thử lại" while an error shows, so a second
-                    // retry control would duplicate the recovery action.
-                    // Live region lives inside AnveErrorNotice now; declaring it
-                    // here too would double-announce the same failure.
-                    AnveErrorNotice(
-                        text = stringResource(error.id, *error.args.toTypedArray()),
-                    )
-                    Spacer(Modifier.height(16.dp))
-                }
-
-                if (busy) {
-                    CircularProgressIndicator(Modifier.size(28.dp))
-                    Text(stringResource(R.string.signin_in_progress), style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                    Spacer(Modifier.height(16.dp))
-                }
-
-                if (state.googleSignIn) {
-                    Button(
-                        onClick = onGoogleSignIn,
-                        enabled = !busy,
+            is SignInUiState.Ready -> {
+                val colors = MaterialTheme.colorScheme
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    OutlinedCard(
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, colors.outlineVariant),
+                        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(stringResource(if (error == null) R.string.signin_google else R.string.signin_retry))
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            AnVeFamilySceneIllustration(
+                                modifier = Modifier.fillMaxWidth().height(128.dp),
+                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = colors.primaryContainer.copy(alpha = 0.55f),
+                                border = BorderStroke(1.5.dp, colors.primary.copy(alpha = 0.2f)),
+                            ) {
+                                AnVeBrandMark(Modifier.padding(10.dp).size(72.dp))
+                            }
+                            Text(
+                                text = stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.displaySmall,
+                                color = colors.primary,
+                            )
+                            Text(
+                                text = stringResource(R.string.splash_tagline),
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
                     }
-                    Text(
-                        text = stringResource(R.string.signin_google_caption),
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.signin_google_unavailable),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = onRetry) {
-                        Text(stringResource(R.string.signin_retry))
-                    }
-                }
 
-                if (state.devLogin && BuildConfig.DEBUG) {
-                    Spacer(Modifier.height(24.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(24.dp))
-                    DevLoginForm(enabled = !busy, onSignIn = onDevSignIn)
+                    if (invitationPending) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = colors.secondaryContainer.copy(alpha = 0.7f),
+                            contentColor = colors.onSecondaryContainer,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MailOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(top = 2.dp).size(20.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.signin_invitation_prompt),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                    }
+
+                    if (notice != null) {
+                        SignOutNoticeCard(notice = notice, onDismiss = onDismissNotice)
+                    }
+
+                    if (error != null) {
+                        // No retry inside the notice: the main button below already
+                        // relabels to "Thử lại" while an error shows, so a second
+                        // retry control would duplicate the recovery action.
+                        // Live region lives inside AnveErrorNotice now; declaring it
+                        // here too would double-announce the same failure.
+                        AnveErrorNotice(
+                            text = stringResource(error.id, *error.args.toTypedArray()),
+                        )
+                    }
+
+                    if (busy) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
+                            Text(
+                                text = stringResource(R.string.signin_in_progress),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = colors.surfaceVariant.copy(alpha = 0.35f),
+                        border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.7f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            if (state.googleSignIn) {
+                                Button(
+                                    onClick = onGoogleSignIn,
+                                    enabled = !busy,
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                                ) {
+                                    Text(stringResource(if (error == null) R.string.signin_google else R.string.signin_retry))
+                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Lock,
+                                        contentDescription = null,
+                                        tint = colors.primary,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.signin_google_caption),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.signin_google_unavailable),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                )
+                                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+                                    Text(stringResource(R.string.signin_retry))
+                                }
+                            }
+                        }
+                    }
+
+                    if (state.devLogin && BuildConfig.DEBUG) {
+                        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+                        DevLoginForm(enabled = !busy, onSignIn = onDevSignIn)
+                    }
                 }
             }
 
@@ -250,28 +329,39 @@ private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
 @Composable
 private fun DevLoginForm(enabled: Boolean, onSignIn: (String) -> Unit) {
     var email by remember { mutableStateOf("") }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = stringResource(R.string.signin_dev_title),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text(stringResource(R.string.signin_dev_email)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            enabled = enabled,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 12.dp),
-        )
-        Button(
-            onClick = { onSignIn(email) },
-            enabled = enabled && email.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
+    OutlinedCard(
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.signin_dev_button))
+            Text(
+                text = stringResource(R.string.signin_dev_title),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(stringResource(R.string.signin_dev_email)) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = { onSignIn(email) },
+                enabled = enabled && email.isNotBlank(),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.signin_dev_button))
+            }
         }
     }
 }

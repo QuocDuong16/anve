@@ -20,12 +20,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material.icons.filled.ChevronRight
@@ -39,6 +42,8 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -95,6 +100,9 @@ import com.anve.app.data.journey.JourneyAction
 import com.anve.app.data.sos.authorizedJourneySignal
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
+import com.anve.app.ui.brand.AnVeJourneySceneIllustration
+import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
@@ -240,10 +248,34 @@ fun JourneyContent(
                         onResume = { onResume(selected.id) }, onLocation = onLocation)
                 }
                 !state.loading -> item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.journey_intro_title), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-                        Text(stringResource(R.string.journey_intro_body))
-                        JourneyPrimaryAction(stringResource(R.string.journey_start), { creating = true }, !state.busy && state.pending.isEmpty())
+                    OutlinedCard(
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, colors.outlineVariant),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            AnVeJourneySceneIllustration(
+                                modifier = Modifier.fillMaxWidth().height(128.dp),
+                            )
+                            Text(
+                                stringResource(R.string.journey_intro_title),
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                stringResource(R.string.journey_intro_body),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant,
+                            )
+                            JourneyPrimaryAction(
+                                stringResource(R.string.journey_start),
+                                { creating = true },
+                                !state.busy && state.pending.isEmpty(),
+                            )
+                        }
                     }
                 }
             }
@@ -325,15 +357,38 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
     val active = journey.state == "ACTIVE"
     val expiredLocally = runCatching { Instant.parse(journey.expiresAt).toEpochMilli() <= now }.getOrDefault(true)
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(Icons.Default.Home, null, Modifier.padding(14.dp).size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-            Column(Modifier.weight(1f)) {
-                Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                if (!owner) Text(stringResource(R.string.journey_of_owner, journey.ownerName), style = MaterialTheme.typography.titleMedium)
-                val timeUnknown = stringResource(R.string.journey_time_unknown)
-                Text(if (active) stringResource(R.string.journey_expires_auto, journeyTime(journey.expiresAt, timeUnknown)) else journey.endedAt?.let { stringResource(R.string.journey_ended_at, journeyTime(it, timeUnknown)) } ?: stringResource(R.string.journey_ended), style = MaterialTheme.typography.bodyMedium)
+        OutlinedCard(
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (active) {
+                    AnVeJourneySceneIllustration(
+                        modifier = Modifier.fillMaxWidth().height(92.dp),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                        Icon(Icons.Default.Home, null, Modifier.padding(14.dp).size(26.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        AnVeStatusPill(
+                            text = journeyStateLabel(journey.state),
+                            containerColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (!owner) Text(stringResource(R.string.journey_of_owner, journey.ownerName), style = MaterialTheme.typography.titleMedium)
+                        val timeUnknown = stringResource(R.string.journey_time_unknown)
+                        Text(
+                            if (active) stringResource(R.string.journey_expires_auto, journeyTime(journey.expiresAt, timeUnknown)) else journey.endedAt?.let { stringResource(R.string.journey_ended_at, journeyTime(it, timeUnknown)) } ?: stringResource(R.string.journey_ended),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
         Column {
@@ -467,8 +522,32 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
     LaunchedEffect(dirty) { onDraftDirtyChange(dirty) }
     val ready = !state.busy && state.pending.isEmpty() && state.consentEnabled && tracking.ownerUserId == state.owner && tracking.activelyTracking && tracking.online
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.journey_step_destination), style = MaterialTheme.typography.titleMedium)
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AnVeJourneySceneIllustration(
+                    modifier = Modifier.fillMaxWidth().height(116.dp),
+                )
+                Text(
+                    text = stringResource(R.string.journey_intro_warm_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.journey_intro_warm_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        OutlinedCard(
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnVeSectionHeader(Icons.Default.Home, stringResource(R.string.journey_step_destination))
             if (state.places.isEmpty()) Text(stringResource(R.string.journey_no_places))
             state.places.forEach { place ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(destination == place.id, role = Role.RadioButton, onClick = { destination = place.id }), verticalAlignment = Alignment.CenterVertically) {
@@ -478,8 +557,12 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             }
             JourneyTextAction(stringResource(R.string.journey_manage_places), onPlaces)
         } }
-        OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.journey_step_expiry), style = MaterialTheme.typography.titleMedium)
+        OutlinedCard(
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnVeSectionHeader(Icons.Default.Schedule, stringResource(R.string.journey_step_expiry))
             // Every other single-choice group in the app offers at most four
             // options (retention, invitation expiry); 30 minutes sits below
             // the useful horizon of a journey, so the set starts at one hour.
@@ -495,9 +578,16 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             }
             Text(stringResource(R.string.journey_expiry_note), style = MaterialTheme.typography.bodySmall)
         } }
-        OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.journey_step_viewers), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.journey_viewers_note), style = MaterialTheme.typography.bodySmall)
+        OutlinedCard(
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnVeSectionHeader(
+                icon = Icons.Default.Groups,
+                title = stringResource(R.string.journey_step_viewers),
+                subtitle = stringResource(R.string.journey_viewers_note),
+            )
             // The audience grants live on the map tab (Quyền xem), not on the
             // location screen the old copy pointed at — send the reader there
             // with an actionable affordance instead of a dead end.
