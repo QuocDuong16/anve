@@ -1012,4 +1012,5 @@
 
     <string name="signin_trust_badge">Minh bạch · Tự nguyện · Riêng tư</string>
     <string name="avatar_studio_badge">Xem trước hiển thị trong nhóm</string>
+    <string name="history_summary_title">Tóm tắt trong ngày</string>
 </resources>

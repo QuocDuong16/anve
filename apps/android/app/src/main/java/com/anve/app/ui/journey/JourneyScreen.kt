@@ -338,7 +338,7 @@ fun JourneyContent(
                                 fontWeight = FontWeight.SemiBold,
                             )
                             StitchSemanticBadge(
-                                text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.journey_arrival_automatic) else journeyStateLabel(journey.state),
+                                text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
                                 kind = when (journey.state) {
                                     "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
                                     "ARRIVED" -> StitchBadgeKind.SAFE_HOME
@@ -448,7 +448,7 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         StitchSemanticBadge(
-                            text = journeyStateLabel(journey.state),
+                            text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
                             kind = when (journey.state) {
                                 "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
                                 "ARRIVED" -> StitchBadgeKind.SAFE_HOME

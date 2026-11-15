@@ -158,8 +158,8 @@ fun SignInContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     OutlinedCard(
@@ -169,34 +169,45 @@ fun SignInContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
-                            modifier = Modifier.padding(18.dp),
+                            modifier = Modifier.padding(14.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
+                            // Keep the hero compact so primary action / retry buttons stay visible above the fold even with error banners.
                             AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
                                 AnVeFamilySceneIllustration(
-                                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                                    modifier = Modifier.fillMaxWidth().height(84.dp),
                                 )
                             }
-                            Surface(
-                                shape = CircleShape,
-                                color = stitch.secondaryFixed,
-                                border = BorderStroke(1.5.dp, stitch.hairline),
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                AnVeBrandMark(Modifier.padding(10.dp).size(72.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = stitch.secondaryFixed,
+                                    border = BorderStroke(1.5.dp, stitch.hairline),
+                                ) {
+                                    AnVeBrandMark(Modifier.padding(6.dp).size(44.dp))
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.app_name),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.primary,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.splash_tagline),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
                             }
-                            Text(
-                                text = stringResource(R.string.app_name),
-                                style = MaterialTheme.typography.displaySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.primary,
-                            )
-                            Text(
-                                text = stringResource(R.string.splash_tagline),
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center,
-                                color = colors.onSurfaceVariant,
-                            )
                             StitchSemanticBadge(
                                 text = stringResource(R.string.signin_trust_badge),
                                 kind = StitchBadgeKind.SAFE_HOME,

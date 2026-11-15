@@ -78,7 +78,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -96,7 +95,6 @@ import com.anve.app.data.sos.FirebaseSetup
 import com.anve.app.data.sos.SosCachedMember
 import com.anve.app.data.sos.SosLocalState
 import com.anve.app.data.sos.SosOutboxItem
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeSosCareIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
@@ -314,197 +312,56 @@ private fun SosContentBody(
 
     val rows = buildList {
         add(SosRow("title") {
-            val dialer = LocalContext.current
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Stitch Screen 58 readiness banner: calm pulse and transparent ready/sending state.
-                OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
+            // Stitch Screen 58 readiness banner: compact header keeping error/recipient cards visible above the pinned send bar.
+            OutlinedCard(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                StitchCategoryIconBox(
-                                    icon = Icons.Default.Shield,
-                                    size = 38.dp,
-                                    iconSize = 20.dp,
-                                    cornerRadius = 19.dp,
-                                    containerColor = stitch.liveContainer,
-                                    contentColor = stitch.livePulse,
-                                )
-                                StitchLivePulseDot(active = !state.pending && !state.offline)
-                                Text(
-                                    text = stringResource(R.string.sos_title),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.semantics { heading() },
-                                )
-                            }
-                            StitchSemanticBadge(
-                                text = stringResource(
-                                    if (state.pending) R.string.sos_status_sending else R.string.sos_status_ready,
-                                ),
-                                kind = if (state.pending) StitchBadgeKind.EMERGENCY else StitchBadgeKind.SAFE_HOME,
-                                showDot = true,
+                            StitchCategoryIconBox(
+                                icon = Icons.Default.Shield,
+                                size = 34.dp,
+                                iconSize = 18.dp,
+                                cornerRadius = 17.dp,
+                                containerColor = stitch.liveContainer,
+                                contentColor = stitch.livePulse,
                             )
-                        }
-                        Text(
-                            text = stringResource(R.string.sos_banner_subtitle),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                // Stitch Screen 58 Hero SOS Focus Card: warm soothing halo + non-blocking safety notice + 113/114/115 grid.
-                OutlinedCard(
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.35f)),
-                    colors = CardDefaults.outlinedCardColors(
-                        containerColor = stitch.cardTactile,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        AnVeIllustratedBanner(
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                // Concentric soothing warm halos (Stitch Screen 58 focal ring without harsh flashing).
-                                Box(
-                                    modifier = Modifier
-                                        .size(144.dp)
-                                        .clip(CircleShape)
-                                        .background(emergency.emergencyContainer.copy(alpha = 0.28f)),
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(116.dp)
-                                        .clip(CircleShape)
-                                        .background(stitch.secondaryFixedDim.copy(alpha = 0.32f)),
-                                )
-                                AnVeSosCareIllustration(
-                                    modifier = Modifier.fillMaxWidth().height(112.dp),
-                                )
-                            }
-                        }
-                        Text(
-                            text = stringResource(R.string.sos_hero_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            text = stringResource(R.string.sos_hero_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = colors.surfaceContainerLow,
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
+                            StitchLivePulseDot(active = !state.pending && !state.offline)
                             Text(
-                                text = stringResource(R.string.sos_emergency_disclaimer),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                                modifier = Modifier.padding(12.dp),
+                                text = stringResource(R.string.sos_title),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.semantics { heading() },
                             )
                         }
-                        Text(
-                            text = stringResource(R.string.sos_emergency_calls_label),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
+                        StitchSemanticBadge(
+                            text = stringResource(
+                                if (state.pending) R.string.sos_status_sending else R.string.sos_status_ready,
+                            ),
+                            kind = if (state.pending) StitchBadgeKind.EMERGENCY else StitchBadgeKind.SAFE_HOME,
+                            showDot = true,
                         )
-                        // The disclaimer asks the user to call the official emergency
-                        // numbers, so the dial affordances sit right beside it: ACTION_DIAL
-                        // only pre-fills the dialer — AnVề still never places the call.
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            val hotlines = listOf(
-                                Triple(113, R.string.sos_service_police, Icons.Default.Shield),
-                                Triple(114, R.string.sos_service_fire, Icons.Default.Warning),
-                                Triple(115, R.string.sos_service_ambulance, Icons.Default.Phone),
-                            )
-                            hotlines.forEach { (number, serviceRes, icon) ->
-                                val (iconBg, iconFg) = when (number) {
-                                    113 -> colors.primaryContainer to colors.onPrimaryContainer
-                                    114 -> stitch.transitContainer to stitch.onTransitContainer
-                                    else -> emergency.emergencyContainer to emergency.onEmergencyContainer
-                                }
-                                Surface(
-                                    onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
-                                    shape = RoundedCornerShape(18.dp),
-                                    color = colors.surfaceContainerLowest,
-                                    border = BorderStroke(1.dp, stitch.hairline),
-                                    modifier = Modifier.weight(1f).heightIn(min = 98.dp),
-                                ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        StitchCategoryIconBox(
-                                            icon = icon,
-                                            size = 36.dp,
-                                            iconSize = 18.dp,
-                                            cornerRadius = 18.dp,
-                                            containerColor = iconBg,
-                                            contentColor = iconFg,
-                                        )
-                                        Text(
-                                            text = number.toString(),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.onSurface,
-                                        )
-                                        Text(
-                                            text = stringResource(serviceRes),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colors.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.sos_call_number, number),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = iconFg,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
+                    Text(
+                        text = stringResource(R.string.sos_banner_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
             }
         })
@@ -558,6 +415,150 @@ private fun SosContentBody(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(14.dp),
                 )
+            }
+        })
+        add(SosRow("hero-card") {
+            val dialer = LocalContext.current
+            // Stitch Screen 58 Hero SOS Focus Card: compact soothing halo + non-blocking safety notice + 113/114/115 grid.
+            OutlinedCard(
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.35f)),
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = stitch.cardTactile,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier.size(84.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // Concentric soothing warm halos (Stitch Screen 58 focal ring without harsh flashing).
+                            Box(
+                                modifier = Modifier
+                                    .size(84.dp)
+                                    .clip(CircleShape)
+                                    .background(emergency.emergencyContainer.copy(alpha = 0.30f)),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .clip(CircleShape)
+                                    .background(stitch.secondaryFixedDim.copy(alpha = 0.35f)),
+                            )
+                            AnVeSosCareIllustration(
+                                modifier = Modifier.size(62.dp),
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.sos_hero_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.sos_hero_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.surfaceContainerLow,
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.sos_emergency_disclaimer),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(10.dp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.sos_emergency_calls_label),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    // The disclaimer asks the user to call the official emergency
+                    // numbers, so the dial affordances sit right beside it: ACTION_DIAL
+                    // only pre-fills the dialer — AnVề still never places the call.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val hotlines = listOf(
+                            Triple(113, R.string.sos_service_police, Icons.Default.Shield),
+                            Triple(114, R.string.sos_service_fire, Icons.Default.Warning),
+                            Triple(115, R.string.sos_service_ambulance, Icons.Default.Phone),
+                        )
+                        hotlines.forEach { (number, serviceRes, icon) ->
+                            val iconFg = when (number) {
+                                113 -> colors.onPrimaryContainer
+                                114 -> stitch.onTransitContainer
+                                else -> emergency.onEmergencyContainer
+                            }
+                            Surface(
+                                onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
+                                shape = RoundedCornerShape(16.dp),
+                                color = colors.surfaceContainerLowest,
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                modifier = Modifier.weight(1f).heightIn(min = 64.dp),
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            tint = iconFg,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = number.toString(),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.onSurface,
+                                        )
+                                    }
+                                    Text(
+                                        text = stringResource(serviceRes),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colors.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.sos_call_number, number),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = iconFg,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         })
         add(SosRow("recipients-card") {
@@ -942,9 +943,9 @@ private fun SosContentBody(
     ) { padding ->
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + padding.calculateBottomPadding()),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(rows, key = { it.key }) { row -> row.content() }
         }

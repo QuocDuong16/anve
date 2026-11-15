@@ -882,7 +882,7 @@ private fun HistorySummaryCard(
                         contentColor = colors.onPrimaryContainer,
                     )
                     Text(
-                        text = stringResource(R.string.history_title),
+                        text = stringResource(R.string.history_summary_title),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.semantics { heading() },
                     )
