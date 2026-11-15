@@ -102,7 +102,6 @@ import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
@@ -375,11 +374,6 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        AnVeStatusPill(
-                            text = journeyStateLabel(journey.state),
-                            containerColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                         if (!owner) Text(stringResource(R.string.journey_of_owner, journey.ownerName), style = MaterialTheme.typography.titleMedium)
                         val timeUnknown = stringResource(R.string.journey_time_unknown)
                         Text(
