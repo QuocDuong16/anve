@@ -1,8 +1,9 @@
 package com.anve.app.ui.journey
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -23,32 +24,30 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sos
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sos
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -75,15 +74,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -94,18 +93,29 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.R
+import com.anve.app.data.api.JourneyDestinationDto
 import com.anve.app.data.api.JourneyDto
+import com.anve.app.data.api.JourneyProgressDto
+import com.anve.app.data.api.JourneyRecipientDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.journey.JourneyAction
 import com.anve.app.data.sos.authorizedJourneySignal
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchMetricTile
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 import java.time.Instant
@@ -184,6 +194,7 @@ fun JourneyContent(
     }
     BackHandler(onBack = handleBack)
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
     Scaffold(topBar = {
         TopAppBar(
@@ -203,7 +214,7 @@ fun JourneyContent(
             val emergency = LocalEmergencyColors.current
             FloatingActionButton(
                 onClick = onOpenSos,
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 containerColor = emergency.emergency,
                 contentColor = emergency.onEmergency,
                 modifier = Modifier.size(48.dp),
@@ -215,7 +226,16 @@ fun JourneyContent(
         // Bottom clearance mirrors the shell (HOME_FAB_CLEARANCE): the FAB
         // below must not cover the last card while scrolling.
         LazyColumn(Modifier.padding(padding).testTag("journey-content"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + HOME_FAB_CLEARANCE), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (state.loading || state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if (state.loading || state.busy) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        if (state.loading && !creating && selected == null && state.journeys.isEmpty()) {
+                            StitchLoadingSkeletonCard(rows = 2)
+                        }
+                    }
+                }
+            }
             state.errorRes?.let { res -> item { JourneyNotice(stringResource(res), failure = true) { ink -> JourneyTextAction(stringResource(R.string.journey_reload_action), onReload, !state.busy, ink) } } }
             if (!tracking.online && !state.loading && (selected == null || creating)) item {
                 JourneyNotice(stringResource(R.string.journey_offline_end_notice), Icons.Default.WifiOff)
@@ -250,20 +270,24 @@ fun JourneyContent(
                 }
                 !state.loading -> item {
                     OutlinedCard(
-                        shape = RoundedCornerShape(22.dp),
-                        border = BorderStroke(1.dp, colors.outlineVariant),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            AnVeJourneySceneIllustration(
-                                modifier = Modifier.fillMaxWidth().height(128.dp),
-                            )
+                            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                                AnVeJourneySceneIllustration(
+                                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                                )
+                            }
                             Text(
                                 stringResource(R.string.journey_intro_title),
                                 style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
                                 modifier = Modifier.semantics { heading() },
                             )
                             Text(
@@ -281,22 +305,61 @@ fun JourneyContent(
                 }
             }
             val remaining = state.journeys.filter { it.id != selected?.id }
-            if (remaining.isNotEmpty()) item { Text(stringResource(R.string.journey_viewable_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() }) }
+            if (remaining.isNotEmpty()) item { Text(stringResource(R.string.journey_viewable_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) }
             items(remaining, key = { it.id }) { journey ->
-                OutlinedCard(onClick = { onSelect(journey.id) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(
-                            R.string.journey_card_title,
-                            if (journey.ownerId == state.owner) stringResource(R.string.journey_card_owner_you) else journey.ownerName,
-                            journey.destination.label,
-                        ), style = MaterialTheme.typography.titleMedium)
-                        Text(if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.journey_arrival_automatic) else journeyStateLabel(journey.state), style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.journey_started_at, journeyTime(journey.startedAt, stringResource(R.string.journey_time_unknown))), style = MaterialTheme.typography.bodySmall)
+                OutlinedCard(
+                    onClick = { onSelect(journey.id) },
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StitchCategoryIconBox(
+                            icon = Icons.Default.Route,
+                            size = 42.dp,
+                            iconSize = 21.dp,
+                            cornerRadius = 14.dp,
+                            containerColor = if (journey.state == "ACTIVE") stitch.transitContainer else stitch.liveContainer,
+                            contentColor = if (journey.state == "ACTIVE") stitch.onTransitContainer else stitch.onLiveContainer,
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                stringResource(
+                                    R.string.journey_card_title,
+                                    if (journey.ownerId == state.owner) stringResource(R.string.journey_card_owner_you) else journey.ownerName,
+                                    journey.destination.label,
+                                ),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            StitchSemanticBadge(
+                                text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.journey_arrival_automatic) else journeyStateLabel(journey.state),
+                                kind = when (journey.state) {
+                                    "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
+                                    "ARRIVED" -> StitchBadgeKind.SAFE_HOME
+                                    else -> StitchBadgeKind.NEUTRAL
+                                },
+                                showDot = journey.state == "ACTIVE",
+                            )
+                            Text(
+                                stringResource(R.string.journey_started_at, journeyTime(journey.startedAt, stringResource(R.string.journey_time_unknown))),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
             if (selected != null && selected.state != "ACTIVE" && selected.ownerId == state.owner) item {
                 JourneyPrimaryAction(stringResource(R.string.journey_start_new), { onSelect(null); creating = true }, !state.busy && state.pending.isEmpty())
+            }
+            if (!state.loading) item {
+                StitchReassuranceFooter(quote = stringResource(R.string.journey_footer_quote))
             }
         }
     }
@@ -357,31 +420,75 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
     var people by remember(journey.id) { mutableStateOf(false) }
     val active = journey.state == "ACTIVE"
     val expiredLocally = runCatching { Instant.parse(journey.expiresAt).toEpochMilli() <= now }.getOrDefault(true)
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         OutlinedCard(
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, if (active) stitch.transitContainer else stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (active) {
-                    AnVeJourneySceneIllustration(
-                        modifier = Modifier.fillMaxWidth().height(92.dp),
-                    )
+                    AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                        AnVeJourneySceneIllustration(
+                            modifier = Modifier.fillMaxWidth().height(92.dp),
+                        )
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                        Icon(Icons.Default.Home, null, Modifier.padding(14.dp).size(26.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                    }
+                    StitchCategoryIconBox(
+                        icon = Icons.Default.Home,
+                        size = 48.dp,
+                        iconSize = 24.dp,
+                        cornerRadius = 16.dp,
+                        containerColor = if (active) stitch.transitContainer else stitch.liveContainer,
+                        contentColor = if (active) stitch.onTransitContainer else stitch.onLiveContainer,
+                    )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        StitchSemanticBadge(
+                            text = journeyStateLabel(journey.state),
+                            kind = when (journey.state) {
+                                "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
+                                "ARRIVED" -> StitchBadgeKind.SAFE_HOME
+                                else -> StitchBadgeKind.NEUTRAL
+                            },
+                            showDot = active,
+                        )
                         Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         if (!owner) Text(stringResource(R.string.journey_of_owner, journey.ownerName), style = MaterialTheme.typography.titleMedium)
                         val timeUnknown = stringResource(R.string.journey_time_unknown)
                         Text(
                             if (active) stringResource(R.string.journey_expires_auto, journeyTime(journey.expiresAt, timeUnknown)) else journey.endedAt?.let { stringResource(R.string.journey_ended_at, journeyTime(it, timeUnknown)) } ?: stringResource(R.string.journey_ended),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+                journey.progress?.let { progress ->
+                    val age = ((now - Instant.parse(progress.recordedAt).toEpochMilli()).coerceAtLeast(0) / 60_000)
+                    val formattedKm = String.format(Locale.forLanguageTag("vi-VN"), "%.1f", progress.distanceMeters / 1000)
+                    val freshnessValue = if (age == 0L) stringResource(R.string.journey_age_under_minute) else stringResource(R.string.journey_age_minutes, age)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        StitchMetricTile(
+                            label = stringResource(R.string.journey_metric_distance),
+                            value = "$formattedKm km",
+                            icon = Icons.Default.Route,
+                            modifier = Modifier.weight(1f),
+                            containerColor = colors.surfaceContainerLow,
+                            accentColor = stitch.onTransitContainer,
+                        )
+                        StitchMetricTile(
+                            label = stringResource(R.string.journey_metric_freshness),
+                            value = freshnessValue,
+                            icon = Icons.Default.Schedule,
+                            modifier = Modifier.weight(1f),
+                            containerColor = colors.surfaceContainerLow,
+                            accentColor = stitch.onLiveContainer,
                         )
                     }
                 }
@@ -405,7 +512,7 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                         if (progress.isMock) stringResource(R.string.journey_mock_suffix) else "",
                     ), style = MaterialTheme.typography.bodySmall)
                 }
-                if (active) Text(stringResource(R.string.journey_distance_disclaimer), style = MaterialTheme.typography.bodySmall)
+                if (active) Text(stringResource(R.string.journey_distance_disclaimer), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
             JourneyStep(when {
                 journey.arrivalSource == "AUTOMATIC" -> stringResource(R.string.journey_arrival_automatic)
@@ -432,29 +539,43 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 R.string.journey_config_line,
                 if (journey.automaticArrival) stringResource(R.string.journey_config_auto) else stringResource(R.string.journey_config_manual),
                 if (journey.staleAfterMinutes > 0) stringResource(R.string.journey_config_stale_suffix, journey.staleAfterMinutes) else "",
-            ), style = MaterialTheme.typography.bodySmall)
+            ), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
         if (expiredLocally && active) JourneyNotice(stringResource(R.string.journey_expired_locally))
         if (owner) {
-            Column {
-                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(
-                        R.string.journey_followers,
-                        journey.recipients.joinToString { it.displayName }.ifBlank { stringResource(R.string.journey_no_viewers_left) },
-                    ), Modifier.padding(vertical = 12.dp))
-                    JourneyTextAction(if (people) stringResource(R.string.journey_collapse_viewers) else stringResource(R.string.journey_manage_viewers), { people = !people })
-                }
-                if (people) journey.recipients.forEach { recipient ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(recipient.displayName, Modifier.weight(1f))
-                        // Destructive trigger carries the error color, same as
-                        // the revoke rows in Home/Circle/Places.
-                        JourneyTextAction(
-                            stringResource(R.string.journey_revoke_row),
-                            { onConfirm(JourneyAction.REVOKE_RECIPIENT, recipient.userId, recipient.displayName) },
-                            !busy && !pending,
-                            color = MaterialTheme.colorScheme.error,
+            OutlinedCard(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            stringResource(
+                                R.string.journey_followers,
+                                journey.recipients.joinToString { it.displayName }.ifBlank { stringResource(R.string.journey_no_viewers_left) },
+                            ),
+                            Modifier.padding(vertical = 10.dp),
                         )
+                        JourneyTextAction(if (people) stringResource(R.string.journey_collapse_viewers) else stringResource(R.string.journey_manage_viewers), { people = !people })
+                    }
+                    if (people) journey.recipients.forEach { recipient ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(recipient.displayName, Modifier.weight(1f))
+                            // Destructive trigger carries the error color, same as
+                            // the revoke rows in Home/Circle/Places.
+                            JourneyTextAction(
+                                stringResource(R.string.journey_revoke_row),
+                                { onConfirm(JourneyAction.REVOKE_RECIPIENT, recipient.userId, recipient.displayName) },
+                                !busy && !pending,
+                                color = colors.error,
+                            )
+                        }
                     }
                 }
             }
@@ -467,31 +588,55 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                     JourneyTextAction(stringResource(R.string.journey_resume_priority), onResume, !busy && tracking.activelyTracking && tracking.online)
                 }
                 JourneyPrimaryAction(stringResource(R.string.journey_arrive_action), { onConfirm(JourneyAction.ARRIVE, null, null) }, !busy && !pending && !expiredLocally)
-                OutlinedButton(onClick = { onConfirm(JourneyAction.END, null, null) }, enabled = !busy && !pending,
-                    border = BorderStroke(1.dp, rememberInkOnSurface()), colors = ButtonDefaults.outlinedButtonColors(contentColor = rememberInkOnSurface()), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                OutlinedButton(
+                    onClick = { onConfirm(JourneyAction.END, null, null) },
+                    enabled = !busy && !pending,
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, rememberInkOnSurface()),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = rememberInkOnSurface()),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) {
                     Icon(Icons.Default.Close, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.journey_end_action), style = MaterialTheme.typography.titleMedium)
                 }
-                Text(stringResource(R.string.journey_end_priority_note), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.journey_end_priority_note), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
         } else {
             if (!tracking.online) JourneyNotice(stringResource(R.string.journey_offline_reload_notice), Icons.Default.WifiOff)
-            Text(stringResource(R.string.journey_viewer_manages_arrival), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.journey_viewer_manages_arrival), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
         }
     }
 }
 
 @Composable
 private fun JourneyStep(title: String, current: Boolean = false, completed: Boolean = false, last: Boolean = false, content: @Composable () -> Unit = {}) {
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.width(32.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(when { completed -> Icons.Default.CheckCircle; current -> Icons.Default.RadioButtonChecked; else -> Icons.Default.RadioButtonUnchecked }, null, Modifier.size(32.dp), tint = rememberInkOnSurface())
-            if (!last) VerticalDivider(Modifier.weight(1f), color = if (completed) rememberInkOnSurface() else MaterialTheme.colorScheme.outlineVariant)
+            Icon(
+                imageVector = when {
+                    completed -> Icons.Default.CheckCircle
+                    current -> Icons.Default.RadioButtonChecked
+                    else -> Icons.Default.RadioButtonUnchecked
+                },
+                contentDescription = null,
+                modifier = Modifier.size(30.dp),
+                tint = when {
+                    completed -> stitch.livePulse
+                    current -> colors.primary
+                    else -> colors.onSurfaceVariant
+                },
+            )
+            if (!last) VerticalDivider(Modifier.weight(1f), color = if (completed) stitch.livePulse else stitch.hairline)
         }
-        Surface(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 24.dp),
-            color = if (current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
-            shape = MaterialTheme.shapes.medium) {
-            Column(Modifier.padding(if (current) 12.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        Surface(
+            Modifier.weight(1f).padding(bottom = if (last) 0.dp else 20.dp),
+            color = if (current) stitch.cardTactile else colors.surfaceContainerLow,
+            border = BorderStroke(1.dp, if (current) colors.primary.copy(alpha = 0.35f) else stitch.hairline),
+            shape = RoundedCornerShape(18.dp),
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                 content()
             }
         }
@@ -517,15 +662,24 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
     val dirty = destination != null || recipients.isNotEmpty() || automatic || staleMinutes != 0 || minutes != 120
     LaunchedEffect(dirty) { onDraftDirtyChange(dirty) }
     val ready = !state.busy && state.pending.isEmpty() && state.consentEnabled && tracking.ownerUserId == state.owner && tracking.activelyTracking && tracking.online
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Card(modifier = Modifier.fillMaxWidth()) {
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        OutlinedCard(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                AnVeJourneySceneIllustration(
-                    modifier = Modifier.fillMaxWidth().height(116.dp),
-                )
+                AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                    AnVeJourneySceneIllustration(
+                        modifier = Modifier.fillMaxWidth().height(116.dp),
+                    )
+                }
                 Text(
                     text = stringResource(R.string.journey_intro_warm_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -534,17 +688,23 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                 Text(
                     text = stringResource(R.string.journey_intro_warm_body),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.onSurfaceVariant,
                 )
             }
         }
         OutlinedCard(
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
             modifier = Modifier.fillMaxWidth(),
         ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            AnVeSectionHeader(Icons.Default.Home, stringResource(R.string.journey_step_destination))
-            if (state.places.isEmpty()) Text(stringResource(R.string.journey_no_places))
+            AnVeSectionHeader(
+                icon = Icons.Default.Home,
+                title = stringResource(R.string.journey_step_destination),
+                iconContainerColor = stitch.liveContainer,
+                iconContentColor = stitch.onLiveContainer,
+            )
+            if (state.places.isEmpty()) Text(stringResource(R.string.journey_no_places), color = colors.onSurfaceVariant)
             state.places.forEach { place ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(destination == place.id, role = Role.RadioButton, onClick = { destination = place.id }), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(destination == place.id, onClick = null)
@@ -554,11 +714,17 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             JourneyTextAction(stringResource(R.string.journey_manage_places), onPlaces)
         } }
         OutlinedCard(
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
             modifier = Modifier.fillMaxWidth(),
         ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            AnVeSectionHeader(Icons.Default.Schedule, stringResource(R.string.journey_step_expiry))
+            AnVeSectionHeader(
+                icon = Icons.Default.Schedule,
+                title = stringResource(R.string.journey_step_expiry),
+                iconContainerColor = stitch.transitContainer,
+                iconContentColor = stitch.onTransitContainer,
+            )
             // Every other single-choice group in the app offers at most four
             // options (retention, invitation expiry); 30 minutes sits below
             // the useful horizon of a journey, so the set starts at one hour.
@@ -566,23 +732,31 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             // in JourneyOptionsSheet.
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(60, 120, 240, 480).forEach { value ->
-                    FilterChip(minutes == value, onClick = { minutes = value }, label = {
-                        Text(stringResource(R.string.journey_chip_hours, value / 60))
-                    },
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer))
+                    FilterChip(
+                        selected = minutes == value,
+                        onClick = { minutes = value },
+                        label = { Text(stringResource(R.string.journey_chip_hours, value / 60)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = stitch.liveContainer,
+                            selectedLabelColor = stitch.onLiveContainer,
+                        ),
+                    )
                 }
             }
-            Text(stringResource(R.string.journey_expiry_note), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.journey_expiry_note), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         } }
         OutlinedCard(
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
             modifier = Modifier.fillMaxWidth(),
         ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AnVeSectionHeader(
                 icon = Icons.Default.Groups,
                 title = stringResource(R.string.journey_step_viewers),
                 subtitle = stringResource(R.string.journey_viewers_note),
+                iconContainerColor = stitch.liveContainer,
+                iconContentColor = stitch.onLiveContainer,
             )
             // The audience grants live on the map tab (Quyền xem), not on the
             // location screen the old copy pointed at — send the reader there
@@ -598,16 +772,30 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                 }
             }
         } }
-        OutlinedCard(onClick = { optionsOpen = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("journey-options")) {
+        OutlinedCard(
+            onClick = { optionsOpen = true },
+            enabled = !state.busy,
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+            modifier = Modifier.fillMaxWidth().testTag("journey-options"),
+        ) {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Settings, null)
+                StitchCategoryIconBox(
+                    icon = Icons.Default.Settings,
+                    size = 38.dp,
+                    iconSize = 19.dp,
+                    cornerRadius = 13.dp,
+                    containerColor = colors.surfaceContainerLow,
+                    contentColor = colors.primary,
+                )
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.journey_options_entry), style = MaterialTheme.typography.titleMedium)
                     Text(if (!automatic && staleMinutes == 0) stringResource(R.string.journey_option_off) else stringResource(
                         R.string.journey_option_summary,
                         if (automatic) stringResource(R.string.journey_option_auto_summary) else stringResource(R.string.journey_option_manual_summary),
                         if (staleMinutes > 0) stringResource(R.string.journey_option_stale_summary, staleMinutes) else "",
-                    ), style = MaterialTheme.typography.bodySmall)
+                    ), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 }
                 Icon(Icons.Default.ChevronRight, null)
             }
@@ -631,6 +819,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
         Text(
             if (automatic) stringResource(R.string.journey_auto_caveat) else stringResource(R.string.journey_manual_caveat),
             style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
         )
     }
     if (optionsOpen) JourneyOptionsSheet(automatic, staleMinutes, onDismiss = { optionsOpen = false }, onApply = { arrival, stale ->
@@ -648,22 +837,35 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
 @Composable
 private fun JourneyNotice(text: String, icon: ImageVector = Icons.Default.Info, failure: Boolean = false, actions: @Composable (Color) -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
     val container = when {
         failure && dark -> colors.error
         failure -> colors.errorContainer
         dark -> colors.secondary
-        else -> colors.secondaryContainer
+        else -> stitch.transitContainer
     }
     val ink = when {
         failure && dark -> colors.onError
         failure -> colors.onErrorContainer
         dark -> colors.onSecondary
-        else -> colors.onSecondaryContainer
+        else -> stitch.onTransitContainer
     }
-    Surface(color = container, contentColor = ink, shape = MaterialTheme.shapes.medium) {
+    Surface(
+        color = container,
+        contentColor = ink,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, ink.copy(alpha = 0.16f)),
+    ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(icon, null, Modifier.size(24.dp))
+            StitchCategoryIconBox(
+                icon = icon,
+                size = 36.dp,
+                iconSize = 18.dp,
+                cornerRadius = 12.dp,
+                containerColor = ink.copy(alpha = 0.12f),
+                contentColor = ink,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(text); actions(ink) }
         }
     }
@@ -678,8 +880,16 @@ private fun JourneyTextAction(text: String, onClick: () -> Unit, enabled: Boolea
 private fun JourneyPrimaryAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
     val colors = MaterialTheme.colorScheme
     val dark = isDarkSurface()
-    Button(onClick, enabled = enabled, colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
-        contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+    Button(
+        onClick,
+        enabled = enabled,
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (dark) colors.primaryContainer else colors.primary,
+            contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
+        ),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+    ) {
         Text(text, style = MaterialTheme.typography.titleMedium)
     }
 }
@@ -707,3 +917,25 @@ private fun journeyStateLabel(state: String): String = when (state) {
 @Preview
 @Composable
 private fun JourneyEmptyPreview() { AnVeTheme { JourneyContent(JourneyUiState(owner = "preview", loading = false), TrackingStatus()) } }
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun JourneyActiveDarkPreview() {
+    val activeJourney = JourneyDto(
+        id = "j-1",
+        ownerId = "preview",
+        ownerName = "Minh",
+        state = "ACTIVE",
+        startedAt = "2026-11-16T00:45:00Z",
+        expiresAt = "2026-11-16T02:45:00Z",
+        destination = JourneyDestinationDto("Nhà", 21.0285, 105.8542),
+        recipients = listOf(JourneyRecipientDto("m1", "Mẹ Lan")),
+        progress = JourneyProgressDto("2026-11-16T01:05:00Z", 2400.0, 15.0, false),
+    )
+    AnVeTheme(darkTheme = true) {
+        JourneyContent(
+            JourneyUiState(owner = "preview", loading = false, journeys = listOf(activeJourney), selectedId = activeJourney.id, consentEnabled = true),
+            TrackingStatus(ownerUserId = "preview", running = true, serviceRunning = true, providerActive = true, online = true, motion = MotionState.JOURNEY),
+        )
+    }
+}

@@ -5,13 +5,13 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,13 +36,13 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -53,7 +53,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -106,9 +105,16 @@ import com.anve.app.tracking.diagnostics.SyncWorkStatus
 import com.anve.app.tracking.diagnostics.diagnoseTracking
 import com.anve.app.tracking.diagnostics.diagnosticAgeSeconds
 import com.anve.app.ui.brand.AnVeDiagnosticsIllustration
-import com.anve.app.ui.common.AnVeStatusPill
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnveErrorNotice
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchMetricTile
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 import kotlinx.coroutines.launch
@@ -247,12 +253,13 @@ fun DiagnosticsContent(
     val ready = state.owner != null && status.ownerUserId == state.owner
     val diagnosis = diagnoseTracking(status)
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
     val appBarBackground = if (dark) colors.primaryContainer else colors.primary
     val appBarForeground = if (dark) colors.onPrimaryContainer else colors.onPrimary
     val actionColor = if (dark) colors.onSurface else colors.primary
-    val noticeBackground = if (!diagnosis.attention) colors.primaryContainer else if (dark) colors.secondary else colors.secondaryContainer
-    val noticeForeground = if (!diagnosis.attention) colors.onPrimaryContainer else if (dark) colors.onSecondary else colors.onSecondaryContainer
+    val noticeBackground = if (!diagnosis.attention) stitch.liveContainer else stitch.transitContainer
+    val noticeForeground = if (!diagnosis.attention) stitch.onLiveContainer else stitch.onTransitContainer
     // Equal-contrast crossover for black versus white system status icons.
     DiagnosticsStatusBar(appBarBackground.luminance() > 0.179f)
     Scaffold(
@@ -265,7 +272,11 @@ fun DiagnosticsContent(
             )
         },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("diagnostics-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).testTag("diagnostics-list"),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             if (state.loading) {
                 item {
                     // Same labeled progress treatment as the other screens.
@@ -274,8 +285,11 @@ fun DiagnosticsContent(
                         Text(
                             stringResource(R.string.diag_reading),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colors.onSurfaceVariant,
                         )
+                        if (details == null) {
+                            StitchLoadingSkeletonCard(rows = 2)
+                        }
                     }
                 }
             }
@@ -285,56 +299,69 @@ fun DiagnosticsContent(
             }
             item {
                 OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    colors = CardDefaults.outlinedCardColors(
-                        containerColor = if (diagnosis.attention) {
-                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f)
-                        } else {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
-                        },
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (diagnosis.attention) colors.secondary.copy(alpha = 0.35f) else stitch.hairline,
                     ),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        AnVeDiagnosticsIllustration(
-                            attention = diagnosis.attention,
-                            modifier = Modifier.fillMaxWidth().height(92.dp),
-                        )
+                        AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                            AnVeDiagnosticsIllustration(
+                                attention = diagnosis.attention,
+                                modifier = Modifier.fillMaxWidth().height(92.dp),
+                            )
+                        }
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Surface(
-                                Modifier.size(48.dp),
-                                shape = CircleShape,
-                                color = if (diagnosis.attention) {
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                },
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Default.LocationOn,
-                                        null,
-                                        Modifier.size(24.dp),
-                                        tint = if (diagnosis.attention) {
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        },
-                                    )
-                                }
-                            }
-                            Column(Modifier.weight(1f)) {
+                            StitchCategoryIconBox(
+                                icon = Icons.Default.LocationOn,
+                                size = 48.dp,
+                                iconSize = 24.dp,
+                                cornerRadius = 16.dp,
+                                containerColor = if (diagnosis.attention) stitch.transitContainer else stitch.liveContainer,
+                                contentColor = if (diagnosis.attention) stitch.onTransitContainer else stitch.onLiveContainer,
+                            )
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(diagnosis.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                                Spacer(Modifier.height(4.dp))
-                                Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                             }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StitchMetricTile(
+                                label = stringResource(R.string.diag_metric_fix_age),
+                                value = ageLabel(status.lastFixAtMillis, nowMillis),
+                                icon = Icons.Default.LocationOn,
+                                modifier = Modifier.weight(1f),
+                                containerColor = colors.surfaceContainerLow,
+                                accentColor = colors.primary,
+                            )
+                            StitchMetricTile(
+                                label = stringResource(R.string.diag_metric_queue_count),
+                                value = details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading),
+                                icon = Icons.Default.Sync,
+                                modifier = Modifier.weight(1f),
+                                containerColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.transitContainer else colors.surfaceContainerLow,
+                                accentColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.onTransitContainer else colors.primary,
+                            )
+                            StitchMetricTile(
+                                label = stringResource(R.string.diag_metric_upload_age),
+                                value = ageLabel(status.lastUploadAtMillis, nowMillis),
+                                icon = Icons.Default.Schedule,
+                                modifier = Modifier.weight(1f),
+                                containerColor = colors.surfaceContainerLow,
+                                accentColor = colors.primary,
+                            )
                         }
                     }
                 }
@@ -398,7 +425,13 @@ fun DiagnosticsContent(
                     DiagnosticRow(stringResource(R.string.diag_row_recovery), yesNo(status.recoveryRequired, stringResource(R.string.diag_value_yes), stringResource(R.string.diag_value_no)))
                     DiagnosticRow(stringResource(R.string.diag_row_sync_work), details?.syncWork?.let { work -> if (work.isEmpty()) stringResource(R.string.diag_value_no_pending_work) else work.map { workLabel(it) }.joinToString() } ?: unknownLabel(state.loading))
                     if (status.privacyDiscardedPoints) Text(stringResource(R.string.diag_privacy_discarded), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = { onAction(DiagnosticsAction.RETRY_SYNC) }, enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0, modifier = Modifier.padding(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor)) { Text(stringResource(R.string.diag_retry_sync)) }
+                    OutlinedButton(
+                        onClick = { onAction(DiagnosticsAction.RETRY_SYNC) },
+                        enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0,
+                        shape = CircleShape,
+                        modifier = Modifier.padding(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
+                    ) { Text(stringResource(R.string.diag_retry_sync)) }
                 } }
                 item { DiagnosticsSection(stringResource(R.string.diag_section_notifications), Icons.Default.Security) {
                     DiagnosticRow(stringResource(R.string.diag_row_notification_permission), yesNo(status.notificationsGranted, stringResource(R.string.diag_value_granted), stringResource(R.string.diag_value_not_granted)))
@@ -415,32 +448,56 @@ fun DiagnosticsContent(
                 } }
             }
             item {
-                TextButton(onClick = onExport, enabled = !state.loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) {
-                    Icon(Icons.Default.Description, null, Modifier.padding(end = 12.dp))
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                        Text(stringResource(R.string.diag_export_title), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.diag_export_subtitle), style = MaterialTheme.typography.bodySmall)
+                OutlinedCard(
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, LocalStitchColors.current.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = LocalStitchColors.current.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    TextButton(
+                        onClick = onExport,
+                        enabled = !state.loading,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 4.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
+                    ) {
+                        StitchCategoryIconBox(
+                            icon = Icons.Default.Description,
+                            size = 38.dp,
+                            iconSize = 19.dp,
+                            cornerRadius = 13.dp,
+                            containerColor = LocalStitchColors.current.liveContainer,
+                            contentColor = LocalStitchColors.current.onLiveContainer,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                            Text(stringResource(R.string.diag_export_title), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.diag_export_subtitle), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                        }
                     }
                 }
             }
-            item { Text(stringResource(R.string.diag_footer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item {
+                StitchReassuranceFooter(quote = stringResource(R.string.diag_footer))
+            }
         }
     }
 }
 
 @Composable
 private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: Boolean, background: Color, foreground: Color, onAction: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = background, contentColor = foreground),
+    val stitch = LocalStitchColors.current
+    OutlinedCard(
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = background, contentColor = foreground),
     ) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(14.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
             val icon = if (networkIssue) Icons.Default.WifiOff else Icons.Default.Info
             val action: @Composable (Modifier) -> Unit = { modifier ->
                 OutlinedButton(
                     onClick = onAction,
                     modifier = modifier.heightIn(min = 48.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     border = BorderStroke(1.dp, foreground),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = foreground),
                 ) {
@@ -452,30 +509,28 @@ private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: 
             if (maxWidth < 340.dp || LocalDensity.current.fontScale > 1.15f) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Surface(
-                            shape = CircleShape,
-                            color = foreground.copy(alpha = 0.14f),
-                            modifier = Modifier.size(36.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(icon, null, Modifier.size(20.dp), tint = foreground)
-                            }
-                        }
+                        StitchCategoryIconBox(
+                            icon = icon,
+                            size = 38.dp,
+                            iconSize = 20.dp,
+                            cornerRadius = 13.dp,
+                            containerColor = foreground.copy(alpha = 0.14f),
+                            contentColor = foreground,
+                        )
                         Text(title, style = MaterialTheme.typography.titleMedium)
                     }
                     action(Modifier.fillMaxWidth())
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Surface(
-                        shape = CircleShape,
-                        color = foreground.copy(alpha = 0.14f),
-                        modifier = Modifier.size(36.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(icon, null, Modifier.size(20.dp), tint = foreground)
-                        }
-                    }
+                    StitchCategoryIconBox(
+                        icon = icon,
+                        size = 38.dp,
+                        iconSize = 20.dp,
+                        cornerRadius = 13.dp,
+                        containerColor = foreground.copy(alpha = 0.14f),
+                        contentColor = foreground,
+                    )
                     Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     action(Modifier)
                 }
@@ -486,36 +541,36 @@ private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: 
 
 @Composable
 private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Composable () -> Unit) {
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                    .background(colors.surfaceContainerLow)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(34.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(icon, null, modifier = Modifier.size(18.dp))
-                    }
-                }
+                StitchCategoryIconBox(
+                    icon = icon,
+                    size = 34.dp,
+                    iconSize = 18.dp,
+                    cornerRadius = 12.dp,
+                    containerColor = stitch.liveContainer,
+                    contentColor = stitch.onLiveContainer,
+                )
                 // TalkBack's heading navigation is the fastest way through
                 // this, the app's longest screen: marking each section title
                 // lets users jump by section instead of swiping every row.
-                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            HorizontalDivider(color = stitch.hairline)
             Column(Modifier.padding(vertical = 4.dp)) {
                 content()
             }
@@ -525,6 +580,7 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
 
 @Composable
 private fun DiagnosticRow(label: String, value: String) {
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -534,10 +590,9 @@ private fun DiagnosticRow(label: String, value: String) {
     ) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         if (value.length <= 22) {
-            AnVeStatusPill(
+            StitchSemanticBadge(
                 text = value,
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                kind = StitchBadgeKind.NEUTRAL,
             )
         } else {
             Text(
@@ -545,7 +600,7 @@ private fun DiagnosticRow(label: String, value: String) {
                 Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.End,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.onSurfaceVariant,
             )
         }
     }
@@ -602,6 +657,14 @@ private fun ageLabel(timestamp: Long?, now: Long): String {
 @Composable
 private fun DiagnosticsPreview() {
     AnVeTheme {
+        DiagnosticsContent(DiagnosticsUiState(owner = "preview", status = TrackingStatus(ownerUserId = "preview", sessionReady = true)), 1_000_000, {}, {}, {}, {})
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DiagnosticsDarkPreview() {
+    AnVeTheme(darkTheme = true) {
         DiagnosticsContent(DiagnosticsUiState(owner = "preview", status = TrackingStatus(ownerUserId = "preview", sessionReady = true)), 1_000_000, {}, {}, {}, {})
     }
 }

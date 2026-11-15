@@ -6,41 +6,53 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Warm, legible typography tuned for Vietnamese diacritics across all AnVề
- * screens: comfortable line heights and friendly medium/semibold hierarchy.
+ * Stitch "Warm Tactile Minimalism" typography scale (Be Vietnam Pro hierarchy)
+ * tuned for Vietnamese diacritics with generous line heights (~1.45x-1.5x).
  */
 internal val AnVeTypography = Typography(
-    displaySmall = TextStyle(
-        fontSize = 34.sp,
-        lineHeight = 42.sp,
+    displayLarge = TextStyle(
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.25).sp,
     ),
-    headlineMedium = TextStyle(
-        fontSize = 26.sp,
-        lineHeight = 34.sp,
+    displaySmall = TextStyle(
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
         fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.2).sp,
+    ),
+    headlineLarge = TextStyle(
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.15).sp,
     ),
-    headlineSmall = TextStyle(
+    headlineMedium = TextStyle(
         fontSize = 22.sp,
         lineHeight = 30.sp,
         fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.1).sp,
     ),
-    titleLarge = TextStyle(
-        fontSize = 20.sp,
-        lineHeight = 28.sp,
+    headlineSmall = TextStyle(
+        fontSize = 18.sp,
+        lineHeight = 26.sp,
         fontWeight = FontWeight.SemiBold,
     ),
-    titleMedium = TextStyle(
+    titleLarge = TextStyle(
         fontSize = 16.sp,
         lineHeight = 24.sp,
         fontWeight = FontWeight.SemiBold,
+    ),
+    titleMedium = TextStyle(
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        fontWeight = FontWeight.Medium,
         letterSpacing = 0.1.sp,
     ),
     titleSmall = TextStyle(
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.1.sp,
     ),
@@ -67,6 +79,12 @@ internal val AnVeTypography = Typography(
     ),
     labelMedium = TextStyle(
         fontSize = 12.sp,
+        lineHeight = 16.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.2.sp,
+    ),
+    labelSmall = TextStyle(
+        fontSize = 11.sp,
         lineHeight = 16.sp,
         fontWeight = FontWeight.Medium,
         letterSpacing = 0.25.sp,

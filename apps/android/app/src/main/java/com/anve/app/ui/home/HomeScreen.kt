@@ -32,12 +32,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -45,7 +45,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilledTonalButton
@@ -58,7 +57,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -68,6 +66,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,8 +105,14 @@ import com.anve.app.ui.brand.AnVeAccountShieldIllustration
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.circle.CircleScreen
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchEmptyStateCard
+import com.anve.app.ui.common.StitchLiveSharingPill
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.diagnostics.DiagnosticsScreen
 import com.anve.app.ui.history.HistoryScreen
 import com.anve.app.ui.map.LiveMapScreen
@@ -113,6 +120,7 @@ import com.anve.app.ui.places.PlacesScreen
 import com.anve.app.ui.sos.SosScreen
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.tracking.TrackingScreen
 import java.io.Serializable
 
@@ -356,51 +364,71 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 )
             }
         },
         bottomBar = {
-            NavigationBar {
-                HomeTab.entries.forEach { entry ->
-                    NavigationBarItem(
-                        selected = secondaryPage == null && tab == entry,
-                        onClick = {
-                            tab = entry
-                            secondaryPage = null
-                            sosReturnPage = null
-                            selectedSos = null
-                        },
-                        icon = {
-                            // The label below already announces the tab; an
-                            // icon contentDescription would make TalkBack read
-                            // the same text twice (M3 labeled-destination rule).
-                            Icon(
-                                imageVector = when (entry) {
-                                    HomeTab.MAP -> Icons.Default.Map
-                                    HomeTab.CIRCLE -> Icons.Default.Groups
-                                    HomeTab.PLACES -> Icons.Default.Place
-                                    HomeTab.HISTORY -> Icons.Default.History
-                                },
-                                contentDescription = null,
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = stringResource(entry.labelRes),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
+            val stitch = LocalStitchColors.current
+            Column(modifier = Modifier.fillMaxWidth()) {
+                HorizontalDivider(color = stitch.hairline)
+                NavigationBar(
+                    containerColor = stitch.cardTactile,
+                    tonalElevation = 0.dp,
+                ) {
+                    val navColors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    HomeTab.entries.forEach { entry ->
+                        NavigationBarItem(
+                            selected = secondaryPage == null && tab == entry,
+                            onClick = {
+                                tab = entry
+                                secondaryPage = null
+                                sosReturnPage = null
+                                selectedSos = null
+                            },
+                            colors = navColors,
+                            icon = {
+                                // The label below already announces the tab; an
+                                // icon contentDescription would make TalkBack read
+                                // the same text twice (M3 labeled-destination rule).
+                                Icon(
+                                    imageVector = when (entry) {
+                                        HomeTab.MAP -> Icons.Default.Map
+                                        HomeTab.CIRCLE -> Icons.Default.Groups
+                                        HomeTab.PLACES -> Icons.Default.Place
+                                        HomeTab.HISTORY -> Icons.Default.History
+                                    },
+                                    contentDescription = null,
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = stringResource(entry.labelRes),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                        )
+                    }
                 }
             }
         },
         floatingActionButton = {
             if (secondaryPage != HomeSecondaryPage.SOS) {
                 // SOS is urgent-but-not-a-failure, so it uses the emergency
-                // amber role instead of error.
+                // rose role instead of error.
                 val emergency = LocalEmergencyColors.current
-                // Keep the emergency trigger compact (48dp) so it stays
+                // Keep the emergency trigger compact (50dp) so it stays
                 // reachable without covering cards or list actions beneath it.
                 FloatingActionButton(
                     onClick = {
@@ -408,10 +436,11 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                         selectedSos = null
                         secondaryPage = HomeSecondaryPage.SOS
                     },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
                     containerColor = emergency.emergency,
                     contentColor = emergency.onEmergency,
-                    modifier = Modifier.size(48.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
+                    modifier = Modifier.size(50.dp),
                 ) {
                     Icon(Icons.Default.Sos, contentDescription = stringResource(R.string.tab_sos))
                 }
@@ -501,8 +530,10 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
 
 @Composable
 private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenSharing: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     Surface(
-        color = MaterialTheme.colorScheme.background,
+        color = colors.background,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
@@ -513,7 +544,16 @@ private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenS
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                AnVeBrandMark(Modifier.size(38.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.primaryContainer.copy(alpha = 0.55f),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    modifier = Modifier.size(42.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        AnVeBrandMark(Modifier.size(34.dp))
+                    }
+                }
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.home_brand_name),
@@ -525,13 +565,18 @@ private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenS
                     Text(
                         text = stringResource(R.string.home_brand_tagline),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
                 FilledTonalButton(
                     onClick = onOpenAccount,
+                    shape = CircleShape,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = colors.secondaryContainer,
+                        contentColor = colors.onSecondaryContainer,
+                    ),
                     modifier = Modifier.heightIn(min = 48.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
@@ -540,23 +585,15 @@ private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenS
                     Text(stringResource(R.string.tab_account), maxLines = 1)
                 }
             }
-            // One obvious door to everything about the user's own sharing; it
-            // replaces the old "Vị trí" tab so family members never have to
-            // guess which tab holds the on/off control.
-            AssistChip(
+            // Full-width pinned Stitch status pill keeping sharing toggle
+            // discoverable across every primary tab without crowding the nav bar.
+            StitchLiveSharingPill(
+                text = stringResource(if (sharing) R.string.sharing_chip_on else R.string.sharing_chip_off),
+                active = sharing,
                 onClick = onOpenSharing,
-                label = {
-                    Text(
-                        stringResource(if (sharing) R.string.sharing_chip_on else R.string.sharing_chip_off),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                trailingIcon = { Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp).heightIn(min = 48.dp),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(color = stitch.hairline)
         }
     }
 }
@@ -668,26 +705,38 @@ fun HomeContent(
     // confirm; holding the pending device id here (not inside a LazyColumn
     // item) keeps it alive across scroll and process death.
     var revokeDeviceId: String? by rememberSaveable(stateSaver = nullableStringSaver) { mutableStateOf<String?>(null) }
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                StitchLoadingSkeletonCard(rows = 2)
+                StitchLoadingSkeletonCard(rows = 3)
+                StitchLoadingSkeletonCard(rows = 2)
             }
             return@Surface
         }
 
         val user = state.user
         if (user == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        stringResource(R.string.home_load_failed),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    TextButton(onClick = onRetry) {
-                        Text(stringResource(R.string.action_retry))
-                    }
-                }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                StitchEmptyStateCard(
+                    title = stringResource(R.string.home_load_failed),
+                    body = stringResource(R.string.home_footer_quote),
+                    icon = Icons.Default.Security,
+                    actionLabel = stringResource(R.string.action_retry),
+                    onAction = onRetry,
+                )
             }
             return@Surface
         }
@@ -701,6 +750,12 @@ fun HomeContent(
             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item {
+                StitchLiveSharingPill(
+                    text = stringResource(R.string.home_privacy_live_pill),
+                    active = state.locationSharingRequested ?: user.locationSharingEnabled,
+                )
+            }
             val errorRes = state.errorRes
             if (errorRes != null) {
                 item {
@@ -749,10 +804,23 @@ fun HomeContent(
                 )
             }
             item {
-                AnVeSectionHeader(
-                    icon = Icons.Default.Devices,
-                    title = stringResource(R.string.home_devices_title),
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f)) {
+                        AnVeSectionHeader(
+                            icon = Icons.Default.Devices,
+                            title = stringResource(R.string.home_group_devices_title),
+                            subtitle = stringResource(R.string.home_group_devices_subtitle),
+                        )
+                    }
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.home_device_count_badge, state.devices.size),
+                        kind = StitchBadgeKind.NEUTRAL,
+                    )
+                }
             }
             items(state.devices, key = { it.id }) { device ->
                 DeviceRow(
@@ -763,8 +831,9 @@ fun HomeContent(
             item {
                 OutlinedCard(
                     onClick = onOpenDiagnostics,
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
@@ -775,36 +844,33 @@ fun HomeContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(38.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
-                            }
-                        }
+                        StitchCategoryIconBox(
+                            icon = Icons.Default.Security,
+                            size = 44.dp,
+                            containerColor = colors.primaryContainer,
+                            contentColor = colors.onPrimaryContainer,
+                        )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.titleSmall)
                             Text(
                                 stringResource(R.string.diag_account_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = colors.onSurfaceVariant,
                             )
                         }
                         Icon(
                             Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = colors.onSurfaceVariant,
                         )
                     }
                 }
             }
             item {
                 OutlinedCard(
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(
@@ -815,13 +881,13 @@ fun HomeContent(
                             icon = Icons.Default.Lock,
                             title = stringResource(R.string.home_account_security_title),
                             subtitle = stringResource(R.string.home_account_security_subtitle),
-                            iconContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            iconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            iconContainerColor = colors.surfaceVariant,
+                            iconContentColor = colors.onSurfaceVariant,
                         )
                         OutlinedButton(
                             onClick = onSignOut,
                             enabled = !state.busy,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -836,17 +902,20 @@ fun HomeContent(
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
+                                tint = colors.error,
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.home_delete_account),
-                                color = MaterialTheme.colorScheme.error,
+                                color = colors.error,
                             )
                         }
                     }
                 }
+            }
+            item {
+                StitchReassuranceFooter(quote = stringResource(R.string.home_footer_quote))
             }
         }
     }
@@ -927,59 +996,81 @@ private fun ResultNoticeCard(text: String, onDismiss: () -> Unit) {
 @Composable
 private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Composable () -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(26.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
             AnVeAccountShieldIllustration(
                 modifier = Modifier.fillMaxWidth().height(92.dp),
             )
-            Row(
+            Column(
                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (avatarContent != null) {
-                    avatarContent()
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(
-                                color = colors.primaryContainer,
-                                shape = CircleShape,
-                            ),
-                        contentAlignment = Alignment.Center,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    if (avatarContent != null) {
+                        avatarContent()
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(58.dp)
+                                .background(
+                                    color = colors.primaryContainer,
+                                    shape = CircleShape,
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = user.displayName.take(1).uppercase().ifBlank { "?" },
+                                style = MaterialTheme.typography.titleLarge,
+                                color = colors.onPrimaryContainer,
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
+                        Text(user.displayName, style = MaterialTheme.typography.titleLarge)
                         Text(
-                            text = user.displayName.take(1).uppercase().ifBlank { "?" },
-                            style = MaterialTheme.typography.titleLarge,
-                            color = colors.onPrimaryContainer,
+                            user.email,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
                         )
                     }
+                    FilledTonalButton(
+                        onClick = onRename,
+                        shape = CircleShape,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.action_rename))
+                    }
                 }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(user.displayName, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        user.email,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.home_profile_verified_member),
+                        kind = StitchBadgeKind.SAFE_HOME,
+                        icon = Icons.Default.CheckCircle,
                     )
-                }
-                FilledTonalButton(
-                    onClick = onRename,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.action_rename))
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.home_profile_family_badge),
+                        kind = StitchBadgeKind.AT_PLACE,
+                        icon = Icons.Default.Shield,
+                    )
                 }
             }
         }
@@ -997,15 +1088,16 @@ private fun ConsentCard(
     onOpenLocation: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val statusBadge = when {
         syncPending -> stringResource(R.string.home_sharing_state_syncing)
         requestedEnabled -> stringResource(R.string.home_sharing_state_on)
         else -> stringResource(R.string.home_sharing_state_off)
     }
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -1023,41 +1115,37 @@ private fun ConsentCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.primaryContainer,
+                    StitchCategoryIconBox(
+                        icon = Icons.Default.Security,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                        cornerRadius = 13.dp,
+                        containerColor = colors.primaryContainer,
                         contentColor = colors.onPrimaryContainer,
-                        modifier = Modifier.size(36.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    }
+                    )
                     Text(
                         text = stringResource(R.string.home_sharing_title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                AnVeStatusPill(
+                StitchSemanticBadge(
                     text = statusBadge,
-                    containerColor = when {
-                        syncPending -> colors.secondaryContainer
-                        requestedEnabled -> colors.primaryContainer
-                        else -> colors.surfaceVariant
+                    kind = when {
+                        syncPending -> StitchBadgeKind.IN_TRANSIT
+                        requestedEnabled -> StitchBadgeKind.SAFE_HOME
+                        else -> StitchBadgeKind.DELAYED_OFFLINE
                     },
-                    contentColor = when {
-                        syncPending -> colors.onSecondaryContainer
-                        requestedEnabled -> colors.onPrimaryContainer
-                        else -> colors.onSurfaceVariant
-                    },
+                    showDot = requestedEnabled || syncPending,
                 )
             }
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = colors.surfaceVariant.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(16.dp),
+                color = colors.surfaceContainerLow,
+                border = BorderStroke(1.dp, stitch.hairline),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
@@ -1115,7 +1203,7 @@ private fun ConsentCard(
                 onOpenLocation?.let { openLocation ->
                     FilledTonalButton(
                         onClick = openLocation,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = CircleShape,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) {
                         Text(stringResource(R.string.action_open_location))
@@ -1129,10 +1217,12 @@ private fun ConsentCard(
 @Composable
 private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    val isCurrent = device.session?.current == true
     OutlinedCard(
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -1140,16 +1230,13 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = if (device.session?.current == true) colors.primaryContainer else colors.surfaceVariant,
-                contentColor = if (device.session?.current == true) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Devices, contentDescription = null, modifier = Modifier.size(20.dp))
-                }
-            }
+            StitchCategoryIconBox(
+                icon = Icons.Default.Devices,
+                size = 44.dp,
+                iconSize = 20.dp,
+                containerColor = if (isCurrent) colors.primaryContainer else colors.surfaceContainerHigh,
+                contentColor = if (isCurrent) colors.onPrimaryContainer else colors.onSurfaceVariant,
+            )
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -1162,13 +1249,12 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
                         device.name.ifBlank { stringResource(R.string.home_device_fallback_name) },
                         style = MaterialTheme.typography.titleSmall,
                     )
-                    if (device.session?.current == true) {
+                    if (isCurrent) {
                         // A read-only label, not a chip: the device name is
                         // informational and has no action behind it.
-                        AnVeStatusPill(
+                        StitchSemanticBadge(
                             text = stringResource(R.string.home_device_this),
-                            containerColor = colors.primaryContainer,
-                            contentColor = colors.onPrimaryContainer,
+                            kind = StitchBadgeKind.SAFE_HOME,
                         )
                     }
                 }
@@ -1186,8 +1272,8 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
             // mid-settings. Other devices revoke, and only via the dialog.
             OutlinedButton(
                 onClick = onRevoke,
-                enabled = device.session?.current != true,
-                shape = RoundedCornerShape(12.dp),
+                enabled = !isCurrent,
+                shape = CircleShape,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
                 modifier = Modifier.heightIn(min = 48.dp),
             ) {
@@ -1219,7 +1305,7 @@ private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss
             Button(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank(),
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
@@ -1237,7 +1323,7 @@ private fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.home_sign_out_title)) },
         text = { Text(stringResource(R.string.home_sign_out_body)) },
         confirmButton = {
-            Button(onClick = onConfirm, shape = RoundedCornerShape(12.dp)) {
+            Button(onClick = onConfirm, shape = CircleShape) {
                 Text(stringResource(R.string.home_sign_out))
             }
         },
@@ -1258,7 +1344,7 @@ private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
@@ -1286,7 +1372,7 @@ private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
@@ -1330,6 +1416,30 @@ private fun HomeContentPreview() {
     AnVeTheme {
         HomeContent(
             state = HomeUiState(loading = false, user = user, devices = listOf(device)),
+            onToggleSharing = {},
+            onRename = {},
+            onRevokeDevice = {},
+            onSignOut = {},
+            onDeleteAccount = {},
+            onRetry = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HomeContentDarkPreview() {
+    val user = UserDto(
+        id = "u1",
+        email = "me@example.com",
+        displayName = "Mai",
+        avatarUrl = null,
+        locationSharingEnabled = true,
+        createdAt = "2026-10-25T10:00:00Z",
+    )
+    AnVeTheme(darkTheme = true) {
+        HomeContent(
+            state = HomeUiState(loading = false, user = user, devices = emptyList()),
             onToggleSharing = {},
             onRename = {},
             onRevokeDevice = {},

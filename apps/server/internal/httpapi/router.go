@@ -14,6 +14,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/avatars"
 	"github.com/QuocDuong16/anve/server/internal/circles"
+	"github.com/QuocDuong16/anve/server/internal/contacts"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
 	"github.com/QuocDuong16/anve/server/internal/locations"
@@ -57,6 +58,7 @@ type Deps struct {
 	Places         *places.Store
 	SOS            *sos.Store
 	Journeys       *journeys.Store
+	Contacts       *contacts.Service
 	PushConfigured bool
 	DB             Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
@@ -97,6 +99,7 @@ func NewRouter(deps Deps) chi.Router {
 	// unconditionally, so any client could spoof its own address. A trusted
 	// proxy CIDR allowlist is added when the API is deployed behind a proxy.
 
+	r.Get("/", landingPageHandler())
 	r.Get("/healthz", healthHandler(deps.Version))
 	r.Get("/readyz", readyHandler(deps))
 
@@ -104,6 +107,12 @@ func NewRouter(deps Deps) chi.Router {
 		// Build metadata does not need the database and stays available in
 		// every configuration.
 		api.Get("/version", versionHandler(deps.Version))
+
+		// Public contact submission endpoint is registered unconditionally so
+		// observability route labels remain fixed even when DB-backed services
+		// run degraded and answer 503.
+		contactLimiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
+		api.With(RateLimit(contactLimiter)).Post("/contacts", contactCreateHandler(deps.Contacts))
 
 		if deps.Auth == nil {
 			// No database configured: the business endpoints exist in the

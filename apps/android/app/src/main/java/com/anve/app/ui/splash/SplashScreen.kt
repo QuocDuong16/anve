@@ -1,5 +1,6 @@
 package com.anve.app.ui.splash
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,13 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,7 +29,9 @@ import com.anve.app.BuildConfig
 import com.anve.app.R
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 
 /**
  * The AnVề splash screen shown while the app bootstraps.
@@ -43,6 +46,7 @@ fun SplashScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
 
     Box(
         modifier = modifier
@@ -55,12 +59,20 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(28.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = colors.primaryContainer.copy(alpha = 0.45f),
-                border = BorderStroke(1.5.dp, colors.primary.copy(alpha = 0.2f)),
-            ) {
-                AnVeBrandMark(Modifier.padding(14.dp).size(104.dp))
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(156.dp)
+                        .clip(CircleShape)
+                        .background(stitch.secondaryFixedDim.copy(alpha = 0.28f)),
+                )
+                Surface(
+                    shape = CircleShape,
+                    color = stitch.secondaryFixed,
+                    border = BorderStroke(1.5.dp, stitch.hairline),
+                ) {
+                    AnVeBrandMark(Modifier.padding(14.dp).size(104.dp))
+                }
             }
             Text(
                 text = SplashCopy.displayName,
@@ -74,17 +86,12 @@ fun SplashScreen(
             Text(
                 text = stringResource(R.string.splash_tagline),
                 style = MaterialTheme.typography.bodyLarge,
-                color = colors.onSurface,
+                color = colors.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
             )
             Spacer(Modifier.height(24.dp))
-            Surface(
-                shape = RoundedCornerShape(22.dp),
-                color = colors.surfaceVariant.copy(alpha = 0.35f),
-                border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.6f)),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
                 AnVeFamilySceneIllustration(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -112,6 +119,14 @@ fun SplashScreen(
 @Composable
 private fun SplashScreenPreview() {
     AnVeTheme {
+        SplashScreen(version = "0.1.0")
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SplashScreenDarkPreview() {
+    AnVeTheme(darkTheme = true) {
         SplashScreen(version = "0.1.0")
     }
 }

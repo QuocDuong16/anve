@@ -37,8 +37,27 @@ tags:
     description: Explicit emergency requests, recipients and acknowledgement
   - name: journeys
     description: Explicitly addressed journeys with manual arrival or optional per-journey arrival estimates and missing-update reminders
+  - name: contacts
+    description: Public landing page and internal-testing contact submissions
 
 paths:
+  /:
+    get:
+      operationId: getLandingPage
+      summary: Serve the AnVề landing page
+      description: |
+        Returns the public HTML5 landing page synchronized with the Warm
+        Tactile Minimalism design system, communicating Internal Testing status
+        and exposing a contact inquiry form.
+      tags: [contacts]
+      security: []
+      responses:
+        "200":
+          description: The AnVề HTML5 landing page.
+          content:
+            text/html:
+              schema:
+                type: string
   /metrics:
     servers:
       - url: http://127.0.0.1:9090
@@ -409,6 +428,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthConfig"
+
+  /api/v1/contacts:
+    post:
+      operationId: createContact
+      summary: Submit an internal-testing contact or collaboration inquiry
+      description: |
+        Validates and stores a contact submission from the landing page and
+        dispatches optional SMTP email and Telegram Bot notifications
+        non-fatally. Does not require an authenticated session.
+      tags: [contacts]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactRequest"
+      responses:
+        "201":
+          description: Contact stored successfully (notification delivery is best-effort).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactResponse"
+        "400":
+          description: Validation error on one or more contact fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Rate limit exceeded for contact submissions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Database unavailable to store the contact submission.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/v1/auth/google:
     post:
@@ -2865,3 +2926,47 @@ components:
         dissolve:
           type: boolean
           description: Must be true for an owner who still has members.
+
+    CreateContactRequest:
+      type: object
+      additionalProperties: false
+      required: [name, email, message]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 40
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    ContactResponse:
+      type: object
+      required: [id, name, email, phone, message, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [NEW, NOTIFIED, PARTIAL_NOTIFY, READ, ARCHIVED]
+        createdAt:
+          type: string
+          format: date-time

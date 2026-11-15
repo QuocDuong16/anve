@@ -74,6 +74,17 @@ type Config struct {
 	// FCMProjectID enables the optional Firebase HTTP v1 notification gateway.
 	// Credentials are supplied separately through Application Default Credentials.
 	FCMProjectID string `env:"FCM_PROJECT_ID"`
+
+	// Optional SMTP settings for landing-page contact notifications.
+	SMTPHost    string `env:"SMTP_HOST"`
+	SMTPPort    int    `env:"SMTP_PORT" envDefault:"587"`
+	SMTPUser    string `env:"SMTP_USER"`
+	SMTPPass    string `env:"SMTP_PASS"`
+	NotifyEmail string `env:"NOTIFY_EMAIL"`
+
+	// Optional Telegram Bot settings for landing-page contact notifications.
+	TelegramBotToken string `env:"TELEGRAM_BOT_TOKEN"`
+	TelegramChatID   string `env:"TELEGRAM_CHAT_ID"`
 }
 
 // Load reads the configuration from the process environment.
@@ -121,6 +132,9 @@ func (c *Config) resolve() error {
 	if c.LocationRetentionDays < 1 || c.LocationRetentionDays > 365 {
 		return fmt.Errorf("LOCATION_RETENTION_DAYS must be between 1 and 365 (got %d)",
 			c.LocationRetentionDays)
+	}
+	if c.SMTPHost != "" && (c.SMTPPort < 1 || c.SMTPPort > 65535) {
+		return fmt.Errorf("SMTP_PORT must be between 1 and 65535 when SMTP_HOST is set (got %d)", c.SMTPPort)
 	}
 
 	if c.MetricsListenAddr != "" {

@@ -27,6 +27,29 @@ class ThemeContrastTest {
         assertEmergencyContrast(DarkEmergencyColors, DarkColors.error)
     }
 
+    @Test
+    fun `light stitch extended color pairs meet body text contrast`() {
+        assertStitchContrast(LightStitchColors)
+    }
+
+    @Test
+    fun `dark stitch extended color pairs meet body text contrast`() {
+        assertStitchContrast(DarkStitchColors)
+    }
+
+    private fun assertStitchContrast(stitch: StitchColors) {
+        listOf(
+            "primaryFixed" to (stitch.primaryFixed to stitch.onPrimaryFixed),
+            "secondaryFixed" to (stitch.secondaryFixed to stitch.onSecondaryFixed),
+            "liveContainer" to (stitch.liveContainer to stitch.onLiveContainer),
+            "transitContainer" to (stitch.transitContainer to stitch.onTransitContainer),
+            "cardTactile" to (stitch.cardTactile to stitch.onCardTactile),
+        ).forEach { (role, pair) ->
+            val ratio = contrastRatio(pair.first, pair.second)
+            assertTrue("$role contrast was $ratio:1", ratio >= 4.5)
+        }
+    }
+
     private fun assertSchemeContrast(scheme: androidx.compose.material3.ColorScheme) {
         listOf(
             "primary" to (scheme.primary to scheme.onPrimary),

@@ -2,17 +2,18 @@ package com.anve.app.ui.sos
 
 import android.Manifest
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,19 +33,22 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Outbox
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -65,6 +69,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +78,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
@@ -83,14 +91,26 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.R
+import com.anve.app.data.api.SosEventDto
 import com.anve.app.data.sos.FirebaseSetup
+import com.anve.app.data.sos.SosCachedMember
 import com.anve.app.data.sos.SosLocalState
+import com.anve.app.data.sos.SosOutboxItem
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeSosCareIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchLivePulseDot
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.StitchTimelineItem
+import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
+import com.anve.app.ui.theme.LocalStitchColors
 import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -184,25 +204,38 @@ private const val DETAIL_CARD_KEY = "detail-card"
 private fun SosCard(
     title: String,
     icon: ImageVector? = null,
+    trailing: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val stitch = LocalStitchColors.current
     val colors = MaterialTheme.colorScheme
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (icon != null) {
-                AnVeSectionHeader(
-                    icon = icon,
-                    title = title,
-                )
-            } else {
-                // TalkBack heading navigation; same treatment as the other
-                // screens' section titles (Journey, Places, History, Diagnostics).
-                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f)) {
+                    if (icon != null) {
+                        AnVeSectionHeader(
+                            icon = icon,
+                            title = title,
+                            iconContainerColor = colors.surfaceContainerLow,
+                            iconContentColor = colors.primary,
+                        )
+                    } else {
+                        // TalkBack heading navigation; same treatment as the other
+                        // screens' section titles (Journey, Places, History, Diagnostics).
+                        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                    }
+                }
+                trailing()
             }
             content()
         }
@@ -216,7 +249,56 @@ private fun SosCard(
  * jump to the outbox status.
  */
 @Composable
-internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermission: Boolean, pushMessage: String?, onNotifications: () -> Unit, onSystemSettings: () -> Unit = {}) {
+internal fun SosContent(
+    state: SosState,
+    vm: SosViewModel,
+    notificationPermission: Boolean,
+    pushMessage: String?,
+    onNotifications: () -> Unit,
+    onSystemSettings: () -> Unit = {},
+) {
+    val queuedEventId by vm.queuedEventId.collectAsStateWithLifecycle()
+    SosContentBody(
+        state = state,
+        queuedEventId = queuedEventId,
+        notificationPermission = notificationPermission,
+        pushMessage = pushMessage,
+        onNotifications = onNotifications,
+        onSystemSettings = onSystemSettings,
+        onRefresh = { vm.refresh() },
+        onSend = { vm.send(it) },
+        onCancel = { vm.cancel(it) },
+        onResolve = { vm.resolve(it) },
+        onAcknowledge = { vm.acknowledge(it) },
+        onRecheckCancel = { vm.recheckCancel(it) },
+        onRecheckUnknown = { vm.recheckUnknown(it) },
+        onClearFinished = { vm.clearFinished(it) },
+        onSelectEvent = { vm.select(it) },
+        onRevokeRecipient = { eventId, recipientId -> vm.revokeRecipient(eventId, recipientId) },
+        onConsumeQueuedEventId = { vm.consumeQueuedEventId() },
+    )
+}
+
+@Composable
+private fun SosContentBody(
+    state: SosState,
+    queuedEventId: String?,
+    notificationPermission: Boolean,
+    pushMessage: String?,
+    onNotifications: () -> Unit,
+    onSystemSettings: () -> Unit,
+    onRefresh: () -> Unit,
+    onSend: (Set<String>) -> Unit,
+    onCancel: (String) -> Unit,
+    onResolve: (String) -> Unit,
+    onAcknowledge: (String) -> Unit,
+    onRecheckCancel: (String) -> Unit,
+    onRecheckUnknown: (String) -> Unit,
+    onClearFinished: (String) -> Unit,
+    onSelectEvent: (String) -> Unit,
+    onRevokeRecipient: (String, String) -> Unit,
+    onConsumeQueuedEventId: () -> Unit,
+) {
     val owner = state.owner ?: return
     var selected by remember(owner) { mutableStateOf(emptySet<String>()) }
     var confirmSend by remember(owner) { mutableStateOf(false) }
@@ -227,75 +309,199 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     val emergency = LocalEmergencyColors.current
-    val queuedEventId by vm.queuedEventId.collectAsStateWithLifecycle()
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
 
     val rows = buildList {
         add(SosRow("title") {
-            val colors = MaterialTheme.colorScheme
             val dialer = LocalContext.current
-            OutlinedCard(
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.45f)),
-                colors = CardDefaults.outlinedCardColors(
-                    containerColor = emergency.emergencyContainer.copy(alpha = 0.28f),
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Stitch Screen 58 readiness banner: calm pulse and transparent ready/sending state.
+                OutlinedCard(
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    AnVeSosCareIllustration(
-                        modifier = Modifier.fillMaxWidth().height(116.dp),
-                    )
-                    Text(
-                        stringResource(R.string.sos_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        stringResource(R.string.sos_hero_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = colors.surface.copy(alpha = 0.85f),
-                        modifier = Modifier.fillMaxWidth(),
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                StitchCategoryIconBox(
+                                    icon = Icons.Default.Shield,
+                                    size = 38.dp,
+                                    iconSize = 20.dp,
+                                    cornerRadius = 19.dp,
+                                    containerColor = stitch.liveContainer,
+                                    contentColor = stitch.livePulse,
+                                )
+                                StitchLivePulseDot(active = !state.pending && !state.offline)
+                                Text(
+                                    text = stringResource(R.string.sos_title),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.semantics { heading() },
+                                )
+                            }
+                            StitchSemanticBadge(
+                                text = stringResource(
+                                    if (state.pending) R.string.sos_status_sending else R.string.sos_status_ready,
+                                ),
+                                kind = if (state.pending) StitchBadgeKind.EMERGENCY else StitchBadgeKind.SAFE_HOME,
+                                showDot = true,
+                            )
+                        }
                         Text(
-                            stringResource(R.string.sos_emergency_disclaimer),
-                            style = MaterialTheme.typography.bodySmall,
+                            text = stringResource(R.string.sos_banner_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
                             color = colors.onSurfaceVariant,
-                            modifier = Modifier.padding(12.dp),
                         )
                     }
-                    Text(
-                        stringResource(R.string.sos_emergency_calls_label),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    // The disclaimer asks the user to call the official emergency
-                    // numbers, so the dial affordances sit right beside it: ACTION_DIAL
-                    // only pre-fills the dialer — AnVề still never places the call.
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                }
+
+                // Stitch Screen 58 Hero SOS Focus Card: warm soothing halo + non-blocking safety notice + 113/114/115 grid.
+                OutlinedCard(
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.35f)),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = stitch.cardTactile,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Numbers as Int so the %1$d placeholder in sos_call_number
-                        // formats without an IllegalFormatConversionException.
-                        listOf(113, 114, 115).forEach { number ->
-                            FilledTonalButton(
-                                onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = emergency.emergencyContainer,
-                                    contentColor = emergency.onEmergencyContainer,
-                                ),
-                                modifier = Modifier.heightIn(min = 48.dp),
+                        AnVeIllustratedBanner(
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.sos_call_number, number))
+                                // Concentric soothing warm halos (Stitch Screen 58 focal ring without harsh flashing).
+                                Box(
+                                    modifier = Modifier
+                                        .size(144.dp)
+                                        .clip(CircleShape)
+                                        .background(emergency.emergencyContainer.copy(alpha = 0.28f)),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(116.dp)
+                                        .clip(CircleShape)
+                                        .background(stitch.secondaryFixedDim.copy(alpha = 0.32f)),
+                                )
+                                AnVeSosCareIllustration(
+                                    modifier = Modifier.fillMaxWidth().height(112.dp),
+                                )
+                            }
+                        }
+                        Text(
+                            text = stringResource(R.string.sos_hero_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            text = stringResource(R.string.sos_hero_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = colors.surfaceContainerLow,
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.sos_emergency_disclaimer),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.sos_emergency_calls_label),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        // The disclaimer asks the user to call the official emergency
+                        // numbers, so the dial affordances sit right beside it: ACTION_DIAL
+                        // only pre-fills the dialer — AnVề still never places the call.
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            val hotlines = listOf(
+                                Triple(113, R.string.sos_service_police, Icons.Default.Shield),
+                                Triple(114, R.string.sos_service_fire, Icons.Default.Warning),
+                                Triple(115, R.string.sos_service_ambulance, Icons.Default.Phone),
+                            )
+                            hotlines.forEach { (number, serviceRes, icon) ->
+                                val (iconBg, iconFg) = when (number) {
+                                    113 -> colors.primaryContainer to colors.onPrimaryContainer
+                                    114 -> stitch.transitContainer to stitch.onTransitContainer
+                                    else -> emergency.emergencyContainer to emergency.onEmergencyContainer
+                                }
+                                Surface(
+                                    onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = colors.surfaceContainerLowest,
+                                    border = BorderStroke(1.dp, stitch.hairline),
+                                    modifier = Modifier.weight(1f).heightIn(min = 98.dp),
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        StitchCategoryIconBox(
+                                            icon = icon,
+                                            size = 36.dp,
+                                            iconSize = 18.dp,
+                                            cornerRadius = 18.dp,
+                                            containerColor = iconBg,
+                                            contentColor = iconFg,
+                                        )
+                                        Text(
+                                            text = number.toString(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.onSurface,
+                                        )
+                                        Text(
+                                            text = stringResource(serviceRes),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.sos_call_number, number),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = iconFg,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -303,15 +509,31 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             }
         })
         if (state.loading || state.pending) add(SosRow("progress") {
-            // A bare spinner says nothing to sight or screen reader alike; same
-            // labeled progress row as History and Places.
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(24.dp))
-                Text(
-                    stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // A bare spinner says nothing to sight or screen reader alike; same
+                // labeled progress row as History and Places.
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = stitch.cardTactile,
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.5.dp)
+                        Text(
+                            stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (state.loading && state.members.isEmpty() && state.events.isEmpty()) {
+                    StitchLoadingSkeletonCard(rows = 2)
+                }
             }
         })
         state.errorRes?.let { res ->
@@ -320,39 +542,51 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                 // affordance, but it sits after a long scroll; the failure read
                 // at the top carries its own adjacent retry so recovery lives
                 // where the message is.
-                AnveErrorNotice(stringResource(res), onRetry = { vm.refresh() })
+                AnveErrorNotice(stringResource(res), onRetry = onRefresh)
             })
         }
         if (state.offline) add(SosRow("offline") {
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = RoundedCornerShape(16.dp),
+                color = stitch.transitContainer,
+                contentColor = stitch.onTransitContainer,
+                border = BorderStroke(1.dp, stitch.hairline),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     stringResource(R.string.sos_offline_notice),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(14.dp),
                 )
             }
         })
         add(SosRow("recipients-card") {
-            val colors = MaterialTheme.colorScheme
-            SosCard(stringResource(R.string.sos_recipients_title), Icons.Default.Groups) {
+            SosCard(
+                title = stringResource(R.string.sos_recipients_title),
+                icon = Icons.Default.Groups,
+                trailing = {
+                    if (state.members.isNotEmpty()) {
+                        StitchSemanticBadge(
+                            text = "${selected.size}/${state.members.size}",
+                            kind = if (selected.isNotEmpty()) StitchBadgeKind.EMERGENCY else StitchBadgeKind.NEUTRAL,
+                        )
+                    }
+                },
+            ) {
                 if (state.members.isEmpty()) {
                     Text(stringResource(R.string.sos_recipients_empty), color = colors.onSurfaceVariant)
                 }
-                state.members.forEach { member ->
+                state.members.forEachIndexed { index, member ->
                     val checked = member.userId in selected
                     // The whole row toggles so the checkbox target is not the only
                     // touchable point; the checkbox itself stays indicative.
+                    // Recipient rows remain the first toggleables in SosContent for tests.
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (checked) emergency.emergencyContainer.copy(alpha = 0.45f) else colors.surfaceVariant.copy(alpha = 0.38f),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (checked) emergency.emergencyContainer.copy(alpha = 0.42f) else colors.surfaceContainerLow,
                         border = BorderStroke(
                             1.dp,
-                            if (checked) emergency.emergency.copy(alpha = 0.6f) else colors.outlineVariant.copy(alpha = 0.5f),
+                            if (checked) emergency.emergency.copy(alpha = 0.55f) else stitch.hairline,
                         ),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -364,25 +598,40 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                                     role = Role.Checkbox,
                                     onValueChange = { isChecked -> selected = if (isChecked) selected + member.userId else selected - member.userId },
                                 )
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = colors.secondaryContainer,
-                                contentColor = colors.onSecondaryContainer,
-                                modifier = Modifier.size(36.dp),
+                                color = if (checked) emergency.emergencyContainer else stitch.primaryFixed,
+                                contentColor = if (checked) emergency.onEmergencyContainer else stitch.onPrimaryFixed,
+                                modifier = Modifier.size(40.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         member.displayName.take(1).uppercase().ifBlank { "?" },
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Bold,
                                     )
                                 }
                             }
-                            Text(member.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = member.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                if (index == 0) {
+                                    StitchSemanticBadge(
+                                        text = stringResource(R.string.sos_primary_recipient_badge),
+                                        kind = StitchBadgeKind.SAFE_HOME,
+                                    )
+                                }
+                            }
                             Checkbox(checked = checked, enabled = !state.pending, onCheckedChange = null)
                         }
                     }
@@ -392,35 +641,39 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         add(SosRow(OUTBOX_TITLE_KEY) {
             SosCard(stringResource(R.string.sos_outbox_title), Icons.Default.Outbox) {
                 if (state.outbox.isEmpty()) {
-                    Text(stringResource(R.string.sos_outbox_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.sos_outbox_empty), color = colors.onSurfaceVariant)
                 }
-                state.outbox.forEach { item ->
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
-                        modifier = Modifier.fillMaxWidth(),
+                state.outbox.forEachIndexed { index, item ->
+                    val (badgeKind, nodeBg, nodeFg) = when (item.state) {
+                        SosLocalState.CONFIRMED -> Triple(StitchBadgeKind.EMERGENCY, emergency.emergencyContainer, emergency.onEmergencyContainer)
+                        SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CANCEL_REQUESTED ->
+                            Triple(StitchBadgeKind.IN_TRANSIT, stitch.transitContainer, stitch.onTransitContainer)
+                        else -> Triple(StitchBadgeKind.NEUTRAL, colors.surfaceContainerHigh, colors.onSurfaceVariant)
+                    }
+                    val timelineIcon = when (item.state) {
+                        SosLocalState.CONFIRMED -> Icons.Default.Warning
+                        SosLocalState.CANCELLED, SosLocalState.RESOLVED -> Icons.Default.CheckCircle
+                        else -> Icons.Default.Schedule
+                    }
+                    StitchTimelineItem(
+                        icon = timelineIcon,
+                        nodeContainerColor = nodeBg,
+                        nodeContentColor = nodeFg,
+                        isLast = index == state.outbox.lastIndex,
                     ) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             // Time and audience separate the attempts from each
                             // other; two "Đang chờ mạng" rows must stay
                             // distinguishable on a safety feature.
                             Text(
                                 stringResource(R.string.sos_outbox_row_meta, sosTime(item.recordedAt, stringResource(R.string.journey_time_unknown)), item.recipientIds.size),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = colors.onSurfaceVariant,
                             )
-                            // The status label gets a state-dependent surface so
-                            // the list is scanned by color: confirmed (the server
-                            // records an open event) stays emergency amber,
-                            // in-flight requests read as attention, finished ones
-                            // go neutral. The wording is untouched.
-                            val (statusContainer, statusContent) = when (item.state) {
-                                SosLocalState.CONFIRMED -> emergency.emergencyContainer to emergency.onEmergencyContainer
-                                SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CANCEL_REQUESTED ->
-                                    MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
-                                else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                            AnVeStatusPill(
+                            StitchSemanticBadge(
                                 text = when (item.state) {
                                     SosLocalState.QUEUED -> stringResource(R.string.sos_state_queued)
                                     SosLocalState.SENDING -> stringResource(R.string.sos_state_sending)
@@ -432,20 +685,20 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                                     SosLocalState.EXPIRED -> stringResource(R.string.sos_state_expired)
                                     SosLocalState.SERVER_EXPIRED -> stringResource(R.string.sos_state_server_expired)
                                 },
-                                containerColor = statusContainer,
-                                contentColor = statusContent,
+                                kind = badgeKind,
+                                showDot = item.state == SosLocalState.CONFIRMED || item.state == SosLocalState.SENDING,
                             )
                             if (item.state in setOf(SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CONFIRMED)) {
                                 TextButton(onClick = { action = item.eventId to "cancel" }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_action)) }
                             }
                             if (item.state == SosLocalState.CANCEL_REQUESTED) {
-                                TextButton(onClick = { vm.recheckCancel(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_recheck)) }
+                                TextButton(onClick = { onRecheckCancel(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_recheck)) }
                             }
                             if (item.state == SosLocalState.UNKNOWN) {
-                                TextButton(onClick = { vm.recheckUnknown(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_recheck)) }
+                                TextButton(onClick = { onRecheckUnknown(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_recheck)) }
                             }
                             if (item.state in setOf(SosLocalState.CANCELLED, SosLocalState.RESOLVED, SosLocalState.EXPIRED, SosLocalState.SERVER_EXPIRED)) {
-                                TextButton(onClick = { vm.clearFinished(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_clear_finished)) }
+                                TextButton(onClick = { onClearFinished(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_clear_finished)) }
                             }
                         }
                     }
@@ -454,31 +707,47 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         })
         add(SosRow("notifications-card") {
             SosCard(stringResource(R.string.sos_notifications_section), Icons.Default.Notifications) {
-                // Server-side push configuration lives here, next to the
-                // device registration it enables; the top of the screen keeps
-                // its focus on picking who receives the request.
-                Text(when (state.pushConfigured) {
-                    true -> stringResource(R.string.sos_push_configured)
-                    false -> stringResource(R.string.sos_push_unconfigured)
-                    null -> stringResource(R.string.sos_push_unknown)
-                })
-                Text(if (!notificationPermission) stringResource(R.string.sos_notifications_disabled) else when (state.pushRegistered) {
-                    true -> stringResource(R.string.sos_push_registered)
-                    false -> stringResource(R.string.sos_push_not_registered)
-                    null -> stringResource(R.string.sos_push_check_unknown)
-                })
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = colors.surfaceContainerLow,
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Server-side push configuration lives here, next to the
+                        // device registration it enables; the top of the screen keeps
+                        // its focus on picking who receives the request.
+                        Text(
+                            text = when (state.pushConfigured) {
+                                true -> stringResource(R.string.sos_push_configured)
+                                false -> stringResource(R.string.sos_push_unconfigured)
+                                null -> stringResource(R.string.sos_push_unknown)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = if (!notificationPermission) stringResource(R.string.sos_notifications_disabled) else when (state.pushRegistered) {
+                                true -> stringResource(R.string.sos_push_registered)
+                                false -> stringResource(R.string.sos_push_not_registered)
+                                null -> stringResource(R.string.sos_push_check_unknown)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (!notificationPermission) emergency.onEmergencyContainer else colors.onSurface,
+                        )
+                    }
+                }
                 // Status rows use plain language; the acceptance-vs-delivery
                 // distinction stays explicit in this technical annotation.
                 Text(
                     stringResource(R.string.sos_notifications_technical_note),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.onSurfaceVariant,
                 )
-                pushMessage?.let { message -> Text(message) }
+                pushMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = colors.primary) }
                 OutlinedButton(
                     onClick = onNotifications,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = CircleShape,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.sos_notifications_setup)) }
                 if (!notificationPermission) TextButton(onClick = onSystemSettings, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.sos_open_notification_settings))
@@ -488,29 +757,39 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         add(SosRow("events-card") {
             SosCard(stringResource(R.string.sos_events_title), Icons.Default.History) {
                 if (state.events.isEmpty() && !state.loading) {
-                    Text(stringResource(R.string.sos_events_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.sos_events_empty), color = colors.onSurfaceVariant)
                 }
-                state.events.forEach { event ->
+                state.events.forEachIndexed { index, event ->
                     val person = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member)
-                    // Active events borrow the emergency pair; finished ones go
-                    // neutral, so the list is scannable by color. The whole row
-                    // stays the touch target at a 48dp minimum.
-                    val (rowContainer, rowContent) = if (event.state == "ACTIVE") {
-                        emergency.emergencyContainer to emergency.onEmergencyContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                    Surface(
-                        onClick = { scrollToDetailCount++; vm.select(event.id) },
-                        color = rowContainer,
-                        contentColor = rowContent,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    val active = event.state == "ACTIVE"
+                    StitchTimelineItem(
+                        icon = if (active) Icons.Default.Warning else Icons.Default.CheckCircle,
+                        nodeContainerColor = if (active) emergency.emergencyContainer else colors.surfaceContainerHigh,
+                        nodeContentColor = if (active) emergency.onEmergencyContainer else colors.onSurfaceVariant,
+                        isLast = index == state.events.lastIndex,
                     ) {
-                        Text(
-                            "$person · ${sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown))} · ${sosState(event.state)}",
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                        )
+                        Surface(
+                            onClick = { scrollToDetailCount++; onSelectEvent(event.id) },
+                            color = if (active) emergency.emergencyContainer.copy(alpha = 0.45f) else colors.surfaceContainerLow,
+                            contentColor = if (active) emergency.onEmergencyContainer else colors.onSurface,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                StitchSemanticBadge(
+                                    text = sosState(event.state),
+                                    kind = if (active) StitchBadgeKind.EMERGENCY else StitchBadgeKind.NEUTRAL,
+                                    showDot = active,
+                                )
+                                Text(
+                                    text = "$person · ${sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown))} · ${sosState(event.state)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -519,17 +798,21 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             add(SosRow(DETAIL_CARD_KEY) {
                 SosCard(stringResource(R.string.sos_detail_title), Icons.Default.Info) {
                     val sender = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member_unnamed)
-                    Text(stringResource(R.string.sos_detail_sender, sender))
-                    Text(stringResource(
-                        R.string.sos_detail_status,
-                        sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown)),
-                        sosElapsed(event.recordedAt),
-                        sosTime(event.receivedAt, stringResource(R.string.journey_time_unknown)),
-                        sosState(event.state),
-                    ))
+                    Text(stringResource(R.string.sos_detail_sender, sender), fontWeight = FontWeight.Medium)
+                    Text(
+                        stringResource(
+                            R.string.sos_detail_status,
+                            sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown)),
+                            sosElapsed(event.recordedAt),
+                            sosTime(event.receivedAt, stringResource(R.string.journey_time_unknown)),
+                            sosState(event.state),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                     if (event.ownerId == owner) {
                         state.recipients.forEach { recipient ->
-                            Column {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 val person = state.members.firstOrNull { it.userId == recipient.userId }?.displayName ?: stringResource(R.string.sos_person_member)
                                 val push = when (recipient.pushState) {
                                     "QUEUED" -> if (recipient.acceptedAt != null) stringResource(R.string.sos_push_queued_accepted) else stringResource(R.string.sos_push_queued_pending)
@@ -544,20 +827,20 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                                 // shows at a glance who has not been reached.
                                 if (recipient.pushState != "ACCEPTED") {
                                     Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        shape = MaterialTheme.shapes.small,
+                                        color = stitch.transitContainer,
+                                        contentColor = stitch.onTransitContainer,
+                                        shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
-                                        Text(statusLine, Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                                        Text(statusLine, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall)
                                     }
                                 } else {
-                                    Text(statusLine)
+                                    Text(statusLine, style = MaterialTheme.typography.bodySmall)
                                 }
                                 TextButton(onClick = { revokeRecipient = event.id to recipient.userId }, enabled = !state.pending) {
                                     // Destructive trigger carries the error color,
                                     // same as the revoke rows in Home/Circle/Places.
-                                    Text(stringResource(R.string.sos_revoke_viewer, person), color = MaterialTheme.colorScheme.error)
+                                    Text(stringResource(R.string.sos_revoke_viewer, person), color = colors.error)
                                 }
                             }
                         }
@@ -568,12 +851,18 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                             }
                         }
                     } else if (event.state == "ACTIVE" && event.acknowledgedAt == null) {
-                        Button(onClick = { action = event.id to "acknowledge" }) { Text(stringResource(R.string.sos_acknowledge)) }
+                        Button(onClick = { action = event.id to "acknowledge" }, shape = CircleShape) { Text(stringResource(R.string.sos_acknowledge)) }
                     }
                 }
             })
         }
-        add(SosRow("refresh") { TextButton(onClick = { vm.refresh() }, enabled = !state.loading && !state.pending) { Text(stringResource(R.string.sos_check_again)) } })
+        add(SosRow("refresh") { TextButton(onClick = onRefresh, enabled = !state.loading && !state.pending) { Text(stringResource(R.string.sos_check_again)) } })
+        add(SosRow("footer") {
+            StitchReassuranceFooter(
+                quote = stringResource(R.string.sos_footer_quote),
+                accentBarColor = emergency.emergency.copy(alpha = 0.55f),
+            )
+        })
     }
 
     // The send confirms itself in place the moment the request is durably
@@ -590,7 +879,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             actionLabel = viewStatusLabel,
         )
         if (result == SnackbarResult.ActionPerformed) scrollToOutboxCount++
-        vm.consumeQueuedEventId()
+        onConsumeQueuedEventId()
     }
     LaunchedEffect(scrollToOutboxCount) {
         if (scrollToOutboxCount == 0) return@LaunchedEffect
@@ -618,11 +907,12 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             Surface(
                 color = emergency.emergencyContainer,
                 contentColor = emergency.onEmergencyContainer,
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.25f)),
                 tonalElevation = 3.dp,
             ) {
                 Column(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
@@ -633,13 +923,17 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                             else -> stringResource(R.string.sos_bottom_ready, selected.size)
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     Button(
                         onClick = { confirmSend = true },
                         enabled = !state.pending && selected.isNotEmpty(),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = emergency.emergency,
+                            contentColor = emergency.onEmergency,
+                        ),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     ) { Text(stringResource(R.string.sos_send_button)) }
                     Text(stringResource(R.string.sos_bottom_disclaimer), style = MaterialTheme.typography.bodySmall)
                 }
@@ -650,7 +944,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + padding.calculateBottomPadding()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             items(rows, key = { it.key }) { row -> row.content() }
         }
@@ -662,7 +956,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         text = { Text(stringResource(R.string.sos_confirm_body, selected.size)) },
         confirmButton = { Button(onClick = {
             confirmSend = false
-            vm.send(selected); selected = emptySet()
+            onSend(selected); selected = emptySet()
         }) { Text(stringResource(R.string.sos_confirm_send)) } },
         dismissButton = { TextButton(onClick = { confirmSend = false }) { Text(stringResource(R.string.action_cancel)) } })
     // One dialog serves three kinds with different weight: cancel and resolve
@@ -674,7 +968,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
     // rule in DESIGN.md and the HomeScreen SOS FAB comment).
     action?.let { (id, kind) -> AlertDialog(onDismissRequest = { action = null }, title = { Text(when (kind) { "cancel" -> stringResource(R.string.sos_action_cancel_title); "resolve" -> stringResource(R.string.sos_action_resolve_title); else -> stringResource(R.string.sos_action_acknowledge_title) }) },
         text = { Text(stringResource(R.string.sos_action_dialog_body)) },
-        confirmButton = { TextButton(onClick = { action = null; when (kind) { "cancel" -> vm.cancel(id); "resolve" -> vm.resolve(id); else -> vm.acknowledge(id) } }) {
+        confirmButton = { TextButton(onClick = { action = null; when (kind) { "cancel" -> onCancel(id); "resolve" -> onResolve(id); else -> onAcknowledge(id) } }) {
             Text(stringResource(R.string.sos_confirm), color = when (kind) {
                 "cancel", "resolve" -> MaterialTheme.colorScheme.error
                 else -> Color.Unspecified
@@ -687,7 +981,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         text = { Text(stringResource(R.string.sos_revoke_dialog_body)) },
         // Revoking a viewer's access is always destructive: the confirm keeps
         // the error pair while the dismiss stays neutral.
-        confirmButton = { TextButton(onClick = { revokeRecipient = null; vm.revokeRecipient(event, recipient) }) { Text(stringResource(R.string.sos_revoke), color = MaterialTheme.colorScheme.error) } },
+        confirmButton = { TextButton(onClick = { revokeRecipient = null; onRevokeRecipient(event, recipient) }) { Text(stringResource(R.string.sos_revoke), color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { revokeRecipient = null }) { Text(stringResource(R.string.action_cancel)) } },
     ) }
 }
@@ -724,3 +1018,84 @@ private fun sosState(value: String): String = when (value) {
     "EXPIRED" -> stringResource(R.string.sos_event_expired)
     else -> stringResource(R.string.sos_event_unknown)
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun SosContentPreview() {
+    AnVeTheme {
+        SosContentBody(
+            state = previewSosState(),
+            queuedEventId = null,
+            notificationPermission = true,
+            pushMessage = null,
+            onNotifications = {},
+            onSystemSettings = {},
+            onRefresh = {},
+            onSend = {},
+            onCancel = {},
+            onResolve = {},
+            onAcknowledge = {},
+            onRecheckCancel = {},
+            onRecheckUnknown = {},
+            onClearFinished = {},
+            onSelectEvent = {},
+            onRevokeRecipient = { _, _ -> },
+            onConsumeQueuedEventId = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SosContentDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        SosContentBody(
+            state = previewSosState(),
+            queuedEventId = null,
+            notificationPermission = false,
+            pushMessage = null,
+            onNotifications = {},
+            onSystemSettings = {},
+            onRefresh = {},
+            onSend = {},
+            onCancel = {},
+            onResolve = {},
+            onAcknowledge = {},
+            onRecheckCancel = {},
+            onRecheckUnknown = {},
+            onClearFinished = {},
+            onSelectEvent = {},
+            onRevokeRecipient = { _, _ -> },
+            onConsumeQueuedEventId = {},
+        )
+    }
+}
+
+private fun previewSosState(): SosState = SosState(
+    owner = "owner",
+    members = listOf(
+        SosCachedMember("owner", "m1", "Bố Hải", 0L),
+        SosCachedMember("owner", "m2", "Mẹ Lan", 0L),
+    ),
+    outbox = listOf(
+        SosOutboxItem(
+            eventId = "outbox-1",
+            ownerId = "owner",
+            recordedAt = "2026-11-16T00:55:00Z",
+            recipientIds = listOf("m1", "m2"),
+            createdAtMillis = 1_000L,
+            state = SosLocalState.QUEUED,
+        ),
+    ),
+    events = listOf(
+        SosEventDto(
+            id = "ev-1",
+            ownerId = "owner",
+            recordedAt = "2026-11-16T00:50:00Z",
+            receivedAt = "2026-11-16T00:50:05Z",
+            state = "ACTIVE",
+        ),
+    ),
+    pushRegistered = true,
+    pushConfigured = true,
+)

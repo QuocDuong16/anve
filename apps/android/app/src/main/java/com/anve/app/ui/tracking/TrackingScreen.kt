@@ -3,14 +3,14 @@ package com.anve.app.ui.tracking
 import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.content.ContextWrapper
+import android.content.Intent
+import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -29,18 +29,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -73,6 +74,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -87,13 +89,19 @@ import com.anve.app.tracking.OperationalState
 import com.anve.app.tracking.TrackingProblem
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.tracking.backgroundPermissionAction
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.brand.AnVeSharingHeroIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchLiveSharingPill
+import com.anve.app.ui.common.StitchMetricTile
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 
 private enum class PendingAction { NONE, START, ENABLE_THEN_START, CONSENT_ONLY }
 
@@ -402,7 +410,9 @@ fun TrackingContent(
     onOpenAudience: () -> Unit = {},
 ) {
     val status = state.status
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    Surface(modifier = Modifier.fillMaxSize(), color = colors.background) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             // 72dp bottom clears the shell FAB (56dp container + 16dp gap,
@@ -413,29 +423,57 @@ fun TrackingContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // The TRACKING secondary page's top bar already carries the screen
-            // title, so the list opens with the subtitle alone instead of the
-            // heading appearing twice back to back.
+            // title, so the list opens with a compact live-status pill and
+            // calm subtitle instead of repeating the page heading.
             item {
-                Text(
-                    stringResource(R.string.tracking_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                OutlinedCard(
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        StitchLiveSharingPill(
+                            text = stringResource(
+                                if (status.activelyTracking) {
+                                    R.string.tracking_state_active_pill
+                                } else {
+                                    R.string.tracking_state_paused_pill
+                                },
+                            ),
+                            active = status.activelyTracking,
+                        )
+                        Text(
+                            stringResource(R.string.tracking_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             val messageRes = state.messageRes
             if (messageRes != null) {
                 item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    OutlinedCard(
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = stitch.transitContainer,
+                            contentColor = stitch.onTransitContainer,
                         ),
                     ) {
                         Column(Modifier.padding(16.dp)) {
                             // Polite live region, same as AnveErrorNotice: the
                             // one-shot result is announced, not shown silently.
-                            Text(stringResource(messageRes), style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                            Text(
+                                stringResource(messageRes),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
                             TextButton(onClick = onDismissMessage) {
                                 Text(stringResource(R.string.tracking_message_dismiss))
                             }
@@ -445,14 +483,20 @@ fun TrackingContent(
             }
             state.consentMessage?.let { message ->
                 item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    OutlinedCard(
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = stitch.transitContainer,
+                            contentColor = stitch.onTransitContainer,
                         ),
                     ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(message, style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                        Column(Modifier.padding(16.dp)) {
+                            Text(
+                                message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            )
                             TextButton(onClick = onDismissMessage) {
                                 Text(stringResource(R.string.tracking_message_dismiss))
                             }
@@ -495,28 +539,37 @@ fun TrackingContent(
                 val detailsState = stringResource(
                     if (showDetails) R.string.action_state_expanded else R.string.action_state_collapsed,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .toggleable(
-                                value = showDetails,
-                                role = Role.Button,
-                                onValueChange = { showDetails = it },
-                            )
-                            .semantics { stateDescription = detailsState },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    OutlinedCard(
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(
-                            stringResource(R.string.tracking_details_toggle),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        Icon(
-                            imageVector = if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null,
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 52.dp)
+                                .toggleable(
+                                    value = showDetails,
+                                    role = Role.Button,
+                                    onValueChange = { showDetails = it },
+                                )
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .semantics { stateDescription = detailsState },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stringResource(R.string.tracking_details_toggle),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Icon(
+                                imageVector = if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                            )
+                        }
                     }
                     AnimatedVisibility(visible = showDetails) {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -524,6 +577,7 @@ fun TrackingContent(
                             DiagnosticsCard(status = status)
                             OutlinedButton(
                                 onClick = onOpenDiagnostics,
+                                shape = CircleShape,
                                 modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                             ) {
                                 Text(stringResource(R.string.diag_title))
@@ -551,6 +605,8 @@ private fun TrackingControlCard(
     onOpenAudience: () -> Unit,
     enabled: Boolean,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val stateLabel = when {
         status.activelyTracking && status.lastFixAtMillis == null ->
             stringResource(R.string.tracking_state_waiting)
@@ -568,6 +624,12 @@ private fun TrackingControlCard(
         status.consentEnabled -> stringResource(R.string.tracking_consent_on)
         else -> stringResource(R.string.tracking_consent_off)
     }
+    val consentBadgeKind = when {
+        status.consentConflict -> StitchBadgeKind.EMERGENCY
+        status.consentSyncPending -> StitchBadgeKind.IN_TRANSIT
+        status.consentEnabled -> StitchBadgeKind.SAFE_HOME
+        else -> StitchBadgeKind.NEUTRAL
+    }
     val heroTitle = stringResource(
         if (status.activelyTracking) R.string.tracking_hero_active_title else R.string.tracking_hero_idle_title,
     )
@@ -578,86 +640,167 @@ private fun TrackingControlCard(
             else -> R.string.tracking_hero_idle_body
         },
     )
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (status.activelyTracking) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
+    OutlinedCard(
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(
+            if (status.activelyTracking) 1.5.dp else 1.dp,
+            if (status.activelyTracking) stitch.livePulse.copy(alpha = 0.55f) else stitch.hairline,
         ),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = stitch.cardTactile,
+        ),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnVeSharingHeroIllustration(
-                    active = status.activelyTracking,
-                    modifier = Modifier.width(120.dp).height(92.dp),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = heroTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                    AnVeSharingHeroIllustration(
+                        active = status.activelyTracking,
+                        modifier = Modifier.width(114.dp).height(88.dp),
                     )
-                    Text(
-                        text = heroBody,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        StitchSemanticBadge(
+                            text = stateLabel,
+                            kind = when {
+                                status.activelyTracking -> StitchBadgeKind.SAFE_HOME
+                                status.recoveryRequired -> StitchBadgeKind.DELAYED_OFFLINE
+                                else -> StitchBadgeKind.NEUTRAL
+                            },
+                            showDot = status.activelyTracking,
+                        )
+                        Text(
+                            text = heroTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = heroBody,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
                 }
             }
-            HorizontalDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                StitchMetricTile(
+                    label = stringResource(R.string.tracking_metric_last_fix),
+                    value = formatTime(status.lastFixAtMillis, stringResource(R.string.tracking_never)),
+                    icon = Icons.Default.Schedule,
+                    modifier = Modifier.weight(1f),
+                    containerColor = colors.surfaceContainerLow,
+                    accentColor = colors.primary,
+                )
+                StitchMetricTile(
+                    label = stringResource(R.string.tracking_metric_queue),
+                    value = pluralStringResource(
+                        R.plurals.tracking_pending_value,
+                        status.pendingQueueCount,
+                        status.pendingQueueCount,
+                    ),
+                    icon = Icons.Default.Sync,
+                    modifier = Modifier.weight(1f),
+                    containerColor = if (status.pendingQueueCount > 0) stitch.transitContainer else colors.surfaceContainerLow,
+                    accentColor = if (status.pendingQueueCount > 0) stitch.onTransitContainer else colors.primary,
+                )
+            }
+            HorizontalDivider(color = stitch.hairline)
             // The server-consent switch is the product's most consequential
             // decision, so TalkBack must read 'Đồng ý chia sẻ: …' + the
             // server-vs-device note + state from ONE focus — row-toggleable
             // with the switch itself indicative, not an anonymous "bật".
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .toggleable(
-                        value = status.conflictServerConsent ?: status.consentEnabled,
-                        enabled = enabled,
-                        role = Role.Switch,
-                        onValueChange = onToggleConsent,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = colors.surfaceContainerLowest,
+                border = BorderStroke(1.dp, stitch.hairline),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.tracking_consent_server_value, consentValue),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        stringResource(R.string.tracking_consent_server_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            StitchCategoryIconBox(
+                                icon = Icons.Default.Security,
+                                size = 32.dp,
+                                iconSize = 17.dp,
+                                cornerRadius = 11.dp,
+                                containerColor = stitch.liveContainer,
+                                contentColor = stitch.onLiveContainer,
+                            )
+                            Text(
+                                text = stringResource(R.string.tracking_consent_card_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        StitchSemanticBadge(
+                            text = consentValue,
+                            kind = consentBadgeKind,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = status.conflictServerConsent ?: status.consentEnabled,
+                                enabled = enabled,
+                                role = Role.Switch,
+                                onValueChange = onToggleConsent,
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.tracking_consent_server_value, consentValue),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                stringResource(R.string.tracking_consent_server_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = status.conflictServerConsent ?: status.consentEnabled,
+                            onCheckedChange = null,
+                            enabled = enabled,
+                        )
+                    }
+                    if (status.consentConflict) {
+                        Text(
+                            stringResource(R.string.tracking_problem_consent_conflict),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.error,
+                        )
+                    }
                 }
-                Switch(
-                    checked = status.conflictServerConsent ?: status.consentEnabled,
-                    onCheckedChange = null,
-                    enabled = enabled,
-                )
-            }
-            if (status.consentConflict) {
-                Text(
-                    stringResource(R.string.tracking_problem_consent_conflict),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
             }
             if (status.activelyTracking) {
                 Button(
                     onClick = onStop,
                     enabled = enabled,
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 ) {
                     Text(stringResource(R.string.tracking_stop))
@@ -666,6 +809,7 @@ private fun TrackingControlCard(
                 Button(
                     onClick = onStart,
                     enabled = enabled && status.sessionReady,
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 ) {
                     Text(
@@ -681,9 +825,9 @@ private fun TrackingControlCard(
                     )
                 }
             }
-            Text(stateLabel, style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
                 onClick = onOpenAudience,
+                shape = CircleShape,
                 modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
             ) {
                 Text(
@@ -699,21 +843,28 @@ private fun TrackingControlCard(
 
 @Composable
 private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
-    Card(
+    val stitch = LocalStitchColors.current
+    OutlinedCard(
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = stitch.transitContainer.copy(alpha = 0.65f),
+            contentColor = stitch.onTransitContainer,
         ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AnVeJourneySceneIllustration(
-                modifier = Modifier.width(104.dp).height(94.dp),
-            )
+            AnVeIllustratedBanner(
+                modifier = Modifier.width(108.dp),
+            ) {
+                AnVeJourneySceneIllustration(
+                    modifier = Modifier.fillMaxWidth().height(92.dp),
+                )
+            }
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -729,6 +880,7 @@ private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
                 )
                 Button(
                     onClick = onOpenJourney,
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 ) {
                     Text(stringResource(R.string.tracking_journey_card_cta))
@@ -741,21 +893,30 @@ private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
 @Composable
 private fun ProblemCard(status: TrackingStatus, onOpenSettings: () -> Unit) {
     val text = problemText(status.lastError) ?: return
-    Card(
+    val colors = MaterialTheme.colorScheme
+    OutlinedCard(
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, colors.error.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = colors.errorContainer,
+            contentColor = colors.onErrorContainer,
         ),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(end = 8.dp),
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                StitchCategoryIconBox(
+                    icon = Icons.Default.Warning,
+                    size = 36.dp,
+                    iconSize = 18.dp,
+                    cornerRadius = 12.dp,
+                    containerColor = colors.error.copy(alpha = 0.14f),
+                    contentColor = colors.onErrorContainer,
                 )
-                Text(text, style = MaterialTheme.typography.bodyMedium)
+                Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             }
             if (status.lastError == TrackingProblem.LOCATION_DISABLED) {
                 TextButton(onClick = onOpenSettings) {
@@ -783,6 +944,7 @@ private fun PermissionsCard(
     onOpenLocationSettings: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val locationGranted = status.permission == LocationPermissionState.GRANTED_PRECISE ||
         status.permission == LocationPermissionState.GRANTED_APPROXIMATE
     if (locationGranted &&
@@ -791,8 +953,9 @@ private fun PermissionsCard(
         status.locationServicesEnabled
     ) {
         OutlinedCard(
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, colors.outlineVariant),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, stitch.hairline),
+            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Box(Modifier.padding(16.dp)) {
@@ -800,16 +963,17 @@ private fun PermissionsCard(
                     icon = Icons.Default.Security,
                     title = stringResource(R.string.tracking_permissions_title),
                     badgeText = stringResource(R.string.tracking_permissions_ok),
-                    badgeContainerColor = colors.primaryContainer,
-                    badgeContentColor = colors.onPrimaryContainer,
+                    badgeContainerColor = stitch.liveContainer,
+                    badgeContentColor = stitch.onLiveContainer,
                 )
             }
         }
         return
     }
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -817,16 +981,17 @@ private fun PermissionsCard(
                 icon = Icons.Default.Security,
                 title = stringResource(R.string.tracking_permissions_title),
                 badgeText = stringResource(R.string.tracking_permissions_need_attention),
-                badgeContainerColor = colors.secondaryContainer,
-                badgeContentColor = colors.onSecondaryContainer,
+                badgeContainerColor = stitch.transitContainer,
+                badgeContentColor = stitch.onTransitContainer,
             )
             if (!status.locationServicesEnabled) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = colors.errorContainer.copy(alpha = 0.55f),
+                    border = BorderStroke(1.dp, colors.error.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             stringResource(R.string.tracking_location_services_off),
                             color = colors.onErrorContainer,
@@ -834,7 +999,7 @@ private fun PermissionsCard(
                         )
                         FilledTonalButton(
                             onClick = onOpenLocationSettings,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
                             Text(stringResource(R.string.tracking_location_services_settings))
@@ -844,11 +1009,12 @@ private fun PermissionsCard(
             }
             if (!locationGranted) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.surfaceContainerLowest,
+                    border = BorderStroke(1.dp, stitch.hairline),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         InfoRow(
                             label = stringResource(R.string.tracking_permission_location),
                             value = permissionLabel(status.permission),
@@ -861,7 +1027,7 @@ private fun PermissionsCard(
                             )
                             OutlinedButton(
                                 onClick = onOpenAppSettings,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = CircleShape,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             ) {
                                 Text(stringResource(R.string.tracking_permission_settings))
@@ -869,7 +1035,7 @@ private fun PermissionsCard(
                         } else {
                             FilledTonalButton(
                                 onClick = onStartFlow,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = CircleShape,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             ) {
                                 Text(stringResource(R.string.tracking_permission_grant))
@@ -880,11 +1046,12 @@ private fun PermissionsCard(
             }
             if (!status.backgroundPermissionGranted) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.surfaceContainerLowest,
+                    border = BorderStroke(1.dp, stitch.hairline),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         InfoRow(
                             label = stringResource(R.string.tracking_permission_background),
                             value = stringResource(R.string.tracking_permission_background_missing),
@@ -896,7 +1063,7 @@ private fun PermissionsCard(
                         )
                         FilledTonalButton(
                             onClick = onRequestBackground,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
                             Text(stringResource(R.string.tracking_permission_background_grant))
@@ -906,18 +1073,19 @@ private fun PermissionsCard(
             }
             if (!status.notificationsGranted) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.surfaceContainerLowest,
+                    border = BorderStroke(1.dp, stitch.hairline),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         InfoRow(
                             label = stringResource(R.string.tracking_permission_notifications),
                             value = stringResource(R.string.tracking_permission_notifications_missing),
                         )
                         FilledTonalButton(
                             onClick = onRequestNotifications,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
                             Text(stringResource(R.string.tracking_permission_notifications_grant))
@@ -941,9 +1109,11 @@ private fun StatusCard(
     onRetrySync: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -957,15 +1127,16 @@ private fun StatusCard(
                         R.string.tracking_state_paused_pill
                     },
                 ),
-                badgeContainerColor = if (status.activelyTracking) colors.primaryContainer else colors.surfaceVariant,
-                badgeContentColor = if (status.activelyTracking) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                badgeContainerColor = if (status.activelyTracking) stitch.liveContainer else colors.surfaceContainerHigh,
+                badgeContentColor = if (status.activelyTracking) stitch.onLiveContainer else colors.onSurfaceVariant,
             )
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = colors.surfaceVariant.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(16.dp),
+                color = colors.surfaceContainerLowest,
+                border = BorderStroke(1.dp, stitch.hairline),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     InfoRow(
                         label = stringResource(R.string.tracking_last_fix),
                         value = formatTime(
@@ -973,7 +1144,7 @@ private fun StatusCard(
                             stringResource(R.string.tracking_never),
                         ),
                     )
-                    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(color = stitch.hairline)
                     InfoRow(
                         label = stringResource(R.string.tracking_last_upload),
                         value = formatTime(
@@ -981,7 +1152,7 @@ private fun StatusCard(
                             stringResource(R.string.tracking_never),
                         ),
                     )
-                    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(color = stitch.hairline)
                     InfoRow(
                         label = stringResource(R.string.tracking_pending_count),
                         value = pluralStringResource(
@@ -990,7 +1161,7 @@ private fun StatusCard(
                             status.pendingQueueCount,
                         ),
                     )
-                    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(color = stitch.hairline)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1001,23 +1172,23 @@ private fun StatusCard(
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.onSurfaceVariant,
                         )
-                        AnVeStatusPill(
+                        StitchSemanticBadge(
                             text = if (status.online) {
                                 stringResource(R.string.tracking_connection_online)
                             } else {
                                 stringResource(R.string.tracking_connection_offline)
                             },
-                            containerColor = if (status.online) colors.primaryContainer else colors.secondaryContainer,
-                            contentColor = if (status.online) colors.onPrimaryContainer else colors.onSecondaryContainer,
+                            kind = if (status.online) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
+                            showDot = status.online,
                         )
                     }
                 }
             }
             if (status.privacyDiscardedPoints) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = colors.secondaryContainer.copy(alpha = 0.55f),
-                    contentColor = colors.onSecondaryContainer,
+                    shape = RoundedCornerShape(14.dp),
+                    color = stitch.transitContainer,
+                    contentColor = stitch.onTransitContainer,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
@@ -1030,7 +1201,7 @@ private fun StatusCard(
             FilledTonalButton(
                 onClick = onRetrySync,
                 enabled = status.pendingQueueCount > 0,
-                shape = RoundedCornerShape(14.dp),
+                shape = CircleShape,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             ) {
                 Text(stringResource(R.string.tracking_retry_sync))
@@ -1043,24 +1214,26 @@ private fun StatusCard(
 private fun DiagnosticsCard(status: TrackingStatus) {
     var expanded by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AnVeSectionHeader(
                 icon = Icons.Default.Tune,
                 title = stringResource(R.string.tracking_diagnostics),
-                iconContainerColor = colors.surfaceVariant,
-                iconContentColor = colors.onSurfaceVariant,
+                iconContainerColor = colors.surfaceContainerLow,
+                iconContentColor = colors.primary,
             )
             // TalkBack announces the disclosure state instead of only the icon
             // swap; same treatment as the Places notes toggle.
             val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
             OutlinedButton(
                 onClick = { expanded = !expanded },
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
@@ -1074,11 +1247,12 @@ private fun DiagnosticsCard(status: TrackingStatus) {
             }
             AnimatedVisibility(visible = expanded) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceVariant.copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.surfaceContainerLowest,
+                    border = BorderStroke(1.dp, stitch.hairline),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         InfoRow(
                             stringResource(R.string.tracking_diagnostics_motion),
                             motionLabel(status.motion),
@@ -1202,6 +1376,43 @@ private fun TrackingContentPreview() {
                     lastAccuracyMeters = 12.0,
                     lastUploadAtMillis = System.currentTimeMillis(),
                     pendingQueueCount = 3,
+                ),
+            ),
+            onStartFlow = {},
+            onStop = {},
+            onToggleConsent = {},
+            onRetrySync = {},
+            onRequestBackground = {},
+            onRequestNotifications = {},
+            onOpenAppSettings = {},
+            onOpenLocationSettings = {},
+            onDismissMessage = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun TrackingContentDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        TrackingContent(
+            state = TrackingUiState(
+                status = TrackingStatus(
+                    consentEnabled = true,
+                    consentConfirmedByServer = true,
+                    trackingRequested = true,
+                    serviceRunning = true,
+                    providerActive = true,
+                    running = true,
+                    motion = MotionState.MOVING,
+                    operational = OperationalState.ACTIVE,
+                    permission = LocationPermissionState.GRANTED_PRECISE,
+                    backgroundPermissionGranted = true,
+                    notificationsGranted = true,
+                    lastFixAtMillis = System.currentTimeMillis(),
+                    lastAccuracyMeters = 10.0,
+                    lastUploadAtMillis = System.currentTimeMillis(),
+                    pendingQueueCount = 0,
                 ),
             ),
             onStartFlow = {},

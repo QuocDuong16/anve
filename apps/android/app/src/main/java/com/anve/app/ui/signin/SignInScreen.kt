@@ -3,6 +3,7 @@ package com.anve.app.ui.signin
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,9 +61,14 @@ import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnveErrorNotice
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.UiMessage
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 
 
 /**
@@ -133,14 +140,16 @@ fun SignInContent(
     onRetry: () -> Unit,
     invitationPending: Boolean = false,
 ) {
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val stitch = LocalStitchColors.current
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (state) {
             is SignInUiState.Loading -> Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 CircularProgressIndicator()
+                StitchLoadingSkeletonCard(rows = 2)
             }
 
             is SignInUiState.Ready -> {
@@ -155,28 +164,31 @@ fun SignInContent(
                 ) {
                     OutlinedCard(
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, colors.outlineVariant),
-                        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            AnVeFamilySceneIllustration(
-                                modifier = Modifier.fillMaxWidth().height(128.dp),
-                            )
+                            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                                AnVeFamilySceneIllustration(
+                                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                                )
+                            }
                             Surface(
                                 shape = CircleShape,
-                                color = colors.primaryContainer.copy(alpha = 0.55f),
-                                border = BorderStroke(1.5.dp, colors.primary.copy(alpha = 0.2f)),
+                                color = stitch.secondaryFixed,
+                                border = BorderStroke(1.5.dp, stitch.hairline),
                             ) {
                                 AnVeBrandMark(Modifier.padding(10.dp).size(72.dp))
                             }
                             Text(
                                 text = stringResource(R.string.app_name),
                                 style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold,
                                 color = colors.primary,
                             )
                             Text(
@@ -185,14 +197,20 @@ fun SignInContent(
                                 textAlign = TextAlign.Center,
                                 color = colors.onSurfaceVariant,
                             )
+                            StitchSemanticBadge(
+                                text = stringResource(R.string.signin_trust_badge),
+                                kind = StitchBadgeKind.SAFE_HOME,
+                                icon = Icons.Outlined.Lock,
+                            )
                         }
                     }
 
                     if (invitationPending) {
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = colors.secondaryContainer.copy(alpha = 0.7f),
-                            contentColor = colors.onSecondaryContainer,
+                            shape = RoundedCornerShape(18.dp),
+                            color = stitch.transitContainer,
+                            contentColor = stitch.onTransitContainer,
+                            border = BorderStroke(1.dp, stitch.hairline),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Row(
@@ -242,14 +260,14 @@ fun SignInContent(
                         }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = colors.surfaceVariant.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.7f)),
+                    OutlinedCard(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        border = BorderStroke(1.dp, stitch.hairline),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -257,7 +275,7 @@ fun SignInContent(
                                 Button(
                                     onClick = onGoogleSignIn,
                                     enabled = !busy,
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = CircleShape,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                                 ) {
                                     Text(stringResource(if (error == null) R.string.signin_google else R.string.signin_retry))
@@ -292,7 +310,7 @@ fun SignInContent(
                     }
 
                     if (state.devLogin && BuildConfig.DEBUG) {
-                        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+                        HorizontalDivider(color = stitch.hairline)
                         DevLoginForm(enabled = !busy, onSignIn = onDevSignIn)
                     }
                 }
@@ -305,6 +323,7 @@ fun SignInContent(
 
 @Composable
 private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
+    val stitch = LocalStitchColors.current
     val text = when (notice.kind) {
         SessionNoticeKind.LocalSignOutRetryScheduled ->
             stringResource(R.string.signin_local_signout_retry)
@@ -312,9 +331,10 @@ private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
             stringResource(R.string.signin_local_signout_no_retry)
     }
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.medium,
+        color = stitch.transitContainer,
+        contentColor = stitch.onTransitContainer,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -329,9 +349,11 @@ private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
 @Composable
 private fun DevLoginForm(enabled: Boolean, onSignIn: (String) -> Unit) {
     var email by remember { mutableStateOf("") }
+    val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -357,7 +379,7 @@ private fun DevLoginForm(enabled: Boolean, onSignIn: (String) -> Unit) {
             Button(
                 onClick = { onSignIn(email) },
                 enabled = enabled && email.isNotBlank(),
-                shape = RoundedCornerShape(14.dp),
+                shape = CircleShape,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             ) {
                 Text(stringResource(R.string.signin_dev_button))
@@ -380,6 +402,23 @@ fun Context.findActivity(): Activity? {
 @Composable
 private fun SignInContentGooglePreview() {
     AnVeTheme {
+        SignInContent(
+            state = SignInUiState.Ready(googleSignIn = true, devLogin = false),
+            error = null,
+            busy = false,
+            notice = null,
+            onDismissNotice = {},
+            onGoogleSignIn = {},
+            onDevSignIn = {},
+            onRetry = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SignInContentGoogleDarkPreview() {
+    AnVeTheme(darkTheme = true) {
         SignInContent(
             state = SignInUiState.Ready(googleSignIn = true, devLogin = false),
             error = null,

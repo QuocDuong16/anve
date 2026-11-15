@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.data.avatar.AvatarGateway
 import com.anve.app.data.avatar.decodeAvatarImage
+import com.anve.app.ui.theme.LocalStitchColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,14 +76,14 @@ fun AvatarFrame(
     modifier: Modifier = Modifier,
     overlay: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {},
 ) {
-    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     Box(modifier, contentAlignment = Alignment.Center) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             shape = CircleShape,
-            color = colors.primaryContainer,
-            contentColor = colors.onPrimaryContainer,
-            border = BorderStroke(2.dp, colors.primary.copy(alpha = 0.22f)),
+            color = stitch.primaryFixed,
+            contentColor = stitch.onPrimaryFixed,
+            border = BorderStroke(2.dp, stitch.primaryFixedDim.copy(alpha = 0.65f)),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (image != null) {

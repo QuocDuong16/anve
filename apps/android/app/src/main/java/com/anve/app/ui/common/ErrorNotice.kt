@@ -9,14 +9,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,10 +36,12 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 
 /**
  * The app-wide failure presentation: an errorContainer card rather than bare
@@ -59,8 +65,8 @@ fun AnveErrorNotice(
 ) {
     val colors = MaterialTheme.colorScheme
     Card(
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, colors.error.copy(alpha = 0.28f)),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, colors.error.copy(alpha = 0.30f)),
         colors = CardDefaults.cardColors(
             containerColor = colors.errorContainer,
             contentColor = colors.onErrorContainer,
@@ -69,17 +75,17 @@ fun AnveErrorNotice(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 Surface(
-                    shape = CircleShape,
+                    shape = RoundedCornerShape(14.dp),
                     color = colors.error.copy(alpha = 0.14f),
                     contentColor = colors.onErrorContainer,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -97,6 +103,9 @@ fun AnveErrorNotice(
                         .padding(top = 4.dp)
                         .semantics { liveRegion = LiveRegionMode.Polite },
                 )
+            }
+            if (onRetry != null || onDismiss != null) {
+                HorizontalDivider(color = colors.error.copy(alpha = 0.14f))
             }
             when {
                 onRetry != null && onDismiss != null -> Row(
@@ -130,27 +139,21 @@ fun AnVeSectionHeader(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            shape = CircleShape,
-            color = iconContainerColor,
+        StitchCategoryIconBox(
+            icon = icon,
+            size = 42.dp,
+            iconSize = 20.dp,
+            cornerRadius = 14.dp,
+            containerColor = iconContainerColor,
             contentColor = iconContentColor,
-            modifier = Modifier.size(40.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
+        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 modifier = Modifier.semantics { heading() },
             )
             if (subtitle != null) {
@@ -176,19 +179,21 @@ fun AnVeSectionHeader(
 fun AnVeStatusPill(
     text: String,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    border: BorderStroke? = BorderStroke(0.5.dp, LocalStitchColors.current.hairline.copy(alpha = 0.6f)),
 ) {
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = CircleShape,
         color = containerColor,
         contentColor = contentColor,
+        border = border,
         modifier = modifier,
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
         )
     }
 }
@@ -199,12 +204,15 @@ private fun RetryAction(label: String, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     FilledTonalButton(
         onClick = onClick,
+        shape = CircleShape,
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = colors.surface.copy(alpha = 0.85f),
+            containerColor = colors.surface.copy(alpha = 0.94f),
             contentColor = colors.onErrorContainer,
         ),
         modifier = Modifier.heightIn(min = 48.dp),
     ) {
+        Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
         Text(label)
     }
 }
@@ -212,7 +220,7 @@ private fun RetryAction(label: String, onClick: () -> Unit) {
 /** Single notice action; 48dp floor keeps the touch target in one place. */
 @Composable
 private fun NoticeAction(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp)) {
+    TextButton(onClick = onClick, shape = CircleShape, modifier = Modifier.heightIn(min = 48.dp)) {
         Text(label)
     }
 }
@@ -221,6 +229,18 @@ private fun NoticeAction(label: String, onClick: () -> Unit) {
 @Composable
 private fun AnveErrorNoticePreview() {
     AnVeTheme {
-        AnveErrorNotice("Không thể tải dữ liệu. Vui lòng thử lại.", onRetry = {})
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AnveErrorNotice("Không thể tải dữ liệu. Vui lòng thử lại.", onRetry = {}, onDismiss = {})
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AnveErrorNoticeDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AnveErrorNotice("Không thể tải dữ liệu. Vui lòng thử lại.", onRetry = {})
+        }
     }
 }

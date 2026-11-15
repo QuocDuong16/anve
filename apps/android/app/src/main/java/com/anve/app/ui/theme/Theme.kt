@@ -17,51 +17,71 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 internal val LightColors = lightColorScheme(
-    primary = Teal700,
-    onPrimary = Sand50,
-    primaryContainer = Teal100,
-    onPrimaryContainer = Teal900,
-    secondary = Amber600,
-    onSecondary = Ink900,
-    secondaryContainer = Amber300,
-    onSecondaryContainer = Ink900,
-    background = Sand50,
-    onBackground = Ink900,
-    surface = Sand50,
-    onSurface = Ink900,
-    surfaceDim = Sand200,
-    surfaceBright = Sand50,
-    surfaceContainerLowest = Sand50,
-    surfaceContainerLow = Sand50,
-    surfaceContainer = Sand200,
-    surfaceContainerHigh = Sand200,
-    surfaceContainerHighest = Sand200,
-    surfaceVariant = Sand200,
-    onSurfaceVariant = Ink600,
+    primary = ForestPrimary,
+    onPrimary = Color.White,
+    primaryContainer = ForestPrimaryContainer,
+    onPrimaryContainer = ForestOnPrimaryContainer,
+    secondary = BlushSecondary,
+    onSecondary = Color.White,
+    secondaryContainer = BlushSecondaryContainer,
+    onSecondaryContainer = BlushOnSecondaryContainer,
+    tertiary = WarmAmber,
+    onTertiary = Color.White,
+    tertiaryContainer = WarmAmberContainer,
+    onTertiaryContainer = Color(0xFF2B1700),
+    background = CreamBackground,
+    onBackground = InkPrimary,
+    surface = CreamBackground,
+    onSurface = InkPrimary,
+    surfaceDim = CreamSurfaceHighest,
+    surfaceBright = CreamBackground,
+    surfaceContainerLowest = CreamSurfaceLowest,
+    surfaceContainerLow = CreamSurfaceLow,
+    surfaceContainer = CreamSurface,
+    surfaceContainerHigh = CreamSurfaceHigh,
+    surfaceContainerHighest = CreamSurfaceHighest,
+    surfaceVariant = CreamSurfaceHighest,
+    onSurfaceVariant = OliveSurfaceVariant,
+    outline = SageOutline,
+    outlineVariant = SageOutlineVariant,
+    error = ErrorRed,
+    onError = Color.White,
+    errorContainer = ErrorRedContainer,
+    onErrorContainer = ErrorOnRedContainer,
 )
 
 internal val DarkColors = darkColorScheme(
-    primary = Teal300,
-    onPrimary = Teal900,
-    primaryContainer = Teal700,
-    onPrimaryContainer = Teal100,
-    secondary = Amber300,
-    onSecondary = Ink900,
-    secondaryContainer = Amber800,
-    onSecondaryContainer = Sand50,
-    background = Ink900,
-    onBackground = Sand50,
-    surface = Ink900,
-    onSurface = Sand50,
-    surfaceDim = Ink900,
-    surfaceBright = Ink700,
-    surfaceContainerLowest = Ink900,
-    surfaceContainerLow = Ink800,
-    surfaceContainer = Ink800,
-    surfaceContainerHigh = Ink700,
-    surfaceContainerHighest = Ink600,
-    surfaceVariant = Ink600,
-    onSurfaceVariant = Sand200,
+    primary = ForestLight,
+    onPrimary = ForestDarkOnPrimary,
+    primaryContainer = ForestDarkContainer,
+    onPrimaryContainer = ForestDarkOnContainer,
+    secondary = BlushLight,
+    onSecondary = BlushDarkOnSecondary,
+    secondaryContainer = BlushDarkContainer,
+    onSecondaryContainer = BlushSecondaryContainer,
+    tertiary = WarmAmberLight,
+    onTertiary = Color(0xFF472A00),
+    tertiaryContainer = WarmAmberDark,
+    onTertiaryContainer = WarmAmberContainer,
+    background = InkDarkBackground,
+    onBackground = CreamSurfaceHighest,
+    surface = InkDarkBackground,
+    onSurface = CreamSurfaceHighest,
+    surfaceDim = InkDarkBackground,
+    surfaceBright = InkDarkContainerHighest,
+    surfaceContainerLowest = InkDarkLowest,
+    surfaceContainerLow = InkPrimary,
+    surfaceContainer = InkDarkContainer,
+    surfaceContainerHigh = InkDarkContainerHigh,
+    surfaceContainerHighest = InkDarkContainerHighest,
+    surfaceVariant = OliveSurfaceVariant,
+    onSurfaceVariant = SageOutlineVariant,
+    outline = SageOutlineDark,
+    outlineVariant = OliveSurfaceVariant,
+    error = ErrorRedDark,
+    onError = ErrorOnRedDark,
+    errorContainer = ErrorRedDarkContainer,
+    onErrorContainer = ErrorOnRedDarkContainer,
 )
 
 /**
@@ -78,25 +98,84 @@ data class EmergencyColors(
 )
 
 internal val LightEmergencyColors = EmergencyColors(
-    emergency = Amber600,
-    onEmergency = Ink900,
-    emergencyContainer = Amber300,
-    onEmergencyContainer = Ink900,
+    emergency = EmergencyRose,
+    onEmergency = Color.White,
+    emergencyContainer = EmergencyRoseContainer,
+    onEmergencyContainer = EmergencyOnRoseContainer,
 )
 
 internal val DarkEmergencyColors = EmergencyColors(
-    emergency = Amber300,
-    onEmergency = Ink900,
-    emergencyContainer = Amber800,
-    onEmergencyContainer = Sand50,
+    emergency = EmergencyRoseDark,
+    onEmergency = EmergencyOnRoseDark,
+    emergencyContainer = EmergencyRoseDarkContainer,
+    onEmergencyContainer = EmergencyOnRoseDarkContainer,
 )
 
 internal val LocalEmergencyColors = staticCompositionLocalOf { LightEmergencyColors }
 
+/**
+ * Extended Stitch "Warm Tactile Minimalism" design tokens used for fixed
+ * pills, live pulse dots, transit/active status badges, and cream tactile cards.
+ */
+data class StitchColors(
+    val primaryFixed: Color,
+    val onPrimaryFixed: Color,
+    val primaryFixedDim: Color,
+    val secondaryFixed: Color,
+    val onSecondaryFixed: Color,
+    val secondaryFixedDim: Color,
+    val livePulse: Color,
+    val liveContainer: Color,
+    val onLiveContainer: Color,
+    val transitContainer: Color,
+    val onTransitContainer: Color,
+    val cardTactile: Color,
+    val onCardTactile: Color,
+    val hairline: Color,
+)
+
+internal val LightStitchColors = StitchColors(
+    primaryFixed = PrimaryFixed,
+    onPrimaryFixed = OnPrimaryFixed,
+    primaryFixedDim = PrimaryFixedDim,
+    secondaryFixed = SecondaryFixed,
+    onSecondaryFixed = OnSecondaryFixed,
+    secondaryFixedDim = SecondaryFixedDim,
+    livePulse = StitchLiveGreen,
+    liveContainer = StitchLiveGreenSoft,
+    onLiveContainer = StitchOnLiveGreenSoft,
+    transitContainer = StitchTransitAmberContainer,
+    onTransitContainer = StitchOnTransitAmberContainer,
+    cardTactile = CreamCardTactile,
+    onCardTactile = InkPrimary,
+    hairline = CreamHairline,
+)
+
+internal val DarkStitchColors = StitchColors(
+    primaryFixed = ForestDarkContainer,
+    onPrimaryFixed = PrimaryFixed,
+    primaryFixedDim = ForestLight,
+    secondaryFixed = BlushDarkContainer,
+    onSecondaryFixed = SecondaryFixed,
+    secondaryFixedDim = BlushLight,
+    livePulse = StitchLiveGreenDark,
+    liveContainer = StitchLiveGreenDarkContainer,
+    onLiveContainer = StitchOnLiveGreenDarkContainer,
+    transitContainer = StitchTransitAmberDarkContainer,
+    onTransitContainer = StitchOnTransitAmberDarkContainer,
+    cardTactile = DarkCardTactile,
+    onCardTactile = CreamSurfaceHighest,
+    hairline = DarkHairline,
+)
+
+internal val LocalStitchColors = staticCompositionLocalOf { LightStitchColors }
+
 internal val AnVeShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(18.dp),
+    medium = RoundedCornerShape(16.dp),
     large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 @Composable
@@ -119,8 +198,13 @@ fun AnVeTheme(
     // Emergency keeps the brand amber even under dynamic color: an urgent
     // safety action must stay recognizable regardless of the wallpaper.
     val emergencyColors = if (darkTheme) DarkEmergencyColors else LightEmergencyColors
+    val stitchColors = if (darkTheme) DarkStitchColors else LightStitchColors
 
     MaterialTheme(colorScheme = colorScheme, typography = AnVeTypography, shapes = AnVeShapes) {
-        CompositionLocalProvider(LocalEmergencyColors provides emergencyColors, content = content)
+        CompositionLocalProvider(
+            LocalEmergencyColors provides emergencyColors,
+            LocalStitchColors provides stitchColors,
+            content = content,
+        )
     }
 }

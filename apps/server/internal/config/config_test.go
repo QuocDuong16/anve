@@ -22,6 +22,7 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Empty(t, cfg.AuthDevLoginNetworks, "the fixture is off by default")
 	assert.Empty(t, cfg.MetricsListenAddr, "operator metrics are opt-in")
 	assert.Equal(t, 30, cfg.LocationRetentionDays, "location retention is short by default")
+	assert.Equal(t, 587, cfg.SMTPPort, "SMTP port defaults to submission 587")
 }
 
 func TestLocationRetentionDaysIsBounded(t *testing.T) {
@@ -235,4 +236,31 @@ func TestMetricsListenerIsOptInAndLiteralLoopbackOnly(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSMTPPortValidationWhenHostConfigured(t *testing.T) {
+	t.Setenv("SMTP_HOST", "smtp.example.com")
+	for _, invalidPort := range []string{"0", "-1", "70000"} {
+		t.Run("invalid="+invalidPort, func(t *testing.T) {
+			t.Setenv("SMTP_PORT", invalidPort)
+			_, err := config.Load()
+			require.ErrorContains(t, err, "SMTP_PORT")
+		})
+	}
+
+	t.Run("valid=587", func(t *testing.T) {
+		t.Setenv("SMTP_PORT", "587")
+		t.Setenv("SMTP_USER", "mailer")
+		t.Setenv("SMTP_PASS", "secret")
+		t.Setenv("NOTIFY_EMAIL", "ops@example.com")
+		t.Setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+		t.Setenv("TELEGRAM_CHAT_ID", "12345")
+
+		cfg, err := config.Load()
+		require.NoError(t, err)
+		assert.Equal(t, "smtp.example.com", cfg.SMTPHost)
+		assert.Equal(t, 587, cfg.SMTPPort)
+		assert.Equal(t, "ops@example.com", cfg.NotifyEmail)
+		assert.Equal(t, "12345", cfg.TelegramChatID)
+	})
 }

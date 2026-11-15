@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,8 +40,10 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -51,7 +54,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -91,6 +93,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -107,10 +110,22 @@ import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.LocationRequestOptions
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVePlacesSceneIllustration
+import com.anve.app.ui.brand.AnVeSafeRadarScene
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchEmptyStateCard
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchMetricTile
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
+import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -185,7 +200,9 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
     val owner = state.owner ?: return
     val selected = state.places.firstOrNull { it.id == state.selectedId }
     var showDetails by remember(owner) { mutableStateOf(false) }
+    var filterMine by rememberSaveable(owner) { mutableStateOf(false) }
     val visibleEvents = if (showDetails) state.events.filter { it.placeId == selected?.id } else state.events
+    val displayedPlaces = if (filterMine) state.places.filter { it.ownerId == owner } else state.places
     var editing by remember(owner) { mutableStateOf(false) }
     var editingPlace by remember(owner) { mutableStateOf<PlaceDto?>(null) }
     var editConfirmation by remember(owner) { mutableStateOf(state.confirmation) }
@@ -305,6 +322,8 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
+        val colors = MaterialTheme.colorScheme
+        val stitch = LocalStitchColors.current
         // Pull to refresh alongside the top-bar action: same repository call,
         // two affordances. The refresh button stays for users who do not use
         // the gesture.
@@ -316,10 +335,16 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
             LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = HOME_FAB_CLEARANCE),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (!showDetails) {
-                    item { Text(stringResource(R.string.places_monitoring_notice)) }
+                    item {
+                        PlacesOverviewBanner(
+                            totalPlaces = state.places.size,
+                            eventCount = visibleEvents.size,
+                            sharedCount = state.places.count { it.ownerId != owner },
+                        )
+                    }
                     state.noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                     state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                     item {
@@ -330,7 +355,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 editing = true
                             },
                             enabled = !state.pending,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -339,41 +364,65 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                     }
                     if (state.loading || state.pending) item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(Modifier.size(24.dp))
-                            Text(
-                                stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    if (state.places.isEmpty() && !state.loading && state.errorRes == null) {
-                        item {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    AnVePlacesSceneIllustration(
-                                        modifier = Modifier.fillMaxWidth().height(124.dp),
-                                    )
-                                    Text(
-                                        stringResource(R.string.places_empty),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                }
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(Modifier.size(24.dp))
+                                Text(
+                                    stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
+                            }
+                            if (state.loading && state.places.isEmpty()) {
+                                StitchLoadingSkeletonCard(rows = 2)
                             }
                         }
                     }
-                    items(state.places, key = { it.id }) { place ->
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.places_list_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(
+                                    selected = !filterMine,
+                                    onClick = { filterMine = false },
+                                    label = { Text(stringResource(R.string.places_filter_all)) },
+                                )
+                                FilterChip(
+                                    selected = filterMine,
+                                    onClick = { filterMine = true },
+                                    label = { Text(stringResource(R.string.places_filter_mine)) },
+                                )
+                            }
+                        }
+                    }
+                    if (displayedPlaces.isEmpty() && !state.loading && state.errorRes == null) {
+                        item {
+                            StitchEmptyStateCard(
+                                title = stringResource(R.string.places_header_title),
+                                body = stringResource(R.string.places_empty),
+                                illustration = {
+                                    AnVePlacesSceneIllustration(
+                                        modifier = Modifier.fillMaxWidth().height(124.dp),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                    items(displayedPlaces, key = { it.id }) { place ->
                         val isMine = place.ownerId == owner
                         val label = if (isMine) {
                             stringResource(R.string.places_owner_you)
                         } else {
                             state.sharing.members.firstOrNull { it.userId == place.ownerId }?.displayName ?: stringResource(R.string.places_member_fallback)
                         }
-                        val colors = MaterialTheme.colorScheme
                         OutlinedCard(
                             onClick = {
                                 if (!state.pending) {
@@ -382,54 +431,99 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 }
                             },
                             enabled = !state.pending,
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, colors.outlineVariant),
-                            colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = 48.dp)
                                     .padding(14.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isMine) colors.primaryContainer else colors.secondaryContainer,
-                                    contentColor = if (isMine) colors.onPrimaryContainer else colors.onSecondaryContainer,
-                                    modifier = Modifier.size(40.dp),
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = if (isMine) Icons.Default.Home else Icons.Default.Place,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
+                                    StitchCategoryIconBox(
+                                        icon = if (isMine) Icons.Default.Home else Icons.Default.Place,
+                                        size = 44.dp,
+                                        iconSize = 22.dp,
+                                        containerColor = if (isMine) colors.primaryContainer else colors.secondaryContainer,
+                                        contentColor = if (isMine) colors.onPrimaryContainer else colors.onSecondaryContainer,
+                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(place.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f, fill = false))
+                                            StitchSemanticBadge(
+                                                text = label,
+                                                kind = if (isMine) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.AT_PLACE,
+                                            )
+                                        }
+                                        Text(
+                                            stringResource(
+                                                R.string.places_radius_of_walk,
+                                                label,
+                                                place.radiusMeters.toInt(),
+                                                maxOf(1, (place.radiusMeters / 80.0).roundToInt()),
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
                                         )
                                     }
                                 }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = colors.surfaceContainerLow,
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text(place.name, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        stringResource(
-                                            R.string.places_radius_of_walk,
-                                            label,
-                                            place.radiusMeters.toInt(),
-                                            maxOf(1, (place.radiusMeters / 80.0).roundToInt()),
-                                        ),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant,
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Radar,
+                                                contentDescription = null,
+                                                tint = colors.primary,
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.places_radius_bar_label, place.radiusMeters.toInt()),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = colors.onSurface,
+                                            )
+                                        }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.places_edit_short),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = colors.primary,
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronRight,
+                                                contentDescription = null,
+                                                tint = colors.primary,
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                        }
+                                    }
                                 }
-                                Icon(
-                                    Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = colors.onSurfaceVariant,
-                                )
                             }
                         }
                     }
@@ -442,7 +536,33 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                     }
                 } else {
-                    item { Text(stringResource(R.string.places_radius, selected.radiusMeters.toInt()), style = MaterialTheme.typography.titleMedium) }
+                    item {
+                        OutlinedCard(
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                StitchCategoryIconBox(icon = Icons.Default.Radar)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        stringResource(R.string.places_radius, selected.radiusMeters.toInt()),
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        stringResource(R.string.places_radius_bar_label, selected.radiusMeters.toInt()),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
                     if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
                         item(key = "preview-${selected.id}") { PlacePreview(selected) }
                     }
@@ -454,14 +574,19 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                             Text(
                                 stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = colors.onSurfaceVariant,
                             )
                         }
                     }
                     if (selected.ownerId == owner) {
                         val otherMembers = state.sharing.members.filter { it.userId != owner }
                         item {
-                            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedCard(
+                                shape = RoundedCornerShape(22.dp),
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
                                 Column(
                                     modifier = Modifier.padding(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -517,7 +642,12 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         it.userId != owner && it.userId in state.eligibleRecipients
                     }
                     item {
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedCard(
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -570,6 +700,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                             configureBaseline = state.confirmation
                                             vm.configure(selected.id, recipients.intersect(state.eligibleRecipients))
                                         },
+                                        shape = CircleShape,
                                         enabled = !state.pending && state.sharing.consentEnabled,
                                     ) {
                                         Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))
@@ -597,9 +728,23 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         )
                     }
                     if (visibleEvents.isEmpty() && !state.loading && state.errorRes == null) {
-                        item { Text(stringResource(R.string.places_events_empty)) }
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = stitch.cardTactile,
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    stringResource(R.string.places_events_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.onSurfaceVariant,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        }
                     }
-                    items(visibleEvents, key = { "event-${it.id}" }) { event ->
+                    itemsIndexed(visibleEvents, key = { _, it -> "event-${it.id}" }) { index, event ->
                         // Same rule as HistoryScreen: never leak the raw ISO
                         // timestamp — an unreadable value falls back to the
                         // localized unknown-time string, not the wire format.
@@ -611,36 +756,22 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                         val delayed = if (event.delayed) stringResource(R.string.places_event_delayed) else ""
                         val confidence = if (event.confidence == "OBSERVED") stringResource(R.string.places_confidence_observed) else stringResource(R.string.places_confidence_unknown)
-                        val colors = MaterialTheme.colorScheme
                         val isEnter = event.type == "ENTER"
-                        OutlinedCard(
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, colors.outlineVariant),
-                            colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
-                            modifier = Modifier.fillMaxWidth(),
+                        StitchTimelineItem(
+                            icon = Icons.Default.Notifications,
+                            nodeContainerColor = if (isEnter) colors.primaryContainer else colors.secondaryContainer,
+                            nodeContentColor = if (isEnter) colors.onPrimaryContainer else colors.onSecondaryContainer,
+                            isLast = index == visibleEvents.lastIndex,
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            OutlinedCard(
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isEnter) colors.primaryContainer else colors.secondaryContainer,
-                                    contentColor = if (isEnter) colors.onPrimaryContainer else colors.onSecondaryContainer,
-                                    modifier = Modifier.size(34.dp),
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.Notifications,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
-                                }
                                 Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     Text(
                                         stringResource(R.string.places_event_title, event.ownerName, transition, event.placeName),
@@ -653,6 +784,11 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                     )
                                 }
                             }
+                        }
+                    }
+                    if (!showDetails) {
+                        item {
+                            StitchReassuranceFooter(quote = stringResource(R.string.places_footer_quote))
                         }
                     }
                 }
@@ -928,7 +1064,13 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             )
         }
         item {
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            val stitch = LocalStitchColors.current
+            OutlinedCard(
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -953,6 +1095,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
+                        shape = RoundedCornerShape(14.dp),
                         label = { Text(stringResource(R.string.places_editor_name_label)) },
                         enabled = !pending,
                         singleLine = true,
@@ -962,7 +1105,13 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             }
         }
         item {
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            val stitch = LocalStitchColors.current
+            OutlinedCard(
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1045,7 +1194,13 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             }
         }
         item {
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            val stitch = LocalStitchColors.current
+            OutlinedCard(
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1154,7 +1309,11 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) }, enabled = valid && !pending) { Text(stringResource(R.string.action_save)) }
+                Button(
+                    onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
+                    enabled = valid && !pending,
+                    shape = CircleShape,
+                ) { Text(stringResource(R.string.action_save)) }
                 TextButton(onClick = onCancel, enabled = !pending) { Text(stringResource(R.string.action_cancel)) }
             }
         }
@@ -1242,10 +1401,104 @@ private fun PlaceSearchCard(
 }
 
 @Composable
+private fun PlacesOverviewBanner(
+    totalPlaces: Int,
+    eventCount: Int,
+    sharedCount: Int,
+) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    OutlinedCard(
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.places_header_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                text = stringResource(R.string.places_monitoring_notice),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+            AnVeIllustratedBanner(
+                overlayBadge = {
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.places_smart_protection_badge),
+                        kind = StitchBadgeKind.SAFE_HOME,
+                        icon = Icons.Default.Shield,
+                        showDot = true,
+                    )
+                },
+            ) {
+                AnVeSafeRadarScene(
+                    memberCount = totalPlaces,
+                    modifier = Modifier.fillMaxWidth().height(132.dp),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StitchMetricTile(
+                    label = stringResource(R.string.places_metric_total),
+                    value = totalPlaces.toString(),
+                    icon = Icons.Default.Home,
+                    modifier = Modifier.weight(1f),
+                )
+                StitchMetricTile(
+                    label = stringResource(R.string.places_metric_events),
+                    value = eventCount.toString(),
+                    icon = Icons.Default.Notifications,
+                    modifier = Modifier.weight(1f),
+                )
+                StitchMetricTile(
+                    label = stringResource(R.string.places_metric_shared),
+                    value = sharedCount.toString(),
+                    icon = Icons.Default.Place,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SearchNote(res: Int) {
     Text(
         stringResource(res),
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PlacesOverviewBannerPreview() {
+    AnVeTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.padding(16.dp)) {
+                PlacesOverviewBanner(totalPlaces = 3, eventCount = 5, sharedCount = 1)
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PlacesOverviewBannerDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.padding(16.dp)) {
+                PlacesOverviewBanner(totalPlaces = 3, eventCount = 5, sharedCount = 1)
+            }
+        }
+    }
 }

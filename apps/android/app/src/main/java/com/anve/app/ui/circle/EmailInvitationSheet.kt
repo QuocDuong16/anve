@@ -1,6 +1,7 @@
 package com.anve.app.ui.circle
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +59,7 @@ import com.anve.app.R
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 
@@ -68,8 +70,9 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
     var showExpiry by remember { mutableStateOf(false) }
     val editable = !state.busy && !state.unknown
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface,
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = stitch.cardTactile,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
             .padding(horizontal = 16.dp).testTag("email-invite-sheet")) {
@@ -84,21 +87,21 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("EMAIL" to stringResource(R.string.invite_mode_email), "LINK" to stringResource(R.string.invite_mode_link)).forEach { (mode, label) ->
                         Surface(Modifier.weight(1f).heightIn(min = 48.dp).selectable(state.mode == mode, enabled = editable,
-                            role = Role.RadioButton, onClick = { onMode(mode) }), shape = RoundedCornerShape(12.dp),
-                            border = if (state.mode == mode) null else BorderStroke(1.dp, colors.outline),
-                            color = if (state.mode == mode) colors.primaryContainer else colors.surface,
-                            contentColor = if (state.mode == mode) colors.onPrimaryContainer else colors.onSurface) {
+                            role = Role.RadioButton, onClick = { onMode(mode) }), shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, if (state.mode == mode) colors.primary else stitch.hairline),
+                            color = if (state.mode == mode) stitch.liveContainer else colors.surfaceContainerLow,
+                            contentColor = if (state.mode == mode) stitch.onLiveContainer else colors.onSurface) {
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = state.mode == mode, onClick = null, enabled = editable,
-                                    colors = RadioButtonDefaults.colors(selectedColor = colors.onPrimaryContainer))
+                                    colors = RadioButtonDefaults.colors(selectedColor = stitch.onLiveContainer))
                                 Text(label, Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                 } }
                 if (state.mode == "EMAIL") item {
-                    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, colors.outlineVariant)) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, stitch.hairline), color = colors.surfaceContainerLow) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(stringResource(R.string.invite_email_section), style = MaterialTheme.typography.titleSmall,
                                 color = rememberInkOnSurface())
                             // Inline validation so a wrong email surfaces while
@@ -107,6 +110,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                             val emailInvalid = state.mode == "EMAIL" && state.email.isNotBlank() && !inviteEmailValid(state.email.trim().lowercase())
                             OutlinedTextField(state.email, onEmail, placeholder = { Text(stringResource(R.string.invite_email_placeholder)) },
                                 label = { Text(stringResource(R.string.invite_email_label)) }, singleLine = true, enabled = editable,
+                                shape = RoundedCornerShape(14.dp),
                                 isError = emailInvalid,
                                 supportingText = if (emailInvalid) {
                                     { Text(stringResource(R.string.invite_email_invalid)) }
@@ -170,7 +174,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
             Button(
                 onClick = if (state.unknown) onCheck else onCreate,
                 enabled = online && !state.busy && (state.unknown || state.mode == "LINK" || inviteEmailValid(state.email.trim().lowercase())),
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (dark) colors.primaryContainer else colors.primary,
                     contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,

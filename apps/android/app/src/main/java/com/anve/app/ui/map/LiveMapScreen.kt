@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,22 +24,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -62,7 +65,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,13 +85,20 @@ import com.anve.app.data.location.VisibleLocationSnapshot
 import com.anve.app.data.location.displayLocationConfidence
 import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.LocationPermissionState
-import com.anve.app.ui.brand.AnVePlacesSceneIllustration
+import com.anve.app.ui.brand.AnVeIllustratedBanner
+import com.anve.app.ui.brand.AnVeSafeRadarScene
 import com.anve.app.ui.brand.AnVeSharingHeroIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchLivePulseDot
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
+import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -280,12 +294,17 @@ private fun LiveMapContent(
         } else {
             MapUnavailableCard(
                 message = stringResource(R.string.map_unconfigured_message),
+                memberCount = locations.size,
                 onOpenSharing = onOpenSharing,
                 onOpenLocation = onOpenLocation,
-                modifier = Modifier.align(Alignment.Center).padding(20.dp),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp, start = 16.dp, end = 16.dp),
             )
         }
 
+        val colors = MaterialTheme.colorScheme
+        val stitch = LocalStitchColors.current
         Column(
             modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -295,7 +314,12 @@ private fun LiveMapContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Card {
+                Surface(
+                    shape = CircleShape,
+                    color = stitch.cardTactile,
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    shadowElevation = 2.dp,
+                ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -304,11 +328,11 @@ private fun LiveMapContent(
                         // Freshness, not danger: an unconnected feed borrows a
                         // neutral tone — the error hue is reserved for failures
                         // (DESIGN.md stale-data rule).
-                        Box(Modifier.size(8.dp).background(
-                            if (snapshot?.connected == true) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            CircleShape,
-                        ))
+                        StitchLivePulseDot(
+                            active = snapshot?.connected == true,
+                            haloSize = 14.dp,
+                            coreSize = 7.dp,
+                        )
                         Text(
                             text = if (snapshot?.connected == true) stringResource(R.string.map_status_updating) else stringResource(R.string.map_status_disconnected),
                             style = MaterialTheme.typography.labelLarge,
@@ -317,7 +341,11 @@ private fun LiveMapContent(
                 }
                 FilledTonalButton(
                     onClick = onOpenSharing,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = colors.secondaryContainer,
+                        contentColor = colors.onSecondaryContainer,
+                    ),
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -333,77 +361,171 @@ private fun LiveMapContent(
         }
 
         when {
-            snapshot?.loading == true -> CircularProgressIndicator(
-                Modifier.align(Alignment.Center),
-            )
-            locations.isEmpty() -> Card(
+            snapshot?.loading == true -> Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, bottom = HOME_FAB_CLEARANCE),
+            ) {
+                StitchLoadingSkeletonCard(rows = 2)
+            }
+            locations.isEmpty() -> OutlinedCard(
+                shape = RoundedCornerShape(28.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = stitch.cardTactile,
+                ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp, bottom = HOME_FAB_CLEARANCE),
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .size(width = 40.dp, height = 4.dp)
+                            .background(stitch.hairline, CircleShape),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.map_pulse_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                text = stringResource(R.string.map_pulse_count, 0),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                        StitchLivePulseDot(active = snapshot?.connected == true)
+                    }
                     Text(
                         stringResource(R.string.map_no_locations_notice),
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    Text(
+                        stringResource(R.string.map_pulse_empty_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        OutlinedButton(onClick = onOpenSharing, modifier = Modifier.heightIn(min = 48.dp)) {
+                        OutlinedButton(
+                            onClick = onOpenSharing,
+                            shape = CircleShape,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
                             Text(stringResource(R.string.map_audience_action))
                         }
-                        TextButton(onClick = onOpenLocation, modifier = Modifier.heightIn(min = 48.dp)) {
+                        FilledTonalButton(
+                            onClick = onOpenLocation,
+                            shape = CircleShape,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
                             Text(stringResource(R.string.action_open_location))
                         }
                     }
+                    StitchReassuranceFooter(quote = stringResource(R.string.map_reassurance_footer))
                 }
             }
             else -> {
-                Column(
+                OutlinedCard(
+                    shape = RoundedCornerShape(28.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .padding(start = 12.dp, end = 12.dp, bottom = HOME_FAB_CLEARANCE),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(locations, key = VisibleLocationDto::ownerId) { location ->
-                            FilterChip(
-                                selected = location.ownerId == selectedOwner,
-                                onClick = { selectedOwner = location.ownerId },
-                                label = { Text(location.displayName) },
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .size(width = 40.dp, height = 4.dp)
+                                .background(stitch.hairline, CircleShape),
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.map_pulse_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.semantics { heading() },
+                                    )
+                                    StitchLivePulseDot(active = snapshot?.connected == true, haloSize = 14.dp, coreSize = 6.dp)
+                                }
+                                Text(
+                                    text = stringResource(R.string.map_pulse_count, locations.size),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
+                            }
+                            FilledTonalButton(
+                                onClick = onOpenJourney,
+                                shape = CircleShape,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.map_start_journey), maxLines = 1)
+                            }
+                        }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp),
+                        ) {
+                            items(locations, key = VisibleLocationDto::ownerId) { location ->
+                                val confidence = location.displayConfidence(snapshot, nowElapsedMillis)
+                                val selected = location.ownerId == selectedOwner
+                                MemberShelfPillCard(
+                                    location = location,
+                                    confidence = confidence,
+                                    selected = selected,
+                                    onSelect = {
+                                        selectedOwner = location.ownerId
+                                        location.latLngOrNull()?.let { point ->
+                                            cameraState.move(CameraUpdateFactory.newLatLngZoom(point, 15f))
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        locations.firstOrNull { it.ownerId == selectedOwner }?.let { selected ->
+                            MemberLocationCard(
+                                location = selected,
+                                confidence = selected.displayConfidence(snapshot, nowElapsedMillis),
+                                modifier = Modifier.fillMaxWidth(),
+                                onRecenter = {
+                                    selected.latLngOrNull()?.let { point ->
+                                        cameraState.move(CameraUpdateFactory.newLatLngZoom(point, 15f))
+                                    }
+                                },
                             )
                         }
-                    }
-                    locations.firstOrNull { it.ownerId == selectedOwner }?.let { selected ->
-                        MemberLocationCard(
-                            location = selected,
-                            confidence = selected.displayConfidence(snapshot, nowElapsedMillis),
-                            modifier = Modifier.fillMaxWidth(),
-                            onRecenter = {
-                                selected.latLngOrNull()?.let { point ->
-                                    cameraState.move(CameraUpdateFactory.newLatLngZoom(point, 15f))
-                                }
-                            },
-                        )
-                    }
-                    Button(
-                        onClick = onOpenJourney,
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary,
-                        ),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) {
-                        Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.map_start_journey))
+                        StitchReassuranceFooter(quote = stringResource(R.string.map_reassurance_footer))
                     }
                 }
             }
@@ -427,24 +549,38 @@ private fun LiveMapContent(
 private fun MapUnavailableCard(
     message: String,
     modifier: Modifier = Modifier,
+    memberCount: Int = 0,
     onOpenSharing: () -> Unit = {},
     onOpenLocation: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AnVePlacesSceneIllustration(
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-            )
+            AnVeIllustratedBanner(
+                overlayBadge = {
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.map_fallback_radar_badge),
+                        kind = StitchBadgeKind.NEUTRAL,
+                    )
+                },
+            ) {
+                AnVeSafeRadarScene(
+                    memberCount = memberCount,
+                    modifier = Modifier.fillMaxWidth().height(152.dp),
+                )
+            }
             Text(stringResource(R.string.map_unavailable_title), style = MaterialTheme.typography.titleMedium)
             Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             FlowRow(
@@ -453,19 +589,94 @@ private fun MapUnavailableCard(
             ) {
                 OutlinedButton(
                     onClick = onOpenSharing,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Text(stringResource(R.string.map_audience_action))
                 }
                 FilledTonalButton(
                     onClick = onOpenLocation,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Text(stringResource(R.string.action_open_location))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MemberShelfPillCard(
+    location: VisibleLocationDto,
+    confidence: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    Surface(
+        onClick = onSelect,
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) stitch.liveContainer.copy(alpha = 0.72f) else colors.surfaceContainerLow,
+        border = BorderStroke(
+            width = if (selected) 1.5.dp else 1.dp,
+            color = if (selected) colors.primary else stitch.hairline,
+        ),
+        modifier = Modifier.width(196.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer,
+                    modifier = Modifier.size(30.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = location.displayName.take(1).uppercase().ifBlank { "?" },
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+                Text(
+                    text = location.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StitchSemanticBadge(
+                    text = confidence.toConfidenceLabel(),
+                    kind = confidence.toBadgeKind(),
+                    showDot = confidence == "FRESH",
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
+                    contentDescription = stringResource(R.string.map_member_action_view),
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
+            Text(
+                text = stringResource(R.string.map_member_action_view),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.primary,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -478,15 +689,11 @@ private fun MemberLocationCard(
     onRecenter: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val pillColors = when (confidence) {
-        "FRESH" -> colors.primaryContainer to colors.onPrimaryContainer
-        "DELAYED" -> colors.secondaryContainer to colors.onSecondaryContainer
-        else -> colors.surfaceVariant to colors.onSurfaceVariant
-    }
-    OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+    val stitch = LocalStitchColors.current
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = colors.surfaceContainerLow,
+        border = BorderStroke(1.dp, stitch.hairline),
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
@@ -517,10 +724,10 @@ private fun MemberLocationCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(location.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    AnVeStatusPill(
+                    StitchSemanticBadge(
                         text = confidence.toConfidenceLabel(),
-                        containerColor = pillColors.first,
-                        contentColor = pillColors.second,
+                        kind = confidence.toBadgeKind(),
+                        showDot = confidence == "FRESH",
                     )
                 }
                 Text(
@@ -561,7 +768,8 @@ private fun AudienceSheet(
     onOpenCircle: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.surface) {
+    val stitch = LocalStitchColors.current
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = stitch.cardTactile) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -673,22 +881,35 @@ private fun AudienceSheet(
                                         )
                                     }
                                 }
-                                Column(Modifier.weight(1f)) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
                                     // role ships as a raw "owner"/"member" contract
                                     // string; mapping it here instead of in the data
                                     // layer keeps AudienceMember faithful to the server
                                     // payload while reusing the Circle screen's
                                     // standardized labels, so one concept keeps one wording.
-                                    Text(
-                                        text = if (member.role == "owner") {
-                                            stringResource(R.string.circle_role_owner)
-                                        } else {
-                                            stringResource(R.string.circle_role_member)
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant,
-                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = if (member.role == "owner") {
+                                                stringResource(R.string.circle_role_owner)
+                                            } else {
+                                                stringResource(R.string.circle_role_member)
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                        StitchSemanticBadge(
+                                            text = stringResource(
+                                                if (member.canViewLocation) R.string.map_audience_verified_chip
+                                                else R.string.map_audience_paused_chip,
+                                            ),
+                                            kind = if (member.canViewLocation) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
+                                            icon = if (member.canViewLocation) Icons.Default.Visibility else null,
+                                        )
+                                    }
                                 }
                                 if (member.userId in state.unresolvedViewerIds) {
                                     Text(stringResource(R.string.map_viewer_unresolved), style = MaterialTheme.typography.bodySmall)
@@ -782,12 +1003,18 @@ private fun memberMarkerIcon(initial: String, confidence: String, density: Float
 
 private const val MEMBER_MARKER_WIDTH_DP = 36f
 private const val MEMBER_MARKER_HEIGHT_DP = 44f
-private val MEMBER_MARKER_TEAL = 0xFF00505A.toInt()
-private val MEMBER_MARKER_AMBER = 0xFFD98E32.toInt()
-private val MEMBER_MARKER_SLATE = 0xFF4A7C88.toInt()
-private val MEMBER_MARKER_GRAY = 0xFF757575.toInt()
-private val MEMBER_MARKER_SAND = 0xFFFBF7F0.toInt()
-private val MEMBER_MARKER_TEXT = 0xFFFBF7F0.toInt()
+private val MEMBER_MARKER_TEAL = 0xFF3D602F.toInt()
+private val MEMBER_MARKER_AMBER = 0xFFC87A28.toInt()
+private val MEMBER_MARKER_SLATE = 0xFF695B60.toInt()
+private val MEMBER_MARKER_GRAY = 0xFF74796D.toInt()
+private val MEMBER_MARKER_SAND = 0xFFFDF9F2.toInt()
+private val MEMBER_MARKER_TEXT = 0xFFFFFFFF.toInt()
+
+private fun String.toBadgeKind(): StitchBadgeKind = when (this) {
+    "FRESH" -> StitchBadgeKind.SAFE_HOME
+    "DELAYED" -> StitchBadgeKind.IN_TRANSIT
+    else -> StitchBadgeKind.DELAYED_OFFLINE
+}
 
 @Composable
 private fun String.toConfidenceLabel(): String = when (this) {
@@ -802,3 +1029,75 @@ private fun String?.toVietnameseTime(fallback: String): String = AnveTime.full(t
 
 private val DEFAULT_CAMERA_TARGET = LatLng(16.0, 107.5)
 private const val DEFAULT_CAMERA_ZOOM = 5.0f
+
+@Preview(showBackground = true)
+@Composable
+private fun LiveMapContentPreview() {
+    val sample = listOf(
+        VisibleLocationDto(
+            ownerId = "u1",
+            displayName = "Mẹ Lan",
+            latitude = 21.033,
+            longitude = 105.834,
+            horizontalAccuracyMeters = 8.0,
+            recordedAt = "2026-10-25T10:15:00Z",
+            receivedAt = "2026-10-25T10:15:02Z",
+            ageMillis = 20_000L,
+            confidence = "FRESH",
+        ),
+        VisibleLocationDto(
+            ownerId = "u2",
+            displayName = "Em Huy",
+            latitude = 21.028,
+            longitude = 105.829,
+            horizontalAccuracyMeters = 24.0,
+            recordedAt = "2026-10-25T10:12:00Z",
+            receivedAt = "2026-10-25T10:12:03Z",
+            ageMillis = 180_000L,
+            confidence = "DELAYED",
+        ),
+    )
+    AnVeTheme {
+        LiveMapContent(
+            state = LiveMapUiState(
+                ownerId = "me",
+                snapshot = VisibleLocationSnapshot(
+                    ownerId = "me",
+                    connected = true,
+                    loading = false,
+                    locations = sample,
+                ),
+            ),
+            ownerId = "me",
+            mapsConfigured = false,
+            onOpenSharing = {},
+            onCloseSharing = {},
+            onToggleViewer = { _, _ -> },
+            onRetrySharing = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LiveMapContentDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        LiveMapContent(
+            state = LiveMapUiState(
+                ownerId = "me",
+                snapshot = VisibleLocationSnapshot(
+                    ownerId = "me",
+                    connected = false,
+                    loading = false,
+                    locations = emptyList(),
+                ),
+            ),
+            ownerId = "me",
+            mapsConfigured = false,
+            onOpenSharing = {},
+            onCloseSharing = {},
+            onToggleViewer = { _, _ -> },
+            onRetrySharing = {},
+        )
+    }
+}

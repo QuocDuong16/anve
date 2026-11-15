@@ -1,6 +1,7 @@
 package com.anve.app.ui.history
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -29,10 +31,12 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -77,6 +81,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -88,11 +93,22 @@ import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
 import com.anve.app.R
 import com.anve.app.data.api.HistoryPointDto
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeHistorySceneIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchEmptyStateCard
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchMetricTile
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
+import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -300,6 +316,8 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
+        val colors = MaterialTheme.colorScheme
+        val stitch = LocalStitchColors.current
         // Pull to refresh alongside the top-bar action: same repository call,
         // two affordances. The refresh button stays for users who do not use
         // the gesture.
@@ -312,34 +330,72 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 state = listState,
                 contentPadding = PaddingValues(top = 16.dp, bottom = HOME_FAB_CLEARANCE),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item {
-                            FilterChip(
-                                selected = member == state.owner,
-                                onClick = { state.owner?.let { vm.select(it, state.date) } },
-                                label = { Text(stringResource(R.string.history_member_self)) },
-                                enabled = !state.mutationPending,
-                            )
-                        }
-                        items(state.members, key = { it.ownerId }) { person ->
-                            FilterChip(
-                                selected = member == person.ownerId,
-                                onClick = { vm.select(person.ownerId, state.date) },
-                                label = { Text(person.displayName) },
-                                enabled = !state.mutationPending,
-                            )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.history_journal_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item {
+                                FilterChip(
+                                    selected = member == state.owner,
+                                    onClick = { state.owner?.let { vm.select(it, state.date) } },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    },
+                                    label = { Text(stringResource(R.string.history_member_self)) },
+                                    enabled = !state.mutationPending,
+                                )
+                            }
+                            items(state.members, key = { it.ownerId }) { person ->
+                                FilterChip(
+                                    selected = member == person.ownerId,
+                                    onClick = { vm.select(person.ownerId, state.date) },
+                                    leadingIcon = {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .background(
+                                                    color = if (member == person.ownerId) {
+                                                        colors.primary
+                                                    } else {
+                                                        colors.surfaceContainerHigh
+                                                    },
+                                                    shape = CircleShape,
+                                                ),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                text = person.displayName.take(1).uppercase().ifBlank { "?" },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (member == person.ownerId) {
+                                                    colors.onPrimary
+                                                } else {
+                                                    colors.onSurfaceVariant
+                                                },
+                                            )
+                                        }
+                                    },
+                                    label = { Text(person.displayName) },
+                                    enabled = !state.mutationPending,
+                                )
+                            }
                         }
                     }
                 }
                 item {
-                    val colors = MaterialTheme.colorScheme
                     OutlinedCard(
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, colors.outlineVariant),
-                        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -354,7 +410,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                 FilledTonalButton(
                                     onClick = { showDatePicker = true },
                                     enabled = !state.mutationPending,
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = CircleShape,
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                                 ) {
                                     Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -374,7 +430,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     OutlinedButton(
                                         onClick = { showStartTimePicker = true },
                                         enabled = !state.mutationPending,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = CircleShape,
                                         modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
                                         Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -386,7 +442,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     OutlinedButton(
                                         onClick = { showEndTimePicker = true },
                                         enabled = !state.mutationPending,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = CircleShape,
                                         modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
                                         Text(stringResource(R.string.history_time_to, formatMinute(state.endMinute)))
@@ -405,6 +461,14 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         }
                     }
                 }
+                item {
+                    val retentionDays = (state.effectiveRetentionDays ?: state.retentionDays)?.toString() ?: "—"
+                    HistorySummaryCard(
+                        pointCount = state.points.size,
+                        delayedCount = state.points.count { it.backfill },
+                        retentionDaysLabel = retentionDays,
+                    )
+                }
                 if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
                     item {
                         // The map is one item inside the LazyColumn, so a
@@ -413,11 +477,15 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         // fingers never scroll the list, and camera placement
                         // goes through the center action below the map.
                         OutlinedCard(
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = stitch.cardTactile,
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column {
+                                val routeColor = colors.primary
                                 GoogleMap(
                                     modifier = Modifier.fillMaxWidth().height(220.dp),
                                     cameraPositionState = camera,
@@ -425,7 +493,10 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     onMapLoaded = { mapLoaded = true },
                                 ) {
                                     historySegments(state.points).filter { it.size > 1 }.forEach { segment ->
-                                        Polyline(points = segment.map { LatLng(it.latitude, it.longitude) })
+                                        Polyline(
+                                            points = segment.map { LatLng(it.latitude, it.longitude) },
+                                            color = routeColor,
+                                        )
                                     }
                                     selected?.takeIf {
                                         it.latitude.isFinite() && it.longitude.isFinite() &&
@@ -460,21 +531,24 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 } else {
                     item {
                         OutlinedCard(
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(
                                 modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                AnVeHistorySceneIllustration(
-                                    modifier = Modifier.fillMaxWidth().height(92.dp),
-                                )
+                                AnVeIllustratedBanner {
+                                    AnVeHistorySceneIllustration(
+                                        modifier = Modifier.fillMaxWidth().height(92.dp),
+                                    )
+                                }
                                 Text(
                                     text = stringResource(R.string.history_map_unconfigured),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = colors.onSurfaceVariant,
                                 )
                             }
                         }
@@ -489,43 +563,33 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     }
                 }
                 if (state.loading || state.mutationPending) item {
-                    // A bare spinner between list items says nothing; name what is
-                    // happening (SOS progress-row pattern).
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(24.dp))
-                        Text(
-                            stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        // A bare spinner between list items says nothing; name what is
+                        // happening (SOS progress-row pattern).
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(Modifier.size(24.dp))
+                            Text(
+                                stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                        if (state.loading && state.points.isEmpty()) {
+                            StitchLoadingSkeletonCard(rows = 2)
+                        }
                     }
                 }
                 if (state.points.isEmpty() && !state.loading && state.errorRes == null && !state.mutationPending) {
                     item {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
+                        StitchEmptyStateCard(
+                            title = stringResource(R.string.history_empty_warm_title),
+                            body = "${stringResource(R.string.history_empty_day)}\n${stringResource(R.string.history_empty_warm_body)}",
+                            illustration = {
                                 AnVeHistorySceneIllustration(
                                     modifier = Modifier.fillMaxWidth().height(112.dp),
                                 )
-                                Text(
-                                    text = stringResource(R.string.history_empty_warm_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Text(
-                                    text = stringResource(R.string.history_empty_day),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Text(
-                                    text = stringResource(R.string.history_empty_warm_body),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+                            },
+                        )
                     }
                 }
                 if (state.points.isNotEmpty()) {
@@ -539,75 +603,82 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         Text(
                             stringResource(R.string.history_hint_select_point),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colors.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
-                items(state.points, key = { it.eventId }) { point ->
+                itemsIndexed(state.points, key = { _, it -> it.eventId }) { index, point ->
                     val time = AnveTime.seconds(point.recordedAt, point.recordedAt)
                     val gap = if (point.eventId in gapStarts) stringResource(R.string.history_gap_prefix) else ""
                     val delayed = if (point.backfill) stringResource(R.string.history_backfill_suffix) else ""
                     val mock = if (point.isMock) stringResource(R.string.history_mock_suffix) else ""
                     val isSelected = point.eventId == selectedId
-                    val colors = MaterialTheme.colorScheme
-                    OutlinedCard(
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, if (isSelected) colors.primary else colors.outlineVariant),
-                        colors = CardDefaults.outlinedCardColors(
-                            containerColor = if (isSelected) colors.primaryContainer.copy(alpha = 0.28f) else colors.surface,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
+                    StitchTimelineItem(
+                        icon = if (isSelected) Icons.Default.MyLocation else Icons.Default.Schedule,
+                        nodeContainerColor = if (isSelected) colors.primary else colors.surfaceContainerHigh,
+                        nodeContentColor = if (isSelected) colors.onPrimary else colors.onSurfaceVariant,
+                        isLast = index == state.points.lastIndex,
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 48.dp)
-                                // Selection must not depend on text color alone:
-                                // selectable() carries the state in semantics for
-                                // accessibility services, and card border + container
-                                // highlight keep it visible regardless of hue.
-                                .selectable(selected = isSelected, onClick = { selectedId = point.eventId })
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        OutlinedCard(
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, if (isSelected) colors.primary else stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (isSelected) colors.primaryContainer.copy(alpha = 0.28f) else stitch.cardTactile,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.size(20.dp),
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .defaultMinSize(minHeight = 48.dp)
+                                    // Selection must not depend on text color alone:
+                                    // selectable() carries the state in semantics for
+                                    // accessibility services, and card border + container
+                                    // highlight keep it visible regardless of hue.
+                                    .selectable(selected = isSelected, onClick = { selectedId = point.eventId })
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isSelected) colors.primaryContainer else colors.surfaceVariant,
+                                Box(
+                                    contentAlignment = Alignment.Center,
                                     modifier = Modifier.size(20.dp),
-                                ) {}
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isSelected) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(8.dp),
-                                ) {}
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isSelected) colors.primaryContainer else colors.surfaceVariant,
+                                        modifier = Modifier.size(20.dp),
+                                    ) {}
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isSelected) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(8.dp),
+                                    ) {}
+                                }
+                                Text(
+                                    text = stringResource(
+                                        R.string.history_point_row,
+                                        gap,
+                                        time,
+                                        point.horizontalAccuracyMeters.toInt(),
+                                        delayed,
+                                        mock,
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isSelected) colors.primary else colors.onSurface,
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
-                            Text(
-                                text = stringResource(
-                                    R.string.history_point_row,
-                                    gap,
-                                    time,
-                                    point.horizontalAccuracyMeters.toInt(),
-                                    delayed,
-                                    mock,
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (isSelected) colors.primary else colors.onSurface,
-                                modifier = Modifier.weight(1f),
-                            )
                         }
                     }
                 }
                 if (state.member == state.owner) {
                     item {
                         OutlinedCard(
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -619,7 +690,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                 Text(
                                     stringResource(R.string.history_retention_days_value, currentDays?.toString() ?: "—"),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = colors.onSurfaceVariant,
                                 )
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(listOf(1, 7, 30)) { days ->
@@ -648,6 +719,9 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                             }
                         }
                     }
+                }
+                item {
+                    StitchReassuranceFooter(quote = stringResource(R.string.history_footer_quote))
                 }
             }
         }
@@ -768,6 +842,126 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
             dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text(stringResource(R.string.action_cancel)) } },
         ) {
             TimePicker(state = timeState)
+        }
+    }
+}
+
+@Composable
+private fun HistorySummaryCard(
+    pointCount: Int,
+    delayedCount: Int,
+    retentionDaysLabel: String,
+) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    OutlinedCard(
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StitchCategoryIconBox(
+                        icon = Icons.Default.Route,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                        cornerRadius = 14.dp,
+                        containerColor = colors.primaryContainer,
+                        contentColor = colors.onPrimaryContainer,
+                    )
+                    Text(
+                        text = stringResource(R.string.history_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                }
+                StitchSemanticBadge(
+                    text = stringResource(R.string.history_metric_retention) + ": " + retentionDaysLabel,
+                    kind = StitchBadgeKind.SAFE_HOME,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StitchMetricTile(
+                    label = stringResource(R.string.history_metric_points),
+                    value = pointCount.toString(),
+                    icon = Icons.Default.MyLocation,
+                    modifier = Modifier.weight(1f),
+                )
+                StitchMetricTile(
+                    label = stringResource(R.string.history_metric_delayed),
+                    value = delayedCount.toString(),
+                    icon = Icons.Default.Schedule,
+                    modifier = Modifier.weight(1f),
+                )
+                StitchMetricTile(
+                    label = stringResource(R.string.history_metric_retention),
+                    value = retentionDaysLabel,
+                    icon = Icons.Default.CalendarToday,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = stitch.liveContainer.copy(alpha = 0.65f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = stitch.onLiveContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.history_summary_safe_banner),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = stitch.onLiveContainer,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HistorySummaryCardPreview() {
+    AnVeTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.padding(16.dp)) {
+                HistorySummaryCard(pointCount = 12, delayedCount = 1, retentionDaysLabel = "7")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HistorySummaryCardDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.padding(16.dp)) {
+                HistorySummaryCard(pointCount = 12, delayedCount = 1, retentionDaysLabel = "7")
+            }
         }
     }
 }

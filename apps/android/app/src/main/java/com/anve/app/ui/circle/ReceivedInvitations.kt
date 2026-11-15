@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MailOutline
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -42,26 +44,45 @@ import com.anve.app.R
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.rememberInkOnSurface
 
 @Composable
 fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, onReview: (String) -> Unit, onHide: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val actionColor = rememberInkOnSurface()
     // Hiding is a server mutation with no undo in the UI, so it confirms first —
     // the same destructive-confirm pattern as leave/dissolve/remove. The target
     // is saveable so the dialog survives process death while open.
     var hideTarget by rememberSaveable { mutableStateOf<String?>(null) }
     OutlinedCard(
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth().testTag("received-invitations"),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnVeSectionHeader(
-                icon = Icons.Outlined.MailOutline,
-                title = stringResource(R.string.invite_received_title),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
+                    AnVeSectionHeader(
+                        icon = Icons.Outlined.MailOutline,
+                        title = stringResource(R.string.invite_received_title),
+                    )
+                }
+                if (state.received.isNotEmpty()) {
+                    StitchSemanticBadge(
+                        text = state.received.size.toString(),
+                        kind = StitchBadgeKind.IN_TRANSIT,
+                    )
+                }
+            }
             if (state.loading) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -86,9 +107,9 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
             state.inboxErrorRes?.let { res -> AnveErrorNotice(stringResource(res)) }
             state.received.forEach { invite ->
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceVariant.copy(alpha = 0.4f),
-                    border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(18.dp),
+                    color = colors.surfaceContainerLow,
+                    border = BorderStroke(1.dp, stitch.hairline),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -104,7 +125,7 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                             FilledTonalButton(
                                 onClick = { onReview(invite.id) },
                                 enabled = !state.detailBusy,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = CircleShape,
                                 modifier = Modifier.heightIn(min = 48.dp),
                             ) {
                                 Text(stringResource(R.string.invite_view))
@@ -124,7 +145,7 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
             OutlinedButton(
                 onClick = onRefresh,
                 enabled = !state.loading && !state.detailBusy,
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             ) {
@@ -147,7 +168,7 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                         onHide(target)
                         hideTarget = null
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.error,
                         contentColor = colors.onError,

@@ -1,5 +1,6 @@
 package com.anve.app.ui.avatar
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,7 +45,11 @@ import com.anve.app.R
 import com.anve.app.data.api.AvatarStateDto
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 
@@ -62,12 +67,13 @@ fun AvatarSheet(
     preview: @Composable () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
     val editable = !state.loading && !state.processing && !state.busy && !state.unknown && state.metadata != null
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = colors.surface,
+        containerColor = stitch.cardTactile,
     ) {
         Column(
             modifier = Modifier
@@ -82,20 +88,31 @@ fun AvatarSheet(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 item {
-                    AnVeSectionHeader(
-                        icon = Icons.Outlined.AccountCircle,
-                        title = stringResource(R.string.avatar_title),
-                        subtitle = stringResource(R.string.avatar_subtitle),
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AnVeSectionHeader(
+                            icon = Icons.Outlined.AccountCircle,
+                            title = stringResource(R.string.avatar_title),
+                            subtitle = stringResource(R.string.avatar_subtitle),
+                            iconContainerColor = stitch.liveContainer,
+                            iconContentColor = stitch.onLiveContainer,
+                        )
+                        StitchSemanticBadge(
+                            text = stringResource(R.string.avatar_studio_badge),
+                            kind = StitchBadgeKind.NEUTRAL,
+                        )
+                    }
                 }
                 item {
                     Surface(
                         shape = CircleShape,
-                        color = colors.primaryContainer.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.2f)),
+                        color = stitch.secondaryFixed,
+                        border = BorderStroke(1.5.dp, stitch.hairline),
                     ) {
                         Box(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             preview()
@@ -134,7 +151,7 @@ fun AvatarSheet(
                                 .widthIn(min = 150.dp)
                                 .heightIn(min = 48.dp)
                                 .testTag("avatar-choose"),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = CircleShape,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = rememberInkOnSurface()),
                         ) {
                             Icon(Icons.Outlined.PhotoLibrary, null, Modifier.size(20.dp))
@@ -148,7 +165,7 @@ fun AvatarSheet(
                                 .widthIn(min = 150.dp)
                                 .heightIn(min = 48.dp)
                                 .testTag("avatar-remove"),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = CircleShape,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = rememberInkOnSurface()),
                         ) {
                             Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(20.dp))
@@ -158,20 +175,23 @@ fun AvatarSheet(
                 }
                 item {
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = colors.surfaceVariant.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(18.dp),
+                        color = colors.surfaceContainerLow,
+                        border = BorderStroke(1.dp, stitch.hairline),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier.padding(14.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Lock,
-                                contentDescription = null,
-                                tint = colors.primary,
-                                modifier = Modifier.size(18.dp),
+                            StitchCategoryIconBox(
+                                icon = Icons.Outlined.Lock,
+                                size = 34.dp,
+                                iconSize = 18.dp,
+                                cornerRadius = 11.dp,
+                                containerColor = stitch.liveContainer,
+                                contentColor = stitch.onLiveContainer,
                             )
                             Text(
                                 text = stringResource(R.string.avatar_privacy_note),
@@ -217,7 +237,7 @@ fun AvatarSheet(
                     onClick = onCheck,
                     enabled = online && !state.busy,
                     colors = actionColors,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("avatar-check"),
                 ) {
                     Text(stringResource(R.string.avatar_check_result))
@@ -226,7 +246,7 @@ fun AvatarSheet(
                     onClick = onRetry,
                     enabled = online && !state.busy,
                     colors = actionColors,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 ) {
                     Text(stringResource(R.string.action_retry))
@@ -235,7 +255,7 @@ fun AvatarSheet(
                     onClick = onSave,
                     enabled = editable && state.changed && online,
                     colors = actionColors,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("avatar-save"),
                 ) {
                     Text(
@@ -256,6 +276,14 @@ fun AvatarSheet(
 @Composable
 private fun AvatarSheetPreview() {
     AnVeTheme { AvatarSheet(AvatarUiState(open = true, loading = false, metadata = AvatarStateDto(0)), true, {}, {}, {}, {}, {}, {}) {
+        AvatarFrame("An", null, Modifier.size(160.dp))
+    } }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AvatarSheetDarkPreview() {
+    AnVeTheme(darkTheme = true) { AvatarSheet(AvatarUiState(open = true, loading = false, metadata = AvatarStateDto(0)), true, {}, {}, {}, {}, {}, {}) {
         AvatarFrame("An", null, Modifier.size(160.dp))
     } }
 }

@@ -21,15 +21,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,7 +60,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -72,13 +72,18 @@ import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.InviteLink
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
+import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeStatusPill
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchLoadingSkeletonCard
+import com.anve.app.ui.common.StitchReassuranceFooter
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
-import com.anve.app.ui.theme.rememberInkOnSurface
+import com.anve.app.ui.theme.LocalStitchColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -210,6 +215,7 @@ fun CircleScreen(
         // stays until its own retry/dismiss acts on it.
         onMessageConsumed = viewModel::consumeMessage,
         onChecklistVisibleChange = onActivationChecklistVisibleChange,
+        currentUserId = owner,
     )
     if (privateInvites.open) EmailInvitationSheet(privateInvites, tracking.online, invitationsController::dismiss,
         invitationsController::mode, invitationsController::email, invitationsController::hours,
@@ -306,11 +312,21 @@ fun CircleContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onMessageConsumed: () -> Unit = {},
     onChecklistVisibleChange: (Boolean) -> Unit = {},
+    currentUserId: String? = null,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                StitchLoadingSkeletonCard(rows = 2)
+                StitchLoadingSkeletonCard(rows = 3)
+                StitchLoadingSkeletonCard(rows = 2)
             }
             return@Surface
         }
@@ -377,7 +393,14 @@ fun CircleContent(
                     }
                 }
                 if (receivedContent != null) item { receivedContent() }
-                item { CircleHeaderCard(name = circle.name, isOwner = state.isOwner, onLeave = onLeave) }
+                item {
+                    CircleHeaderCard(
+                        name = circle.name,
+                        memberCount = state.members.size,
+                        isOwner = state.isOwner,
+                        onLeave = onLeave,
+                    )
+                }
                 if (checklistVisible) {
                     item {
                         CircleActivationChecklist(
@@ -391,15 +414,26 @@ fun CircleContent(
                     }
                 }
                 item {
-                    Text(
-                        text = stringResource(R.string.circle_members_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics { heading() },
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.circle_members_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f).semantics { heading() },
+                        )
+                        StitchSemanticBadge(
+                            text = stringResource(R.string.circle_member_count_pill, state.members.size),
+                            kind = StitchBadgeKind.SAFE_HOME,
+                        )
+                    }
                 }
                 items(state.members, key = { it.userId }) { member ->
                     MemberRow(
                         member = member,
+                        isSelf = currentUserId != null && member.userId == currentUserId,
                         avatar = memberAvatar?.let { { it(member) } },
                         canRemove = state.isOwner && member.role != "owner",
                         onRemove = { onRemoveMember(member) },
@@ -410,26 +444,53 @@ fun CircleContent(
                         item { AnveErrorNotice(stringResource(res), onDismiss = onDismissShareError) }
                     }
                     item {
-                        Text(
-                            text = stringResource(R.string.circle_invites_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.semantics { heading() },
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.circle_invites_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.weight(1f).semantics { heading() },
+                                )
+                                StitchSemanticBadge(
+                                    text = stringResource(R.string.circle_invites_count_pill, state.invites.size),
+                                    kind = StitchBadgeKind.NEUTRAL,
+                                )
+                            }
+                            Text(
+                                text = stringResource(R.string.circle_invite_section_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
                     }
                     items(state.invites, key = { it.id }) { invite ->
                         InviteRow(invite = invite, busy = state.busy, onRevoke = { revokeInviteId = invite.id }, onShare = { onShareInvite(invite) })
                     }
                     item {
-                        Button(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Button(
+                            onClick = onCreateInvite,
+                            shape = CircleShape,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.circle_invite_create))
                         }
                     }
+                }
+                item {
+                    StitchReassuranceFooter(quote = stringResource(R.string.circle_footer_quote))
                 }
             }
         }
         revokeInviteId?.let { target ->
             AlertDialog(
                 onDismissRequest = { revokeInviteId = null },
+                shape = RoundedCornerShape(24.dp),
                 title = { Text(stringResource(R.string.circle_invite_revoke_title)) },
                 text = { Text(stringResource(R.string.circle_invite_revoke_body)) },
                 confirmButton = {
@@ -439,7 +500,7 @@ fun CircleContent(
                     }) {
                         Text(
                             stringResource(R.string.circle_invite_revoke),
-                            color = MaterialTheme.colorScheme.error,
+                            color = colors.error,
                         )
                     }
                 },
@@ -462,20 +523,24 @@ private fun CircleSetup(
     onRetry: () -> Unit = {},
     receivedContent: (@Composable () -> Unit)? = null,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     var circleName by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(24.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (receivedContent != null) item { receivedContent() }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AnVeFamilySceneIllustration(
-                    modifier = Modifier.fillMaxWidth().height(128.dp),
-                )
+                AnVeIllustratedBanner {
+                    AnVeFamilySceneIllustration(
+                        modifier = Modifier.fillMaxWidth().height(132.dp),
+                    )
+                }
                 Text(
                     text = stringResource(R.string.circle_setup_title),
                     style = MaterialTheme.typography.headlineSmall,
@@ -484,7 +549,7 @@ private fun CircleSetup(
                 Text(
                     text = stringResource(R.string.circle_setup_body),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.onSurfaceVariant,
                 )
             }
         }
@@ -496,16 +561,22 @@ private fun CircleSetup(
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = stringResource(R.string.circle_create_title),
-                        style = MaterialTheme.typography.titleMedium,
+                    AnVeSectionHeader(
+                        icon = Icons.Default.Home,
+                        title = stringResource(R.string.circle_create_title),
                     )
                     OutlinedTextField(
                         value = circleName,
                         onValueChange = { circleName = it },
                         singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
                         label = { Text(stringResource(R.string.circle_name_label)) },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
@@ -513,7 +584,8 @@ private fun CircleSetup(
                     Button(
                         onClick = { onCreate(circleName) },
                         enabled = !busy && circleName.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) {
                         Text(stringResource(R.string.circle_create_button))
                     }
@@ -521,16 +593,24 @@ private fun CircleSetup(
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = stringResource(R.string.circle_join_title),
-                        style = MaterialTheme.typography.titleMedium,
+                    AnVeSectionHeader(
+                        icon = Icons.Default.Groups,
+                        title = stringResource(R.string.circle_join_title),
+                        iconContainerColor = colors.secondaryContainer,
+                        iconContentColor = colors.onSecondaryContainer,
                     )
                     OutlinedTextField(
                         value = code,
                         onValueChange = { code = it.uppercase() },
                         singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
                         label = { Text(stringResource(R.string.circle_code_label)) },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
@@ -538,85 +618,109 @@ private fun CircleSetup(
                     Button(
                         onClick = { onJoin(code) },
                         enabled = !busy && code.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) {
                         Text(stringResource(R.string.invite_view))
                     }
                     Text(
                         text = stringResource(R.string.circle_join_caption),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.onSurfaceVariant,
                     )
                 }
             }
         }
         item {
-            Text(
-                text = stringResource(R.string.circle_privacy_note),
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
+            StitchReassuranceFooter(
+                quote = stringResource(R.string.circle_privacy_note),
+                caption = stringResource(R.string.circle_footer_quote),
             )
         }
     }
 }
 
 @Composable
-private fun CircleHeaderCard(name: String, isOwner: Boolean, onLeave: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, onLeave: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    OutlinedCard(
+        shape = RoundedCornerShape(26.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Column {
-            AnVeFamilySceneIllustration(
-                modifier = Modifier.fillMaxWidth().height(124.dp),
-            )
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            AnVeIllustratedBanner(
+                overlayBadge = {
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.circle_member_count_pill, memberCount),
+                        kind = StitchBadgeKind.SAFE_HOME,
+                        showDot = true,
+                    )
+                },
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                AnVeFamilySceneIllustration(
+                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                )
+            }
+            Column(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    StitchCategoryIconBox(
+                        icon = Icons.Default.Home,
+                        size = 44.dp,
+                        containerColor = colors.secondaryContainer,
+                        contentColor = colors.onSecondaryContainer,
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
+                                name,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            StitchSemanticBadge(
                                 text = if (isOwner) {
                                     stringResource(R.string.circle_role_owner)
                                 } else {
                                     stringResource(R.string.circle_role_member)
                                 },
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.NEUTRAL,
                             )
                         }
+                        Text(
+                            text = stringResource(R.string.circle_hearth_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
                     }
-                    Text(
-                        text = stringResource(R.string.circle_header_warm_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    TextButton(onClick = onLeave) {
+                        Text(
+                            text = stringResource(
+                                if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
+                            ),
+                            color = colors.error,
+                        )
+                    }
                 }
-                TextButton(onClick = onLeave) {
-                    Text(
-                        text = stringResource(
-                            if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
-                        ),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.circle_header_warm_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
             }
         }
     }
@@ -645,6 +749,8 @@ private fun CircleActivationChecklist(
     onOpenLocation: () -> Unit,
     onOpenMap: () -> Unit,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val inviteTitle = stringResource(R.string.circle_activation_invite_title)
     val inviteBody = stringResource(R.string.circle_activation_invite_body)
     val inviteAction = stringResource(R.string.circle_activation_invite_action)
@@ -670,13 +776,23 @@ private fun CircleActivationChecklist(
     // Steps already done collapse away, so the remaining count is the honest
     // progress: "Bước 2/3" appears once the first step has been completed.
     val currentStep = total - steps.size + 1
-    Card(
+    OutlinedCard(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnVeFamilySceneIllustration(modifier = Modifier.fillMaxWidth().height(120.dp))
+            AnVeIllustratedBanner(
+                overlayBadge = {
+                    StitchSemanticBadge(
+                        text = stringResource(R.string.circle_activation_badge),
+                        kind = StitchBadgeKind.IN_TRANSIT,
+                    )
+                },
+            ) {
+                AnVeFamilySceneIllustration(modifier = Modifier.fillMaxWidth().height(120.dp))
+            }
             Text(
                 stringResource(R.string.circle_activation_warm_title),
                 style = MaterialTheme.typography.titleLarge,
@@ -685,12 +801,12 @@ private fun CircleActivationChecklist(
             Text(
                 stringResource(R.string.circle_activation_intro),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.onSurfaceVariant,
             )
             Text(
                 stringResource(R.string.circle_activation_progress, currentStep.coerceAtMost(total), total),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = colors.primary,
             )
             LinearProgressIndicator(
                 progress = { (currentStep - 1).coerceIn(0, total) / total.toFloat() },
@@ -720,9 +836,11 @@ private fun CircleActivationStepRow(
     action: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = colors.surfaceVariant.copy(alpha = 0.42f),
+        shape = RoundedCornerShape(16.dp),
+        color = colors.surfaceContainerLow,
+        border = BorderStroke(1.dp, stitch.hairline),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -734,7 +852,7 @@ private fun CircleActivationStepRow(
                 shape = CircleShape,
                 color = if (primary) colors.primaryContainer else colors.surface,
                 contentColor = if (primary) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                border = if (primary) null else BorderStroke(1.dp, colors.outlineVariant),
+                border = if (primary) null else BorderStroke(1.dp, stitch.hairline),
                 modifier = Modifier.size(30.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -756,7 +874,7 @@ private fun CircleActivationStepRow(
             if (primary) {
                 Button(
                     onClick = action,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Text(actionLabel)
@@ -764,7 +882,7 @@ private fun CircleActivationStepRow(
             } else {
                 OutlinedButton(
                     onClick = action,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Text(actionLabel)
@@ -775,17 +893,24 @@ private fun CircleActivationStepRow(
 }
 
 @Composable
-private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Unit, avatar: (@Composable () -> Unit)? = null) {
+private fun MemberRow(
+    member: MemberDto,
+    isSelf: Boolean,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+    avatar: (@Composable () -> Unit)? = null,
+) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val isOwner = member.role == "owner"
     OutlinedCard(
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier.padding(14.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -794,7 +919,7 @@ private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Uni
             } else {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .background(
                             color = colors.secondaryContainer,
                             shape = CircleShape,
@@ -810,23 +935,34 @@ private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Uni
             }
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(member.displayName, style = MaterialTheme.typography.titleSmall)
-                AnVeStatusPill(
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(member.displayName, style = MaterialTheme.typography.titleSmall)
+                    if (isSelf) {
+                        StitchSemanticBadge(
+                            text = stringResource(R.string.circle_self_badge),
+                            kind = StitchBadgeKind.NEUTRAL,
+                        )
+                    }
+                }
+                StitchSemanticBadge(
                     text = if (isOwner) {
                         stringResource(R.string.circle_role_owner)
                     } else {
                         stringResource(R.string.circle_role_member)
                     },
-                    containerColor = if (isOwner) colors.secondaryContainer else colors.surfaceVariant,
-                    contentColor = if (isOwner) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                    kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.SAFE_HOME,
+                    icon = Icons.Default.CheckCircle,
                 )
             }
             if (canRemove) {
                 OutlinedButton(
                     onClick = onRemove,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
@@ -840,10 +976,11 @@ private fun MemberRow(member: MemberDto, canRemove: Boolean, onRemove: () -> Uni
 @Composable
 private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, onShare: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surface),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -890,7 +1027,7 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
                     onClick = onShare,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -949,6 +1086,34 @@ private fun CircleActivePreview() {
             onLeave = {},
             onRetry = {},
             hasOtherMembers = true,
+            currentUserId = "u1",
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CircleActiveDarkPreview() {
+    AnVeTheme(darkTheme = true) {
+        CircleContent(
+            state = CircleUiState(
+                loading = false,
+                circle = CircleDto("c1", "Gia đình mình", "u1", "2026-10-25T00:00:00Z"),
+                myRole = "owner",
+                members = listOf(
+                    MemberDto("u1", "Mai", "owner", "2026-10-25T00:00:00Z"),
+                    MemberDto("u2", "Bố", "member", "2026-10-25T01:00:00Z"),
+                ),
+            ),
+            onCreate = {},
+            onJoin = {},
+            onCreateInvite = {},
+            onRevokeInvite = {},
+            onRemoveMember = {},
+            onLeave = {},
+            onRetry = {},
+            hasOtherMembers = true,
+            currentUserId = "u1",
         )
     }
 }

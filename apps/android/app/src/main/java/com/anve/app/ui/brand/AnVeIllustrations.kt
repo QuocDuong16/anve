@@ -1,13 +1,18 @@
 package com.anve.app.ui.brand
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -21,20 +26,26 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.anve.app.ui.theme.Amber300
-import com.anve.app.ui.theme.Amber600
-import com.anve.app.ui.theme.Amber800
 import com.anve.app.ui.theme.AnVeTheme
-import com.anve.app.ui.theme.Ink700
-import com.anve.app.ui.theme.Ink800
-import com.anve.app.ui.theme.Ink900
-import com.anve.app.ui.theme.Sand200
-import com.anve.app.ui.theme.Sand50
-import com.anve.app.ui.theme.Teal100
-import com.anve.app.ui.theme.Teal300
-import com.anve.app.ui.theme.Teal400
-import com.anve.app.ui.theme.Teal700
-import com.anve.app.ui.theme.Teal900
+import com.anve.app.ui.theme.LocalStitchColors
+import com.anve.app.ui.theme.BlushSecondary
+import com.anve.app.ui.theme.BlushSecondaryContainer
+import com.anve.app.ui.theme.CreamBackground
+import com.anve.app.ui.theme.CreamSurfaceHigh
+import com.anve.app.ui.theme.CreamSurfaceHighest
+import com.anve.app.ui.theme.EmergencyRose
+import com.anve.app.ui.theme.EmergencyRoseDark
+import com.anve.app.ui.theme.ForestDarkContainer
+import com.anve.app.ui.theme.ForestLight
+import com.anve.app.ui.theme.ForestPrimary
+import com.anve.app.ui.theme.ForestPrimaryContainer
+import com.anve.app.ui.theme.InkDarkBackground
+import com.anve.app.ui.theme.InkDarkContainer
+import com.anve.app.ui.theme.InkPrimary
+import com.anve.app.ui.theme.WarmAmber
+import com.anve.app.ui.theme.WarmAmberContainer
+import com.anve.app.ui.theme.WarmAmberDark
+import com.anve.app.ui.theme.WarmAmberLight
 import com.anve.app.ui.theme.isDarkSurface
 
 private data class IllustrationPalette(
@@ -66,51 +77,51 @@ private fun rememberIllustrationPalette(): IllustrationPalette {
     val isDark = isDarkSurface()
     return if (isDark) {
         IllustrationPalette(
-            sky = Ink800,
-            skySecondary = Teal900,
-            meadow = Color(0xFF1D4039),
-            meadowDeep = Color(0xFF152E29),
-            pathSurface = Amber800,
-            wall = Sand200,
-            roof = Color(0xFFB85D38),
-            door = Amber600,
-            windowGlow = Amber300,
-            windowMuted = Teal900,
-            sun = Amber300,
-            treeFoliage = Color(0xFF2F695E),
-            treeFoliageMuted = Color(0xFF234D45),
-            lineAccent = Teal300,
-            pinFill = Teal300,
-            zoneFill = Teal400.copy(alpha = 0.24f),
-            personOneShirt = Teal300,
-            personTwoShirt = Color(0xFFD67E4A),
-            childShirt = Amber300,
+            sky = InkDarkContainer,
+            skySecondary = ForestDarkContainer,
+            meadow = Color(0xFF233A1B),
+            meadowDeep = Color(0xFF192B13),
+            pathSurface = WarmAmberDark,
+            wall = CreamSurfaceHighest,
+            roof = Color(0xFFB45A46),
+            door = WarmAmber,
+            windowGlow = WarmAmberLight,
+            windowMuted = ForestDarkContainer,
+            sun = WarmAmberLight,
+            treeFoliage = ForestPrimaryContainer,
+            treeFoliageMuted = ForestDarkContainer,
+            lineAccent = ForestLight,
+            pinFill = ForestLight,
+            zoneFill = ForestLight.copy(alpha = 0.24f),
+            personOneShirt = ForestLight,
+            personTwoShirt = EmergencyRoseDark,
+            childShirt = WarmAmberLight,
             skin = Color(0xFFEAC1A3),
-            hair = Ink900,
+            hair = InkDarkBackground,
         )
     } else {
         IllustrationPalette(
-            sky = Teal100.copy(alpha = 0.55f),
-            skySecondary = Color(0xFFFDF0DA),
-            meadow = Color(0xFF6B9E78),
-            meadowDeep = Color(0xFF4F7D5C),
-            pathSurface = Amber300.copy(alpha = 0.78f),
-            wall = Sand50,
-            roof = Color(0xFFC4643E),
-            door = Amber600,
-            windowGlow = Color(0xFFFFD67A),
-            windowMuted = Sand200,
-            sun = Amber600,
-            treeFoliage = Color(0xFF5C8D69),
-            treeFoliageMuted = Teal400.copy(alpha = 0.45f),
-            lineAccent = Teal700,
-            pinFill = Teal700,
-            zoneFill = Teal400.copy(alpha = 0.20f),
-            personOneShirt = Teal700,
-            personTwoShirt = Color(0xFFC86D44),
-            childShirt = Amber600,
+            sky = Color(0xFFE6EFE0),
+            skySecondary = BlushSecondaryContainer,
+            meadow = ForestPrimaryContainer.copy(alpha = 0.78f),
+            meadowDeep = ForestPrimary,
+            pathSurface = WarmAmberContainer.copy(alpha = 0.85f),
+            wall = CreamBackground,
+            roof = BlushSecondary,
+            door = WarmAmber,
+            windowGlow = Color(0xFFFFD885),
+            windowMuted = CreamSurfaceHigh,
+            sun = WarmAmber,
+            treeFoliage = ForestPrimaryContainer,
+            treeFoliageMuted = ForestLight.copy(alpha = 0.55f),
+            lineAccent = ForestPrimary,
+            pinFill = ForestPrimary,
+            zoneFill = ForestPrimaryContainer.copy(alpha = 0.20f),
+            personOneShirt = ForestPrimary,
+            personTwoShirt = EmergencyRose,
+            childShirt = WarmAmber,
             skin = Color(0xFFF0C7AA),
-            hair = Ink700,
+            hair = InkPrimary,
         )
     }
 }
@@ -481,7 +492,7 @@ fun AnVePlacesSceneIllustration(modifier: Modifier = Modifier) {
             top = pinCenter.y - homeSize * 0.48f,
             width = homeSize,
             height = homeSize * 0.92f,
-            palette = palette.copy(roof = Sand50, wall = Sand50, door = palette.pinFill, windowGlow = palette.pinFill),
+            palette = palette.copy(roof = CreamBackground, wall = CreamBackground, door = palette.pinFill, windowGlow = palette.pinFill),
             lit = true,
         )
     }
@@ -924,6 +935,117 @@ fun AnVeDiagnosticsIllustration(
     }
 }
 
+/**
+ * Stitch Screen 53 & 55 tactile safe-zone radar illustration showing a warm paper
+ * neighborhood grid, concentric safety rings, a lit cottage anchor, and family beacon nodes.
+ */
+@Composable
+fun AnVeSafeRadarScene(
+    memberCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val palette = rememberIllustrationPalette()
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        drawRoundRect(
+            color = palette.sky,
+            cornerRadius = CornerRadius(h * 0.14f, h * 0.14f),
+        )
+        // Neighborhood road blocks
+        drawRoundRect(
+            color = palette.meadow.copy(alpha = 0.24f),
+            topLeft = Offset(w * 0.06f, h * 0.14f),
+            size = Size(w * 0.22f, h * 0.30f),
+            cornerRadius = CornerRadius(14f, 14f),
+        )
+        drawRoundRect(
+            color = palette.skySecondary.copy(alpha = 0.72f),
+            topLeft = Offset(w * 0.72f, h * 0.56f),
+            size = Size(w * 0.22f, h * 0.30f),
+            cornerRadius = CornerRadius(14f, 14f),
+        )
+        drawLine(
+            color = palette.wall.copy(alpha = 0.85f),
+            start = Offset(0f, h * 0.72f),
+            end = Offset(w, h * 0.24f),
+            strokeWidth = h * 0.055f,
+        )
+        drawLine(
+            color = palette.pathSurface,
+            start = Offset(w * 0.24f, 0f),
+            end = Offset(w * 0.68f, h),
+            strokeWidth = h * 0.05f,
+        )
+
+        val center = Offset(w * 0.50f, h * 0.52f)
+        drawCircle(color = palette.zoneFill, radius = h * 0.38f, center = center)
+        drawCircle(
+            color = palette.lineAccent.copy(alpha = 0.40f),
+            radius = h * 0.38f,
+            center = center,
+            style = Stroke(
+                width = 2.5f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
+            ),
+        )
+        drawCircle(
+            color = palette.lineAccent.copy(alpha = 0.18f),
+            radius = h * 0.22f,
+            center = center,
+        )
+
+        val homeSize = h * 0.28f
+        drawCozyHouse(
+            left = center.x - homeSize * 0.5f,
+            top = center.y - homeSize * 0.48f,
+            width = homeSize,
+            height = homeSize * 0.92f,
+            palette = palette,
+            lit = true,
+        )
+
+        // Subtle family nodes placed symmetrically within the safe zone
+        val nodeOffsets = listOf(
+            Offset(w * 0.28f, h * 0.38f),
+            Offset(w * 0.74f, h * 0.34f),
+            Offset(w * 0.36f, h * 0.76f),
+            Offset(w * 0.66f, h * 0.74f),
+        )
+        nodeOffsets.take(memberCount.coerceIn(0, nodeOffsets.size)).forEachIndexed { idx, pt ->
+            val color = if (idx % 2 == 0) palette.personOneShirt else palette.personTwoShirt
+            drawCircle(color = palette.wall, radius = h * 0.075f, center = pt)
+            drawCircle(color = color, radius = h * 0.05f, center = pt)
+        }
+    }
+}
+
+/**
+ * Tactile Stitch framing wrapper for scene illustrations with optional floating corner badge.
+ */
+@Composable
+fun AnVeIllustratedBanner(
+    modifier: Modifier = Modifier,
+    overlayBadge: (@Composable BoxScope.() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val stitch = LocalStitchColors.current
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = stitch.cardTactile,
+        border = BorderStroke(1.dp, stitch.hairline),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Box(modifier = Modifier.padding(6.dp)) {
+            content()
+            if (overlayBadge != null) {
+                overlayBadge()
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun IllustrationsLightPreview() {
@@ -937,6 +1059,7 @@ private fun IllustrationsLightPreview() {
             AnVeSharingHeroIllustration(active = true, modifier = Modifier.fillMaxWidth().height(96.dp))
             AnVeJourneySceneIllustration(Modifier.fillMaxWidth().height(84.dp))
             AnVePlacesSceneIllustration(Modifier.fillMaxWidth().height(84.dp))
+            AnVeSafeRadarScene(memberCount = 3, modifier = Modifier.fillMaxWidth().height(96.dp))
             AnVeHistorySceneIllustration(Modifier.fillMaxWidth().height(84.dp))
             AnVeSosCareIllustration(Modifier.fillMaxWidth().height(84.dp))
             AnVeAccountShieldIllustration(Modifier.fillMaxWidth().height(84.dp))

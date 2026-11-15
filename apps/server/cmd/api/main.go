@@ -17,6 +17,7 @@ import (
 	"github.com/QuocDuong16/anve/server/internal/avatars"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
+	"github.com/QuocDuong16/anve/server/internal/contacts"
 	"github.com/QuocDuong16/anve/server/internal/httpapi"
 	"github.com/QuocDuong16/anve/server/internal/httpserver"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
@@ -71,6 +72,7 @@ func run() error {
 	var placeStore *places.Store
 	var sosStore *sos.Store
 	var journeyStore *journeys.Store
+	var contactSvc *contacts.Service
 	var pushGateway notifications.Gateway
 	var pool *pgxpool.Pool
 	if cfg.DatabaseURL != "" {
@@ -117,6 +119,20 @@ func run() error {
 		placeStore = places.NewStore(pool, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		sosStore = sos.NewStore(pool)
 		journeyStore = journeys.NewStore(pool, cfg.LocationRetentionDays)
+		contactNotifier := contacts.NewMultiNotifier(
+			contacts.SMTPConfig{
+				Host:        cfg.SMTPHost,
+				Port:        cfg.SMTPPort,
+				User:        cfg.SMTPUser,
+				Pass:        cfg.SMTPPass,
+				NotifyEmail: cfg.NotifyEmail,
+			},
+			contacts.TelegramConfig{
+				BotToken: cfg.TelegramBotToken,
+				ChatID:   cfg.TelegramChatID,
+			},
+		)
+		contactSvc = contacts.NewService(contacts.NewPGStore(pool), contactNotifier, logger.With("component", "contacts"))
 		if cfg.FCMProjectID != "" {
 			pushGateway, err = notifications.NewFCM(ctx, cfg.FCMProjectID)
 			if err != nil {
@@ -158,6 +174,7 @@ func run() error {
 			Places:                  placeStore,
 			SOS:                     sosStore,
 			Journeys:                journeyStore,
+			Contacts:                contactSvc,
 			PushConfigured:          pushGateway != nil,
 			DB:                      databasePinger,
 			DevLoginAllowedNetworks: cfg.AuthDevLoginNetworks,

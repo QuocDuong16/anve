@@ -41,7 +41,11 @@ import com.anve.app.R
 import com.anve.app.data.api.InvitePreviewDto
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.common.StitchBadgeKind
+import com.anve.app.ui.common.StitchCategoryIconBox
+import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.theme.AnVeTheme
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 
@@ -55,25 +59,23 @@ fun InvitationDialog(
     onCheck: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
     val action = rememberInkOnSurface()
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(26.dp),
         icon = {
-            Surface(
-                shape = CircleShape,
-                color = colors.primaryContainer,
-                contentColor = colors.onPrimaryContainer,
-                modifier = Modifier.size(44.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(22.dp))
-                }
-            }
+            StitchCategoryIconBox(
+                icon = Icons.Default.Email,
+                size = 46.dp,
+                iconSize = 22.dp,
+                containerColor = colors.secondaryContainer,
+                contentColor = colors.onSecondaryContainer,
+            )
         },
         title = { Text(stringResource(R.string.invite_dialog_title)) },
-        containerColor = colors.surface,
+        containerColor = stitch.cardTactile,
         tonalElevation = 0.dp,
         text = {
             Column(
@@ -95,15 +97,28 @@ fun InvitationDialog(
                 }
                 state.preview?.let { preview ->
                     OutlinedCard(
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, colors.outlineVariant),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = androidx.compose.material3.CardDefaults.outlinedCardColors(
+                            containerColor = colors.surfaceContainerLow,
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
                             modifier = Modifier.padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text(preview.circleName, style = MaterialTheme.typography.titleLarge)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(preview.circleName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                StitchSemanticBadge(
+                                    text = stringResource(R.string.circle_role_member),
+                                    kind = StitchBadgeKind.SAFE_HOME,
+                                )
+                            }
                             InvitationDetail(Icons.Default.Email, stringResource(R.string.invite_single_use))
                             val expiry = AnveTime.full(preview.expiresAt, stringResource(R.string.invite_expiry_unreadable_detail))
                             InvitationDetail(Icons.Default.DateRange, stringResource(R.string.invite_expiry_prefix, expiry))
@@ -140,7 +155,7 @@ fun InvitationDialog(
                 state.preview != null && !state.blocked -> Button(
                     onClick = onConfirm,
                     enabled = online && !state.loading && !state.busy,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (dark) colors.primaryContainer else colors.primary,
                         contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,

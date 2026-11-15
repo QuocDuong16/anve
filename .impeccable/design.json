@@ -1,182 +1,115 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-11T06:27:41.100679+00:00",
-  "title": "Design System: AnVề",
+  "generatedAt": "2026-11-16T00:30:00+00:00",
+  "title": "Design System: AnVề (Warm Tactile Minimalism)",
   "extensions": {
     "colorMeta": {
-      "teal-900": {
+      "forest-primary": {
         "role": "primary",
-        "displayName": "Teal 900",
-        "tonalRamp": [
-          "oklch(0.15 0.01807 202.84)",
-          "oklch(0.26 0.03212 202.84)",
-          "oklch(0.38 0.04442 202.84)",
-          "oklch(0.49 0.05070 202.84)",
-          "oklch(0.61 0.05070 202.84)",
-          "oklch(0.72 0.04442 202.84)",
-          "oklch(0.84 0.03212 202.84)",
-          "oklch(0.95 0.01807 202.84)"
-        ]
+        "hex": "#3D602F",
+        "displayName": "Forest Primary"
       },
-      "teal-700": {
-        "role": "primary",
-        "displayName": "Teal 700",
-        "tonalRamp": [
-          "oklch(0.15 0.02384 209.20)",
-          "oklch(0.26 0.04238 209.20)",
-          "oklch(0.38 0.05861 209.20)",
-          "oklch(0.49 0.06689 209.20)",
-          "oklch(0.61 0.06689 209.20)",
-          "oklch(0.72 0.05861 209.20)",
-          "oklch(0.84 0.04238 209.20)",
-          "oklch(0.95 0.02384 209.20)"
-        ]
+      "forest-container": {
+        "role": "primaryContainer",
+        "hex": "#557945",
+        "displayName": "Moss Sage Container"
       },
-      "teal-400": {
-        "role": "primary",
-        "displayName": "Teal 400",
-        "tonalRamp": [
-          "oklch(0.15 0.03089 204.02)",
-          "oklch(0.26 0.05491 204.02)",
-          "oklch(0.38 0.07594 204.02)",
-          "oklch(0.49 0.08668 204.02)",
-          "oklch(0.61 0.08668 204.02)",
-          "oklch(0.72 0.07594 204.02)",
-          "oklch(0.84 0.05491 204.02)",
-          "oklch(0.95 0.03089 204.02)"
-        ]
+      "forest-on-container": {
+        "role": "onPrimaryContainer",
+        "hex": "#DBFFC6",
+        "displayName": "Soft Mint Ink"
       },
-      "teal-100": {
-        "role": "primary",
-        "displayName": "Teal 100",
-        "tonalRamp": [
-          "oklch(0.15 0.01572 203.37)",
-          "oklch(0.26 0.02794 203.37)",
-          "oklch(0.38 0.03864 203.37)",
-          "oklch(0.49 0.04410 203.37)",
-          "oklch(0.61 0.04410 203.37)",
-          "oklch(0.72 0.03864 203.37)",
-          "oklch(0.84 0.02794 203.37)",
-          "oklch(0.95 0.01572 203.37)"
-        ]
-      },
-      "amber-600": {
+      "blush-secondary": {
         "role": "secondary",
-        "displayName": "Amber 600",
-        "tonalRamp": [
-          "oklch(0.15 0.04799 67.03)",
-          "oklch(0.26 0.08530 67.03)",
-          "oklch(0.38 0.11797 67.03)",
-          "oklch(0.49 0.13464 67.03)",
-          "oklch(0.61 0.13464 67.03)",
-          "oklch(0.72 0.11797 67.03)",
-          "oklch(0.84 0.08530 67.03)",
-          "oklch(0.95 0.04799 67.03)"
-        ]
+        "hex": "#695B60",
+        "displayName": "Plum Taupe Secondary"
       },
-      "amber-300": {
-        "role": "secondary",
-        "displayName": "Amber 300",
-        "tonalRamp": [
-          "oklch(0.15 0.03186 72.55)",
-          "oklch(0.26 0.05663 72.55)",
-          "oklch(0.38 0.07833 72.55)",
-          "oklch(0.49 0.08939 72.55)",
-          "oklch(0.61 0.08939 72.55)",
-          "oklch(0.72 0.07833 72.55)",
-          "oklch(0.84 0.05663 72.55)",
-          "oklch(0.95 0.03186 72.55)"
-        ]
+      "blush-container": {
+        "role": "secondaryContainer",
+        "hex": "#F1DDE4",
+        "displayName": "Soft Blush Container"
       },
-      "sand-50": {
-        "role": "neutral",
-        "displayName": "Sand 50",
-        "tonalRamp": [
-          "oklch(0.15 0.00357 81.80)",
-          "oklch(0.26 0.00635 81.80)",
-          "oklch(0.38 0.00878 81.80)",
-          "oklch(0.49 0.01003 81.80)",
-          "oklch(0.61 0.01003 81.80)",
-          "oklch(0.72 0.00878 81.80)",
-          "oklch(0.84 0.00635 81.80)",
-          "oklch(0.95 0.00357 81.80)"
-        ]
+      "blush-on-container": {
+        "role": "onSecondaryContainer",
+        "hex": "#4A3B40",
+        "displayName": "Warm Plum Ink"
       },
-      "sand-200": {
-        "role": "neutral",
-        "displayName": "Sand 200",
-        "tonalRamp": [
-          "oklch(0.15 0.00881 81.12)",
-          "oklch(0.26 0.01566 81.12)",
-          "oklch(0.38 0.02166 81.12)",
-          "oklch(0.49 0.02472 81.12)",
-          "oklch(0.61 0.02472 81.12)",
-          "oklch(0.72 0.02166 81.12)",
-          "oklch(0.84 0.01566 81.12)",
-          "oklch(0.95 0.00881 81.12)"
-        ]
+      "cream-surface": {
+        "role": "surface",
+        "hex": "#FDF9F2",
+        "displayName": "Warm Paper Cream"
       },
-      "ink-900": {
-        "role": "neutral",
-        "displayName": "Ink 900",
-        "tonalRamp": [
-          "oklch(0.15 0.00723 190.48)",
-          "oklch(0.26 0.01285 190.48)",
-          "oklch(0.38 0.01777 190.48)",
-          "oklch(0.49 0.02028 190.48)",
-          "oklch(0.61 0.02028 190.48)",
-          "oklch(0.72 0.01777 190.48)",
-          "oklch(0.84 0.01285 190.48)",
-          "oklch(0.95 0.00723 190.48)"
-        ]
+      "cream-surface-low": {
+        "role": "surfaceContainerLow",
+        "hex": "#F7F3EC",
+        "displayName": "Cream Surface Low"
       },
-      "ink-600": {
-        "role": "neutral",
-        "displayName": "Ink 600",
-        "tonalRamp": [
-          "oklch(0.15 0.00830 192.27)",
-          "oklch(0.26 0.01476 192.27)",
-          "oklch(0.38 0.02041 192.27)",
-          "oklch(0.49 0.02329 192.27)",
-          "oklch(0.61 0.02329 192.27)",
-          "oklch(0.72 0.02041 192.27)",
-          "oklch(0.84 0.01476 192.27)",
-          "oklch(0.95 0.00830 192.27)"
-        ]
+      "cream-surface-mid": {
+        "role": "surfaceContainer",
+        "hex": "#F1EDE7",
+        "displayName": "Cream Surface Mid"
       },
-      "teal-300": {
-        "role": "primary",
-        "displayName": "Teal 300"
+      "cream-surface-high": {
+        "role": "surfaceContainerHigh",
+        "hex": "#EBE8E1",
+        "displayName": "Cream Surface High"
       },
-      "amber-800": {
-        "role": "secondary",
-        "displayName": "Amber 800"
+      "cream-surface-highest": {
+        "role": "surfaceContainerHighest",
+        "hex": "#E6E2DB",
+        "displayName": "Cream Surface Highest"
       },
-      "ink-800": {
-        "role": "neutral",
-        "displayName": "Ink 800"
+      "ink-primary": {
+        "role": "onSurface",
+        "hex": "#1C1C18",
+        "displayName": "Charcoal Organic Ink"
       },
-      "ink-700": {
-        "role": "neutral",
-        "displayName": "Ink 700"
+      "olive-variant": {
+        "role": "onSurfaceVariant",
+        "hex": "#43483E",
+        "displayName": "Olive Variant Ink"
+      },
+      "sage-outline": {
+        "role": "outline",
+        "hex": "#74796D",
+        "displayName": "Sage Outline"
+      },
+      "sage-outline-variant": {
+        "role": "outlineVariant",
+        "hex": "#C3C8BB",
+        "displayName": "Subtle Hairline Border"
+      },
+      "emergency-rose": {
+        "role": "emergency",
+        "hex": "#9E3E56",
+        "displayName": "Emergency Rose"
+      },
+      "emergency-rose-container": {
+        "role": "emergencyContainer",
+        "hex": "#F6E2E9",
+        "displayName": "Emergency Rose Blush Container"
       }
     },
     "typographyMeta": {
+      "display": {
+        "displayName": "Be Vietnam Pro Display / Hero",
+        "purpose": "displayLarge (36sp Bold) and displaySmall (32sp Bold) for splash & landing hero titles."
+      },
       "headline": {
-        "displayName": "Native headline",
-        "purpose": "MaterialTheme.typography.headlineSmall; local Semibold only in Diagnostics."
+        "displayName": "Be Vietnam Pro Headlines",
+        "purpose": "headlineLarge (28sp SemiBold), headlineMedium (22sp SemiBold), headlineSmall (18sp SemiBold) for screen headers and participant titles."
       },
       "title": {
-        "displayName": "Native title",
-        "purpose": "MaterialTheme.typography.titleMedium for section and action headings."
+        "displayName": "Be Vietnam Pro Titles",
+        "purpose": "titleLarge (16sp SemiBold) and titleMedium (14sp Medium) for card titles, places, and member rows."
       },
       "body": {
-        "displayName": "Native body",
-        "purpose": "MaterialTheme.typography.bodyMedium and bodySmall for supporting text."
+        "displayName": "Be Vietnam Pro Body",
+        "purpose": "bodyLarge (16sp), bodyMedium (14sp), bodySmall (12sp) with ~1.45x-1.5x line heights tuned for Vietnamese diacritics."
       },
       "label": {
-        "displayName": "Native control label",
-        "purpose": "Material component default typography."
+        "displayName": "Be Vietnam Pro Labels",
+        "purpose": "labelLarge (14sp SemiBold), labelMedium (12sp SemiBold), labelSmall (11sp Medium) for pills, tabs, and actions."
       }
     },
     "shadows": [],
@@ -188,79 +121,88 @@
       "textUnit": "sp",
       "themeSources": [
         "apps/android/app/src/main/java/com/anve/app/ui/theme/Color.kt",
-        "apps/android/app/src/main/java/com/anve/app/ui/theme/Theme.kt"
+        "apps/android/app/src/main/java/com/anve/app/ui/theme/Theme.kt",
+        "apps/android/app/src/main/java/com/anve/app/ui/theme/Type.kt"
       ],
       "roleMapping": {
         "primary": {
-          "light": "teal-700",
-          "dark": "teal-400"
+          "light": "forest-primary (#3D602F)",
+          "dark": "forest-light (#AAD295)"
         },
         "onPrimary": {
-          "light": "sand-50",
-          "dark": "teal-900"
+          "light": "#FFFFFF",
+          "dark": "#143709"
         },
         "primaryContainer": {
-          "light": "teal-100",
-          "dark": "teal-700"
+          "light": "forest-container (#557945)",
+          "dark": "#2C4E1F"
         },
         "onPrimaryContainer": {
-          "light": "teal-900",
-          "dark": "teal-100"
+          "light": "#DBFFC6",
+          "dark": "#C5EFB0"
         },
         "secondary": {
-          "light": "amber-600",
-          "dark": "amber-300"
+          "light": "blush-secondary (#695B60)",
+          "dark": "#D5C2C8"
         },
         "onSecondary": {
-          "light": "sand-50",
-          "dark": "ink-900"
+          "light": "#FFFFFF",
+          "dark": "#392D32"
         },
         "secondaryContainer": {
-          "light": "amber-300",
-          "dark": "amber-600"
+          "light": "blush-container (#F1DDE4)",
+          "dark": "#514348"
         },
         "onSecondaryContainer": {
-          "light": "ink-900",
-          "dark": "sand-50"
+          "light": "#4A3B40",
+          "dark": "#F1DDE4"
         },
         "background": {
-          "light": "sand-50",
-          "dark": "ink-900"
+          "light": "cream-surface (#FDF9F2)",
+          "dark": "#141410"
         },
         "onBackground": {
-          "light": "ink-900",
-          "dark": "sand-50"
+          "light": "ink-primary (#1C1C18)",
+          "dark": "#E6E2DB"
         },
         "surface": {
-          "light": "sand-50",
-          "dark": "ink-900"
+          "light": "cream-surface (#FDF9F2)",
+          "dark": "#141410"
         },
         "onSurface": {
-          "light": "ink-900",
-          "dark": "sand-50"
+          "light": "ink-primary (#1C1C18)",
+          "dark": "#E6E2DB"
+        },
+        "surfaceContainerLow": {
+          "light": "#F7F3EC",
+          "dark": "#1C1C18"
+        },
+        "surfaceContainerHigh": {
+          "light": "#EBE8E1",
+          "dark": "#2B2A26"
         },
         "surfaceVariant": {
-          "light": "sand-200",
-          "dark": "ink-600"
+          "light": "#E6E2DB",
+          "dark": "#43483E"
         },
         "onSurfaceVariant": {
-          "light": "ink-600",
-          "dark": "sand-200"
+          "light": "#43483E",
+          "dark": "#C3C8BB"
         }
       },
-      "typography": "Inherited Material 3 defaults; no Type.kt or app override in the inspected theme directory.",
-      "shapes": "Inherited Material 3 defaults; CircleShape used for Diagnostics status icon.",
-      "dynamicColor": "Opt-in; disabled by default.",
+      "typography": "Stitch Type.kt scale aligning Material 3 typography tokens with Be Vietnam Pro hierarchy; Be Vietnam Pro loaded via Google Fonts on web landing page and matched natively via Material 3 weights/spacing on Android.",
+      "shapes": "AnVeShapes (8/12/16/24/28dp) plus CircleShape (9999dp) for primary pill CTAs, status pills, and navigation active indicators.",
+      "dynamicColor": "Opt-in; disabled by default to preserve Warm Tactile Minimalism palette.",
       "components": [
         {
           "refersTo": "button-filled",
           "platform": "android-compose",
-          "example": "Button(onClick = onSignIn, enabled = enabled && email.isNotBlank()) { Text(label) }"
+          "example": "Button(onClick = onPrimary, shape = CircleShape) { Text(label) }"
         },
         {
           "refersTo": "button-outlined",
           "platform": "android-compose",
-          "example": "OutlinedButton(onClick = onRetry, enabled = canRetry) { Text(\"Yêu cầu đồng bộ lại\") }"
+          "example": "OutlinedButton(onClick = onRetry, shape = CircleShape) { Text(\"Yêu cầu đồng bộ lại\") }"
         },
         {
           "refersTo": "button-text",
@@ -270,17 +212,17 @@
         {
           "refersTo": "field-outlined",
           "platform": "android-compose",
-          "example": "OutlinedTextField(value = email, onValueChange = onEmailChange, label = { Text(label) }, singleLine = true)"
+          "example": "OutlinedTextField(value = email, onValueChange = onEmailChange, shape = MaterialTheme.shapes.medium, singleLine = true)"
         },
         {
           "refersTo": "navigation-bar",
           "platform": "android-compose",
-          "example": "NavigationBar { NavigationBarItem(selected = selected, onClick = onSelect, icon = icon, label = label) }"
+          "example": "NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) { NavigationBarItem(...) }"
         },
         {
-          "refersTo": "card-outlined",
+          "refersTo": "card-elevated-tonal",
           "platform": "android-compose",
-          "example": "OutlinedCard(colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) { content() }"
+          "example": "Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { content() }"
         },
         {
           "refersTo": "segmented-choice",
@@ -288,114 +230,110 @@
           "example": "SingleChoiceSegmentedButtonRow { SegmentedButton(selected = selected, onClick = onSelect, shape = shape) { Text(label) } }"
         }
       ],
-      "panelLimitations": "Static HTML/CSS illustrations are not native UI previews or Android behavior specifications. No hover, focus, pressed, keyboard or accessibility behavior is synthesized.",
-      "ramps": "Synthesized OKLCH ramps for documentation panels only; not native theme tokens.",
-      "evidence": "Source extraction and approved synthetic comp only. Final emulator review is managed separately; no physical-device validation claimed."
+      "panelLimitations": "Static HTML/CSS illustrations are not native UI previews or Android behavior specifications. Native hover, focus, pressed, keyboard and TalkBack semantics live in Compose.",
+      "evidence": "Synced with DESIGN.md Warm Tactile Minimalism tokens and Stitch project 13521834583655677229."
     }
   },
   "components": [
     {
-      "name": "Filled button",
+      "name": "Filled pill CTA",
       "kind": "button",
       "refersTo": "button-filled",
-      "description": "Filled native action; light-scheme illustration. Static documentation illustration only.",
+      "description": "Primary pill button (CircleShape) in Forest Green (#3D602F) with crisp white label.",
       "html": "<div class=\"ds-native-button-filled\">Đăng nhập</div>",
-      "css": ".ds-native-button-filled { background:#00505A;color:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+      "css": ".ds-native-button-filled { background:#3D602F; color:#FFFFFF; border-radius:9999px; font-family:'Be Vietnam Pro', sans-serif; font-weight:600; white-space:normal; }"
     },
     {
-      "name": "Outlined button",
+      "name": "Outlined pill action",
       "kind": "button",
       "refersTo": "button-outlined",
-      "description": "Native secondary action; enabled state is governed by Compose. Static documentation illustration only.",
+      "description": "Secondary ghost pill with 1dp Sage (#557945) border and transparent/cream fill.",
       "html": "<div class=\"ds-native-button-outlined\">Yêu cầu đồng bộ lại</div>",
-      "css": ".ds-native-button-outlined { border:1px solid #00505A;color:#00505A;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+      "css": ".ds-native-button-outlined { border:1px solid #557945; color:#557945; background:transparent; border-radius:9999px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
     },
     {
       "name": "Text action",
       "kind": "button",
       "refersTo": "button-text",
-      "description": "Native text action with explicit enabled state. Static documentation illustration only.",
+      "description": "Native text action in Forest Primary (#3D602F) with explicit enabled state.",
       "html": "<div class=\"ds-native-button-text\">Xuất báo cáo</div>",
-      "css": ".ds-native-button-text { color:#00505A;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+      "css": ".ds-native-button-text { color:#3D602F; background:#FDF9F2; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
     },
     {
       "name": "Outlined field",
       "kind": "input",
       "refersTo": "field-outlined",
-      "description": "Static field illustration; native keyboard and editing are not simulated. Static documentation illustration only.",
+      "description": "Rounded 16dp outlined input over paper cream surface.",
       "html": "<div class=\"ds-native-field-outlined\">Email · ten@example.com</div>",
-      "css": ".ds-native-field-outlined { border:1px solid #3C4F4E;color:#11201F;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+      "css": ".ds-native-field-outlined { border:1px solid #C3C8BB; color:#1C1C18; background:#F7F3EC; border-radius:16px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
     },
     {
       "name": "Navigation item",
       "kind": "nav",
       "refersTo": "navigation-bar",
-      "description": "Native navigation primitive; no destination count or expanded layout implied. Static documentation illustration only.",
+      "description": "Bottom navigation bar item with active Moss Sage (#557945) pill indicator.",
       "html": "<div class=\"ds-native-navigation-bar\">Vị trí</div>",
-      "css": ".ds-native-navigation-bar { color:#11201F;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+      "css": ".ds-native-navigation-bar { color:#1C1C18; background:#FFFFFF; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
     },
     {
-      "name": "Outlined section",
+      "name": "Warm cream section card",
       "kind": "card",
-      "refersTo": "card-outlined",
-      "description": "Tonal header and content remain native Compose. Static documentation illustration only.",
+      "refersTo": "card-elevated-tonal",
+      "description": "Tactile 24dp card on Cream Low (#F7F3EC) with hairline outline-variant (#C3C8BB) border.",
       "html": "<div class=\"ds-native-card-outlined\">Thu thập vị trí</div>",
-      "css": ".ds-native-card-outlined { border:1px solid #3C4F4E;color:#11201F;background:#FBF7F0; font-family: sans-serif; white-space: normal; }"
+      "css": ".ds-native-card-outlined { border:1px solid #C3C8BB; color:#1C1C18; background:#F7F3EC; border-radius:24px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
     },
     {
       "name": "Segmented choice",
       "kind": "custom",
       "refersTo": "segmented-choice",
-      "description": "Local single-choice control; not a global page composition. Static documentation illustration only.",
-      "html": "<div class=\"ds-native-segmented-choice\">Tổng quan  |  Chi tiết</div>",
-      "css": ".ds-native-segmented-choice { color:#FBF7F0;background:#00505A; font-family: sans-serif; white-space: normal; }"
+      "description": "Single-choice segmented control with Soft Blush (#F1DDE4) or Forest Primary accent.",
+      "html": "<div class=\"ds-native-segmented-choice\">Tổng quan | Chi tiết</div>",
+      "css": ".ds-native-segmented-choice { color:#4A3B40; background:#F1DDE4; border-radius:9999px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
     }
   ],
   "narrative": {
-    "northStar": "AnVề — Warm Illustrated Family Material 3",
-    "overview": "AnVề uses a native Android Material 3 system: deep teal, warm amber, sand surfaces and ink text, extended with an approved Warm Illustrated Family craft layer (AnVeShapes 12/18/24dp, AnVeIllustrations vector scenes, and a 5-tab family shell with Tài khoản header access). Material You remains an explicit opt-in on supported Android versions.\n\nThe interface uses warm Vietnamese text and familiar Compose controls to make voluntary location sharing understandable. State, freshness and uncertainty must be legible without implying that a missing update proves harm.",
+    "northStar": "AnVề — Warm Tactile Minimalism",
+    "overview": "AnVề uses the Stitch Warm Tactile Minimalism design system: Forest Green (#3D602F) primary actions, Moss Sage (#557945) containers and active nav pills, Soft Blush (#F1DDE4) secondary accents, Warm Paper Cream (#FDF9F2) stepped surfaces, Charcoal/Olive Ink (#1C1C18 / #43483E) typography, and Emergency Rose (#9E3E56) SOS surfaces.\n\nThe interface pairs tactile rounded geometry (24dp cards, CircleShape pill buttons) with calm Vietnamese copy so voluntary family safety and location sharing never feels intrusive or alarmist.",
     "keyCharacteristics": [
-      "Native Material 3 components and semantic theme roles.",
-      "Deep teal with warm amber, sand and ink neutrals.",
-      "Vietnamese copy that distinguishes observed state from uncertainty.",
-      "Privacy and user control expressed through explicit actions."
+      "Warm Tactile Minimalism palette: Forest Green, Soft Blush, and Paper Cream across light and dark modes.",
+      "Be Vietnam Pro scale with generous Vietnamese diacritic line heights and Clear Charcoal Ink contrast.",
+      "CircleShape pill buttons and tactile 16dp-24dp rounded cards with subtle hairline borders.",
+      "Consent, capture state, freshness, and emergency controls clearly separated."
     ],
     "rules": [
       {
         "name": "The Paired Roles Rule",
-        "body": "Choose a container and its corresponding content role together; verify the resulting pair in both themes. A role name alone is not proof of contrast.",
+        "body": "Always pair a container and content role together and verify >= 4.5:1 contrast in ThemeContrastTest.",
         "section": "colors"
       },
       {
         "name": "The Native Type Rule",
-        "body": "Use MaterialTheme.typography roles and Android sp scaling; do not copy mockup pixel measurements into Compose text.",
+        "body": "Use MaterialTheme.typography roles from Type.kt and Android sp scaling across all Compose surfaces.",
         "section": "typography"
       },
       {
-        "name": "The Surface Boundary Rule",
-        "body": "Reuse the existing theme and native components. Keep a screen-specific composition in its surface brief unless it has been deliberately adopted across the product.",
+        "name": "The Tactile Card & Pill Rule",
+        "body": "Primary actions use CircleShape pill geometry; cards use stepped cream surfaces with 1dp outlineVariant hairlines and avoid card-inside-card nesting.",
         "section": "layout"
       },
       {
         "name": "The Native State Rule",
-        "body": "Keep Material interaction semantics, disabled states, focus, pressed feedback and accessibility behavior on the real Compose control.",
+        "body": "Preserve Material interaction semantics, loading, empty, error, offline, and TalkBack accessibility on real Compose controls.",
         "section": "components"
       }
     ],
     "dos": [
-      "Do use semantic Material color roles and test their actual light/dark contrast.",
-      "Do use native Compose controls, real Vietnamese text and Android dp/sp units.",
+      "Do use semantic Material color roles and test light/dark contrast.",
+      "Do use native Compose controls, real Vietnamese strings from strings.xml, and Android dp/sp units.",
       "Do preserve explicit unknown, loading, offline and permission states.",
-      "Do keep consent, system permissions, capture state and viewer access distinguishable.",
-      "Do follow the configured comp-first workflow for every UI surface, including Android, and keep the approved surface reference scoped.",
-      "Do verify rendered screens, enlarged text and interactions on an emulator or device."
+      "Do keep consent, system permissions, capture state and viewer access distinguishable."
     ],
     "donts": [
-      "Don't interpret a stale location or missing update as evidence of a person’s safety or danger.",
-      "Don't replace the incumbent palette, typography or native controls during a scoped refinement.",
-      "Don't turn the Diagnostics overview/details layout or its synthetic example values into global rules or runtime evidence.",
-      "Don't imply a report has been shared before the user reviews it and explicitly chooses to share.",
-      "Don't present static documentation previews, source review, APK builds or JVM tests as emulator or physical-device validation."
+      "Don't interpret a stale location or missing update as evidence of a person's safety or danger.",
+      "Don't bypass ThemeContrastTest or pair primaryContainer with unverified light ink.",
+      "Don't imply a report has been shared before explicit user action.",
+      "Don't present local JVM tests or APK builds as emulator or physical-device validation."
     ]
   }
 }

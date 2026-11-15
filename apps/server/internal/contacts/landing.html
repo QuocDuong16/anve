@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AnVề — An toàn gia đình trong tầm tay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream-bg: #FDF9F2;
+      --cream-low: #F7F3EC;
+      --cream-mid: #F1EDE7;
+      --cream-high: #EBE8E1;
+      --cream-highest: #E6E2DB;
+      --forest: #3D602F;
+      --sage: #557945;
+      --on-forest: #FFFFFF;
+      --mint: #DBFFC6;
+      --blush: #F1DDE4;
+      --blush-ink: #4A3B40;
+      --plum: #695B60;
+      --ink: #1C1C18;
+      --olive-ink: #43483E;
+      --outline-var: #C3C8BB;
+      --rose: #9E3E56;
+      --rose-bg: #F6E2E9;
+      --rose-ink: #4A1C28;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-pill: 9999px;
+      --transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--cream-bg);
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(253, 249, 242, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--outline-var);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 70px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--forest);
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--blush);
+      border: 1.5px solid rgba(61, 96, 47, 0.25);
+      display: grid;
+      place-items: center;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-link {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--olive-ink);
+      padding: 8px 12px;
+      border-radius: var(--radius-pill);
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .nav-link:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: var(--radius-pill);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+      min-height: 48px;
+      transition: background-color var(--transition), transform var(--transition), opacity var(--transition);
+    }
+    .btn-pill:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--forest);
+      color: var(--on-forest);
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--sage); }
+    .btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--sage);
+      color: var(--forest);
+    }
+    .btn-secondary:hover { background: var(--cream-high); }
+
+    /* Hero */
+    .hero {
+      padding: 52px 0 36px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .testing-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--blush);
+      color: var(--blush-ink);
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid rgba(105, 91, 96, 0.22);
+      margin-bottom: 18px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--forest);
+      flex-shrink: 0;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .hero-lead {
+      margin: 0 0 22px;
+      font-size: 1.06rem;
+      color: var(--olive-ink);
+      max-width: 56ch;
+    }
+
+    .testing-callout {
+      background: var(--blush);
+      color: var(--blush-ink);
+      border: 1px solid rgba(105, 91, 96, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      font-size: 0.96rem;
+      font-weight: 500;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Tactile Device Preview Card */
+    .preview-card {
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: 28px;
+      padding: 24px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: var(--sage);
+      color: var(--mint);
+    }
+
+    .mini-card {
+      background: var(--cream-bg);
+      border: 1px solid var(--outline-var);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .mini-card.blush {
+      background: var(--blush);
+      color: var(--blush-ink);
+      border-color: rgba(105, 91, 96, 0.22);
+    }
+
+    .mini-card.rose {
+      background: var(--rose-bg);
+      color: var(--rose-ink);
+      border-color: rgba(158, 62, 86, 0.25);
+    }
+
+    .mini-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin: 0 0 2px;
+    }
+    .mini-sub {
+      font-size: 0.84rem;
+      color: var(--olive-ink);
+      margin: 0;
+    }
+    .mini-card.blush .mini-sub { color: var(--blush-ink); }
+    .mini-card.rose .mini-sub { color: var(--rose-ink); }
+
+    /* Pillars */
+    .pillars {
+      padding: 28px 0 36px;
+    }
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+    .pillar-card {
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+    }
+    .pillar-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--blush);
+      color: var(--forest);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .pillar-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .pillar-card p {
+      margin: 0;
+      font-size: 0.92rem;
+      color: var(--olive-ink);
+    }
+
+    /* Contact Section */
+    .contact-section {
+      padding: 24px 0 64px;
+    }
+
+    .contact-shell {
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: 28px;
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    .contact-copy h2 {
+      margin: 0 0 12px;
+      font-size: 1.55rem;
+      font-weight: 700;
+    }
+    .contact-copy p {
+      margin: 0 0 16px;
+      color: var(--olive-ink);
+      font-size: 0.96rem;
+    }
+
+    .channel-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+    .channel-item {
+      background: var(--cream-bg);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      font-size: 0.9rem;
+    }
+    .channel-item strong { color: var(--forest); }
+
+    form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .req { color: var(--rose); }
+
+    input, textarea {
+      width: 100%;
+      font-family: inherit;
+      font-size: 0.95rem;
+      color: var(--ink);
+      background: var(--cream-bg);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    textarea { min-height: 112px; resize: vertical; }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--forest);
+      box-shadow: 0 0 0 3px rgba(61, 96, 47, 0.16);
+    }
+
+    input[aria-invalid="true"], textarea[aria-invalid="true"] {
+      border-color: var(--rose);
+    }
+
+    .field-error {
+      min-height: 18px;
+      font-size: 0.8rem;
+      color: var(--rose);
+      font-weight: 500;
+    }
+
+    .form-feedback {
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      font-size: 0.92rem;
+      font-weight: 500;
+      display: none;
+    }
+    .form-feedback.visible { display: block; }
+    .form-feedback.success {
+      background: var(--sage);
+      color: var(--mint);
+    }
+    .form-feedback.error {
+      background: var(--rose-bg);
+      color: var(--rose-ink);
+      border: 1px solid rgba(158, 62, 86, 0.35);
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #FFFFFF;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-primary.loading .spinner { display: inline-block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      border-top: 1px solid var(--outline-var);
+      padding: 24px 0 36px;
+      color: var(--olive-ink);
+      font-size: 0.88rem;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    @media (max-width: 860px) {
+      .hero-grid, .pillars-grid, .contact-shell, .field-row {
+        grid-template-columns: 1fr;
+      }
+      .nav-link { display: none; }
+      .contact-shell { padding: 22px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#top" aria-label="AnVề Trang chủ">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 108 108" fill="none">
+            <path d="M20 48 L54 21 L88 48" stroke="#3D602F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M47 67 L47 50 C47 45 50 42 54 42 C58 42 61 45 61 50 L61 67 Z" fill="#695B60"/>
+            <path d="M54 68 C54 75 67 76 67 82 C67 86 59 88 53 90" stroke="#557945" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>AnVề</span>
+      </a>
+      <nav class="nav-actions" aria-label="Điều hướng chính">
+        <a class="nav-link" href="#features">Nguyên tắc</a>
+        <a class="nav-link" href="#contact">Liên hệ</a>
+        <a class="btn-pill btn-primary" href="#contact">Trải nghiệm sớm</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="testing-badge">
+            <span class="dot" aria-hidden="true"></span>
+            Thử nghiệm nội bộ · Warm Tactile Minimalism
+          </span>
+          <h1>An tâm kết nối gia đình dựa trên sự đồng thuận</h1>
+          <p class="hero-lead">
+            AnVề giúp các thành viên gia đình chia sẻ vị trí, theo dõi hành trình về nhà và gửi tín hiệu SOS một cách minh bạch, tôn trọng quyền riêng tư và hoàn toàn do người dùng làm chủ.
+          </p>
+          <div class="testing-callout" role="note">
+            AnVe hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.
+          </div>
+          <div class="hero-cta-group">
+            <a class="btn-pill btn-primary" href="#contact">Để lại thông tin liên hệ</a>
+            <a class="btn-pill btn-secondary" href="#features">Tìm hiểu triết lý AnVề</a>
+          </div>
+        </div>
+
+        <aside class="preview-card" aria-label="Xem trước trạng thái ứng dụng AnVề">
+          <div class="preview-header">
+            <strong style="font-size: 1rem;">Gia đình AnVề</strong>
+            <span class="pill-tag">Đang chia sẻ tự nguyện</span>
+          </div>
+          <div class="mini-card">
+            <div>
+              <p class="mini-title">Minh Anh · Vừa cập nhật</p>
+              <p class="mini-sub">Gần điểm an toàn Nhà · Độ chính xác 12m</p>
+            </div>
+            <span class="dot" aria-hidden="true"></span>
+          </div>
+          <div class="mini-card blush">
+            <div>
+              <p class="mini-title">Hành trình về nhà</p>
+              <p class="mini-sub">Đang di chuyển · Dự kiến đến nơi 18:15</p>
+            </div>
+            <strong style="font-size: 0.85rem;">Chủ động</strong>
+          </div>
+          <div class="mini-card rose">
+            <div>
+              <p class="mini-title">SOS Khẩn cấp</p>
+              <p class="mini-sub">Gọi nhanh 113 / 114 / 115 &amp; báo người thân tin cậy</p>
+            </div>
+            <strong style="font-size: 0.85rem;">Sẵn sàng</strong>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="pillars" id="features">
+      <div class="container">
+        <div class="pillars-grid">
+          <article class="pillar-card">
+            <div class="pillar-icon" aria-hidden="true">1</div>
+            <h3>Chia sẻ có đồng thuận rõ ràng</h3>
+            <p>Không theo dõi ngầm. Mọi trạng thái bật/tắt chia sẻ, đối tượng xem và quyền truy cập đều minh bạch ở cả thiết bị lẫn máy chủ.</p>
+          </article>
+          <article class="pillar-card">
+            <div class="pillar-icon" aria-hidden="true">2</div>
+            <h3>Hành trình &amp; Điểm an toàn</h3>
+            <p>Tạo vòng tròn gia đình riêng tư, lưu các địa điểm quen thuộc và thông báo hành trình để cả nhà an tâm mà không làm phiền.</p>
+          </article>
+          <article class="pillar-card">
+            <div class="pillar-icon" aria-hidden="true">3</div>
+            <h3>Ngôn ngữ bình tĩnh, rõ ràng</h3>
+            <p>Phân biệt rạch ròi giữa dữ liệu chậm/mất kết nối với tình huống khẩn cấp; SOS luôn nổi bật dịu mắt và đáng tin cậy.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <div class="container">
+        <div class="contact-shell">
+          <div class="contact-copy">
+            <h2>Kết nối hợp tác &amp; đăng ký thử nghiệm</h2>
+            <p>
+              AnVe hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.
+            </p>
+            <ul class="channel-list">
+              <li class="channel-item"><strong>Trạng thái hiện tại:</strong> Phát triển &amp; Internal Testing trên Android + Go/PostGIS Backend</li>
+              <li class="channel-item"><strong>Đối tượng phù hợp:</strong> Gia đình thử nghiệm sớm, đối tác công nghệ, chuyên gia bảo mật &amp; trải nghiệm người dùng</li>
+              <li class="channel-item"><strong>Phản hồi:</strong> Thông tin của bạn được lưu trữ an toàn và gửi trực tiếp tới nhóm phát triển AnVề</li>
+            </ul>
+          </div>
+
+          <form id="contact-form" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="contact-name">Họ và tên <span class="req">*</span></label>
+                <input id="contact-name" name="name" type="text" maxlength="120" required autocomplete="name" placeholder="Nguyễn Văn A" />
+                <span class="field-error" id="error-name" aria-live="polite"></span>
+              </div>
+              <div class="field">
+                <label for="contact-email">Email <span class="req">*</span></label>
+                <input id="contact-email" name="email" type="email" maxlength="254" required autocomplete="email" placeholder="ten@example.com" />
+                <span class="field-error" id="error-email" aria-live="polite"></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="contact-phone">Số điện thoại (tùy chọn)</label>
+              <input id="contact-phone" name="phone" type="tel" maxlength="40" autocomplete="tel" placeholder="+84 912 345 678" />
+              <span class="field-error" id="error-phone" aria-live="polite"></span>
+            </div>
+
+            <div class="field">
+              <label for="contact-message">Lời nhắn <span class="req">*</span></label>
+              <textarea id="contact-message" name="message" maxlength="2000" required placeholder="Chia sẻ nhu cầu hợp tác hoặc thiết bị Android bạn dự kiến tham gia thử nghiệm sớm..."></textarea>
+              <span class="field-error" id="error-message" aria-live="polite"></span>
+            </div>
+
+            <div id="form-feedback" class="form-feedback" role="status" aria-live="polite"></div>
+
+            <div>
+              <button id="submit-btn" type="submit" class="btn-pill btn-primary">
+                <span class="spinner" aria-hidden="true"></span>
+                <span id="submit-label">Gửi thông tin liên hệ</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>&copy; 2026 AnVề · Family Safety &amp; Consensual Location Sharing</span>
+      <span>Giao diện đồng bộ Stitch — Warm Tactile Minimalism</span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const form = document.getElementById('contact-form');
+      const nameInput = document.getElementById('contact-name');
+      const emailInput = document.getElementById('contact-email');
+      const phoneInput = document.getElementById('contact-phone');
+      const msgInput = document.getElementById('contact-message');
+      const feedback = document.getElementById('form-feedback');
+      const submitBtn = document.getElementById('submit-btn');
+      const submitLabel = document.getElementById('submit-label');
+
+      const errors = {
+        name: document.getElementById('error-name'),
+        email: document.getElementById('error-email'),
+        phone: document.getElementById('error-phone'),
+        message: document.getElementById('error-message'),
+      };
+
+      function setFieldError(input, errEl, message) {
+        errEl.textContent = message;
+        input.setAttribute('aria-invalid', message ? 'true' : 'false');
+      }
+
+      function validate() {
+        let ok = true;
+        const name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const message = msgInput.value.trim();
+
+        if (!name || name.length > 120) {
+          setFieldError(nameInput, errors.name, 'Vui lòng nhập họ tên (1–120 ký tự).');
+          ok = false;
+        } else {
+          setFieldError(nameInput, errors.name, '');
+        }
+
+        const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || email.length > 254 || !emailRe.test(email)) {
+          setFieldError(emailInput, errors.email, 'Vui lòng nhập địa chỉ email hợp lệ.');
+          ok = false;
+        } else {
+          setFieldError(emailInput, errors.email, '');
+        }
+
+        const phoneRe = /^[0-9+()\-\.\s]{6,40}$/;
+        const digitCount = (phone.match(/\d/g) || []).length;
+        if (phone && (!phoneRe.test(phone) || digitCount < 6)) {
+          setFieldError(phoneInput, errors.phone, 'Số điện thoại cần có 6–40 ký tự hợp lệ.');
+          ok = false;
+        } else {
+          setFieldError(phoneInput, errors.phone, '');
+        }
+
+        if (!message || message.length > 2000) {
+          setFieldError(msgInput, errors.message, 'Vui lòng nhập lời nhắn (1–2000 ký tự).');
+          ok = false;
+        } else {
+          setFieldError(msgInput, errors.message, '');
+        }
+
+        return ok;
+      }
+
+      function showFeedback(kind, text) {
+        feedback.className = 'form-feedback visible ' + kind;
+        feedback.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+        feedback.textContent = text;
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        feedback.className = 'form-feedback';
+        feedback.textContent = '';
+
+        if (!validate()) {
+          showFeedback('error', 'Vui lòng kiểm tra lại các trường đang báo lỗi.');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitLabel.textContent = 'Đang gửi thông tin...';
+
+        try {
+          const response = await fetch('/api/v1/contacts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: nameInput.value.trim(),
+              email: emailInput.value.trim(),
+              phone: phoneInput.value.trim(),
+              message: msgInput.value.trim(),
+            }),
+          });
+
+          if (response.ok) {
+            form.reset();
+            [nameInput, emailInput, phoneInput, msgInput].forEach(function (el) {
+              el.setAttribute('aria-invalid', 'false');
+            });
+            showFeedback(
+              'success',
+              'Cảm ơn bạn đã quan tâm đến AnVề! Thông tin liên hệ đã được ghi nhận và chuyển tới đội ngũ phát triển.'
+            );
+            return;
+          }
+
+          let errMsg = 'Không thể gửi thông tin lúc này. Vui lòng thử lại sau.';
+          try {
+            const errJson = await response.json();
+            if (response.status === 400 && errJson && errJson.message) {
+              errMsg = 'Dữ liệu chưa hợp lệ: ' + errJson.message;
+            } else if (response.status === 429) {
+              errMsg = 'Bạn thao tác hơi nhanh. Vui lòng đợi ít phút rồi gửi lại.';
+            } else if (response.status === 503) {
+              errMsg = 'Hệ thống lưu trữ liên hệ đang bảo trì. Vui lòng thử lại sau.';
+            }
+          } catch (_) {}
+          showFeedback('error', errMsg);
+        } catch (_) {
+          showFeedback('error', 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('loading');
+          submitLabel.textContent = 'Gửi thông tin liên hệ';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

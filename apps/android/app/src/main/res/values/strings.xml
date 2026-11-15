@@ -87,7 +87,6 @@
     <string name="home_sharing_on_notice">Bạn đã đồng ý chia sẻ vị trí. Điều này chưa bật theo dõi — hãy mở “Chia sẻ của tôi” để bắt đầu chia sẻ và cấp quyền cho điện thoại.</string>
     <string name="home_sharing_pending_notice">Đã lưu trên điện thoại, đang chờ gửi lên khi có mạng.</string>
     <string name="home_sharing_conflict_notice">Chia sẻ đã thay đổi trên điện thoại khác. Chọn lại trạng thái để xác nhận quyết định mới; vị trí vẫn dừng trên máy này.</string>
-    <string name="home_devices_title">Điện thoại đang đăng nhập</string>
     <string name="home_device_this">Thiết bị này</string>
     <!-- Distinguishes revoking one listed session from signing this device
          out entirely (home_sign_out). -->
@@ -928,4 +927,89 @@
     <string name="tracking_permissions_need_attention">Cần bật thêm</string>
     <string name="sos_hero_title">Cần người thân hỗ trợ ngay?</string>
     <string name="sos_emergency_calls_label">Số khẩn cấp toàn quốc</string>
+
+    <!-- Stitch Warm Tactile Minimalism Extended Copy -->
+    <string name="stitch_badge_safe_home">Ở nhà</string>
+    <string name="stitch_badge_in_transit">Đang di chuyển</string>
+    <string name="stitch_badge_at_place">Tại địa điểm</string>
+    <string name="stitch_badge_delayed">Cập nhật chậm</string>
+    <string name="stitch_uikit_title">AnVề · Bộ giao diện chuẩn</string>
+    <string name="stitch_uikit_subtitle">Hệ thống thành phần Warm Tactile Minimalism</string>
+    <string name="stitch_uikit_sec_badges">1. Nhãn trạng thái ngữ nghĩa</string>
+    <string name="stitch_uikit_sec_pill">2. Thanh trạng thái chia sẻ trực tiếp</string>
+    <string name="stitch_uikit_sec_member">3. Thẻ thành viên gia đình</string>
+    <string name="stitch_uikit_sec_place">4. Thẻ vùng an toàn</string>
+    <string name="stitch_uikit_sec_metrics">5. Chỉ số hành trình</string>
+    <string name="stitch_uikit_sec_timeline">6. Dòng thời gian hành trình</string>
+    <string name="stitch_uikit_sec_states">7. Trạng thái trống &amp; đang tải</string>
+    <string name="stitch_uikit_sec_footer">8. Chân trang an tâm</string>
+
+    <string name="home_privacy_live_pill">Chia sẻ vị trí tự nguyện · Quyền kiểm soát thuộc về bạn</string>
+    <string name="home_profile_verified_member">Tài khoản gia đình đã xác thực</string>
+    <string name="home_profile_family_badge">Gắn kết tự nguyện</string>
+    <string name="home_group_devices_title">Thiết bị &amp; Kết nối định vị</string>
+    <string name="home_group_devices_subtitle">Kiểm tra trạng thái định vị và các phiên thiết bị đang đăng nhập</string>
+    <string name="home_device_count_badge">%1$d thiết bị</string>
+    <string name="home_footer_quote">Mỗi kết nối trên AnVề đều minh bạch, tự nguyện và luôn do bạn làm chủ.</string>
+
+    <string name="map_pulse_title">Nhịp sống gia đình</string>
+    <string name="map_pulse_count">%1$d vị trí gần đây</string>
+    <string name="map_pulse_empty_hint">Khi người thân cho phép bạn xem và chia sẻ vị trí, vị trí mới nhất sẽ hiện ngay tại đây.</string>
+    <string name="map_fallback_radar_badge">Chế độ tóm tắt vị trí · Chờ bản đồ</string>
+    <string name="map_member_action_view">Xem trên bản đồ</string>
+    <string name="map_reassurance_footer">Chia sẻ tự nguyện vì sự an tâm và tình thương gia đình</string>
+    <string name="map_audience_verified_chip">Đang cấp quyền</string>
+    <string name="map_audience_paused_chip">Chưa cấp quyền</string>
+
+    <string name="circle_hearth_subtitle">Ngôi nhà chung · Mọi thành viên tự nguyện kết nối</string>
+    <string name="circle_member_count_pill">%1$d thành viên</string>
+    <string name="circle_self_badge">Bạn</string>
+    <string name="circle_invites_count_pill">%1$d mã chờ</string>
+    <string name="circle_invite_section_hint">Mỗi mã mời chỉ dùng một lần và có thể thu hồi bất kỳ lúc nào.</string>
+    <string name="circle_footer_quote">Sự an tâm bắt đầu từ một lời nhắn nhẹ nhàng và sự đồng thuận của cả nhà.</string>
+    <string name="circle_activation_badge">Hoàn thiện kết nối</string>
+
+    <string name="places_header_title">Địa điểm an tâm</string>
+    <string name="places_smart_protection_badge">Bảo vệ thông minh · Tự động nhận biết vùng</string>
+    <string name="places_list_section_title">Nơi chốn thân quen</string>
+    <string name="places_filter_all">Tất cả</string>
+    <string name="places_filter_mine">Của tôi</string>
+    <string name="places_edit_short">Chi tiết</string>
+    <string name="places_radius_bar_label">Bán kính an toàn: %1$d m</string>
+    <string name="places_metric_total">Địa điểm</string>
+    <string name="places_metric_events">Sự kiện</string>
+    <string name="places_metric_shared">Chia sẻ</string>
+    <string name="places_footer_quote">Mọi nẻo đường về nhà đều có gia đình chờ đón và dõi theo.</string>
+
+    <string name="history_journal_subtitle">Theo dõi lại nhịp bước di chuyển trong ngày một cách bình an</string>
+    <string name="history_metric_points">Điểm ghi nhận</string>
+    <string name="history_metric_delayed">Gửi trễ</string>
+    <string name="history_metric_retention">Ngày lưu giữ</string>
+    <string name="history_summary_safe_banner">Hành trình được ghi lại theo lựa chọn chia sẻ của thành viên</string>
+    <string name="history_footer_quote">Từng chặng đường đi qua đều được giữ riêng tư cho chính bạn và người được chọn.</string>
+
+    <string name="sos_status_ready">Sẵn sàng</string>
+    <string name="sos_status_sending">Đang gửi</string>
+    <string name="sos_banner_subtitle">Gửi tín hiệu cần giúp đỡ tức thì đến người thân đáng tin cậy</string>
+    <string name="sos_hero_subtitle">Không tự động đính kèm vị trí trừ khi bạn đang chia sẻ; ưu tiên liên lạc trực tiếp nếu khẩn cấp.</string>
+    <string name="sos_primary_recipient_badge">Tin cậy</string>
+    <string name="sos_service_police">Cảnh sát</string>
+    <string name="sos_service_fire">Cứu nạn</string>
+    <string name="sos_service_ambulance">Cấp cứu</string>
+    <string name="sos_footer_quote">AnVề luôn đồng hành để lời nhắn cần trợ giúp đến đúng người thân nhanh nhất.</string>
+
+    <string name="tracking_metric_last_fix">Ghi gần nhất</string>
+    <string name="tracking_metric_queue">Chờ gửi</string>
+    <string name="tracking_consent_card_title">Quyền chia sẻ của bạn</string>
+
+    <string name="journey_metric_distance">Khoảng cách ước tính</string>
+    <string name="journey_metric_freshness">Cập nhật vị trí</string>
+    <string name="journey_footer_quote">Đi đến nơi, về đến chốn — luôn có người thân dõi theo chặng đường bình an.</string>
+
+    <string name="diag_metric_fix_age">Mẫu vị trí</string>
+    <string name="diag_metric_queue_count">Hàng đợi</string>
+    <string name="diag_metric_upload_age">Đồng bộ</string>
+
+    <string name="signin_trust_badge">Minh bạch · Tự nguyện · Riêng tư</string>
+    <string name="avatar_studio_badge">Xem trước hiển thị trong nhóm</string>
 </resources>
