@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
+import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
@@ -93,20 +94,37 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(stringResource(R.string.invite_email_section), style = MaterialTheme.typography.titleSmall,
                                 color = rememberInkOnSurface())
+                            // Inline validation so a wrong email surfaces while
+                            // typing, not only when the create call rejects it;
+                            // the controller keeps the same rule as backstop.
+                            val emailInvalid = state.mode == "EMAIL" && state.email.isNotBlank() && !inviteEmailValid(state.email.trim().lowercase())
                             OutlinedTextField(state.email, onEmail, placeholder = { Text(stringResource(R.string.invite_email_placeholder)) },
                                 label = { Text(stringResource(R.string.invite_email_label)) }, singleLine = true, enabled = editable,
+                                isError = emailInvalid,
+                                supportingText = if (emailInvalid) {
+                                    { Text(stringResource(R.string.invite_email_invalid)) }
+                                } else null,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
                                 modifier = Modifier.fillMaxWidth().testTag("invite-email"))
-                            Text(stringResource(R.string.invite_email_note), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
                 item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Outlined.Info, null, tint = rememberInkOnSurface())
-                    Text(if (state.mode == "EMAIL")
-                        stringResource(R.string.invite_email_info)
-                        else stringResource(R.string.invite_link_info),
-                        style = MaterialTheme.typography.bodyMedium)
+                    // The email note explains the same topic as the info line, so
+                    // both read as one info block: a first-time sender otherwise
+                    // parses three stacked explanation blocks before any error.
+                    // The privacy warning below stays separate — its amber surface
+                    // is a different visual signal than info, and merging it here
+                    // would hide that distinction.
+                    if (state.mode == "EMAIL") {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(stringResource(R.string.invite_email_info), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.invite_email_note), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        Text(stringResource(R.string.invite_link_info), style = MaterialTheme.typography.bodyMedium)
+                    }
                 } }
                 item { Surface(Modifier.fillMaxWidth(), color = if (dark) colors.surfaceVariant else colors.secondaryContainer,
                     contentColor = if (dark) colors.onSurfaceVariant else colors.onSecondaryContainer, shape = RoundedCornerShape(12.dp)) {
@@ -136,14 +154,14 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                     }
                 } }
                 if (!online) item { Text(stringResource(R.string.invite_offline)) }
-                state.errorRes?.let { res -> item { Text(stringResource(res), color = MaterialTheme.colorScheme.error) } }
+                state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                 if (state.busy) item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(Modifier.size(24.dp)); Text(stringResource(R.string.invite_busy))
                 } }
             }
             Spacer(Modifier.height(16.dp))
             Button(onClick = if (state.unknown) onCheck else onCreate,
-                enabled = online && !state.busy && (state.unknown || state.mode == "LINK" || state.email.isNotBlank()),
+                enabled = online && !state.busy && (state.unknown || state.mode == "LINK" || inviteEmailValid(state.email.trim().lowercase())),
                 colors = ButtonDefaults.buttonColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
                     contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("invite-submit")) {

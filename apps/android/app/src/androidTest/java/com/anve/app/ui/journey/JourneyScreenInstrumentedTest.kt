@@ -14,6 +14,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -100,6 +101,29 @@ class JourneyScreenInstrumentedTest {
         compose.onNode(hasText("Bắt đầu hành trình") and hasClickAction()).performClick()
         compose.runOnIdle { assertEquals(Triple("home", 60, setOf("mother")), chosen) }
         capture("create-light-actions")
+    }
+
+    @Test fun backWithAnUnsavedDraftAsksBeforeDiscarding() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        compose.setContent { AnVeTheme { JourneyContent(formState(), tracking.copy(online = true), initiallyCreating = true) } }
+        compose.onNode(hasText("Nhà") and hasClickAction()).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.action_back)).performClick()
+        compose.onNodeWithText(context.getString(R.string.places_discard_title)).assertIsDisplayed()
+        capture("discard-dialog-light")
+        // Cancel keeps the typed draft: the dialog closes, the form stays.
+        compose.onNodeWithText(context.getString(R.string.action_cancel)).performClick()
+        compose.onNodeWithText(context.getString(R.string.places_discard_title)).assertDoesNotExist()
+        compose.onNodeWithTag("journey-options").assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.action_back)).performClick()
+        compose.onNodeWithText(context.getString(R.string.places_discard_title)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.places_discard_confirm)).performClick()
+        // Confirm closes the form; the options entry only exists inside it and
+        // the top bar falls back to the screen title (the creating title text
+        // is identical to the journey_start button label, so the tag carries
+        // the assertion).
+        compose.onNodeWithTag("journey-options").assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.journey_title)).assertIsDisplayed()
+        capture("discard-confirmed-light")
     }
 
     @Test fun missingConsentAndTrackingExplainRecoveryAndDisableStart() {

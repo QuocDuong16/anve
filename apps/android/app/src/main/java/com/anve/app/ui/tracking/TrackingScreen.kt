@@ -16,13 +16,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -52,6 +52,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -69,6 +74,7 @@ import com.anve.app.tracking.OperationalState
 import com.anve.app.tracking.TrackingProblem
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 
 private enum class PendingAction { NONE, START, ENABLE_THEN_START, CONSENT_ONLY }
@@ -374,19 +380,22 @@ fun TrackingContent(
     Surface(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            // 72dp bottom clears the shell FAB (56dp container + 16dp gap,
+            // HOME_FAB_CLEARANCE): the Scaffold floats it over secondary-page
+            // content without reserving room, so the last card would sit
+            // under the thumb-zone FAB (same clearance as History/Places).
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // The TRACKING secondary page's top bar already carries the screen
+            // title, so the list opens with the subtitle alone instead of the
+            // heading appearing twice back to back.
             item {
-                Column {
-                    Text(stringResource(R.string.tracking_title), style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.tracking_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    stringResource(R.string.tracking_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             val messageRes = state.messageRes
@@ -398,7 +407,10 @@ fun TrackingContent(
                         ),
                     ) {
                         Column(Modifier.padding(16.dp)) {
-                            Text(stringResource(messageRes), style = MaterialTheme.typography.bodyMedium)
+                            // Polite live region, same as AnveErrorNotice: the
+                            // one-shot result is announced, not shown silently.
+                            Text(stringResource(messageRes), style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                             TextButton(onClick = onDismissMessage) {
                                 Text(stringResource(R.string.tracking_message_dismiss))
                             }
@@ -413,8 +425,9 @@ fun TrackingContent(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         ),
                     ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(message, style = MaterialTheme.typography.bodyMedium)
+                    Column(Modifier.padding(16.dp)) {
+                        Text(message, style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                             TextButton(onClick = onDismissMessage) {
                                 Text(stringResource(R.string.tracking_message_dismiss))
                             }
@@ -535,7 +548,24 @@ private fun TrackingControlCard(
             }
             Text(stateLabel, style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider()
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // The server-consent switch is the product's most consequential
+            // decision, so TalkBack must read 'Đồng ý chia sẻ (máy chủ): …'
+            // + state from ONE focus — row-toggleable with the switch itself
+            // indicative, not an anonymous "bật" (conventions toggleable-row).
+            // heightIn and toggleable sit before any padding so the touch
+            // target covers the whole row (≥48dp).
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .toggleable(
+                        value = status.conflictServerConsent ?: status.consentEnabled,
+                        enabled = enabled,
+                        role = Role.Switch,
+                        onValueChange = onToggleConsent,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.tracking_consent_server_value, consentValue),
@@ -549,7 +579,8 @@ private fun TrackingControlCard(
                 }
                 Switch(
                     checked = status.conflictServerConsent ?: status.consentEnabled,
-                    onCheckedChange = onToggleConsent,
+                    // Indicative only: the row carries the toggle semantics.
+                    onCheckedChange = null,
                     enabled = enabled,
                 )
             }
@@ -749,7 +780,10 @@ private fun DiagnosticsCard(status: TrackingStatus) {
     var expanded by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            TextButton(onClick = { expanded = !expanded }) {
+            // TalkBack announces the disclosure state instead of only the icon
+            // swap; same treatment as the Places notes toggle.
+            val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
+            TextButton(onClick = { expanded = !expanded }, modifier = Modifier.semantics { stateDescription = disclosureState }) {
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = null,

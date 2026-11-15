@@ -157,6 +157,10 @@ Use native `Button`, `OutlinedButton`, `TextButton` and `IconButton`. The filled
 
 Use `Card` and `OutlinedCard` rather than drawing controls into a raster. Diagnostics sections use surface-colored outlined cards, a surface-variant header and native dividers. Its row values use `onSurfaceVariant`. The notice is a state-specific tonal card with explicit text and an action. Semantic pairing and measured contrast take precedence over copying a single source assignment into every container.
 
+**The Failure Notice Rule.** Operation failures render as an `errorContainer` card, through the shared `AnveErrorNotice` wherever the surface needs no extra affordances inside the notice — on screens, in bottom sheets and in dialogs. Bare `error`-colored text is reserved for destructive action labels and for inline cautions about consent conflicts or device and permission state. A notice does not add a second retry control when the surface already carries its own recovery action.
+
+**The Result Notice Rule.** One-shot confirmations (saved, created, revoked, joined) surface as a snackbar on surfaces that carry a snackbar host; a surface without its own host presents the result as a `secondaryContainer` card with an explicit dismiss (Tài khoản, Vị trí). Notices that must stay until the user acts — consent pending or conflict, sync explanations — use the same card shape. Bare primary-colored text is not used for results. A screen that owns its Scaffold keeps its own SnackbarHostState (History, Places, SOS); results posted from tab content inside the home shell reuse the shell host instead of adding another.
+
 ### Inputs / Fields
 
 `OutlinedTextField` is the incumbent field primitive. The inspected sign-in form supplies a native email keyboard, label, single-line behavior and an actual enabled state. Focus, selection, IME and error semantics belong to the native control; there is no extracted custom field CSS or focus ring.

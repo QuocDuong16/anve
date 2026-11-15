@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -45,9 +46,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
@@ -107,7 +111,16 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
         }
     }
     LaunchedEffect(owner, eventId, state.owner) { if (owner != null && state.owner == owner && eventId != null) vm.select(eventId) }
-    if (owner == null || state.owner != owner) return
+    if (owner == null || state.owner != owner) {
+        // Session not re-emitted yet (fresh process or account switch): state
+        // the wait instead of a blank frame, same wording as the account area.
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) { Text(stringResource(R.string.home_checking_account)) }
+        return
+    }
     SosContent(state, vm, permission, pushMessage, onNotifications = { explainPermission = true }, onSystemSettings = {
         val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -147,7 +160,9 @@ private const val DETAIL_CARD_KEY = "detail-card"
 private fun SosCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            // TalkBack heading navigation; same treatment as the other
+            // screens' section titles (Journey, Places, History, Diagnostics).
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
             content()
         }
     }
@@ -174,12 +189,47 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
     val queuedEventId by vm.queuedEventId.collectAsStateWithLifecycle()
 
     val rows = buildList {
-        add(SosRow("title") { Text(stringResource(R.string.sos_title), style = MaterialTheme.typography.headlineSmall) })
+        add(SosRow("title") { Text(stringResource(R.string.sos_title), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }) })
         add(SosRow("emergency-disclaimer") {
             Text(stringResource(R.string.sos_emergency_disclaimer))
         })
-        if (state.loading || state.pending) add(SosRow("progress") { CircularProgressIndicator() })
-        state.errorRes?.let { res -> add(SosRow("error") { AnveErrorNotice(stringResource(res)) }) }
+        add(SosRow("emergency-call") {
+            // The disclaimer asks the user to call the official emergency
+            // numbers, so the dial affordances sit right beside it: ACTION_DIAL
+            // only pre-fills the dialer — AnVề still never places the call.
+            val dialer = LocalContext.current
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Numbers as Int so the %1$d placeholder in sos_call_number
+                // formats without an IllegalFormatConversionException.
+                listOf(113, 114, 115).forEach { number ->
+                    TextButton(
+                        onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.sos_call_number, number)) }
+                }
+            }
+        })
+        if (state.loading || state.pending) add(SosRow("progress") {
+            // A bare spinner says nothing to sight or screen reader alike; same
+            // labeled progress row as History and Places.
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(24.dp))
+                Text(
+                    stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        })
+        state.errorRes?.let { res ->
+            add(SosRow("error") {
+                // The bottom-of-list "Kiểm tra lại" stays as the secondary
+                // affordance, but it sits after a long scroll; the failure read
+                // at the top carries its own adjacent retry so recovery lives
+                // where the message is.
+                AnveErrorNotice(stringResource(res), onRetry = { vm.refresh() })
+            })
+        }
         if (state.offline) add(SosRow("offline") {
             Text(stringResource(R.string.sos_offline_notice))
         })
@@ -220,7 +270,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                         // other; two "Đang chờ mạng" rows must stay
                         // distinguishable on a safety feature.
                         Text(
-                            stringResource(R.string.sos_outbox_row_meta, sosTime(item.recordedAt), item.recipientIds.size),
+                            stringResource(R.string.sos_outbox_row_meta, sosTime(item.recordedAt, stringResource(R.string.journey_time_unknown)), item.recipientIds.size),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -313,7 +363,7 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) {
                         Text(
-                            "$person · ${sosTime(event.recordedAt)} · ${sosState(event.state)}",
+                            "$person · ${sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown))} · ${sosState(event.state)}",
                             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
                         )
                     }
@@ -327,9 +377,9 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                     Text(stringResource(R.string.sos_detail_sender, sender))
                     Text(stringResource(
                         R.string.sos_detail_status,
-                        sosTime(event.recordedAt),
+                        sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown)),
                         sosElapsed(event.recordedAt),
-                        sosTime(event.receivedAt),
+                        sosTime(event.receivedAt, stringResource(R.string.journey_time_unknown)),
                         sosState(event.state),
                     ))
                     if (event.ownerId == owner) {
@@ -359,7 +409,11 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
                                 } else {
                                     Text(statusLine)
                                 }
-                                TextButton(onClick = { revokeRecipient = event.id to recipient.userId }, enabled = !state.pending) { Text(stringResource(R.string.sos_revoke_viewer, person)) }
+                                TextButton(onClick = { revokeRecipient = event.id to recipient.userId }, enabled = !state.pending) {
+                                    // Destructive trigger carries the error color,
+                                    // same as the revoke rows in Home/Circle/Places.
+                                    Text(stringResource(R.string.sos_revoke_viewer, person), color = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                         if (event.state == "ACTIVE") {
@@ -454,6 +508,8 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
         }
     }
 
+    // Sending is the wanted action, not a destruction, so it keeps a filled
+    // primary confirm; only cancel/resolve/revoke below take the error pair.
     if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text(stringResource(R.string.sos_confirm_title)) },
         text = { Text(stringResource(R.string.sos_confirm_body, selected.size)) },
         confirmButton = { Button(onClick = {
@@ -461,20 +517,39 @@ internal fun SosContent(state: SosState, vm: SosViewModel, notificationPermissio
             vm.send(selected); selected = emptySet()
         }) { Text(stringResource(R.string.sos_confirm_send)) } },
         dismissButton = { TextButton(onClick = { confirmSend = false }) { Text(stringResource(R.string.action_cancel)) } })
+    // One dialog serves three kinds with different weight: cancel and resolve
+    // destroy the request, so their confirm follows the app-wide
+    // destructive-confirm pattern (error text + neutral Hủy). Acknowledge is a
+    // positive one-way confirmation from a viewer — the same class as the
+    // journey ARRIVE confirm — and coloring it error would break the semantic
+    // color roles: SOS urgency is not a failure (cf. the emergency-vs-error
+    // rule in DESIGN.md and the HomeScreen SOS FAB comment).
     action?.let { (id, kind) -> AlertDialog(onDismissRequest = { action = null }, title = { Text(when (kind) { "cancel" -> stringResource(R.string.sos_action_cancel_title); "resolve" -> stringResource(R.string.sos_action_resolve_title); else -> stringResource(R.string.sos_action_acknowledge_title) }) },
         text = { Text(stringResource(R.string.sos_action_dialog_body)) },
-        confirmButton = { Button(onClick = { action = null; when (kind) { "cancel" -> vm.cancel(id); "resolve" -> vm.resolve(id); else -> vm.acknowledge(id) } }) { Text(stringResource(R.string.sos_confirm)) } },
+        confirmButton = { TextButton(onClick = { action = null; when (kind) { "cancel" -> vm.cancel(id); "resolve" -> vm.resolve(id); else -> vm.acknowledge(id) } }) {
+            Text(stringResource(R.string.sos_confirm), color = when (kind) {
+                "cancel", "resolve" -> MaterialTheme.colorScheme.error
+                else -> Color.Unspecified
+            })
+        } },
         dismissButton = { TextButton(onClick = { action = null }) { Text(stringResource(R.string.action_cancel)) } }) }
     revokeRecipient?.let { (event, recipient) -> AlertDialog(
         onDismissRequest = { revokeRecipient = null },
         title = { Text(stringResource(R.string.sos_revoke_dialog_title)) },
         text = { Text(stringResource(R.string.sos_revoke_dialog_body)) },
-        confirmButton = { Button(onClick = { revokeRecipient = null; vm.revokeRecipient(event, recipient) }) { Text(stringResource(R.string.sos_revoke)) } },
+        // Revoking a viewer's access is always destructive: the confirm keeps
+        // the error pair while the dismiss stays neutral.
+        confirmButton = { TextButton(onClick = { revokeRecipient = null; vm.revokeRecipient(event, recipient) }) { Text(stringResource(R.string.sos_revoke), color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { revokeRecipient = null }) { Text(stringResource(R.string.action_cancel)) } },
     ) }
 }
 
-private fun sosTime(value: String): String = AnveTime.full(value, value)
+// AnveTime.full already falls back when parsing fails; the fallback comes
+// from the call site because this helper stays pure (no composable resource
+// reads). A parse failure must show the neutral unknown-time copy, never the
+// raw ISO string — same rule HistoryScreen codifies, kept on the
+// highest-stakes surface too.
+private fun sosTime(value: String, fallback: String): String = AnveTime.full(value, fallback)
 
 @Composable
 private fun sosElapsed(value: String): String {

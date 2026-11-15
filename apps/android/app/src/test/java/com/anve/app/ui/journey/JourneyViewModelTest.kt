@@ -1,6 +1,7 @@
 package com.anve.app.ui.journey
 
 import androidx.lifecycle.viewModelScope
+import com.anve.app.R
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.CreateJourneyDto
 import com.anve.app.data.api.JourneyDestinationDto
@@ -23,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -124,6 +126,52 @@ class JourneyViewModelTest {
             assertEquals(false, repository.captured?.automaticArrival)
             assertEquals(0, repository.captured?.staleAfterMinutes)
         } finally { model.visible(false); model.viewModelScope.cancel() }
+    }
+
+    @Test fun `resumePriority marks busy while the read is in flight then unlocks`() = runTest(dispatcher) {
+        sessions.save(session("a"))
+        val reply = CompletableDeferred<JourneyDto>()
+        repository.detail = { _, _ -> withContext(NonCancellable) { reply.await() } }
+        val model = JourneyViewModel(sessions, repository, places, tracking)
+        model.visible(true)
+        try {
+            // Resume holds a network read plus a tracking write; the busy flag
+            // must be observable before that finishes or the tap reads as dead.
+            model.resumePriority("trip-a")
+            assertTrue(model.state.value.busy)
+            reply.complete(journey("a"))
+            awaitUntil { !model.state.value.busy }
+            assertEquals(1, tracking.enables)
+            assertNull(model.state.value.errorRes)
+        } finally { model.visible(false); model.viewModelScope.cancel() }
+    }
+
+    @Test fun `resumePriority reports unconfirmed when the read fails and unlocks busy`() = runTest(dispatcher) {
+        sessions.save(session("a"))
+        val reply = CompletableDeferred<JourneyDto>()
+        repository.detail = { _, _ -> withContext(NonCancellable) { reply.await() } }
+        // A successful refresh clears errorRes by design, and the finally
+        // block fires one; park that follow-up read so the failure notice is
+        // still observable after busy has unlocked.
+        val hold = CompletableDeferred<Unit>()
+        repository.read = { withContext(NonCancellable) { hold.await(); emptyList() } }
+        val model = JourneyViewModel(sessions, repository, places, tracking)
+        model.visible(true)
+        try {
+            model.resumePriority("trip-a")
+            assertTrue(model.state.value.busy)
+            reply.completeExceptionally(ApiException("JOURNEY_UNAVAILABLE", "unavailable", null, 500))
+            awaitUntil { !model.state.value.busy }
+            assertEquals(R.string.journey_priority_unconfirmed, model.state.value.errorRes)
+        } finally {
+            hold.complete(Unit)
+            model.visible(false)
+            model.viewModelScope.cancel()
+        }
+    }
+
+    private suspend fun awaitUntil(condition: () -> Boolean) {
+        while (!condition()) delay(1)
     }
 
     private class Source : JourneyDataSource {

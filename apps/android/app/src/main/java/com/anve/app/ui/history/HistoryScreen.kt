@@ -1,6 +1,6 @@
 package com.anve.app.ui.history
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -55,11 +56,15 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -174,7 +179,16 @@ fun HistoryScreen(container: AppContainer) {
             }
         }
     }
-    if (state.owner != owner || owner == null) return
+    if (state.owner != owner || owner == null) {
+        // Session not re-emitted yet (fresh process or account switch): state
+        // the wait instead of a blank frame, same wording as the account area.
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) { Text(stringResource(R.string.home_checking_account)) }
+        return
+    }
     HistoryContent(state, vm)
 }
 
@@ -184,6 +198,10 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
     var selectedId by remember(state.owner, state.member, state.date) { mutableStateOf<String?>(null) }
     val selected = state.points.firstOrNull { it.eventId == selectedId }
     var deletionScope by remember(state.owner) { mutableStateOf<DeletionScope?>(null) }
+    // Retention decrease pending confirmation, hoisted above the LazyColumn so
+    // it survives list updates; saveable because the guard must not silently
+    // drop on recreation while the dialog is up.
+    var pendingRetentionDays by rememberSaveable { mutableStateOf<Int?>(null) }
     var showActions by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
@@ -402,6 +420,22 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 if (state.points.isEmpty() && !state.loading && state.errorRes == null && !state.mutationPending) {
                     item { Text(stringResource(R.string.history_empty_day), modifier = Modifier.padding(vertical = 12.dp)) }
                 }
+                if (state.points.isNotEmpty()) {
+                    // Teach the tab's primary interaction once, ahead of the
+                    // rows, instead of repeating a touch affordance on every
+                    // row: the rows already carry selectable() plus a
+                    // selection background, but the list as a whole had no
+                    // visible cue. An empty list stays quiet — there is
+                    // nothing there to tap.
+                    item {
+                        Text(
+                            stringResource(R.string.history_hint_select_point),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
                 items(state.points, key = { it.eventId }) { point ->
                     val time = AnveTime.seconds(point.recordedAt, point.recordedAt)
                     val gap = if (point.eventId in gapStarts) stringResource(R.string.history_gap_prefix) else ""
@@ -418,7 +452,15 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         ),
                         Modifier.fillMaxWidth()
                             .defaultMinSize(minHeight = 48.dp)
-                            .clickable { selectedId = point.eventId }
+                            // Selection must not depend on text color alone:
+                            // selectable() carries the state in semantics for
+                            // accessibility services, and the surfaceVariant
+                            // background keeps it visible regardless of hue.
+                            .selectable(selected = point.eventId == selectedId, onClick = { selectedId = point.eventId })
+                            .background(
+                                color = if (point.eventId == selectedId) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                                shape = MaterialTheme.shapes.small,
+                            )
                             .padding(horizontal = 12.dp, vertical = 12.dp),
                         color = if (point.eventId == selectedId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
@@ -427,13 +469,32 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     item {
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(stringResource(R.string.history_retention_title), style = MaterialTheme.typography.titleSmall)
-                                Text(stringResource(R.string.history_retention_days_value, (state.effectiveRetentionDays ?: state.retentionDays)?.toString() ?: "—"))
+                                Text(
+                                    stringResource(R.string.history_retention_title),
+                                    Modifier.semantics { heading() },
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                val currentDays = state.effectiveRetentionDays ?: state.retentionDays
+                                Text(stringResource(R.string.history_retention_days_value, currentDays?.toString() ?: "—"))
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(listOf(1, 7, 30)) { days ->
                                         FilterChip(
                                             selected = state.retentionDays == days,
-                                            onClick = { vm.changeRetention(days) },
+                                            onClick = {
+                                                // Shortening the horizon
+                                                // permanently deletes older
+                                                // history on the server — the
+                                                // same destructive class as the
+                                                // delete actions, which always
+                                                // confirm. Raising it deletes
+                                                // nothing, so it commits in one
+                                                // tap without added friction.
+                                                if (days < (currentDays ?: Int.MAX_VALUE)) {
+                                                    pendingRetentionDays = days
+                                                } else {
+                                                    vm.changeRetention(days)
+                                                }
+                                            },
                                             enabled = !state.mutationPending && state.retentionDays != null,
                                             label = { Text(stringResource(R.string.history_retention_chip_days, days)) },
                                         )
@@ -469,6 +530,25 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 }) { Text(stringResource(R.string.history_delete_confirm), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { deletionScope = null }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
+    // Decrease-only guard for the retention horizon: the dialog blocks the
+    // branch that deletes data and never shows for a raise, mirroring the
+    // delete dialog's destructive-confirm pattern (error-colored confirm plus
+    // a neutral Hủy).
+    pendingRetentionDays?.let { days ->
+        AlertDialog(
+            onDismissRequest = { pendingRetentionDays = null },
+            title = { Text(stringResource(R.string.history_retention_confirm_title)) },
+            text = { Text(stringResource(R.string.history_retention_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingRetentionDays = null
+                    vm.changeRetention(days)
+                }) { Text(stringResource(R.string.history_retention_confirm), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pendingRetentionDays = null }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
 
@@ -510,10 +590,13 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
             onDismissRequest = { showStartTimePicker = false },
             title = { Text(stringResource(R.string.history_start_time_title)) },
             confirmButton = {
+                // Prevents an invalid interval at the source: confirm enables
+                // only when start < end, matching timeInterval's require. The
+                // ViewModel keeps its own error as the backstop.
                 TextButton(onClick = {
                     showStartTimePicker = false
                     vm.selectTimes(timeState.hour * 60 + timeState.minute, state.endMinute)
-                }) { Text(stringResource(R.string.history_pick_confirm)) }
+                }, enabled = timeState.hour * 60 + timeState.minute < state.endMinute) { Text(stringResource(R.string.history_pick_confirm)) }
             },
             dismissButton = { TextButton(onClick = { showStartTimePicker = false }) { Text(stringResource(R.string.action_cancel)) } },
         ) {
@@ -530,10 +613,12 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
             onDismissRequest = { showEndTimePicker = false },
             title = { Text(stringResource(R.string.history_end_time_title)) },
             confirmButton = {
+                // Same source-level prevention as the start picker: end must
+                // stay after start.
                 TextButton(onClick = {
                     showEndTimePicker = false
                     vm.selectTimes(state.startMinute, timeState.hour * 60 + timeState.minute)
-                }) { Text(stringResource(R.string.history_pick_confirm)) }
+                }, enabled = state.startMinute < timeState.hour * 60 + timeState.minute) { Text(stringResource(R.string.history_pick_confirm)) }
             },
             dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text(stringResource(R.string.action_cancel)) } },
         ) {

@@ -17,6 +17,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -97,6 +98,28 @@ class CircleViewModelTest {
         assertEquals(R.string.circle_joined, vm.state.value.messageRes)
     }
 
+    /**
+     * Consuming a one-shot result must not discard an open failure: the
+     * snackbar acknowledges the message, while the error notice stays until
+     * its own retry/dismiss acts on it.
+     */
+    @Test
+    fun `consumeMessage clears the result but keeps the failure`() = runBlocking {
+        enqueueMyCircle(name = null)
+        val vm = CircleViewModel(repository, scope)
+        awaitUntil { !vm.state.value.loading }
+        server.enqueue(MockResponse().setResponseCode(503))
+        val joined = CircleMembershipDto(CircleDto("c1", "Nhà mình", "u1", "now"), MembershipDto("c1", "u2", "member", "now"))
+        vm.acceptJoined("u2", joined)
+        awaitUntil { vm.state.value.errorRes != null }
+        assertEquals(R.string.circle_joined, vm.state.value.messageRes)
+
+        vm.consumeMessage()
+
+        assertNull(vm.state.value.messageRes)
+        assertEquals(R.string.circle_members_failed, vm.state.value.errorRes)
+    }
+
     @Test
     fun `active circle loads members and owner invites`() = runBlocking {
         enqueueMyCircle()
@@ -121,6 +144,63 @@ class CircleViewModelTest {
         assertTrue(vm.state.value.isOwner)
         assertEquals(2, vm.state.value.members.size)
         assertEquals("ABCD234567", vm.state.value.invites.first().code)
+    }
+
+    /**
+     * The pull-to-refresh flag is set synchronously before the first network
+     * hop and stays on across the circle snapshot, clearing only when the
+     * refreshed member list lands — the spinner must not stop while members
+     * are still arriving.
+     */
+    @Test
+    fun `refresh keeps the spinner until the refreshed member list lands`() = runBlocking {
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(repository, scope)
+        awaitUntil { server.requestCount >= 3 }
+
+        enqueueMyCircle()
+        vm.refresh()
+        // The flag is set before the launch, so it reads true immediately even
+        // though the refresh's network calls are still in flight.
+        assertTrue(vm.state.value.refreshing)
+
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+        awaitUntil { !vm.state.value.refreshing }
+
+        // Same-circle refresh: the member list of c1 is kept and re-rendered,
+        // not blanked between the snapshot and the member response.
+        assertEquals("c1", vm.state.value.circle?.id)
+        assertEquals("Mai", vm.state.value.members.single().displayName)
+        assertTrue(vm.state.value.membersLoaded)
+    }
+
+    @Test
+    fun `refresh clears the spinner when the circle fetch fails`() = runBlocking {
+        enqueueMyCircle()
+        server.enqueue(MockResponse().setBody("""{"members":[]}"""))
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(repository, scope)
+        awaitUntil { server.requestCount >= 3 }
+
+        server.enqueue(MockResponse().setResponseCode(503))
+        vm.refresh()
+        awaitUntil { vm.state.value.errorRes != null }
+
+        assertEquals(R.string.circle_load_failed, vm.state.value.errorRes)
+        assertFalse(vm.state.value.refreshing)
     }
 
     /**
@@ -245,5 +325,80 @@ class CircleViewModelTest {
         assertEquals("/api/v1/circles/c1/invites", invites.path)
         assertEquals("/api/v1/circles/c1/leave", leave.path)
         assertTrue(leave.body.readUtf8().contains("true"))
+    }
+
+    /**
+     * A mutation supersedes a still-open failure: removeMember resets the
+     * stale error before running, so its one-shot result survives the
+     * snackbar effect's error guard instead of being dropped forever.
+     */
+    @Test
+    fun `removeMember success supersedes an open failure`() = runBlocking {
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[
+                     {"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"},
+                     {"userId":"u3","displayName":"Bố","role":"member","joinedAt":"2026-10-25T01:00:00Z"}]}""".replace("\n", ""),
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(repository, scope)
+        // Settle the initial load's invites GET before feeding the server: a
+        // request issued before it lands would race it for the queued
+        // responses and read the wrong one.
+        awaitUntil { server.requestCount >= 3 }
+
+        // A failed refresh leaves the failure notice open, the way any failed
+        // action would before the removal is attempted.
+        server.enqueue(MockResponse().setResponseCode(503))
+        vm.refresh()
+        awaitUntil { vm.state.value.errorRes == R.string.circle_load_failed }
+
+        server.enqueue(MockResponse().setResponseCode(204))
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+        vm.removeMember("u3")
+        awaitUntil { vm.state.value.messageRes != null }
+
+        assertNull(vm.state.value.errorRes)
+        assertEquals(R.string.circle_member_removed, vm.state.value.messageRes)
+        assertFalse(vm.state.value.busy)
+    }
+
+    /**
+     * A failed removal maps to the action-specific sentence — no contract 409
+     * code applies to an unmapped failure — and clears busy so the owner can
+     * retry.
+     */
+    @Test
+    fun `removeMember failure shows the action-specific message`() = runBlocking {
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[
+                     {"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"},
+                     {"userId":"u3","displayName":"Bố","role":"member","joinedAt":"2026-10-25T01:00:00Z"}]}""".replace("\n", ""),
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(repository, scope)
+        // Settle the initial load's invites GET before feeding the server: if
+        // the removal raced it for the queued responses, the DELETE would take
+        // the invites response, "succeed", and the failure would never land.
+        awaitUntil { server.requestCount >= 3 }
+
+        server.enqueue(MockResponse().setResponseCode(503))
+        vm.removeMember("u3")
+        awaitUntil { vm.state.value.errorRes != null }
+
+        assertEquals(R.string.circle_error_remove_member_failed, vm.state.value.errorRes)
+        assertFalse(vm.state.value.busy)
     }
 }

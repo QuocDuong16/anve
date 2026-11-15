@@ -17,9 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
@@ -64,8 +65,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -81,6 +84,7 @@ import com.anve.app.data.sos.pushDestination
 import com.anve.app.ui.avatar.AvatarEditorHost
 import com.anve.app.ui.avatar.AvatarImage
 import com.anve.app.ui.circle.CircleScreen
+import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.diagnostics.DiagnosticsScreen
 import com.anve.app.ui.history.HistoryScreen
 import com.anve.app.ui.map.LiveMapScreen
@@ -197,6 +201,11 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     // own state, so the "choose viewers" step hides once the user has gone to
     // the map. Held here (not in CircleScreen) so it survives tab switches.
     var circleAudienceStepHidden by remember { mutableStateOf(false) }
+    // Whether the circle tab's activation checklist is on screen right now.
+    // Derived from CircleScreen's own state — the screen re-reports it on
+    // every recomposition via callback — so a plain remember (not
+    // rememberSaveable) is enough: there is no independent state to restore.
+    var circleChecklistVisible by remember { mutableStateOf(false) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
     LaunchedEffect(invitation?.id, invitation?.owner, session?.userId) {
@@ -224,6 +233,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         sosReturnPage = null
         selectedInvitation = null
         circleAudienceStepHidden = false
+        circleChecklistVisible = false
         prePushNav = null
         tab = HomeTab.CIRCLE
     }
@@ -299,6 +309,11 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             onBack = { showJourneys = false },
             onPlaces = { showJourneys = false; secondaryPage = null; tab = HomeTab.PLACES },
             onLocation = { showJourneys = false; secondaryPage = HomeSecondaryPage.TRACKING },
+            // The overlay Scaffold carries its own SOS FAB; opening SOS leaves
+            // the overlay (the journey keeps running server-side), and the
+            // return lands on the shell tabs.
+            onOpenMap = { showJourneys = false; secondaryPage = null; tab = HomeTab.MAP },
+            onOpenSos = { showJourneys = false; sosReturnPage = null; selectedSos = null; secondaryPage = HomeSecondaryPage.SOS },
             journeyId = selectedJourney,
         )
         return
@@ -308,7 +323,6 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         DiagnosticsScreen(container = container, onBack = { showDiagnostics = false })
         return
     }
-    val sosOpenLabel = stringResource(R.string.sos_open)
     val returnFromSecondaryPage = {
         secondaryPage = if (secondaryPage == HomeSecondaryPage.SOS) sosReturnPage else null
         sosReturnPage = null
@@ -316,8 +330,9 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     }
     BackHandler(enabled = secondaryPage != null, onBack = returnFromSecondaryPage)
     Scaffold(
-        // Hosts the push deep-link snackbar; nothing else in the shell posts
-        // here today, so the host stays otherwise default.
+        // Hosts the push deep-link snackbar plus one-shot results posted from
+        // tab content (Nhóm) that has no Scaffold of its own; screens owning
+        // a Scaffold (History, Places, SOS) keep their own hosts (DESIGN.md).
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             secondaryPage?.let { page ->
@@ -325,7 +340,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     title = { Text(stringResource(page.titleRes)) },
                     navigationIcon = {
                         IconButton(onClick = returnFromSecondaryPage) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     },
                 )
@@ -343,6 +358,9 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                             selectedSos = null
                         },
                         icon = {
+                            // The label below already announces the tab; an
+                            // icon contentDescription would make TalkBack read
+                            // the same text twice (M3 labeled-destination rule).
                             Icon(
                                 imageVector = when (entry) {
                                     HomeTab.CIRCLE -> Icons.Default.Groups
@@ -350,7 +368,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                     HomeTab.HISTORY -> Icons.Default.History
                                     HomeTab.PLACES -> Icons.Default.Place
                                 },
-                                contentDescription = stringResource(entry.labelRes),
+                                contentDescription = null,
                             )
                         },
                         label = { Text(stringResource(entry.labelRes)) },
@@ -363,8 +381,9 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                 // SOS is urgent-but-not-a-failure, so it uses the emergency
                 // amber role instead of error.
                 val emergency = LocalEmergencyColors.current
+                // The visible 'SOS' text is the accessible name; a separate
+                // contentDescription would make TalkBack read it twice.
                 ExtendedFloatingActionButton(
-                    modifier = Modifier.semantics { contentDescription = sosOpenLabel },
                     onClick = {
                         sosReturnPage = secondaryPage
                         selectedSos = null
@@ -385,7 +404,13 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     onOpenDiagnostics = { showDiagnostics = true },
                     onOpenJourney = { selectedJourney = null; showJourneys = true },
                 )
-                HomeSecondaryPage.ACCOUNT -> AccountContent(container = container)
+                HomeSecondaryPage.ACCOUNT -> AccountContent(
+                    container = container,
+                    // secondaryPage is local to HomeScreen, so the hop to the
+                    // location screen must travel as a parameter; writing it
+                    // from inside AccountContent would not compile.
+                    onOpenTracking = { secondaryPage = HomeSecondaryPage.TRACKING },
+                )
                 HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
                 null -> Column(Modifier.fillMaxSize()) {
                     // Vị trí (consent + capture — the product's core control)
@@ -394,8 +419,12 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     // every tab, not only Nhóm where the activation checklist
                     // used to be the only pointer. The map tab is exempt: it
                     // already carries its own status chip and audience overlay,
-                    // and the card would eat viewing space there.
-                    if (tab != HomeTab.MAP) {
+                    // and the card would eat viewing space there. On Nhóm the
+                    // activation checklist already carries the same pointers
+                    // ("Mở màn Vị trí" / "Tạo lời mời"), so showing both blocks
+                    // stacks two decision points for one task — the card hides
+                    // while the checklist is visible.
+                    if (tab != HomeTab.MAP && !(tab == HomeTab.CIRCLE && circleChecklistVisible)) {
                         SharingSettingsCard(
                             onOpenTracking = { secondaryPage = HomeSecondaryPage.TRACKING },
                             onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
@@ -416,8 +445,22 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                     selectedSos = null
                                 },
                                 audienceStepHidden = circleAudienceStepHidden,
+                                // Results and checklist visibility live above:
+                                // the tab content posts into the shell host and
+                                // reports whether the checklist replaced the
+                                // sharing card.
+                                snackbarHostState = snackbarHostState,
+                                onActivationChecklistVisibleChange = { circleChecklistVisible = it },
                             )
-                            HomeTab.MAP -> LiveMapScreen(container = container)
+                            HomeTab.MAP -> LiveMapScreen(
+                                container = container,
+                                // Navigation state lives here, not in the map
+                                // tab, so the tab's pointers to the sharing and
+                                // account screens travel as parameters.
+                                onOpenLocation = { secondaryPage = HomeSecondaryPage.TRACKING },
+                                onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
+                                onOpenCircle = { secondaryPage = null; tab = HomeTab.CIRCLE },
+                            )
                             HomeTab.HISTORY -> HistoryScreen(container = container)
                             HomeTab.PLACES -> PlacesScreen(
                                 container = container,
@@ -451,7 +494,7 @@ private fun SharingSettingsCard(onOpenTracking: () -> Unit, onOpenAccount: () ->
 }
 
 @Composable
-private fun AccountContent(container: AppContainer) {
+private fun AccountContent(container: AppContainer, onOpenTracking: () -> Unit) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
@@ -478,7 +521,16 @@ private fun AccountContent(container: AppContainer) {
         onSignOut = { showSignOutDialog = true },
         onDeleteAccount = { showDeleteDialog = true },
         onRetry = viewModel::refresh,
+        // One result batch per user action: HomeViewModel.consumeMessage
+        // clears messageRes, consentMessage and errorRes together, so
+        // dismissing any notice acknowledges the whole batch.
+        onDismissMessage = viewModel::consumeMessage,
+        onOpenTracking = onOpenTracking,
         avatarMessageRes = avatar.messageRes,
+        // The controller owns this message: complete() sets it and only a new
+        // operation would overwrite it, so acknowledge it here (same batch
+        // semantics as onDismissMessage above).
+        onDismissAvatarMessage = avatarController::consumeMessage,
         avatarContent = {
             val avatarEditLabel = stringResource(R.string.home_avatar_edit_desc)
             Box(Modifier.size(64.dp).clickable(role = Role.Button, onClick = avatarController::open)
@@ -532,9 +584,16 @@ fun HomeContent(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onRetry: () -> Unit,
+    onDismissMessage: () -> Unit = {},
+    onOpenTracking: () -> Unit = {},
     avatarContent: (@Composable () -> Unit)? = null,
     avatarMessageRes: Int? = null,
+    onDismissAvatarMessage: () -> Unit = {},
 ) {
+    // Revocation is destructive and server-side, so it waits for an explicit
+    // confirm; holding the pending device id here (not inside a LazyColumn
+    // item) keeps it alive across scroll and process death.
+    var revokeDeviceId: String? by rememberSaveable(stateSaver = nullableStringSaver) { mutableStateOf<String?>(null) }
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -561,86 +620,49 @@ fun HomeContent(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            // 72dp bottom = FAB container 56dp + 16dp gap (HOME_FAB_CLEARANCE):
+            // the shell Scaffold floats the FAB over the content without
+            // reserving room for it, so the last action row would otherwise
+            // sit under the thumb-zone FAB (same clearance as History/Places).
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             val errorRes = state.errorRes
             if (errorRes != null) {
                 item {
-                    // Same error presentation as the sign-in screen: a
-                    // container card, not bare text — with the retry at hand,
-                    // since the failure can be a refresh while old data is
-                    // still on screen.
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        ),
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = stringResource(errorRes),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(stringResource(R.string.action_retry))
-                            }
-                        }
-                    }
+                    // The app-wide failure presentation (AnveErrorNotice)
+                    // keeps the retry at hand: the failure can be a refresh
+                    // while old data is still on screen. Dismissing shares the
+                    // message consumer — the same result batch acknowledged.
+                    AnveErrorNotice(
+                        stringResource(errorRes),
+                        onRetry = onRetry,
+                        onDismiss = onDismissMessage,
+                    )
                 }
             }
             val messageRes = state.messageRes
-            if (messageRes != null) {
-                item {
-                    // Same notice presentation as the tracking message card.
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Text(
-                            text = stringResource(messageRes),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                }
-            }
             val consentMessage = state.consentMessage
-            if (consentMessage != null) {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Text(
-                            text = consentMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
+            // One result batch, one acknowledgment card: consumeMessage clears
+            // messageRes, consentMessage and errorRes together, so per-notice
+            // cards let a single batch stack up to four 'Đã hiểu' buttons on
+            // this screen. The first non-null notice shows alone — the rest
+            // queue behind it and surface once it is acknowledged — and the
+            // priority order is deterministic because the state carries no
+            // timestamps. The avatar notice belongs to the AvatarController,
+            // so its card acknowledges through that consumer, not the batch.
+            when {
+                messageRes != null -> item {
+                    ResultNoticeCard(stringResource(messageRes), onDismissMessage)
+                }
+                consentMessage != null -> item {
+                    ResultNoticeCard(consentMessage, onDismissMessage)
+                }
+                avatarMessageRes != null -> item {
+                    ResultNoticeCard(stringResource(avatarMessageRes), onDismissAvatarMessage)
                 }
             }
             item { ProfileCard(user = user, onRename = onRename, avatarContent = avatarContent) }
-            avatarMessageRes?.let { res ->
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Text(
-                            text = stringResource(res),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                }
-            }
             item {
                 ConsentCard(
                     user = user,
@@ -649,6 +671,7 @@ fun HomeContent(
                     conflict = state.consentConflict,
                     busy = state.consentBusy,
                     onToggle = onToggleSharing,
+                    onOpenLocation = onOpenTracking,
                 )
             }
             item {
@@ -660,7 +683,7 @@ fun HomeContent(
             items(state.devices, key = { it.id }) { device ->
                 DeviceRow(
                     device = device,
-                    onRevoke = { onRevokeDevice(device.id) },
+                    onRevoke = { revokeDeviceId = device.id },
                 )
             }
             item {
@@ -683,6 +706,50 @@ fun HomeContent(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
+            }
+        }
+    }
+    // The dialog sits outside the Surface so the loading and no-user early
+    // returns above cannot unmount it while a confirmation is open.
+    revokeDeviceId?.let { deviceId ->
+        RevokeSessionDialog(
+            onConfirm = {
+                onRevokeDevice(deviceId)
+                revokeDeviceId = null
+            },
+            onDismiss = { revokeDeviceId = null },
+        )
+    }
+}
+
+/**
+ * The result-notice presentation on this screen (DESIGN.md Result Notice
+ * Rule: a surface without a snackbar host shows the result as a
+ * secondaryContainer card with an explicit dismiss). Every result notice —
+ * message, consent and avatar — shares this one shape, so the merged batch
+ * card reads exactly like the single-notice card it replaced.
+ */
+@Composable
+private fun ResultNoticeCard(text: String, onDismiss: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                // Same polite live region as AnveErrorNotice: a one-shot result
+                // is announced instead of sitting silent for TalkBack users.
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.action_dismiss))
             }
         }
     }
@@ -737,10 +804,24 @@ private fun ConsentCard(
     conflict: Boolean,
     busy: Boolean,
     onToggle: (Boolean) -> Unit,
+    onOpenLocation: (() -> Unit)? = null,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // The consent switches on Vị trí and Tài khoản decide whether the
+            // server may hold this family's location — the product's most
+            // consequential control. Row-toggleable so TalkBack reads the
+            // consent title + state from ONE focus; a bare switch would read
+            // an anonymous "bật" with no name (conventions toggleable-row).
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                    value = requestedEnabled,
+                    enabled = !busy,
+                    role = Role.Switch,
+                    onValueChange = onToggle,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.home_sharing_title),
@@ -755,7 +836,9 @@ private fun ConsentCard(
                 Switch(
                     checked = requestedEnabled,
                     enabled = !busy,
-                    onCheckedChange = onToggle,
+                    // Indicative only: the row above carries the toggle so the
+                    // switch does not double-register as a toggleable node.
+                    onCheckedChange = null,
                 )
             }
             if (conflict) {
@@ -781,6 +864,17 @@ private fun ConsentCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
+                // Consent turned on used to dead-end here; the one screen
+                // where the shared location actually appears is a hop away,
+                // so offer it while the state is fresh.
+                onOpenLocation?.let { onOpenLocation ->
+                    TextButton(
+                        onClick = onOpenLocation,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.action_open_location))
+                    }
+                }
             }
         }
     }
@@ -822,7 +916,10 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onRevoke) {
+            // The session in use cannot revoke itself: confirming it would
+            // sign this very device out and throw the user out of the app
+            // mid-settings. Other devices revoke, and only via the dialog.
+            TextButton(onClick = onRevoke, enabled = device.session?.current != true) {
                 Text(
                     stringResource(R.string.home_device_revoke),
                     color = MaterialTheme.colorScheme.error,
@@ -883,6 +980,28 @@ private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
             TextButton(onClick = onConfirm) {
                 Text(
                     stringResource(R.string.home_delete_confirm),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    // Same destructive-confirm pattern as sign-out and account deletion: a
+    // server-side action that ends access must be named before it runs.
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.home_device_revoke_title)) },
+        text = { Text(stringResource(R.string.home_device_revoke_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    stringResource(R.string.home_device_revoke),
                     color = MaterialTheme.colorScheme.error,
                 )
             }

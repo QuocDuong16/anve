@@ -24,9 +24,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -34,10 +36,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +58,7 @@ import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.InviteLink
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
+import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.rememberInkOnSurface
 import kotlinx.coroutines.CancellationException
@@ -77,6 +83,11 @@ fun CircleScreen(
     onOpenLocation: () -> Unit = {},
     onOpenMap: () -> Unit = {},
     audienceStepHidden: Boolean = false,
+    // The tab posts one-shot results into the host shell's snackbar (this
+    // content owns no Scaffold); passing the host state down keeps a single
+    // snackbar surface above the bottom bar instead of stacking hosts.
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onActivationChecklistVisibleChange: (Boolean) -> Unit = {},
 ) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
@@ -116,9 +127,25 @@ fun CircleScreen(
             onInvitationConsumed()
         }
     }
+    // The created-notice is a one-shot result, so it surfaces through the host
+    // shell snackbar (DESIGN.md Result Notice Rule) instead of persisting as
+    // bare text under the inbox. stringResource is composable-only: the string
+    // is hoisted into composition and the effect only reads the value — the
+    // same shape as the CircleViewModel notice in CircleContent below.
+    val inviteCreatedText = privateInvites.messageRes?.let { stringResource(it) }
+    LaunchedEffect(inviteCreatedText) {
+        if (inviteCreatedText != null) {
+            snackbarHostState.showSnackbar(inviteCreatedText)
+            invitationsController.consumeResult()
+        }
+    }
 
     CircleContent(
-        state = state.copy(errorRes = shareError ?: state.errorRes),
+        state = state,
+        // A failed share is not a data-load failure: it gets its own notice
+        // without the data-retry affordance (see CircleContent below).
+        shareErrorRes = shareError,
+        onDismissShareError = { shareError = null },
         memberAvatar = { member ->
             com.anve.app.ui.avatar.AvatarImage(owner, member.userId, member.avatarId, member.displayName,
                 container.avatarRepository, Modifier.size(40.dp))
@@ -143,6 +170,8 @@ fun CircleScreen(
             if (state.isOwner) showDissolveDialog = true else showLeaveDialog = true
         },
         onRetry = viewModel::refresh,
+        isRefreshing = state.refreshing,
+        onRefresh = viewModel::refresh,
         onShareInvite = { invite -> scope.launch {
             try {
                 if (container.sessionStore.current()?.userId != owner) return@launch
@@ -158,6 +187,11 @@ fun CircleScreen(
         audienceStepHidden = audienceStepHidden,
         onOpenLocation = onOpenLocation,
         onOpenMap = onOpenMap,
+        snackbarHostState = snackbarHostState,
+        // Consuming the message must not touch errorRes: the failure notice
+        // stays until its own retry/dismiss acts on it.
+        onMessageConsumed = viewModel::consumeMessage,
+        onChecklistVisibleChange = onActivationChecklistVisibleChange,
     )
     if (privateInvites.open) EmailInvitationSheet(privateInvites, tracking.online, invitationsController::dismiss,
         invitationsController::mode, invitationsController::email, invitationsController::hours,
@@ -236,6 +270,12 @@ fun CircleContent(
     onLeave: () -> Unit,
     onRetry: () -> Unit,
     onShareInvite: (InviteDto) -> Unit = {},
+    // Share failures render through their own notice (no retry): retrying a
+    // data reload would not reopen the sharesheet, and the message's own
+    // recovery — the invite code on screen — already stands. Dismiss is the
+    // acknowledging action.
+    shareErrorRes: Int? = null,
+    onDismissShareError: () -> Unit = {},
     memberAvatar: (@Composable (MemberDto) -> Unit)? = null,
     receivedContent: (@Composable () -> Unit)? = null,
     hasOtherMembers: Boolean = false,
@@ -243,6 +283,11 @@ fun CircleContent(
     audienceStepHidden: Boolean = false,
     onOpenLocation: () -> Unit = {},
     onOpenMap: () -> Unit = {},
+    isRefreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onMessageConsumed: () -> Unit = {},
+    onChecklistVisibleChange: (Boolean) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
@@ -259,81 +304,137 @@ fun CircleContent(
             return@Surface
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().testTag("circle-content"),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        // One-shot results surface as a snackbar in the host shell (DESIGN.md
+        // Result Notice Rule): announced once by M3's own accessibility
+        // behavior, never persisted, no dismissal UI — replacing the old
+        // persistent primary-text row. An open failure notice wins for the
+        // same batch, so the message waits instead of stacking two notices.
+        val messageText = state.messageRes?.let { stringResource(it) }
+        LaunchedEffect(messageText) {
+            if (messageText != null && state.errorRes == null) {
+                snackbarHostState.showSnackbar(messageText)
+                onMessageConsumed()
+            }
+        }
+        // Activation steps render only while the user is the circle's only
+        // member, and only once the member list has been fetched, so "no
+        // other members yet" is verified state rather than a loading gap.
+        // The visibility is reported up: the shell hides its sharing card
+        // while the checklist shows, because both carry the same pointers
+        // ("Mở màn Vị trí" / "Tạo lời mời") and stacking them reads as two
+        // decision points for one task.
+        val showInviteStep = state.isOwner && !hasOtherMembers
+        val checklistVisible = state.membersLoaded && !hasOtherMembers &&
+            (showInviteStep || !consentEnabled || !audienceStepHidden)
+        LaunchedEffect(checklistVisible) { onChecklistVisibleChange(checklistVisible) }
+
+        // Revoking an invite code closes a join path a relative could still
+        // follow — the same destructive-confirm class as remove, leave,
+        // dissolve and hide — so the row button only arms the target here and
+        // the dialog below commits. The id is saveable so the dialog survives
+        // process death while open, like the hide target in the inbox card.
+        var revokeInviteId by rememberSaveable { mutableStateOf<String?>(null) }
+
+        // Pull to refresh mirrors the History and Places tabs: the circle tab's
+        // data was previously fetched only at init. The loading and setup
+        // branches stay unwrapped — with no circle yet there is nothing to
+        // refresh, and setup's error notice already carries its own Thử lại.
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { onRefresh?.invoke() },
         ) {
-            val errorRes = state.errorRes
-            if (errorRes != null) {
-                item {
-                    // Failures use the shared errorContainer notice with retry,
-                    // like the home and sign-in screens; success messages keep
-                    // the plain primary text below.
-                    AnveErrorNotice(stringResource(errorRes), onRetry = onRetry)
-                }
-            } else {
-                val messageRes = state.messageRes
-                if (messageRes != null) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().testTag("circle-content"),
+                // 72dp bottom clears the shell FAB (56dp container + 16dp gap):
+                // the Scaffold floats it over tab content without reserving
+                // room, so the last row would sit under the thumb-zone FAB
+                // (HOME_FAB_CLEARANCE, same as History/Places).
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                val errorRes = state.errorRes
+                if (errorRes != null) {
                     item {
-                        Text(
-                            text = stringResource(messageRes),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodyMedium,
+                        // Failures use the shared errorContainer notice with
+                        // retry, like the home and sign-in screens; one-shot
+                        // results go to the shell snackbar above instead of
+                        // persisting in the list.
+                        AnveErrorNotice(stringResource(errorRes), onRetry = onRetry)
+                    }
+                }
+                if (receivedContent != null) item { receivedContent() }
+                item { CircleHeaderCard(name = circle.name, isOwner = state.isOwner, onLeave = onLeave) }
+                if (checklistVisible) {
+                    item {
+                        CircleActivationChecklist(
+                            showInvite = showInviteStep,
+                            showSharing = !consentEnabled,
+                            showAudience = !audienceStepHidden,
+                            onInvite = onCreateInvite,
+                            onOpenLocation = onOpenLocation,
+                            onOpenMap = onOpenMap,
                         )
                     }
                 }
-            }
-            if (receivedContent != null) item { receivedContent() }
-            item { CircleHeaderCard(name = circle.name, isOwner = state.isOwner, onLeave = onLeave) }
-            // Activation steps render only while the user is the circle's only
-            // member, and only once the member list has been fetched, so "no
-            // other members yet" is verified state rather than a loading gap.
-            val showInviteStep = state.isOwner && !hasOtherMembers
-            if (state.membersLoaded && !hasOtherMembers &&
-                (showInviteStep || !consentEnabled || !audienceStepHidden)
-            ) {
-                item {
-                    CircleActivationChecklist(
-                        showInvite = showInviteStep,
-                        showSharing = !consentEnabled,
-                        showAudience = !audienceStepHidden,
-                        onInvite = onCreateInvite,
-                        onOpenLocation = onOpenLocation,
-                        onOpenMap = onOpenMap,
-                    )
-                }
-            }
-            item {
-                Text(
-                    text = stringResource(R.string.circle_members_title),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            items(state.members, key = { it.userId }) { member ->
-                MemberRow(
-                    member = member,
-                    avatar = memberAvatar?.let { { it(member) } },
-                    canRemove = state.isOwner && member.role != "owner",
-                    onRemove = { onRemoveMember(member) },
-                )
-            }
-            if (state.isOwner) {
                 item {
                     Text(
-                        text = stringResource(R.string.circle_invites_title),
+                        text = stringResource(R.string.circle_members_title),
                         style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
-                items(state.invites, key = { it.id }) { invite ->
-                    InviteRow(invite = invite, busy = state.busy, onRevoke = { onRevokeInvite(invite.id) }, onShare = { onShareInvite(invite) })
+                items(state.members, key = { it.userId }) { member ->
+                    MemberRow(
+                        member = member,
+                        avatar = memberAvatar?.let { { it(member) } },
+                        canRemove = state.isOwner && member.role != "owner",
+                        onRemove = { onRemoveMember(member) },
+                    )
                 }
-                item {
-                    OutlinedButton(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.circle_invite_create))
+                if (state.isOwner) {
+                    shareErrorRes?.let { res ->
+                        item { AnveErrorNotice(stringResource(res), onDismiss = onDismissShareError) }
+                    }
+                    item {
+                        Text(
+                            text = stringResource(R.string.circle_invites_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                    }
+                    items(state.invites, key = { it.id }) { invite ->
+                        InviteRow(invite = invite, busy = state.busy, onRevoke = { revokeInviteId = invite.id }, onShare = { onShareInvite(invite) })
+                    }
+                    item {
+                        OutlinedButton(onClick = onCreateInvite, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.circle_invite_create))
+                        }
                     }
                 }
             }
+        }
+        revokeInviteId?.let { target ->
+            AlertDialog(
+                onDismissRequest = { revokeInviteId = null },
+                title = { Text(stringResource(R.string.circle_invite_revoke_title)) },
+                text = { Text(stringResource(R.string.circle_invite_revoke_body)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onRevokeInvite(target)
+                        revokeInviteId = null
+                    }) {
+                        Text(
+                            stringResource(R.string.circle_invite_revoke),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { revokeInviteId = null }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                },
+            )
         }
     }
 }
@@ -643,13 +744,15 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor =
                     rememberInkOnSurface())) { Text(stringResource(R.string.invite_share_link)) }
-                // Revocation runs through setBusy like the other mutations, so
-                // the button locks to prevent a double-tap double revoke.
+                // The row button only arms the confirm dialog; once confirmed,
+                // revocation still runs through setBusy like the other
+                // mutations, so the button locks to prevent a double-tap
+                // double revoke.
                 TextButton(onClick = onRevoke, enabled = !busy) {
-                Text(
-                    stringResource(R.string.circle_invite_revoke),
-                    color = MaterialTheme.colorScheme.error,
-                )
+                    Text(
+                        stringResource(R.string.circle_invite_revoke),
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             }
         }

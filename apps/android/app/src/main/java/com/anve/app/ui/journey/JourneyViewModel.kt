@@ -194,6 +194,11 @@ class JourneyViewModel(
         if (_state.value.busy || !visible || _state.value.pending.isNotEmpty()) return
         val generation = epoch
         val revision = tracking.journeyAdmissionRevision()
+        // Re-arming journey priority takes a network read plus a tracking
+        // write; without a busy flag the tap looks dead for seconds and a
+        // second tap re-enters the same guarded work. Set busy synchronously
+        // like create/action so the indicator runs and the guard has a reason.
+        _state.update { it.copy(busy = true, errorRes = null) }
         viewModelScope.launch {
             try {
                 val journey = repository.get(owner, id)
@@ -203,6 +208,11 @@ class JourneyViewModel(
                 }
             } catch (error: CancellationException) { throw error } catch (_: Exception) {
                 if (visible && generation == epoch) _state.update { it.copy(errorRes = R.string.journey_priority_unconfirmed) }
+            } finally {
+                if (visible && generation == epoch) {
+                    _state.update { it.copy(busy = false) }
+                    refresh()
+                }
             }
         }
     }

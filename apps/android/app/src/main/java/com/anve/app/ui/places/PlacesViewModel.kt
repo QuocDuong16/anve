@@ -85,9 +85,12 @@ class PlacesViewModel(
                     access = access, eligibleRecipients = eligible, monitor = monitor, loading = false, errorRes = null) }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner) mutable.update {
-                    it.copy(places = emptyList(), events = emptyList(), sharing = SharingManagementSnapshot(),
-                        selectedId = null, access = emptySet(), eligibleRecipients = emptySet(), monitor = null, loading = false,
-                        errorRes = R.string.places_error_load_failed)
+                    // A transient poll failure keeps the last good snapshot and
+                    // the open selection — the reader stays in the detail they
+                    // are reading (like HistoryScreen keeping loaded pages).
+                    // "No longer available" is reserved for a successful load
+                    // that really lacks the place.
+                    it.copy(loading = false, errorRes = R.string.places_error_load_failed)
                 }
             }
         }

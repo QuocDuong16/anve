@@ -69,6 +69,38 @@ class PlacesScreenInstrumentedTest {
         ).assertIsDisplayed()
     }
 
+    @Test fun shareNoticeShowsInlineWithoutExpandingNotes() {
+        val vm = PlacesViewModel(FakePlaces())
+        compose.setContent { val state by vm.state.collectAsState(); PlacesContent(state, vm) }
+        compose.runOnIdle { vm.activate("owner") }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        compose.onNodeWithText("Nhà").performClick()
+        compose.onNodeWithText(context.getString(R.string.places_monitor_mine_title)).performScrollTo().assertIsDisplayed()
+        // The share rebuttal ('sharing a place does not grant event-viewing
+        // rights') renders inline above the share toggles from the first
+        // render; no 'Giải thích' expansion may stand between the reader and
+        // it, because it blocks the most dangerous misreading of the toggles.
+        compose.onNodeWithText(context.getString(R.string.places_share_notice)).assertExists().performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun notesToggleRevealsMonitoringAndOfflineNotices() {
+        val vm = PlacesViewModel(FakePlaces())
+        compose.setContent { val state by vm.state.collectAsState(); PlacesContent(state, vm) }
+        compose.runOnIdle { vm.activate("owner") }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        compose.onNodeWithText("Nhà").performClick()
+        // The share notice left the card — it is asserted inline in
+        // shareNoticeShowsInlineWithoutExpandingNotes — so the collapsible
+        // explainer keeps only the monitoring and offline notices.
+        compose.onNodeWithText(context.getString(R.string.places_notes_toggle)).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.places_monitor_mine_notice)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.places_offline_notice)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.places_notes_toggle)).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(context.getString(R.string.places_monitor_mine_notice)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.places_offline_notice)).assertDoesNotExist()
+    }
+
     @Test fun lightLayout() = captureLayout(false)
     @Test fun darkLayoutAtLargeFont() = captureLayout(true)
 

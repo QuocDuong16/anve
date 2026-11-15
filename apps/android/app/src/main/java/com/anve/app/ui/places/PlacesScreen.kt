@@ -4,6 +4,7 @@ import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,14 +19,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -52,15 +57,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -100,6 +110,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 private const val CURRENT_FIX_TIMEOUT_MS = 10_000L
 private const val CURRENT_FIX_INTERVAL_MS = 5_000L
 
+// The recipient picks are stored as a plain ArrayList on the way out because
+// autoSaver does not promise a Set survives the Bundle round trip; restore
+// maps it back (same approach as JourneyScreen's draft savers).
+private val recipientsSaver = Saver<Set<String>, ArrayList<String>>(
+    save = { ArrayList(it) },
+    restore = { it.toSet() },
+)
+
 @Composable
 fun PlacesScreen(container: AppContainer, onOpenLocation: () -> Unit = {}) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
@@ -126,7 +144,16 @@ fun PlacesScreen(container: AppContainer, onOpenLocation: () -> Unit = {}) {
             }
         }
     }
-    if (owner == null || state.owner != owner) return
+    if (owner == null || state.owner != owner) {
+        // Session not re-emitted yet (fresh process or account switch): state
+        // the wait instead of a blank frame, same wording as the account area.
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) { Text(stringResource(R.string.home_checking_account)) }
+        return
+    }
     PlacesContent(state, vm, onOpenLocation)
 }
 
@@ -142,9 +169,16 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
     var editConfirmation by remember(owner) { mutableStateOf(state.confirmation) }
     var deleteId by remember(owner) { mutableStateOf<String?>(null) }
     var showActions by remember(selected?.id) { mutableStateOf(false) }
-    var recipients by remember(owner, selected?.id, state.monitor) {
+    // Recipient picks survive process death and rotation; a person who ticked
+    // rows mid-configure should not find the checkboxes silently reset — the
+    // same guarantee JourneyScreen gives its viewer draft.
+    var recipients by rememberSaveable(owner, selected?.id, state.monitor, stateSaver = recipientsSaver) {
         mutableStateOf(state.monitor?.recipientIds?.toSet() ?: emptySet())
     }
+    // Disclosure state for the notices explainer; hoisted above the details
+    // LazyColumn so scrolling the item out of the viewport cannot dispose it
+    // and silently collapse the section.
+    var notesExpanded by rememberSaveable { mutableStateOf(false) }
     val editorAuthorized = editingPlace == null ||
         (state.errorRes == null && state.places.any { it.id == editingPlace?.id })
     LaunchedEffect(editorAuthorized) {
@@ -343,42 +377,75 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                     }
                     if (selected.ownerId == owner) {
-                        item { Text(stringResource(R.string.places_share_with), style = MaterialTheme.typography.titleMedium) }
+                        // TalkBack heading navigation; same treatment as
+                        // JourneyScreen's section titles.
                         item {
-                            Text(stringResource(R.string.places_share_notice))
+                            Text(
+                                stringResource(R.string.places_share_with),
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.semantics { heading() },
+                            )
                         }
+                        // The share notice sits inline above the toggles it
+                        // explains: the rebuttal of the most dangerous
+                        // misreading (sharing a place does not grant
+                        // event-viewing rights) must be readable where the
+                        // sharing decision happens, not behind the notes
+                        // toggle further down the list.
+                        item { Text(stringResource(R.string.places_share_notice)) }
                         items(state.sharing.members.filter { it.userId != owner }, key = { "access-${it.userId}" }) { person ->
+                            // The whole row toggles so TalkBack announces the member's
+                            // name together with the switch state; the switch itself
+                            // stays indicative (same pattern as SosScreen's rows).
                             ListItem(
+                                modifier = Modifier.toggleable(
+                                    value = person.userId in state.access,
+                                    enabled = !state.pending && !state.loading,
+                                    role = Role.Switch,
+                                    onValueChange = { vm.share(selected.id, person.userId, it) },
+                                ),
                                 headlineContent = { Text(person.displayName) },
                                 supportingContent = { Text(stringResource(R.string.places_access_supporting)) },
                                 trailingContent = {
                                     Switch(
                                         checked = person.userId in state.access,
                                         enabled = !state.pending && !state.loading,
-                                        onCheckedChange = { vm.share(selected.id, person.userId, it) },
+                                        onCheckedChange = null,
                                     )
                                 },
                             )
                         }
                     }
-                    item { Text(stringResource(R.string.places_monitor_mine_title), style = MaterialTheme.typography.titleMedium) }
                     item {
-                        Text(stringResource(R.string.places_monitor_mine_notice))
+                        // Same TalkBack heading treatment as the share title.
+                        Text(
+                            stringResource(R.string.places_monitor_mine_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() },
+                        )
                     }
                     items(
                         state.sharing.members.filter { it.userId != owner && it.userId in state.eligibleRecipients },
                         key = { "recipient-${it.userId}" },
                     ) { person ->
+                        // Row-level checkbox for the same TalkBack reason as the
+                        // share rows above; the inner checkbox stays indicative.
                         ListItem(
+                            modifier = Modifier.toggleable(
+                                value = person.userId in recipients,
+                                enabled = !state.pending,
+                                role = Role.Checkbox,
+                                onValueChange = { checked ->
+                                    recipients = if (checked) recipients + person.userId else recipients - person.userId
+                                },
+                            ),
                             headlineContent = { Text(person.displayName) },
                             supportingContent = { Text(stringResource(R.string.places_recipient_supporting)) },
                             trailingContent = {
                                 Checkbox(
                                     checked = person.userId in recipients,
                                     enabled = !state.pending,
-                                    onCheckedChange = { checked ->
-                                        recipients = if (checked) recipients + person.userId else recipients - person.userId
-                                    },
+                                    onCheckedChange = null,
                                 )
                             },
                         )
@@ -390,8 +457,13 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     if (!state.sharing.consentEnabled) item {
                         ConsentNotice(onOpenLocation)
                     }
+                    item(key = "places-notes") {
+                        PlacesNotesCard(
+                            expanded = notesExpanded,
+                            onToggle = { notesExpanded = !notesExpanded },
+                        )
+                    }
                     item {
-                        Text(stringResource(R.string.places_offline_notice))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {
@@ -409,12 +481,21 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     }
                 }
                 if (!showDetails || selected != null) {
-                    item { Text(stringResource(R.string.places_events_title), style = MaterialTheme.typography.titleMedium) }
+                    item {
+                        Text(
+                            stringResource(R.string.places_events_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                    }
                     if (visibleEvents.isEmpty() && !state.loading && state.errorRes == null) {
                         item { Text(stringResource(R.string.places_events_empty)) }
                     }
                     items(visibleEvents, key = { "event-${it.id}" }) { event ->
-                        val at = AnveTime.full(event.recordedAt, event.recordedAt)
+                        // Same rule as HistoryScreen: never leak the raw ISO
+                        // timestamp — an unreadable value falls back to the
+                        // localized unknown-time string, not the wire format.
+                        val at = AnveTime.full(event.recordedAt, stringResource(R.string.journey_time_unknown))
                         val transition = when (event.type) {
                             "ENTER" -> stringResource(R.string.places_event_enter)
                             "EXIT" -> stringResource(R.string.places_event_exit)
@@ -479,6 +560,40 @@ private fun ConsentNotice(onOpenLocation: () -> Unit) {
     }
 }
 
+/**
+ * Collapsible explainer holding the two static places notices (own
+ * monitoring, offline), the same collapsed pattern as TrackingScreen's
+ * DiagnosticsCard. The round-3 merge pulled the share notice in here too;
+ * round 4 split it back out: the rebuttal of the most dangerous misreading
+ * (sharing a place does not grant event-viewing rights) must be readable
+ * where the share toggles sit, not behind this toggle. The monitoring and
+ * offline notices stay — they explain consequences people re-read after the
+ * fact, not a decision in progress.
+ */
+@Composable
+private fun PlacesNotesCard(expanded: Boolean, onToggle: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            // TalkBack announces the disclosure state instead of only the icon
+            // swap; same treatment as the Tracking technical-details toggle.
+            val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
+            TextButton(onClick = onToggle, modifier = Modifier.semantics { stateDescription = disclosureState }) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                )
+                Text(stringResource(R.string.places_notes_toggle))
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.places_monitor_mine_notice))
+                    Text(stringResource(R.string.places_offline_notice))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PlacePreview(place: PlaceDto) {
     val point = LatLng(place.latitude, place.longitude)
@@ -500,11 +615,17 @@ private fun PlacePreview(place: PlaceDto) {
 
 @Composable
 private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onCancel: () -> Unit, onSave: (PlaceInputDto) -> Unit) {
-    var name by remember(place?.id) { mutableStateOf(place?.name ?: "") }
-    var latitude by remember(place?.id) { mutableStateOf(place?.latitude?.toString() ?: "") }
-    var longitude by remember(place?.id) { mutableStateOf(place?.longitude?.toString() ?: "") }
-    var radius by remember(place?.id) { mutableDoubleStateOf(place?.radiusMeters ?: 150.0) }
-    var confirmDiscard by remember(place?.id) { mutableStateOf(false) }
+    // Draft fields and the pending discard confirm survive process death. The
+    // editor already guards a deliberate discard with a confirm dialog, but
+    // with plain remember a mid-edit reclaim would drop everything typed
+    // anyway — an inconsistent guard, and not the guarantee JourneyScreen's
+    // create flow normalized. Keying on the place id keeps the
+    // reset-when-switching-place semantics the plain remember had.
+    var name by rememberSaveable(place?.id) { mutableStateOf(place?.name ?: "") }
+    var latitude by rememberSaveable(place?.id) { mutableStateOf(place?.latitude?.toString() ?: "") }
+    var longitude by rememberSaveable(place?.id) { mutableStateOf(place?.longitude?.toString() ?: "") }
+    var radius by rememberSaveable(place?.id) { mutableStateOf(place?.radiusMeters ?: 150.0) }
+    var confirmDiscard by rememberSaveable(place?.id) { mutableStateOf(false) }
     val lat = latitude.toDoubleOrNull()
     val lon = longitude.toDoubleOrNull()
     val valid = validPlaceInput(name, lat, lon, radius)
@@ -634,8 +755,9 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     Text(stringResource(R.string.places_editor_use_current_location))
                 }
                 // The permission note stays informational (onSurfaceVariant);
-                // the fetch failure is the only error-colored line here, since
-                // it is a real failure, not a state the user can fix in place.
+                // the fetch failure goes through the shared AnveErrorNotice per
+                // DESIGN.md's Failure Notice Rule — the editor's manual
+                // coordinate fields are the recovery path, so no retry row here.
                 locationNote?.let { res ->
                     Text(
                         stringResource(res),
@@ -643,13 +765,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                locationError?.let { res ->
-                    Text(
-                        stringResource(res),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+                locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
                 if (locating) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(24.dp))
@@ -672,10 +788,23 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
         // the user is still in the fields, not only through a disabled button.
         val coordsInvalid = (latitude.isNotBlank() || longitude.isNotBlank()) &&
             !(lat != null && lon != null && lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0)
+        // Same explanation style as the coordinate check: the name constraint
+        // (1–80 codepoints, per validPlaceInput) is stated where the user is
+        // typing instead of only through a silently locked Save button.
+        val nameInvalid = name.trim().isEmpty() || name.trim().codePointCount(0, name.trim().length) > 80
         if (coordsInvalid) {
             item {
                 Text(
                     stringResource(R.string.places_editor_invalid_coords),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+        if (nameInvalid) {
+            item {
+                Text(
+                    stringResource(R.string.places_editor_invalid_name),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
@@ -35,8 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
@@ -97,10 +97,24 @@ private fun OptionCard(title: String, helper: String, icon: ImageVector, checked
 @Composable
 private fun OptionRow(title: String, helper: String, icon: ImageVector, checked: Boolean, onChecked: (Boolean) -> Unit, tag: String) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The whole row is the switch target with a 48dp minimum, like the
+        // toggleable rows in SosScreen and the journey create form; the child
+        // Switch stays indicative (onCheckedChange = null) so TalkBack reads
+        // the merged row — title text plus toggle state — instead of a bare
+        // switch, and the test tag lives on the merged root the automation
+        // tests click.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .toggleable(value = checked, role = Role.Switch, onValueChange = onChecked)
+                .testTag(tag),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface)
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            Switch(checked, onChecked, Modifier.testTag(tag).semantics { contentDescription = title })
+            Switch(checked = checked, onCheckedChange = null)
         }
         Text(helper, style = MaterialTheme.typography.bodyMedium)
     }

@@ -48,6 +48,9 @@ class PrivateInvitationsController(
     private fun deactivate() { active = false; generation++; pending = null; mutable.value = PrivateInvitationsState(loading = false) }
     fun dispose() { deactivate(); watch.cancel() }
     fun open() { if (active) mutable.update { it.copy(open = true, messageRes = null) } }
+    /** Drops the one-shot created-notice once its snackbar has shown it;
+     * errorRes and inboxErrorRes clear only through their own flows. */
+    fun consumeResult() { mutable.update { it.copy(messageRes = null) } }
     fun dismiss() { mutable.update { it.copy(open = false, email = "", errorRes = null) } }
     fun mode(value: String) { if (editable() && value in setOf("EMAIL", "LINK")) mutable.update { it.copy(mode = value, email = "", errorRes = null) } }
     fun email(value: String) { if (editable()) mutable.update { it.copy(email = value.take(254), errorRes = null) } }
@@ -151,5 +154,9 @@ class PrivateInvitationsController(
             }
         }
     }
-    companion object { private val EMAIL = Regex("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+") }
 }
+
+/** Shared with the sheet's inline validation so typing and submitting agree. */
+internal fun inviteEmailValid(email: String): Boolean = email.matches(EMAIL) && email.none { it.code > 127 }
+
+private val EMAIL = Regex("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+")

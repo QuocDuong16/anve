@@ -15,8 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +48,7 @@ import com.anve.app.R
 import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.brand.AnVeBrandMark
+import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.UiMessage
 import com.anve.app.ui.theme.AnVeTheme
 
@@ -94,12 +93,15 @@ fun SignInScreen(
             viewModel.signInWithGoogle(
                 fetchIdToken = { GoogleCredentialSource(activity).fetchIdToken() },
                 credentialError = { cause ->
-                    // Providers also use cancellation for authorization/configuration failures.
-                    if (cause is GetCredentialCancellationException) {
-                        R.string.signin_google_incomplete
-                    } else {
-                        R.string.signin_generic_error
-                    }
+                    // Providers also use cancellation for authorization/configuration
+                    // failures, so a cancellation alone cannot prove the user
+                    // dismissed the chooser on every OEM. Closing the chooser is
+                    // still the user's own act, not a failure: nothing surfaces
+                    // and the sign-in button simply stays. A real configuration
+                    // failure keeps coming back on the next attempt through this
+                    // same path, so it is never silently lost.
+                    if (cause is GetCredentialCancellationException) null
+                    else R.string.signin_generic_error
                 },
             )
         },
@@ -165,19 +167,14 @@ fun SignInContent(
                 }
 
                 if (error != null) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        ),
-                        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-                    ) {
-                        Text(
-                            text = stringResource(error.id, *error.args.toTypedArray()),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
+                    // No retry inside the notice: the main button below already
+                    // relabels to "Thử lại" while an error shows, so a second
+                    // retry control would duplicate the recovery action.
+                    // Live region lives inside AnveErrorNotice now; declaring it
+                    // here too would double-announce the same failure.
+                    AnveErrorNotice(
+                        text = stringResource(error.id, *error.args.toTypedArray()),
+                    )
                     Spacer(Modifier.height(16.dp))
                 }
 

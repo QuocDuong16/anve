@@ -2,6 +2,7 @@ package com.anve.app.ui.signin
 
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.anve.app.R
+import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.DeviceRegistrationDto
 import com.anve.app.data.auth.AuthRepository
@@ -62,19 +63,22 @@ class SignInViewModelTest {
     )
 
     @Test
-    fun `provider cancellation remains visible and never reaches the API`() = runBlocking {
+    fun `provider cancellation stays silent when classified as cancel and never reaches the API`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"googleSignIn":true,"devLogin":false}"""))
         val vm = SignInViewModel(repository, scope)
         awaitUntil { vm.state.value is SignInUiState.Ready }
         val pending = CompletableDeferred<Result<String>>()
         var attempts = 0
-        vm.signInWithGoogle({ attempts++; pending.await() }, { R.string.signin_google_incomplete })
+        // The screen classifies GetCredentialCancellationException as the
+        // user's own dismiss (null = nothing surfaced); the VM must honor
+        // that classification instead of forcing an error card.
+        vm.signInWithGoogle({ attempts++; pending.await() }, { null })
         assertTrue(vm.busy.value)
         vm.signInWithGoogle({ attempts++; Result.success("duplicate") }, { R.string.signin_generic_error })
         assertEquals(1, attempts)
         pending.complete(Result.failure(GetCredentialCancellationException("provider stopped")))
         awaitUntil { !vm.busy.value }
-        assertEquals(R.string.signin_google_incomplete, vm.error.value?.id)
+        assertNull(vm.error.value?.id)
         assertTrue(vm.state.value is SignInUiState.Ready)
         assertEquals(1, server.requestCount)
         assertNull(storage.current())
@@ -173,5 +177,30 @@ class SignInViewModelTest {
         state as SignInUiState.Ready
         assertEquals(false, state.googleSignIn)
         assertNotNull(vm.error.value)
+    }
+
+    @Test
+    fun `unknown server error hides the raw server detail`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"googleSignIn":false,"devLogin":false}"""))
+        val vm = SignInViewModel(repository, scope)
+        awaitUntil { vm.state.value is SignInUiState.Ready }
+
+        val message = vm.friendly(ApiException("SOMETHING_ELSE", "pg: chi tiết kỹ thuật", null))
+        assertEquals(R.string.signin_server_unexpected, message.id)
+        assertTrue("release copy must not embed the server message", message.args.isEmpty())
+    }
+
+    @Test
+    fun `dev sign-in keeps the raw server detail`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"googleSignIn":false,"devLogin":false}"""))
+        val vm = SignInViewModel(repository, scope)
+        awaitUntil { vm.state.value is SignInUiState.Ready }
+
+        val message = vm.friendly(
+            ApiException("SOMETHING_ELSE", "pg: chi tiết kỹ thuật", null),
+            keepServerDetail = true,
+        )
+        assertEquals(R.string.signin_server_error, message.id)
+        assertEquals(listOf("pg: chi tiết kỹ thuật"), message.args)
     }
 }

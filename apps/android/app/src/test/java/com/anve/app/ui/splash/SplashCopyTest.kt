@@ -1,9 +1,12 @@
 package com.anve.app.ui.splash
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// Plain JVM tests cannot resolve Android string resources, so only the
+// Kotlin-held brand copy is asserted here. Resource-backed copy such as the
+// splash tagline (strings.xml: splash_tagline) is exercised by the
+// instrumented branding tests instead.
 class SplashCopyTest {
 
     @Test
@@ -19,10 +22,5 @@ class SplashCopyTest {
     @Test
     fun `version label keeps an empty version readable`() {
         assertEquals("Phiên bản ", SplashCopy.versionLabel(""))
-    }
-
-    @Test
-    fun `tagline is not blank`() {
-        assertTrue(SplashCopy.tagline.isNotBlank())
     }
 }

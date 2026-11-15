@@ -1,9 +1,14 @@
 package com.anve.app.ui.history
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -14,13 +19,17 @@ import androidx.compose.material3.Surface
 import com.anve.app.ui.captureNativeFixture
 import com.anve.app.ui.diagnostics.LargeFontScale
 import com.anve.app.ui.theme.AnVeTheme
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.anve.app.R
 import com.anve.app.data.api.HistoryRetentionDto
 import com.anve.app.data.api.HistoryPageDto
 import com.anve.app.data.api.HistoryPointDto
 import com.anve.app.data.location.HistoryMember
 import com.anve.app.data.location.HistoryDataSource
 import java.time.LocalDate
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,14 +86,63 @@ class HistoryScreenInstrumentedTest {
         compose.onNodeWithText("Xóa lịch sử?").assertIsDisplayed()
         compose.onNodeWithText("Hủy").performClick()
         compose.onNodeWithText("đồng bộ trễ", substring = true).performScrollTo().performClick()
+        // The point row uses selectable(): the selection lands in semantics,
+        // not only in the row's text color.
+        compose.onNodeWithText("đồng bộ trễ", substring = true).assertIsSelected()
+    }
+
+    @Test
+    fun retentionDecreaseConfirmsIncreaseCommitsDirectly() {
+        val fake = FakeHistory()
+        val vm = HistoryViewModel(fake)
+        compose.setContent {
+            val state by vm.state.collectAsState()
+            HistoryContent(state, vm)
+        }
+        compose.runOnIdle { vm.activate("owner") }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val oneDayChip = context.getString(R.string.history_retention_chip_days, 1)
+        // Shortening the horizon deletes data, so the tap opens the confirm
+        // dialog and stores nothing until the user confirms.
+        // Chip finders pair the label with the click action: the retention
+        // summary line renders the same "N ngày" sentence, so a text-only
+        // finder would match two nodes.
+        compose.onNode(hasText(oneDayChip) and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.history_retention_confirm_title)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.action_cancel)).performClick()
+        compose.waitForIdle()
+        assertTrue("Cancel must not store a retention change", fake.retentionCalls.isEmpty())
+        // The same decrease, confirmed: stored exactly once with the chosen value.
+        compose.onNode(hasText(oneDayChip) and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.history_retention_confirm)).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(1), fake.retentionCalls)
+        // The saved snackbar overlays the bottom of the screen and lingers in
+        // real time; wait it out so it cannot swallow the next chip tap.
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText(context.getString(R.string.history_retention_saved, 1))
+                .fetchSemanticsNodes().isEmpty()
+        }
+        // Raising the horizon deletes nothing, so it commits in one tap and
+        // never shows the dialog.
+        compose.onNode(hasText(context.getString(R.string.history_retention_chip_days, 30)) and hasClickAction())
+            .performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(1, 30), fake.retentionCalls)
+        compose.onNodeWithText(context.getString(R.string.history_retention_confirm_title)).assertDoesNotExist()
     }
 
     private class FakeHistory : HistoryDataSource {
+        // Retention values the screen asked to store, in call order.
+        val retentionCalls = mutableListOf<Int>()
         override suspend fun members(owner: String): List<HistoryMember> = emptyList()
         override suspend fun page(owner: String, member: String, from: String, to: String, cursor: String?) =
             HistoryPageDto(if (owner == "owner") listOf(HistoryPointDto("event", 10.0, 106.0, 10.0, "2026-10-29T00:00:00Z", "2026-10-29T01:00:00Z", "fused", false, true, "segment")) else emptyList())
         override suspend fun retention(owner: String) = HistoryRetentionDto(30, 30)
-        override suspend fun setRetention(owner: String, days: Int) = HistoryRetentionDto(days, days)
+        override suspend fun setRetention(owner: String, days: Int): HistoryRetentionDto {
+            retentionCalls += days
+            return HistoryRetentionDto(days, days)
+        }
         override suspend fun delete(owner: String, from: String?, to: String) = Unit
     }
 }
