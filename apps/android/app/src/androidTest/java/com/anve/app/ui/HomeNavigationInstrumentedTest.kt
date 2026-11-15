@@ -2,7 +2,6 @@ package com.anve.app.ui
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,25 +19,23 @@ import org.junit.Test
 class HomeNavigationInstrumentedTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun fiveTabsAndSecondaryScreensHaveReturnRoutes() = exerciseNavigation(false)
+    @Test fun fourTabsAndSecondaryScreensHaveReturnRoutes() = exerciseNavigation(false)
     @Test fun darkNavigationAtLargeFont() = exerciseNavigation(true)
 
     private fun exerciseNavigation(dark: Boolean) {
         val container = ApplicationProvider.getApplicationContext<AnVeApplication>().container
         compose.setContent { LargeFontScale(enabled = dark) { AnVeTheme(darkTheme = dark) { HomeScreen(container) } } }
-        compose.onAllNodes(isSelectable()).assertCountEquals(5)
+        compose.onAllNodes(isSelectable()).assertCountEquals(4)
         compose.onNodeWithText("AnVề").assertIsDisplayed()
         captureNativeFixture("navigation-${if (dark) "dark-font130" else "light"}")
-        compose.onNodeWithText("Vị trí").performClick()
+        compose.onNodeWithText("Chia sẻ của tôi", substring = true).performClick()
+        compose.onNodeWithText("Chia sẻ của tôi").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
         compose.onNodeWithText("Tài khoản").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
-        // The SOS FAB now speaks its visible label once (the redundant
-        // contentDescription was removed with the TalkBack fix). The label is
-        // an unmerged leaf inside the FAB's merged clickable node, so the
-        // finder reads the unmerged tree; the click still lands on the FAB.
-        compose.onNode(hasText("SOS"), true).performClick()
+        compose.onNodeWithContentDescription("SOS").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
     }

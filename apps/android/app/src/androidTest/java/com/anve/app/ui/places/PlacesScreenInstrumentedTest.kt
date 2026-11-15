@@ -40,17 +40,17 @@ class PlacesScreenInstrumentedTest {
         compose.setContent { val state by vm.state.collectAsState(); PlacesContent(state, vm) }
         compose.runOnIdle { vm.activate("owner") }
         compose.onNodeWithText("Thêm địa điểm").performClick()
-        compose.onNodeWithText("Bản đồ chưa được cấu hình", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Vĩ độ").assertIsDisplayed()
+        compose.onNodeWithText("Bản đồ chưa sẵn sàng", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Vĩ độ").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun accountSwitchClearsEventFeed() {
         val vm = PlacesViewModel(FakePlaces())
         compose.setContent { val state by vm.state.collectAsState(); PlacesContent(state, vm) }
         compose.runOnIdle { vm.activate("owner") }
-        compose.onNodeWithText("xử lý trễ", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("báo trễ", substring = true).performScrollTo().assertIsDisplayed()
         compose.runOnIdle { vm.activate("other") }
-        compose.onNodeWithText("xử lý trễ", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("báo trễ", substring = true).assertDoesNotExist()
     }
 
     @Test fun editorClosesWhenAuthorizationCannotBeRechecked() {

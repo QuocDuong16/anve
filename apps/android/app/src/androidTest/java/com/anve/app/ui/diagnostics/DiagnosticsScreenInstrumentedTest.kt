@@ -191,7 +191,7 @@ class DiagnosticsScreenInstrumentedTest {
             .writeText("androidFontScale=${captureContext.resources.configuration.fontScale}\n")
         // Compose capture forces drawing; semantic idleness alone can leave stale pixels.
         val windows = compose.onAllNodes(isRoot())
-        val titleBounds = compose.onNodeWithText("Chẩn đoán vị trí").fetchSemanticsNode().boundsInRoot
+        val titleBounds = compose.onNodeWithText("Kiểm tra kết nối").fetchSemanticsNode().boundsInRoot
         var readyBitmap: Bitmap? = null
         compose.waitUntil(timeoutMillis = 5_000) {
             val candidate = windows[0].captureToImage().asAndroidBitmap()

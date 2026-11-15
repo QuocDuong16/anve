@@ -47,7 +47,7 @@ class HistoryScreenInstrumentedTest {
             HistoryContent(state, vm)
         }
         compose.runOnIdle { vm.activate("owner"); vm.select("owner", LocalDate.of(2020, 3, 8)) }
-        compose.onNodeWithText("Lịch sử vị trí").assertIsDisplayed()
+        compose.onNodeWithText("Một ngày của gia đình").assertIsDisplayed()
         // The date renders in the vi-VN display format, not ISO.
         compose.onNodeWithText("08/03/2020").assertIsDisplayed()
         compose.onNodeWithContentDescription("Ngày trước").performClick()
@@ -62,9 +62,9 @@ class HistoryScreenInstrumentedTest {
             HistoryContent(state, vm)
         }
         compose.runOnIdle { vm.activate("owner") }
-        compose.onNodeWithText("đồng bộ trễ", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("gửi trễ", substring = true).performScrollTo().assertIsDisplayed()
         compose.runOnIdle { vm.activate("other") }
-        compose.onNodeWithText("đồng bộ trễ", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("gửi trễ", substring = true).assertDoesNotExist()
     }
 
     @Test fun lightLayout() = captureLayout(false)
@@ -79,16 +79,16 @@ class HistoryScreenInstrumentedTest {
             }
         }
         compose.runOnIdle { vm.activate("owner") }
-        compose.onNodeWithText("Lịch sử vị trí").assertIsDisplayed()
+        compose.onNodeWithText("Một ngày của gia đình").assertIsDisplayed()
         captureNativeFixture("history-${if (dark) "dark-font130" else "light"}")
         compose.onNodeWithContentDescription("Thao tác lịch sử").performClick()
         compose.onNodeWithText("Xóa ngày này").performClick()
         compose.onNodeWithText("Xóa lịch sử?").assertIsDisplayed()
         compose.onNodeWithText("Hủy").performClick()
-        compose.onNodeWithText("đồng bộ trễ", substring = true).performScrollTo().performClick()
+        compose.onNodeWithText("gửi trễ", substring = true).performScrollTo().performClick()
         // The point row uses selectable(): the selection lands in semantics,
         // not only in the row's text color.
-        compose.onNodeWithText("đồng bộ trễ", substring = true).assertIsSelected()
+        compose.onNodeWithText("gửi trễ", substring = true).assertIsSelected()
     }
 
     @Test

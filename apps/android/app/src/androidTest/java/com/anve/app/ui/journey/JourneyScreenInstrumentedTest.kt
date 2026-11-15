@@ -128,8 +128,8 @@ class JourneyScreenInstrumentedTest {
 
     @Test fun missingConsentAndTrackingExplainRecoveryAndDisableStart() {
         compose.setContent { AnVeTheme { JourneyContent(formState().copy(consentEnabled = false), TrackingStatus(ownerUserId = "owner"), initiallyCreating = true) } }
-        scrollTo("Mở màn Vị trí")
-        compose.onNodeWithText("Mở màn Vị trí").assertIsDisplayed()
+        scrollTo("Mở Chia sẻ của tôi")
+        compose.onNodeWithText("Mở Chia sẻ của tôi").assertIsDisplayed()
         scrollTo("Bắt đầu hành trình")
         compose.onNode(hasText("Bắt đầu hành trình") and hasClickAction()).assertIsNotEnabled()
         capture("consent-tracking-required")
