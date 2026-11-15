@@ -1313,8 +1313,17 @@ class TrackingManager(
         val device = clientDeviceId ?: return
         if (!queue.hasCaptureProvenance(owner, fix)) {
             store.setLastSyncError("LOCATION_CAPTURE_CHECKPOINT_MISSING")
-            _status.update { it.copy(lastError = TrackingProblem.CHECKPOINT_UNAVAILABLE, lastErrorAtMillis = now()) }
+            // A generation roll (new audience grant, retention change, history
+            // deletion) landed between two fixes: this fix predates the new
+            // checkpoint and the server would reject it. Network and OS
+            // permission are irrelevant here, so the problem must not borrow
+            // CHECKPOINT_UNAVAILABLE's "connect to the internet" copy; the
+            // next fix with valid provenance clears it.
+            _status.update { it.copy(lastError = TrackingProblem.CHECKPOINT_ROLLED, lastErrorAtMillis = now()) }
             return
+        }
+        if (_status.value.lastError == TrackingProblem.CHECKPOINT_ROLLED) {
+            _status.update { it.copy(lastError = null, lastErrorAtMillis = null) }
         }
         applyJourneyPolicy()
         val decision = policy.onFix(

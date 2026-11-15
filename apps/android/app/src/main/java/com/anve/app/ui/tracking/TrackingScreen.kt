@@ -882,6 +882,7 @@ private fun problemText(problem: TrackingProblem?): String? = when (problem) {
     TrackingProblem.CIRCLE_REQUIRED -> stringResource(R.string.tracking_problem_circle)
     TrackingProblem.SESSION_UNAVAILABLE -> stringResource(R.string.tracking_problem_session)
     TrackingProblem.CHECKPOINT_UNAVAILABLE -> stringResource(R.string.tracking_problem_checkpoint)
+    TrackingProblem.CHECKPOINT_ROLLED -> stringResource(R.string.tracking_problem_checkpoint_rolled)
     TrackingProblem.SERVICE_START_FAILED -> stringResource(R.string.tracking_problem_service)
     TrackingProblem.SERVICE_STOP_FAILED -> stringResource(R.string.tracking_problem_service_stop)
     TrackingProblem.PROVIDER_ERROR -> stringResource(R.string.tracking_problem_provider)

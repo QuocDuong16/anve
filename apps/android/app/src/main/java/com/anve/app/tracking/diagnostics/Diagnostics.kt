@@ -62,6 +62,7 @@ fun diagnoseTracking(status: TrackingStatus): TrackingDiagnosis = when {
         if (status.recoveryRequired) "Cần khôi phục theo dõi" else "Theo dõi chưa hoạt động",
         when (status.lastError) {
             TrackingProblem.CHECKPOINT_UNAVAILABLE -> "Chưa xác nhận được quyền ghi nhận vị trí với máy chủ. Cần có mạng trước khi bắt đầu."
+            TrackingProblem.CHECKPOINT_ROLLED -> "Máy chủ vừa cập nhật quyền chia sẻ; các điểm ghi trước thời điểm cập nhật bị bỏ qua và theo dõi tự tiếp tục."
             TrackingProblem.CIRCLE_REQUIRED -> "Bạn cần tham gia một nhóm gia đình trước khi theo dõi."
             TrackingProblem.QUEUE_UNAVAILABLE -> "Không đọc hoặc ghi được hàng đợi. Vị trí chưa được xác nhận lưu trên máy."
             TrackingProblem.PROVIDER_UNAVAILABLE, TrackingProblem.PROVIDER_ERROR -> "Bộ cung cấp vị trí chưa hoạt động. Kiểm tra thiết bị rồi thử bắt đầu lại."

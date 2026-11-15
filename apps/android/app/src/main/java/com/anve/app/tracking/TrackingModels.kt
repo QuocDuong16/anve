@@ -70,6 +70,15 @@ enum class TrackingProblem {
     CIRCLE_REQUIRED,
     SESSION_UNAVAILABLE,
     CHECKPOINT_UNAVAILABLE,
+
+    /** The server advanced the capture generation (a new audience grant,
+     * retention change or history deletion) between two fixes: fixes recorded
+     * before the client learned the new generation cannot carry valid
+     * provenance and the server would reject them. The gap self-heals on the
+     * next fix, so this is a transient state — distinct from
+     * CHECKPOINT_UNAVAILABLE, which blocks start or resume and asks the user
+     * to reach the server. */
+    CHECKPOINT_ROLLED,
     SERVICE_START_FAILED,
     SERVICE_STOP_FAILED,
     PROVIDER_ERROR,

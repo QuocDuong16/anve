@@ -262,11 +262,12 @@ class TrackingManagerTest {
         awaitUntil { provider.activeCollectors == 1 }
         provider.emit(testFix(eventId = "old", recordedAtMillis = now - 2_000,
             elapsedRealtimeNanos = (elapsed - 3_000) * 1_000_000))
-        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_UNAVAILABLE }
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_ROLLED }
         assertTrue(dao.rows.isEmpty())
         emitFix()
         awaitUntil { dao.rows.size == 1 }
         assertEquals(1L, dao.rows.getValue("event-1").captureGeneration)
+        assertEquals(null, manager.status.value.lastError)
     }
 
     @Test
@@ -321,11 +322,12 @@ class TrackingManagerTest {
         checkpoints.advance("u1", 2)
         provider.emit(testFix(eventId = "old", recordedAtMillis = now - 2_000,
             elapsedRealtimeNanos = (elapsed - 3_000) * 1_000_000))
-        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_UNAVAILABLE }
+        awaitUntil { manager.status.value.lastError == TrackingProblem.CHECKPOINT_ROLLED }
         assertTrue(dao.rows.isEmpty())
         emitFix()
         awaitUntil { dao.rows.size == 1 }
         assertEquals(2L, dao.rows.getValue("event-1").captureGeneration)
+        assertEquals(null, manager.status.value.lastError)
     }
 
     @Test
