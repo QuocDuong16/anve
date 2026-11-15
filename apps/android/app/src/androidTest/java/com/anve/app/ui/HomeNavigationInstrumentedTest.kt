@@ -28,7 +28,7 @@ class HomeNavigationInstrumentedTest {
         compose.onAllNodes(isSelectable()).assertCountEquals(4)
         compose.onNodeWithText("AnVề").assertIsDisplayed()
         captureNativeFixture("navigation-${if (dark) "dark-font130" else "light"}")
-        compose.onNodeWithText("Chia sẻ của tôi", substring = true).performClick()
+        compose.onNodeWithText("chia sẻ", substring = true, ignoreCase = true).performClick()
         compose.onNodeWithText("Chia sẻ của tôi").assertIsDisplayed()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
