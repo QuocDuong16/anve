@@ -91,6 +91,11 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Text(
+                        text = stringResource(R.string.action_loading),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
             } else if (state.received.isEmpty() && state.inboxErrorRes == null) {
                 Text(
@@ -113,7 +118,10 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                     )
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         FilledTonalButton(
                             onClick = { onReview(invite.id) },
                             enabled = !state.detailBusy,

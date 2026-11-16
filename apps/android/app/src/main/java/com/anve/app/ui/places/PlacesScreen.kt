@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -153,7 +154,11 @@ private val recipientsSaver = Saver<Set<String>, ArrayList<String>>(
 )
 
 @Composable
-fun PlacesScreen(container: AppContainer, onOpenLocation: () -> Unit = {}) {
+fun PlacesScreen(
+    container: AppContainer,
+    onOpenLocation: () -> Unit = {},
+    onEditorOpenChange: (Boolean) -> Unit = {},
+) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     val vm: PlacesViewModel = viewModel(factory = PlacesViewModel.factory(container.placesRepository))
@@ -184,12 +189,17 @@ fun PlacesScreen(container: AppContainer, onOpenLocation: () -> Unit = {}) {
         AnVeCheckingState(stringResource(R.string.home_checking_account))
         return
     }
-    PlacesContent(state, vm, onOpenLocation)
+    PlacesContent(state, vm, onOpenLocation, onEditorOpenChange)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocation: () -> Unit = {}) {
+internal fun PlacesContent(
+    state: PlacesState,
+    vm: PlacesViewModel,
+    onOpenLocation: () -> Unit = {},
+    onEditorOpenChange: (Boolean) -> Unit = {},
+) {
     val owner = state.owner ?: return
     val selected = state.places.firstOrNull { it.id == state.selectedId }
     var showDetails by remember(owner) { mutableStateOf(false) }
@@ -219,6 +229,9 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
             editingPlace = null
         }
     }
+    val editorOpen = editing && editorAuthorized
+    LaunchedEffect(editorOpen) { onEditorOpenChange(editorOpen) }
+    DisposableEffect(Unit) { onDispose { onEditorOpenChange(false) } }
     val snackbarHostState = remember { SnackbarHostState() }
     // Resolved before the effect: LaunchedEffect bodies are not composable.
     val saveConfirmedMessage = stringResource(R.string.places_save_confirmed)
@@ -442,14 +455,14 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                     modifier = Modifier.weight(1f),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
-                                    Row(
+                                    FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        itemVerticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(
                                             text = place.name,
                                             style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.weight(1f, fill = false),
                                         )
                                         StitchSemanticBadge(
                                             text = label,
@@ -1043,6 +1056,38 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                 windowInsets = WindowInsets(0, 0, 0, 0),
             )
         },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp,
+            ) {
+                Column(Modifier.fillMaxWidth()) {
+                    HorizontalDivider(color = LocalStitchColors.current.hairline)
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .anveContentWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
+                                enabled = valid && !pending,
+                                shape = CircleShape,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) { Text(stringResource(R.string.action_save)) }
+                            TextButton(
+                                onClick = onCancel,
+                                enabled = !pending,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) { Text(stringResource(R.string.action_cancel)) }
+                        }
+                    }
+                }
+            }
+        },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { editorPadding ->
         Box(
@@ -1055,7 +1100,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     .anveContentWidth()
                     .verticalScroll(rememberScrollState())
                     .imePadding()
-                    .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 PlaceSearchCard(
@@ -1092,7 +1137,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                         )
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             presetNames.forEach { preset ->
                                 FilterChip(
@@ -1306,19 +1351,6 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
-                        enabled = valid && !pending,
-                        shape = CircleShape,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    ) { Text(stringResource(R.string.action_save)) }
-                    TextButton(
-                        onClick = onCancel,
-                        enabled = !pending,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    ) { Text(stringResource(R.string.action_cancel)) }
                 }
             }
         }

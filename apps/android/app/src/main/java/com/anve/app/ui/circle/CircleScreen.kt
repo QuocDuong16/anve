@@ -1151,7 +1151,10 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
                     )
                 }
             }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FilledTonalButton(
                     onClick = onShare,
                     shape = CircleShape,

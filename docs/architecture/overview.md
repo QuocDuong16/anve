@@ -121,20 +121,23 @@ Các ranh giới planned (thứ tự các nhóm, không phải thứ tự thư m
 
 ## 3. Module Go
 
-Module nội bộ `internal/` và trạng thái hiện tại (cập nhật sau M1/M2):
+Module nội bộ `internal/` và trạng thái hiện tại:
 
 | Module | Trách nhiệm | Trạng thái |
 | --- | --- | --- |
-| `httpapi` + `config` | Router, middleware, error envelope, cấu hình | Implemented (M0–M4) |
-| `auth` | Đăng nhập, phiên, thiết bị, consent switch, xóa tài khoản | Implemented (M1) |
-| `circles` | Circle, membership, invite, vai trò, giải tán | Implemented (M2) |
-| `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | Implemented (M1, ownership thống nhất ở ADR 0004) |
-| `testdb` | Scratch database cho integration tests | Implemented (test infrastructure) |
-| `locations` | Ingestion, idempotency, retention, deletion fences và durable place queue | **Implemented — Automated Verified (M3/M5)** |
-| `locationaccess` | Explicit audience, temporal authorization, latest snapshot và history | **Implemented (M4/M5-A)**; PostgreSQL enforces each read |
-| `places` / `alerts` | Place access riêng, opt-in của chủ thể, worker xử lý mẫu M3 và feed sự kiện | Implemented — Automated Verified; không có push |
-| `sos` / `journeys` | Event lifecycle, acknowledge | Planned (M6, M7) |
-| `notify` | Dispatcher FCM, lọc người nhận theo quyền | Planned (M6) |
+| `httpapi`, `httpserver`, `config`, `observability` | Router, lifecycle listener, error envelope, metrics loopback | **Implemented — Automated Verified** |
+| `auth` | Đăng nhập Google/dev, phiên opaque, thiết bị, consent switch, xóa tài khoản | **Implemented — Verified** (M1) |
+| `avatars` | Chuẩn hóa ảnh đại diện (loại metadata) và đọc có xác thực trong nhóm | **Implemented — Automated Verified** |
+| `circles` | Circle, membership, link/email invite, vai trò, giải tán | **Implemented — Verified** (M2) |
+| `contacts` | Trang công khai (`/`, `/privacy`, `/delete-account`), form liên hệ & thông báo | **Implemented — Unit/Router Verified** |
+| `audit` | Ghi sự kiện privacy trong cùng transaction với nghiệp vụ | **Implemented** (ADR 0004) |
+| `testdb` | Scratch database cho integration tests | **Implemented** (test infrastructure) |
+| `locations` | Ingestion, idempotency, retention, deletion fences và durable place queue | **Implemented — Automated Verified** (M3/M5) |
+| `locationaccess` | Explicit audience, temporal authorization, latest snapshot và history | **Implemented — Automated Verified** (M4/M5-A) |
+| `places` | Place access riêng, opt-in của chủ thể, worker xử lý mẫu M3 và feed sự kiện | **Implemented — Automated Verified** (M5-B) |
+| `sos` | Vòng đời sự kiện SOS (không đính kèm tọa độ), người nhận & xác nhận | **Implemented — Automated Verified** (M6) |
+| `journeys` | Safe Journey có thời hạn, ước tính đến nơi tùy chọn & nhắc thiếu cập nhật | **Implemented — Automated Verified** (M7-B) |
+| `notifications` | Dispatcher FCM, kiểm tra quyền trước khi gửi (fake provider trong test) | **Implemented — Automated Verified** (M6; chờ Firebase thật) |
 
 Nguyên tắc giữ nguyên: contract-first (đổi OpenAPI trước handler); API server
 chạy được không cần database cho đến khi tính năng đầu tiên cần; `log/slog`
@@ -193,7 +196,7 @@ Polling chỉ là convergence path; no-store memory display cache is not an
 authorization source. Tối đa 10 giây là mục tiêu phát hiện revoke khi mạng hoạt
 động, không phải guarantee khi mất mạng. Dữ liệu đã giao không thể thu hồi.
 
-### 4.3 Push notification flow (Planned — M6)
+### 4.3 Push notification flow (Implemented — Automated Verified M6; chờ Firebase thật)
 
 ```mermaid
 sequenceDiagram

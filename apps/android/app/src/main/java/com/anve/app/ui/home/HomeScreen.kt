@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -225,6 +226,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     var tab by rememberSaveable(stateSaver = homeTabSaver) { mutableStateOf(HomeTab.CIRCLE) }
     var secondaryPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
     var sosReturnPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
+    var sharingReturnPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
+    var placeEditorOpen by rememberSaveable { mutableStateOf(false) }
     var showDiagnostics by rememberSaveable { mutableStateOf(false) }
     var showJourneys by rememberSaveable { mutableStateOf(false) }
     var openMapAudience by rememberSaveable { mutableStateOf(false) }
@@ -238,7 +241,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     // The circle activation checklist cannot observe viewer grants from its
     // own state, so the "choose viewers" step hides once the user has gone to
     // the map. Held here (not in CircleScreen) so it survives tab switches.
-    var circleAudienceStepHidden by remember { mutableStateOf(false) }
+    var circleAudienceStepHidden by rememberSaveable { mutableStateOf(false) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
     LaunchedEffect(invitation?.id, invitation?.owner, session?.userId) {
@@ -264,6 +267,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         selectedSos = null
         secondaryPage = null
         sosReturnPage = null
+        sharingReturnPage = null
+        placeEditorOpen = false
         selectedInvitation = null
         circleAudienceStepHidden = false
         openMapAudience = false
@@ -294,6 +299,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             selectedSos = if (destination.kind == "SOS") destination.eventId else null
             secondaryPage = if (destination.kind == "SOS") HomeSecondaryPage.SOS else null
             sosReturnPage = null
+            sharingReturnPage = null
+            placeEditorOpen = false
             selectedInvitation = if (destination.kind == "CIRCLE_INVITE") destination.eventId else null
             tab = when {
                 showJourneys -> HomeTab.MAP
@@ -354,14 +361,20 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         return
     }
     val returnFromSecondaryPage = {
-        secondaryPage = if (secondaryPage == HomeSecondaryPage.SOS) sosReturnPage else null
+        secondaryPage = when (secondaryPage) {
+            HomeSecondaryPage.SOS -> sosReturnPage
+            HomeSecondaryPage.SHARING -> sharingReturnPage
+            else -> null
+        }
         sosReturnPage = null
+        sharingReturnPage = null
         selectedSos = null
     }
     BackHandler(enabled = secondaryPage != null, onBack = returnFromSecondaryPage)
     val stitch = LocalStitchColors.current
+    val editingPlaceFullScreen = placeEditorOpen && secondaryPage == null && tab == HomeTab.PLACES
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val useRail = maxWidth >= 600.dp
+        val useRail = maxWidth >= 600.dp && !editingPlaceFullScreen
         val navBarColors = NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
             selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -392,7 +405,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         val tabLabel: @Composable (HomeTab) -> Unit = { entry ->
             Text(
                 text = stringResource(entry.labelRes),
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -400,6 +413,8 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             tab = entry
             secondaryPage = null
             sosReturnPage = null
+            sharingReturnPage = null
+            placeEditorOpen = false
             selectedSos = null
         }
 
@@ -456,12 +471,15 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     }
                 },
                 bottomBar = {
-                    if (!useRail) {
+                    if (!useRail && !editingPlaceFullScreen) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             HorizontalDivider(color = stitch.hairline)
                             NavigationBar(
                                 containerColor = stitch.cardTactile,
                                 tonalElevation = 0.dp,
+                                windowInsets = WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                                ),
                             ) {
                                 HomeTab.entries.forEach { entry ->
                                     NavigationBarItem(
@@ -477,7 +495,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     }
                 },
                 floatingActionButton = {
-                    if (secondaryPage != HomeSecondaryPage.SOS) {
+                    if (secondaryPage != HomeSecondaryPage.SOS && !editingPlaceFullScreen) {
                         AnVeSosPillButton(
                             onClick = {
                                 sosReturnPage = secondaryPage
@@ -498,6 +516,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                         HomeSecondaryPage.ACCOUNT -> AccountContent(
                             container = container,
                             onOpenTracking = {
+                                sharingReturnPage = HomeSecondaryPage.ACCOUNT
                                 secondaryPage = HomeSecondaryPage.SHARING
                             },
                             onOpenDiagnostics = { showDiagnostics = true },
@@ -513,21 +532,28 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 openMapAudience = true
                                 tab = HomeTab.MAP
                                 secondaryPage = null
+                                sharingReturnPage = null
                             },
                         )
                         HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
                         null -> Column(Modifier.fillMaxSize()) {
                             val trackingStatus by container.trackingManager.status.collectAsStateWithLifecycle()
-                            AnVeShellHeader(
-                                sharing = trackingStatus.activelyTracking,
-                                onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
-                                onOpenSharing = { secondaryPage = HomeSecondaryPage.SHARING },
-                            )
+                            if (!editingPlaceFullScreen) {
+                                AnVeShellHeader(
+                                    sharing = trackingStatus.activelyTracking,
+                                    onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
+                                    onOpenSharing = {
+                                        sharingReturnPage = null
+                                        secondaryPage = HomeSecondaryPage.SHARING
+                                    },
+                                )
+                            }
                             Box(Modifier.fillMaxWidth().weight(1f)) {
                                 when (tab) {
                                     HomeTab.MAP -> LiveMapScreen(
                                         container = container,
                                         onOpenLocation = {
+                                            sharingReturnPage = null
                                             secondaryPage = HomeSecondaryPage.SHARING
                                         },
                                         onOpenCircle = {
@@ -546,6 +572,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                         invitationId = selectedInvitation,
                                         onInvitationConsumed = { selectedInvitation = null },
                                         onOpenLocation = {
+                                            sharingReturnPage = null
                                             secondaryPage = HomeSecondaryPage.SHARING
                                         },
                                         onOpenMap = {
@@ -554,6 +581,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                             tab = HomeTab.MAP
                                             secondaryPage = null
                                             sosReturnPage = null
+                                            sharingReturnPage = null
                                             selectedSos = null
                                         },
                                         audienceStepHidden = circleAudienceStepHidden,
@@ -562,8 +590,10 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                     HomeTab.PLACES -> PlacesScreen(
                                         container = container,
                                         onOpenLocation = {
+                                            sharingReturnPage = null
                                             secondaryPage = HomeSecondaryPage.SHARING
                                         },
+                                        onEditorOpenChange = { placeEditorOpen = it },
                                     )
                                     HomeTab.HISTORY -> HistoryScreen(container = container)
                                 }
@@ -1096,6 +1126,7 @@ private fun ResultNoticeCard(text: String, onDismiss: () -> Unit) {
 private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Composable () -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     OutlinedCard(
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, stitch.hairline),
@@ -1106,49 +1137,71 @@ private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Co
             AnVeAccountShieldIllustration(
                 modifier = Modifier.fillMaxWidth().height(92.dp),
             )
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                if (avatarContent != null) {
-                    avatarContent()
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(58.dp)
-                            .background(
-                                color = colors.primaryContainer,
-                                shape = CircleShape,
-                            ),
-                        contentAlignment = Alignment.Center,
+            BoxWithConstraints(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                val stackAction = maxWidth < 340.dp || largeFont
+                val identityRow: @Composable (Modifier) -> Unit = { rowMod ->
+                    Row(
+                        modifier = rowMod,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Text(
-                            text = user.displayName.take(1).uppercase().ifBlank { "?" },
-                            style = MaterialTheme.typography.titleLarge,
-                            color = colors.onPrimaryContainer,
-                        )
+                        if (avatarContent != null) {
+                            avatarContent()
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .background(
+                                        color = colors.primaryContainer,
+                                        shape = CircleShape,
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = user.displayName.take(1).uppercase().ifBlank { "?" },
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = colors.onPrimaryContainer,
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(user.displayName, style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                user.email,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(user.displayName, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        user.email,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
+                val renameButton: @Composable (Modifier) -> Unit = { btnMod ->
+                    FilledTonalButton(
+                        onClick = onRename,
+                        shape = CircleShape,
+                        modifier = btnMod.heightIn(min = 48.dp),
+                    ) {
+                        Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.action_rename))
+                    }
                 }
-                FilledTonalButton(
-                    onClick = onRename,
-                    shape = CircleShape,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.action_rename))
+                if (stackAction) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        identityRow(Modifier.fillMaxWidth())
+                        renameButton(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        identityRow(Modifier.weight(1f))
+                        renameButton(Modifier)
+                    }
                 }
             }
         }
@@ -1179,92 +1232,106 @@ private fun ConsentCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             // The consent switches on Vị trí and Tài khoản decide whether the
             // server may hold this family's location — the product's most
-            // consequential control. Row-toggleable so TalkBack reads the
-            // consent title + state from ONE focus; a bare switch would read
-            // an anonymous "bật" with no name (conventions toggleable-row).
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.home_sharing_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                StitchSemanticBadge(
-                    text = statusBadge,
-                    kind = when {
-                        syncPending -> StitchBadgeKind.IN_TRANSIT
-                        requestedEnabled -> StitchBadgeKind.SAFE_HOME
-                        else -> StitchBadgeKind.DELAYED_OFFLINE
-                    },
-                    showDot = requestedEnabled || syncPending,
-                )
-            }
-            HorizontalDivider(color = stitch.hairline)
-            Row(
+            // consequential control. Toggleable spans title + subtitle + switch
+            // so TalkBack reads the consent title + state from ONE focus; a
+            // bare switch would read an anonymous "bật" with no name.
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
                     .toggleable(
                         value = requestedEnabled,
                         enabled = !busy,
                         role = Role.Switch,
                         onValueChange = onToggle,
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    )
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    stringResource(R.string.home_sharing_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                Switch(
-                    checked = requestedEnabled,
-                    enabled = !busy,
-                    // Indicative only: the row above carries the toggle so the
-                    // switch does not double-register as a toggleable node.
-                    onCheckedChange = null,
-                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_sharing_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                    StitchSemanticBadge(
+                        text = statusBadge,
+                        kind = when {
+                            syncPending -> StitchBadgeKind.IN_TRANSIT
+                            requestedEnabled -> StitchBadgeKind.SAFE_HOME
+                            else -> StitchBadgeKind.DELAYED_OFFLINE
+                        },
+                        showDot = requestedEnabled || syncPending,
+                    )
+                }
+                HorizontalDivider(color = stitch.hairline)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.home_sharing_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = requestedEnabled,
+                        enabled = !busy,
+                        // Indicative only: the enclosing column carries the toggle so the
+                        // switch does not double-register as a toggleable node.
+                        onCheckedChange = null,
+                    )
+                }
             }
-            if (conflict) {
-                Text(
-                    stringResource(R.string.home_sharing_conflict_notice),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.error,
-                )
-            } else if (syncPending) {
-                // Waiting-for-server is attention, not failure: error stays
-                // reserved for the conflict branch above (DESIGN.md).
-                Text(
-                    stringResource(R.string.home_sharing_pending_notice),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                )
-            } else if (user.locationSharingEnabled) {
-                Text(
-                    stringResource(R.string.home_sharing_on_notice),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.primary,
-                )
-                // Consent turned on used to dead-end here; the one screen
-                // where the shared location actually appears is a hop away,
-                // so offer it while the state is fresh.
-                onOpenLocation?.let { openLocation ->
-                    FilledTonalButton(
-                        onClick = openLocation,
-                        shape = CircleShape,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) {
-                        Text(stringResource(R.string.action_open_location))
+            if (conflict || syncPending || user.locationSharingEnabled) {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (conflict) {
+                        Text(
+                            stringResource(R.string.home_sharing_conflict_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.error,
+                        )
+                    } else if (syncPending) {
+                        // Waiting-for-server is attention, not failure: error stays
+                        // reserved for the conflict branch above (DESIGN.md).
+                        Text(
+                            stringResource(R.string.home_sharing_pending_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    } else if (user.locationSharingEnabled) {
+                        Text(
+                            stringResource(R.string.home_sharing_on_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.primary,
+                        )
+                        // Consent turned on used to dead-end here; the one screen
+                        // where the shared location actually appears is a hop away,
+                        // so offer it while the state is fresh.
+                        onOpenLocation?.let { openLocation ->
+                            FilledTonalButton(
+                                onClick = openLocation,
+                                shape = CircleShape,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            ) {
+                                Text(stringResource(R.string.action_open_location))
+                            }
+                        }
                     }
                 }
             }
@@ -1302,14 +1369,14 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 device.name.ifBlank { stringResource(R.string.home_device_fallback_name) },
                                 style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.weight(1f, fill = false),
                             )
                             if (isCurrent) {
                                 // A read-only label, not a chip: the device name is

@@ -163,6 +163,31 @@ func TestLandingPageServesHTML(t *testing.T) {
 	assert.NotEmpty(t, assetRec.Body.Bytes())
 }
 
+func TestPublicLegalPagesServeHTML(t *testing.T) {
+	t.Parallel()
+
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
+
+	for _, tc := range []struct {
+		path    string
+		snippet string
+	}{
+		{path: "/privacy", snippet: "Chính sách quyền riêng tư AnVề"},
+		{path: "/delete-account", snippet: "Xóa tài khoản và dữ liệu AnVề"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+			assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+			assert.Contains(t, rec.Body.String(), tc.snippet)
+			assert.Contains(t, rec.Body.String(), "nvqduong.dev@gmail.com")
+		})
+	}
+}
+
 func TestContactsEndpointRoutes(t *testing.T) {
 	t.Parallel()
 

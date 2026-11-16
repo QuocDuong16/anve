@@ -28,15 +28,17 @@ chuyên nghiệp.
 
 ## Trạng thái phát triển
 
-Dự án đã hoàn thành **M0 (foundation)**, **M1 (authentication, thiết bị,
-privacy foundation)**, **M2 (Family Circle)**, **M3 (Location Engine,
-consented ingestion, offline sync)** và **M4 (authorized Live Map)** ở mức
-code + automated verification:
-PostgreSQL/PostGIS integration test, Android JVM test, lint/APK trong CI, cùng
-smoke test HTTP trên stack thật. M3 **chưa được field-validate trên điện thoại
-thật** — pin, hành vi nền, reboot và các giới hạn OEM vẫn là *Pending Field
-Validation*, không phải PASS. M4 chưa được runtime/device-validate: chưa có
-emulator hoặc Maps API key để xác minh map rendering. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
+Dự án đã triển khai ở mức mã nguồn + kiểm thử tự động các mốc **M0 (foundation)**,
+**M1 (authentication, thiết bị, privacy foundation)**, **M2 (Family Circle, avatar, lời mời email)**,
+**M3 (Location Engine, consented ingestion, offline sync)**, **M4 (authorized Live Map & freshness)**,
+**M5 (Location History & Place Alerts)**, **M6 (SOS & notifications qua fake provider)**,
+**M7-A/M7-B (Diagnostics & Safe Journey)** và nền tảng **M8-A..M8-D (observability, Android release/privacy gates, landing page & `/privacy`, `/delete-account` trên server)**.
+
+Mức xác minh hiện tại là **code + automated verification** (PostgreSQL/PostGIS integration tests,
+Go/Android unit tests, lint/APK/release-config checks và emulator CI). Các phần
+**vẫn đang chờ kiểm chứng bên ngoài**: Google Sign-In/Maps/FCM với project thật,
+chạy thực địa trên điện thoại Android vật lý (pin, nền, reboot, OEM, GPS),
+và deploy domain HTTPS công khai. Trạng thái chi tiết từng mốc và bằng chứng xác minh ở
 [`docs/product/roadmap.md`](docs/product/roadmap.md) và
 [`docs/implementation/progress.md`](docs/implementation/progress.md).
 
@@ -44,25 +46,26 @@ emulator hoặc Maps API key để xác minh map rendering. Trạng thái chi ti
 
 ## Phạm vi chức năng
 
-Tổng quan các nhóm tính năng hướng tới. Đặc tả đầy đủ và trạng thái từng nhóm ở
+Tổng quan các nhóm tính năng. Đặc tả đầy đủ và ranh giới xác minh từng nhóm ở
 [`docs/product/features.md`](docs/product/features.md).
 
 | Nhóm chức năng | Mô tả | Trạng thái |
 | --- | --- | --- |
 | Nền tảng M0 | Splash screen, health/meta API, migrations, CI, toolchain | **Implemented — Verified** |
-| Xác thực & phiên | Google/dev login, session opaque có rotation, thiết bị, xóa tài khoản | **Implemented — Verified** (M1) |
-| Family Circle | Nhóm gia đình, invite, ủy quyền theo chủ thể dữ liệu | **Implemented — Verified** (M2) |
-| Live Map | Bản đồ thành viên được cấp quyền, cập nhật qua polling có điều kiện | **Implemented — Automated Verified** (M4); Pending Runtime/Device Validation |
+| Xác thực & phiên | Google/dev login, session opaque có rotation, thiết bị, xóa tài khoản | **Implemented — Verified** (M1; chờ OAuth client thật & thiết bị thật) |
+| Family Circle | Nhóm gia đình, link/mã mời, lời mời ràng buộc email, avatar, ủy quyền | **Implemented — Verified** (M2 + profile/email) |
+| Live Map | Bản đồ thành viên được cấp quyền, cập nhật qua polling có điều kiện | **Implemented — Automated Verified** (M4); chờ Maps API key & thiết bị thật |
 | Smart Tracking | Location Engine thích ứng, tiết kiệm pin, chạy nền đúng quy trình | **Implemented — Automated Verified** (M3); Pending Field Validation |
 | Location Confidence | Trạng thái Fresh/Delayed/Stale/Unknown theo thời điểm ghi nhận và độ chính xác | **Implemented — Automated Verified** (M4); Pending Runtime/Device Validation |
-| Location History | Hành trình theo ngày, phân biệt dữ liệu bù, retention, xóa | Planned (M5); server retention 30 ngày đã có ở M3 |
+| Location History | Hành trình theo ngày, xóa lịch sử/fences, giữ mặc định 30 ngày | **Implemented — Automated Verified** (M5-A); Pending Device Validation |
 | Offline Sync | Room durable queue, batch, idempotency, preserve timestamps | **Implemented — Automated Verified** (M3); Pending Field Validation |
-| Privacy Controls | Consent, bật/tắt/dừng chia sẻ, thu hồi quyền, audit | Consent + audit (M1), consent/revocation tại ingestion (M3), explicit per-viewer grants và latest-read authorization (M4) **Implemented — Automated Verified**; History thuộc M5 |
-| Place Alerts | Geofence cho địa điểm quan trọng, chống nhiễu, event time | Planned (M5) |
-| SOS & Emergency | Sự kiện cấp cứu, lifecycle, acknowledge qua FCM | Planned (M6) |
-| Safe Journey | Hành trình chủ động về đích, cảnh báo ngừng cập nhật | Planned (M7) |
-| Tracking Health | Diagnostics quyền/battery/mạng/queue | Planned (M7) |
-| Notifications | FCM cho sự kiện — không dùng để truyền GPS | Planned (M6) |
+| Privacy Controls | Consent mặc định tắt, thu hồi quyền theo viewer, audit bất biến | **Implemented — Automated Verified** (M1–M5) |
+| Place Alerts | Địa điểm an toàn & đánh giá đến/rời từ mẫu vị trí đã đồng bộ | **Implemented — Automated Verified & Emulator Verified** (M5-B); Pending Device Validation |
+| SOS & Emergency | Sự kiện khẩn cấp (không đính kèm tọa độ), người nhận, xác nhận | **Implemented — Automated Verified** (M6 với fake provider); chờ FCM & thiết bị thật |
+| Safe Journey | Hành trình về nhà có thời hạn, ước tính đến nơi tùy chọn & nhắc thiếu cập nhật | **Implemented — Automated Verified** (M7-B); Pending Field Validation |
+| Tracking Health | Chẩn đoán quyền/pin/mạng/hàng đợi & xuất báo cáo không tọa độ | **Implemented — Automated Verified** (M7-A); Pending Field Validation |
+| Notifications | FCM mang ID/loại sự kiện (không truyền GPS) | **Implemented — Automated Verified** (M6 với fake provider); chờ Firebase thật |
+| Trang web công khai | Trang giới thiệu `/`, form liên hệ, `/privacy` và `/delete-account` | **Implemented — Server Verified**; chờ deploy domain HTTPS công khai |
 
 Quy ước trạng thái (Implemented / Verified / Planned / Proposed / Not in scope)
 định nghĩa ở [`docs/product/overview.md`](docs/product/overview.md#7-phân-loại-trạng-thái-status-taxonomy).
@@ -70,52 +73,52 @@ Quy ước trạng thái (Implemented / Verified / Planned / Proposed / Not in s
 ## Kiến trúc
 
 Android client (Kotlin + Jetpack Compose + Maps Compose) giao tiếp qua HTTPS
-với backend Go (modular monolith, chi router), dữ liệu vị trí lưu trong
+với backend Go (modular monolith, chi router), dữ liệu lưu trong
 PostgreSQL/PostGIS. Live Map lấy snapshot được phân quyền bằng conditional
-polling; server-push và thông báo FCM vẫn planned — xem
-[`docs/architecture/overview.md`](docs/architecture/overview.md) để có ranh giới
-component, data flows và các quyết định kỹ thuật chưa chốt.
+polling; FCM chỉ dùng cho thông báo sự kiện (không truyền GPS) — xem
+[`docs/architecture/overview.md`](docs/architecture/overview.md) để biết ranh giới
+component, data flows và các quyết định còn mở.
 
 ```mermaid
 flowchart LR
     subgraph android["Android app — Kotlin + Jetpack Compose"]
-        UI["UI features"]
+        UI["UI features (Circle · Map · Places · History · SOS · Journey · Diagnostics)"]
         LE["Location Engine + foreground service (M3)"]
         SQ["Offline queue — Room + WorkManager (M3)"]
     end
     subgraph server["Go backend — modular monolith"]
         API["HTTP API — chi router"]
-        MAP["Authorized latest-location polling (M4)"]
+        MOD["auth · circles · locations · locationaccess · places · sos · journeys · notifications · contacts"]
     end
     DB[("PostgreSQL + PostGIS")]
-    FCM["Firebase Cloud Messaging (planned)"]
+    FCM["Firebase Cloud Messaging (thông báo sự kiện, không GPS)"]
     LE --> SQ
     SQ -. "HTTPS ingest" .-> API
     UI --> API
-    MAP -. "HTTPS snapshot + ETag" .-> UI
-    FCM -. "sự kiện, không GPS (planned)" .-> UI
-    API --> DB
+    API <--> MOD
+    MOD --> DB
+    MOD -. "sự kiện (cần cấu hình Firebase thật)" .-> FCM
+    FCM -. "push tín hiệu" .-> UI
 ```
 
 ## Công nghệ
 
 | Tầng | Công nghệ |
 | --- | --- |
-| Android | Kotlin, Jetpack Compose, Maps Compose (M4), Fused Location Provider (M3), Room (M3), WorkManager (M3), FCM*, Geofencing API* |
-| Backend | Go 1.27, chi router, pgx, PostgreSQL + PostGIS (location ingestion + retention from M3) |
-| Contracts | OpenAPI (`packages/api-contracts/openapi.yaml`) — đổi contract trước handler |
-| Hạ tầng dev | Docker Compose (postgres/postgis + migrate + api), GitHub Actions, mise |
+| Android | Kotlin, Jetpack Compose, Maps Compose, Fused Location Provider, Room, WorkManager, Firebase Cloud Messaging, Play App Update |
+| Backend | Go 1.27.4, chi router, pgx, PostgreSQL + PostGIS (location ingestion, retention & event evaluation) |
+| Contracts & Privacy | OpenAPI (`packages/api-contracts/openapi.yaml` — đổi contract trước handler), Android privacy baseline (`packages/privacy/`) |
+| Hạ tầng dev & prod | Docker Compose (postgres/postgis + migrate + api + Caddy HTTP origin), GitHub Actions, mise |
 
-\* *Các dependency Android đánh dấu sao chưa được thêm vào project; chúng thuộc
-các milestone M5/M6.* Maps Compose đã có trong M4, nhưng render bản đồ cần Maps
-API key do nhà phát triển cấu hình theo `docs/implementation/setup-android.md`.
+*Lưu ý: Maps Compose và Firebase Messaging SDK đã được tích hợp trong dự án (Place Alerts đánh giá từ mẫu vị trí đã đồng bộ phía server, không dùng OS Geofencing API); việc render bản đồ và push thật cần API key / cấu hình Firebase ngoài repository theo `docs/implementation/setup-android.md` và `docs/operations/first-real-test.vi.md`.*
 
 ### Development stack & development login
 
 `make docker-up-dev` chỉ publish cổng API và PostgreSQL trên `127.0.0.1`; máy
 khác trong LAN không truy cập được. `make docker-up` dành cho production, đọc
-`.env.prod`, chạy migrations và expose HTTP origin cho Cloudflare Tunnel. HTTPS
-public do Cloudflare xử lý. Xem
+`.env.prod`, chạy migrations và expose HTTP origin qua Caddy (`/`, `/privacy`,
+`/delete-account`, `/assets/*`, `/api/*`, `/healthz`, `/readyz`) cho Cloudflare
+Tunnel. HTTPS public do Cloudflare xử lý. Xem
 [`docs/operations/first-real-test.vi.md`](docs/operations/first-real-test.vi.md)
 để chuẩn bị DNS, OAuth và máy chủ. Chạy API trực tiếp (không Docker) mặc định bind
 `127.0.0.1:8080`. Development login chỉ mount khi
@@ -130,14 +133,14 @@ Compose bị publish ra ngoài loopback.
 | Milestone | Phạm vi | Trạng thái |
 | --- | --- | --- |
 | M0 | Foundation: toolchain, CI, migrations, local stack, splash | **Implemented — Verified** |
-| M1 | Authentication, device identity, privacy foundation | **Implemented — Verified** (automated; chờ field validation) |
-| M2 | Family Circle & membership authorization | **Implemented — Verified** (automated; chờ field validation) |
+| M1 | Authentication, device identity, privacy foundation | **Implemented — Verified** (automated; chờ OAuth thật & field validation) |
+| M2 | Family Circle, avatar, email/link invites & membership authorization | **Implemented — Verified** (automated; chờ field validation) |
 | M3 | Location Engine, Smart Tracking, offline queue, consented ingestion | **Implemented — Automated Verified** (runtime HTTP smoke; Pending Field Validation) |
 | M4 | Live Map, authorized latest locations, confidence engine | **Implemented — Automated Verified**; Pending Runtime/Device Validation |
-| M5 | Location History & Place Alerts | Planned |
-| M6 | SOS, Firebase push, event acknowledgement | Planned |
-| M7 | Safe Journey, diagnostics, field validation | Planned |
-| M8 | Release hardening, Google Play readiness | Planned |
+| M5 | Location History & Place Alerts | **Implemented — Automated Verified**; Pending Device Validation |
+| M6 | SOS, Firebase push, event acknowledgement | **Implemented — Automated Verified** (fake provider); chờ Firebase thật & thiết bị |
+| M7 | Safe Journey, diagnostics, field validation | **M7-A & M7-B Automated Verified**; field validation trên thiết bị thật còn mở |
+| M8 | Release hardening, observability, Google Play readiness | **M8-A/B/C/D Implemented**; public HTTPS URLs, provider & device gates còn mở |
 
 Chi tiết exit criteria và bằng chứng xác minh của từng mốc:
 [`docs/product/roadmap.md`](docs/product/roadmap.md).
@@ -154,7 +157,12 @@ Chi tiết exit criteria và bằng chứng xác minh của từng mốc:
 | [`docs/product/glossary.md`](docs/product/glossary.md) | Thuật ngữ dùng chung |
 | [`docs/product/non-functional-requirements.md`](docs/product/non-functional-requirements.md) | Quality attributes, cách đo, proposed targets |
 | [`docs/architecture/overview.md`](docs/architecture/overview.md) | Kiến trúc, data flows, trust boundaries |
-| [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`docs/implementation/progress.md`](docs/implementation/progress.md) | Tiến độ chi tiết & bằng chứng kiểm thử từng giai đoạn |
+| [`docs/operations/first-real-test.vi.md`](docs/operations/first-real-test.vi.md) | Hướng dẫn chuẩn bị hạ tầng thật, OAuth/Firebase & test |
+| [`docs/operations/android-release.md`](docs/operations/android-release.md) | Quy trình ký, verify AAB & release Android |
+| [`docs/release/m8d-owner-handoff.md`](docs/release/m8d-owner-handoff.md) | Hồ sơ bàn giao owner, Data Safety, quyền & policy drafts |
+| [`docs/adr/`](docs/adr/) | Architecture decision records (ADR 0001–0017) |
+| [`PRODUCT.md`](PRODUCT.md) / [`DESIGN.md`](DESIGN.md) | Ngữ cảnh sản phẩm và hệ thống thiết kế Warm Tactile Minimalism |
 | [`AGENTS.md`](AGENTS.md) | Quy ước làm việc cho AI coding agent |
 
 ## Setup và chạy project
@@ -165,8 +173,8 @@ Chi tiết exit criteria và bằng chứng xác minh của từng mốc:
 | --- | --- | --- |
 | mise | ≥ 2026 | Cài mọi toolchain pin: https://mise.jdx.dev |
 | Docker | ≥ 24 | Chạy PostgreSQL/PostGIS stack |
-| JDK | 21 | Cài qua mise |
-| Go | 1.27.3 | Cài qua mise |
+| JDK | 21 | Cài qua mise (`temurin-21.0.12+8.0.LTS`) |
+| Go | 1.27.4 | Cài qua mise |
 | Android SDK | API 37 | Đặt `ANDROID_HOME`; không quản lý qua mise |
 
 ### Khởi động nhanh
@@ -212,19 +220,27 @@ Hồ sơ M8-C: [Data Safety nháp](docs/release/data-safety-draft.md),
 anve/
 ├── apps/
 │   ├── android/          # Kotlin + Jetpack Compose client
-│   └── server/           # Go backend
+│   └── server/           # Go backend (bao gồm trang /, /privacy, /delete-account)
 ├── packages/
-│   └── api-contracts/    # OpenAPI contract
+│   ├── api-contracts/    # OpenAPI contract
+│   ├── privacy/          # Android release privacy baseline
+│   └── tooling/          # Shared repository tooling definitions
 ├── infra/
-│   ├── docker/           # Docker Compose stack
+│   ├── docker/           # Docker Compose stack & Caddy HTTP origin
 │   └── migrations/       # SQL migrations
 ├── docs/
-│   ├── product/          # Product documentation
+│   ├── product/          # Product documentation & roadmap
 │   ├── architecture/     # Architecture documentation
-│   ├── adr/              # Architecture decision records
+│   ├── implementation/   # Setup, validation & slice evidence records
+│   ├── operations/       # Release, observability & real-test runbooks
+│   ├── release/          # Data Safety, permission & privacy/deletion drafts
+│   ├── security/         # Focused boundary reviews
+│   ├── adr/              # Architecture decision records (0001–0017)
 │   └── screenshots/
-├── scripts/              # Repository quality scripts
-├── .github/workflows/    # CI
+├── scripts/              # Repository quality, release & compose checks
+├── .github/workflows/    # CI (Go, Android, release workflows)
+├── DESIGN.md             # Warm Tactile Minimalism design system
+├── PRODUCT.md            # Product context summary
 ├── Makefile              # Mọi development task
 └── mise.toml             # Toolchain pin
 ```
@@ -255,11 +271,12 @@ images được pin bằng digest; Dependabot mở PR nâng tag và digest cùng
 Hai workflow độc lập chạy trên mọi pull request và push lên `main`:
 
 - **Go** — format, tidy, vet, golangci-lint, govulncheck, test với race
-  detector, build; thêm job chạy migrator integration test trên
-  PostgreSQL/PostGIS thật (up → down → rollback); một job kiểm tra OpenAPI
-  contract, lint workflow files và Dependabot config.
-- **Android** — unit test, lint, build debug APK, compile the minified
-  release build và upload debug artifact.
+  detector, build và `server-observability-smoke`; job chạy migrator & store
+  integration test trên PostgreSQL/PostGIS thật; job kiểm tra OpenAPI
+  contract, workflow `actionlint`, `compose-lint` và Dependabot config.
+- **Android** — unit test, lint, build debug APK, kiểm tra release/privacy
+  baseline (`releaseValidation` AAB/APK bằng khóa tạm + kiểm tra drift SDK/quyền)
+  và smoke test signed fixture trên emulator.
 
 Lưu ý: CI PASS chứng minh build/test/lint sạch, **không** chứng minh hành vi
 tính năng Android trên điện thoại thật — bằng chứng on-device được ghi nhận

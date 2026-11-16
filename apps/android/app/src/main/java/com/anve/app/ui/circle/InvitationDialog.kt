@@ -78,7 +78,6 @@ fun InvitationDialog(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
                     .verticalScroll(rememberScrollState())
                     .testTag("invitation-details"),
                 verticalArrangement = Arrangement.spacedBy(14.dp),

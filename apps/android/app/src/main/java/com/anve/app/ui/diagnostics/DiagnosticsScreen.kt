@@ -1,9 +1,7 @@
 package com.anve.app.ui.diagnostics
 
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
@@ -15,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -81,7 +80,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -91,7 +89,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -118,6 +115,7 @@ import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
+import com.anve.app.ui.theme.SystemStatusBarIcons
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 import kotlinx.coroutines.launch
@@ -276,7 +274,7 @@ fun DiagnosticsContent(
     val noticeBackground = if (!diagnosis.attention) stitch.liveContainer else stitch.transitContainer
     val noticeForeground = if (!diagnosis.attention) stitch.onLiveContainer else stitch.onTransitContainer
     // Equal-contrast crossover for black versus white system status icons.
-    DiagnosticsStatusBar(appBarBackground.luminance() > 0.179f)
+    SystemStatusBarIcons(appBarBackground.luminance() > 0.179f)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -352,26 +350,62 @@ fun DiagnosticsContent(
                             Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                         }
                         HorizontalDivider(color = stitch.hairline)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            AnVeMetricColumn(
-                                label = stringResource(R.string.diag_metric_fix_age),
-                                value = ageLabel(status.lastFixAtMillis, nowMillis),
-                                modifier = Modifier.weight(1f),
-                            )
-                            AnVeMetricColumn(
-                                label = stringResource(R.string.diag_metric_queue_count),
-                                value = details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading),
-                                valueColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.onTransitContainer else colors.onSurface,
-                                modifier = Modifier.weight(1f),
-                            )
-                            AnVeMetricColumn(
-                                label = stringResource(R.string.diag_metric_upload_age),
-                                value = ageLabel(status.lastUploadAtMillis, nowMillis),
-                                modifier = Modifier.weight(1f),
-                            )
+                        val fixAgeLabel = stringResource(R.string.diag_metric_fix_age)
+                        val fixAgeValue = ageLabel(status.lastFixAtMillis, nowMillis)
+                        val queueCountLabel = stringResource(R.string.diag_metric_queue_count)
+                        val queueCountValue = details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading)
+                        val queueCountColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.onTransitContainer else colors.onSurface
+                        val uploadAgeLabel = stringResource(R.string.diag_metric_upload_age)
+                        val uploadAgeValue = ageLabel(status.lastUploadAtMillis, nowMillis)
+                        val largeMetrics = LocalDensity.current.fontScale > 1.3f
+                        BoxWithConstraints(Modifier.fillMaxWidth()) {
+                            if (maxWidth < 340.dp || largeMetrics) {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    maxItemsInEachRow = 2,
+                                ) {
+                                    AnVeMetricColumn(
+                                        label = fixAgeLabel,
+                                        value = fixAgeValue,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    AnVeMetricColumn(
+                                        label = queueCountLabel,
+                                        value = queueCountValue,
+                                        valueColor = queueCountColor,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    AnVeMetricColumn(
+                                        label = uploadAgeLabel,
+                                        value = uploadAgeValue,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    AnVeMetricColumn(
+                                        label = fixAgeLabel,
+                                        value = fixAgeValue,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    AnVeMetricColumn(
+                                        label = queueCountLabel,
+                                        value = queueCountValue,
+                                        valueColor = queueCountColor,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    AnVeMetricColumn(
+                                        label = uploadAgeLabel,
+                                        value = uploadAgeValue,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -571,27 +605,52 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
 private fun DiagnosticRow(label: String, value: String) {
     val colors = MaterialTheme.colorScheme
     val largeFont = LocalDensity.current.fontScale > 1.25f
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        if (value.length <= 22 && !largeFont) {
-            StitchSemanticBadge(
-                text = value,
-                kind = StitchBadgeKind.NEUTRAL,
-            )
+        if (maxWidth < 300.dp || largeFont) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+                if (value.length <= 22) {
+                    StitchSemanticBadge(
+                        text = value,
+                        kind = StitchBadgeKind.NEUTRAL,
+                    )
+                } else {
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
         } else {
-            Text(
-                value,
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.End,
-                color = colors.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                if (value.length <= 22) {
+                    StitchSemanticBadge(
+                        text = value,
+                        kind = StitchBadgeKind.NEUTRAL,
+                    )
+                } else {
+                    Text(
+                        value,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
@@ -600,24 +659,6 @@ private fun yesNo(value: Boolean, yes: String, no: String) = if (value) yes else
 
 @Composable
 private fun unknownLabel(loading: Boolean) = if (loading) stringResource(R.string.diag_reading) else stringResource(R.string.diag_unknown)
-
-@Composable
-private fun DiagnosticsStatusBar(darkIcons: Boolean) {
-    val context = LocalContext.current
-    val view = LocalView.current
-    DisposableEffect(context, view, darkIcons) {
-        val controller = context.diagnosticsActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
-        val previous = controller?.isAppearanceLightStatusBars
-        controller?.isAppearanceLightStatusBars = darkIcons
-        onDispose { if (previous != null) controller.isAppearanceLightStatusBars = previous }
-    }
-}
-
-private fun Context.diagnosticsActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.diagnosticsActivity()
-    else -> null
-}
 
 @Composable
 private fun workLabel(status: SyncWorkStatus): String = when (status) {

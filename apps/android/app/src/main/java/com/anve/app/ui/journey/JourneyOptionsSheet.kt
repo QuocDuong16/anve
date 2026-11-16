@@ -3,13 +3,13 @@ package com.anve.app.ui.journey
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -67,11 +66,12 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = stitch.cardTactile,
     ) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val sheetMaxHeight = maxHeight * 0.86f
         Column(
             Modifier
                 .fillMaxWidth()
-                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
-                .navigationBarsPadding()
+                .heightIn(max = sheetMaxHeight)
                 .padding(horizontal = 16.dp),
         ) {
             LazyColumn(
@@ -116,7 +116,10 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
                             )
                             if (stale > 0) {
                                 Text(stringResource(R.string.journey_options_stale_threshold), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
                                     listOf(5, 10, 15, 30).forEach { value ->
                                         FilterChip(
                                             selected = stale == value,
@@ -143,6 +146,7 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
                     contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
                 ),
             ) { Text(stringResource(R.string.journey_options_apply)) }
+        }
         }
     }
 }

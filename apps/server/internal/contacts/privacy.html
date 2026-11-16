@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chính sách quyền riêng tư — AnVề</title>
+  <meta name="description" content="Chính sách quyền riêng tư của AnVề: dữ liệu vị trí, ảnh đại diện, lời mời, kiểm soát đồng thuận và quyền xóa tài khoản." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream-bg: #FDF9F2;
+      --cream-low: #F7F3EC;
+      --cream-mid: #F1EDE7;
+      --cream-high: #EBE8E1;
+      --forest: #3D602F;
+      --sage: #557945;
+      --on-forest: #FFFFFF;
+      --mint: #DBFFC6;
+      --blush: #F1DDE4;
+      --blush-ink: #4A3B40;
+      --plum: #695B60;
+      --ink: #1C1C18;
+      --olive-ink: #43483E;
+      --outline-var: #C3C8BB;
+      --rose: #9E3E56;
+      --rose-bg: #F6E2E9;
+      --rose-ink: #4A1C28;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-pill: 9999px;
+      --transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 92px;
+      scrollbar-color: var(--outline-var) var(--cream-bg);
+    }
+    ::selection {
+      background: var(--mint);
+      color: var(--ink);
+    }
+    body {
+      margin: 0;
+      font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      background-color: var(--cream-bg);
+      color: var(--ink);
+      line-height: 1.65;
+      caret-color: var(--forest);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--forest);
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+    }
+    a:hover {
+      color: var(--sage);
+    }
+    :focus-visible {
+      outline: 2px solid var(--forest);
+      outline-offset: 3px;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      padding: 12px 18px;
+      background: var(--forest);
+      color: var(--on-forest);
+      border-radius: var(--radius-pill);
+      font-weight: 600;
+      z-index: 50;
+    }
+    .skip-link:focus {
+      left: 16px;
+      top: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--cream-bg);
+      border-bottom: 1px solid var(--outline-var);
+    }
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      min-height: 70px;
+      padding: 10px 0;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--forest);
+      text-decoration: none;
+      min-height: 48px;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--blush);
+      border: 1px solid rgba(61, 96, 47, 0.25);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 10px 16px;
+      border-radius: var(--radius-pill);
+      font-size: 0.94rem;
+      font-weight: 500;
+      color: var(--olive-ink);
+      text-decoration: none;
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .nav-link:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+    .nav-link[aria-current="page"] {
+      background: var(--cream-mid);
+      color: var(--forest);
+      font-weight: 600;
+    }
+
+    /* Document Layout */
+    .doc-wrap {
+      padding: 40px 0 64px;
+    }
+    .doc-shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 44px;
+      align-items: start;
+    }
+    .toc-rail {
+      position: sticky;
+      top: 94px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .toc-title {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .toc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 4px;
+    }
+    .toc-list a {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--olive-ink);
+      text-decoration: none;
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .toc-list a:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+
+    .doc-article {
+      max-width: 72ch;
+      min-width: 0;
+    }
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(1.85rem, 3.6vw, 2.5rem);
+      line-height: 1.22;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .doc-lead {
+      margin: 0 0 24px;
+      font-size: 1.05rem;
+      color: var(--olive-ink);
+    }
+
+    .meta-strip {
+      margin: 0 0 28px;
+      padding: 18px 20px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 24px;
+    }
+    .meta-item dt {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--olive-ink);
+      margin-bottom: 2px;
+    }
+    .meta-item dd {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+
+    .notice-box {
+      background: var(--blush);
+      color: var(--blush-ink);
+      border: 1px solid rgba(105, 91, 96, 0.28);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      margin: 0 0 32px;
+      font-size: 0.94rem;
+    }
+    .notice-box strong {
+      color: var(--ink);
+    }
+
+    section.doc-section {
+      padding-top: 28px;
+      margin-top: 28px;
+      border-top: 1px solid var(--outline-var);
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.38rem;
+      line-height: 1.3;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 1.06rem;
+      line-height: 1.35;
+      font-weight: 600;
+      color: var(--forest);
+    }
+    p {
+      margin: 0 0 14px;
+      color: var(--olive-ink);
+    }
+    ul {
+      margin: 0 0 16px;
+      padding-left: 22px;
+      color: var(--olive-ink);
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    li strong {
+      color: var(--ink);
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin: 18px 0 20px;
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      background: var(--cream-low);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 560px;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+    th, td {
+      padding: 13px 16px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--outline-var);
+    }
+    tr:last-child td {
+      border-bottom: 0;
+    }
+    th {
+      background: var(--cream-mid);
+      color: var(--ink);
+      font-weight: 600;
+    }
+    td {
+      color: var(--olive-ink);
+    }
+    td strong {
+      color: var(--ink);
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 12px 22px;
+      border-radius: var(--radius-pill);
+      font-family: inherit;
+      font-size: 0.94rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .btn-primary {
+      background: var(--forest);
+      color: var(--on-forest);
+    }
+    .btn-primary:hover {
+      background: var(--sage);
+      color: var(--on-forest);
+    }
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--sage);
+      color: var(--forest);
+    }
+    .btn-secondary:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+
+    footer {
+      border-top: 1px solid var(--outline-var);
+      padding: 24px 0 36px;
+      color: var(--olive-ink);
+      font-size: 0.9rem;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 8px 12px;
+      border-radius: var(--radius-pill);
+      text-decoration: none;
+      color: var(--olive-ink);
+    }
+    .footer-links a:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+
+    @media (max-width: 920px) {
+      .doc-shell {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      .toc-rail {
+        position: static;
+      }
+      .toc-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      .meta-strip, .toc-list {
+        grid-template-columns: 1fr;
+      }
+      .doc-wrap {
+        padding: 28px 0 48px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+
+    @media print {
+      .topbar, .toc-rail, .action-row, footer { display: none; }
+      body { background: #FFFFFF; color: #000000; }
+      .doc-shell { display: block; }
+      .doc-article { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Chuyển tới nội dung chính</a>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/" aria-label="AnVề Trang chủ">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 108 108" fill="none">
+            <path d="M20 48 L54 21 L88 48" stroke="#3D602F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M47 67 L47 50 C47 45 50 42 54 42 C58 42 61 45 61 50 L61 67 Z" fill="#695B60"/>
+            <path d="M54 68 C54 75 67 76 67 82 C67 86 59 88 53 90" stroke="#557945" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>AnVề</span>
+      </a>
+      <nav class="nav-actions" aria-label="Điều hướng chính">
+        <a class="nav-link" href="/">Trang chủ</a>
+        <a class="nav-link" href="/privacy" aria-current="page">Quyền riêng tư</a>
+        <a class="nav-link" href="/delete-account">Xóa tài khoản</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="doc-wrap">
+    <div class="container doc-shell">
+      <aside class="toc-rail" aria-label="Mục lục chính sách">
+        <p class="toc-title">Mục lục tài liệu</p>
+        <ul class="toc-list">
+          <li><a href="#van-hanh">1. Người vận hành &amp; liên hệ</a></li>
+          <li><a href="#du-lieu">2. Dữ liệu AnVề xử lý</a></li>
+          <li><a href="#quyen-kiem-soat">3. Đồng thuận &amp; người xem</a></li>
+          <li><a href="#ben-thu-ba">4. Dịch vụ Google &amp; Firebase</a></li>
+          <li><a href="#luu-tru-xoa">5. Lưu trữ, bảo vệ &amp; xóa dữ liệu</a></li>
+          <li><a href="#gioi-han">6. Giới hạn sử dụng</a></li>
+        </ul>
+      </aside>
+
+      <article class="doc-article">
+        <h1>Chính sách quyền riêng tư AnVề</h1>
+        <p class="doc-lead">
+          AnVề là ứng dụng chia sẻ vị trí và an toàn gia đình trên Android dựa trên sự tự nguyện và đồng thuận minh bạch. Tài liệu này mô tả dữ liệu nào được xử lý, ai có quyền xem và cách bạn kiểm soát hoặc xóa dữ liệu của mình.
+        </p>
+
+        <dl class="meta-strip">
+          <div class="meta-item">
+            <dt>Đơn vị vận hành</dt>
+            <dd>Nguyễn Võ Quốc Dương (NianD)</dd>
+          </div>
+          <div class="meta-item">
+            <dt>Email hỗ trợ &amp; quyền riêng tư</dt>
+            <dd><a href="mailto:nvqduong.dev@gmail.com">nvqduong.dev@gmail.com</a></dd>
+          </div>
+          <div class="meta-item">
+            <dt>Đường dẫn chính thức</dt>
+            <dd>https://anve.niand.id.vn/privacy</dd>
+          </div>
+          <div class="meta-item">
+            <dt>Cập nhật nội dung</dt>
+            <dd>16/11/2026 · Bản chuẩn bị phát hành Google Play</dd>
+          </div>
+        </dl>
+
+        <div class="notice-box" role="note">
+          <strong>Lưu ý minh bạch triển khai:</strong> Nội dung dưới đây phản ánh đúng kiến trúc hiện có trong mã nguồn AnVề. Một số thông số phụ thuộc hạ tầng triển khai thực tế (nhà cung cấp máy chủ/vùng lưu trữ cụ thể, thời hạn giữ nhật ký/bản sao lưu sau phục hồi, phạm vi độ tuổi và quốc gia phát hành trên Google Play) sẽ được hoàn tất và đối chiếu cùng hồ sơ Data Safety khi phát hành bản chính thức.
+        </div>
+
+        <section id="van-hanh" class="doc-section">
+          <h2>1. Người vận hành và kênh liên hệ</h2>
+          <p>
+            Ứng dụng AnVề do <strong>Nguyễn Võ Quốc Dương (NianD)</strong> vận hành. Mọi câu hỏi về quyền riêng tư, yêu cầu hỗ trợ hoặc yêu cầu xóa tài khoản khi không truy cập được ứng dụng có thể gửi qua email <a href="mailto:nvqduong.dev@gmail.com">nvqduong.dev@gmail.com</a>.
+          </p>
+        </section>
+
+        <section id="du-lieu" class="doc-section">
+          <h2>2. AnVề xử lý những thông tin nào</h2>
+          <p>
+            AnVề chỉ xử lý các nhóm dữ liệu cần thiết để xác thực tài khoản, kết nối nhóm gia đình và cung cấp các tính năng an toàn mà bạn chủ động bật.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nhóm dữ liệu</th>
+                  <th>Mục đích sử dụng</th>
+                  <th>Ghi chú kiểm soát &amp; phạm vi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Tài khoản &amp; phiên đăng nhập</strong><br />Thông tin Google Sign-In, tên hiển thị, email, định danh tài khoản, mã thiết bị/phiên cài đặt và mã FCM (nếu bật thông báo)</td>
+                  <td>Xác thực tài khoản, quản lý thiết bị đăng nhập và gửi thông báo do bạn chọn.</td>
+                  <td>Bạn có thể đổi tên hiển thị hoặc thu hồi từng phiên thiết bị trong mục Tài khoản.</td>
+                </tr>
+                <tr>
+                  <td><strong>Ảnh đại diện</strong><br />Ảnh do bạn tự chọn qua trình chọn ảnh hệ thống</td>
+                  <td>Hiển thị ảnh nhận diện cho chính bạn và thành viên hiện tại trong cùng nhóm gia đình.</td>
+                  <td>Chỉ tải lên khi bạn bấm Lưu sau khi cắt/thu nhỏ; máy chủ chuẩn hóa ảnh để loại metadata. Không qua URL công khai, không đọc toàn bộ thư viện ảnh và không tự tải ảnh hồ sơ Google.</td>
+                </tr>
+                <tr>
+                  <td><strong>Vị trí &amp; chuyển động</strong><br />Tọa độ, thời điểm, độ chính xác và thông tin chuyển động sẵn có</td>
+                  <td>Cập nhật vị trí hiện tại, lịch sử vị trí và đánh giá sự kiện địa điểm hoặc hành trình cho người được cấp quyền xem.</td>
+                  <td>Chỉ thu thập khi bạn chủ động bật chia sẻ/theo dõi và cấp quyền hệ thống (bao gồm quyền vị trí nền nếu bạn chọn). Thiết bị, mạng và pin có thể làm chậm hoặc ngừng cập nhật.</td>
+                </tr>
+                <tr>
+                  <td><strong>Nhóm, địa điểm, hành trình &amp; SOS</strong><br />Cấu hình nhóm, người xem, địa điểm đã lưu, hành trình, sự kiện SOS và xác nhận</td>
+                  <td>Vận hành nhóm gia đình, cảnh báo địa điểm, hành trình về nhà và tín hiệu SOS.</td>
+                  <td>SOS hiện <strong>không đính kèm tọa độ</strong> và không tự bật GPS. Hành trình mặc định xác nhận đến nơi thủ công; chế độ tự nhận diện (tùy chọn từng chuyến) ghi rõ <em>“Đến nơi tự động — ước tính”</em> và thông báo thiếu cập nhật không kết luận có tai nạn.</td>
+                </tr>
+                <tr>
+                  <td><strong>Báo cáo chẩn đoán</strong><br />Trạng thái hoạt động giới hạn trên thiết bị</td>
+                  <td>Hỗ trợ người dùng tự chia sẻ thông tin khắc phục sự cố.</td>
+                  <td>Chỉ tạo và chia sẻ khi bạn chủ động mở hộp thoại xem trước và chọn ứng dụng gửi. Danh sách trường giới hạn, không chứa tọa độ GPS, token đăng nhập hay định danh tài khoản/thiết bị/sự kiện.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="quyen-kiem-soat" class="doc-section">
+          <h2>3. Đồng thuận và quyền lựa chọn của bạn</h2>
+          <ul>
+            <li><strong>Tham gia nhóm không tự bật chia sẻ vị trí:</strong> Chia sẻ vị trí mặc định tắt. Chính bạn quyết định bật/tắt chia sẻ và cấp hoặc thu hồi quyền xem của từng thành viên cụ thể. Vai trò chủ nhóm không tự động cấp quyền xem vị trí của người khác. Máy chủ kiểm tra quyền trên từng yêu cầu đọc và ghi.</li>
+            <li><strong>Lời mời bằng link hoặc mã mời:</strong> Là hành động chia sẻ chủ động qua ứng dụng bạn chọn. Người nhận đăng nhập, xem trước tên nhóm và thời hạn rồi mới xác nhận tham gia. Link chờ chỉ lưu tạm trong bộ nhớ tiến trình tối đa 15 phút (đổi tài khoản hoặc đóng tiến trình sẽ xóa), không ghi mã mời vào báo cáo chẩn đoán hay trạng thái lưu đĩa.</li>
+            <li><strong>Lời mời ràng buộc theo email:</strong> Chủ nhóm có thể nhập email để giới hạn tài khoản được mở và dùng mã. Máy chủ lưu bản băm (digest) email đã chuẩn hóa để đối chiếu; digest vẫn được xem là dữ liệu cá nhân. Hệ thống không gửi email ra ngoài cho tính năng này và không tiết lộ cho người gửi biết email đó đã đăng ký hay người nhận có ẩn lời mời hay không.</li>
+            <li><strong>Dừng chia sẻ ngay trên thiết bị:</strong> Tắt chia sẻ sẽ dừng thu thập vị trí trên thiết bị và xóa các điểm chưa gửi khỏi hàng đợi cục bộ. Khi mất mạng, ứng dụng giữ trạng thái chờ xác nhận với máy chủ thay vì giả định máy chủ đã cập nhật. Lưu ý rằng dữ liệu vị trí hoặc ảnh đã được người xem nhận, lưu hoặc chụp lại trước đó không thể thu hồi từ thiết bị của họ.</li>
+          </ul>
+        </section>
+
+        <section id="ben-thu-ba" class="doc-section">
+          <h2>4. Google và các dịch vụ liên quan</h2>
+          <p>
+            AnVề sử dụng <strong>Google Sign-In / Credential Manager</strong> để xác thực đăng nhập, <strong>Google Maps SDK</strong> để hiển thị bản đồ, <strong>Google Play Services Location</strong> để thu nhận vị trí theo lựa chọn của bạn và <strong>Firebase Cloud Messaging (FCM)</strong> để gửi thông báo khi bạn thiết lập tính năng thông báo sau khi đăng nhập.
+          </p>
+          <p>
+            Các SDK này có thể xử lý định danh cài đặt ứng dụng, địa chỉ IP, thông tin thiết bị/yêu cầu và dữ liệu vận hành theo chính sách của Google. Việc xóa tài khoản AnVề không đồng nghĩa xóa tài khoản Google của bạn. Danh mục nhà cung cấp hạ tầng lưu trữ thực tế, vùng máy chủ và cách xử lý xóa dữ liệu phía nhà cung cấp sẽ được đối chiếu đồng bộ cùng hồ sơ Data Safety khi phát hành chính thức.
+          </p>
+        </section>
+
+        <section id="luu-tru-xoa" class="doc-section">
+          <h2>5. Lưu trữ, bảo vệ và xóa dữ liệu</h2>
+          <h3>Thời hạn lưu trữ vận hành</h3>
+          <ul>
+            <li><strong>Hàng đợi ngoại tuyến trên thiết bị:</strong> Tối đa 5.000 điểm vị trí và tối đa 7 ngày trước khi gửi.</li>
+            <li><strong>Lịch sử vị trí trên máy chủ:</strong> Cấu hình mặc định của máy chủ là 30 ngày; giới hạn thực tế phụ thuộc thiết lập lưu trữ của môi trường triển khai. Địa điểm đã lưu và dữ liệu tính năng khác có vòng đời riêng.</li>
+            <li><strong>Ảnh đại diện &amp; lời mời:</strong> Thay hoặc xóa ảnh sẽ xóa bytes ảnh hiện tại khỏi dữ liệu vận hành và chỉ giữ revision kỹ thuật để chặn thao tác cũ. Nội dung lời mời được dọn theo đợt 7 ngày sau khi hết hạn; hàng rào ID/input hash giữ đến khi xóa tài khoản để ngăn tạo lại yêu cầu hết hiệu lực. Bộ đếm chống lạm dụng thông báo giữ digest của ngày UTC hiện tại và ngày trước đó.</li>
+          </ul>
+
+          <h3>Bảo vệ dữ liệu khi truyền tải và lưu trữ</h3>
+          <p>
+            Bản phát hành yêu cầu kết nối <strong>HTTPS</strong> khi trao đổi với máy chủ. AnVề <strong>không sử dụng mã hóa đầu cuối (E2EE)</strong>: máy chủ cần xử lý dữ liệu vị trí để kiểm tra quyền và đánh giá sự kiện địa điểm/hành trình. Dữ liệu cục bộ nằm trong vùng lưu trữ riêng của ứng dụng (không tự sao lưu sang đám mây của thiết bị).
+          </p>
+
+          <h3>Xóa tài khoản và các giới hạn cần biết</h3>
+          <p>
+            Bạn có thể xóa tài khoản ngay trong ứng dụng hoặc gửi yêu cầu qua email theo hướng dẫn riêng khi không còn truy cập được ứng dụng. Nếu bạn đang là chủ nhóm có thành viên khác, bạn cần giải tán nhóm trước khi xóa tài khoản để không tự ý xóa nhóm của người khác.
+          </p>
+          <p>
+            Sau khi xác nhận xóa tài khoản, tài khoản và dữ liệu vận hành phụ thuộc trong cơ sở dữ liệu AnVề được xóa. Bản ghi kiểm toán (audit) có thể còn lưu định danh kỹ thuật; đồng thời thao tác xóa dữ liệu vận hành không cam kết xóa ngay lập tức nhật ký hệ thống (WAL/log), bản sao lưu cơ sở dữ liệu hay dữ liệu do dịch vụ bên thứ ba (Google/Firebase) nắm giữ. Thời hạn giữ nhật ký và bản sao lưu cụ thể được quy định theo cấu hình hạ tầng khi phát hành chính thức.
+          </p>
+
+          <div class="action-row">
+            <a class="btn-pill btn-primary" href="/delete-account">Xem hướng dẫn xóa tài khoản &amp; dữ liệu</a>
+            <a class="btn-pill btn-secondary" href="/">Quay lại trang chủ AnVề</a>
+          </div>
+        </section>
+
+        <section id="gioi-han" class="doc-section">
+          <h2>6. Giới hạn sử dụng</h2>
+          <p>
+            AnVề <strong>không phải</strong> công cụ theo dõi bí mật và <strong>không phải</strong> dịch vụ cấp cứu chuyên nghiệp. Dữ liệu vị trí cũ, tình trạng mất kết nối hay một hành trình chưa được xác nhận không chứng minh một người đang an toàn hay gặp nguy hiểm. Trong tình huống khẩn cấp, luôn ưu tiên liên hệ 113, 114, 115 hoặc cơ quan chức năng địa phương.
+          </p>
+          <p>
+            Phạm vi độ tuổi sử dụng và quốc gia phân phối chính thức sẽ được xác nhận theo cấu hình đối tượng mục tiêu khi phát hành trên Google Play.
+          </p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>&copy; 2026 AnVề · Vận hành bởi Nguyễn Võ Quốc Dương (NianD)</span>
+      <nav class="footer-links" aria-label="Liên kết chân trang">
+        <a href="/">Trang chủ</a>
+        <a href="/privacy" aria-current="page">Quyền riêng tư</a>
+        <a href="/delete-account">Xóa tài khoản</a>
+        <a href="mailto:nvqduong.dev@gmail.com">nvqduong.dev@gmail.com</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

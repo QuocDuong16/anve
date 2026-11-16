@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -166,7 +167,7 @@ fun StitchSemanticBadge(
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
+                maxLines = if (LocalDensity.current.fontScale > 1.3f) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -272,6 +273,7 @@ fun AnVeMetricColumn(
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     val colors = MaterialTheme.colorScheme
+    val largeFont = LocalDensity.current.fontScale > 1.3f
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -280,14 +282,14 @@ fun AnVeMetricColumn(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceVariant,
-            maxLines = 2,
+            maxLines = if (largeFont) Int.MAX_VALUE else 2,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             color = valueColor,
-            maxLines = 2,
+            maxLines = if (largeFont) Int.MAX_VALUE else 2,
             overflow = TextOverflow.Ellipsis,
         )
     }

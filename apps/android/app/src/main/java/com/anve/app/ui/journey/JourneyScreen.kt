@@ -13,12 +13,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -84,6 +84,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -123,6 +124,7 @@ import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
+import com.anve.app.ui.theme.SystemStatusBarIcons
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
 import java.time.Instant
@@ -203,6 +205,10 @@ fun JourneyContent(
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
+    val appBarBackground = if (dark) colors.primaryContainer else colors.primary
+    val appBarForeground = if (dark) colors.onPrimaryContainer else colors.onPrimary
+    // Match DiagnosticsScreen: dark primary TopAppBar in light mode requires light status bar icons.
+    SystemStatusBarIcons(appBarBackground.luminance() > 0.179f)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -210,10 +216,12 @@ fun JourneyContent(
                 title = { Text(if (creating) stringResource(R.string.journey_creating_title) else stringResource(R.string.journey_title)) },
                 navigationIcon = { IconButton(onClick = handleBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } },
                 actions = { IconButton(onClick = onReload, enabled = !state.loading && !state.busy) { Icon(Icons.Outlined.Refresh, stringResource(R.string.journey_reload_content_desc)) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
-                    titleContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
-                    navigationIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
-                    actionIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = appBarBackground,
+                    titleContentColor = appBarForeground,
+                    navigationIconContentColor = appBarForeground,
+                    actionIconContentColor = appBarForeground,
+                ),
             )
         },
         bottomBar = {
@@ -233,13 +241,18 @@ fun JourneyContent(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding),
+            contentAlignment = Alignment.TopCenter,
+        ) {
         LazyColumn(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth()
                 .anveContentWidth()
-                .imePadding()
                 .testTag("journey-content"),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -744,7 +757,10 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             // the useful horizon of a journey, so the set starts at one hour.
             // journey_chip_minutes stays alive for the stale-threshold chips
             // in JourneyOptionsSheet.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 listOf(60, 120, 240, 480).forEach { value ->
                     FilterChip(
                         selected = minutes == value,

@@ -1,10 +1,17 @@
 package com.anve.app.ui.theme
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
  * True when the active scheme draws on a dark surface. Ad-hoc
@@ -28,3 +35,25 @@ fun isDarkSurface(): Boolean {
 @Composable
 fun rememberInkOnSurface(): Color =
     if (isDarkSurface()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary
+
+/**
+ * Aligns system status bar icon contrast with a branded TopAppBar background
+ * and restores the prior appearance when leaving the screen.
+ */
+@Composable
+fun SystemStatusBarIcons(darkIcons: Boolean) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    DisposableEffect(context, view, darkIcons) {
+        val controller = context.findHostActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = darkIcons
+        onDispose { if (previous != null) controller.isAppearanceLightStatusBars = previous }
+    }
+}
+
+private tailrec fun Context.findHostActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findHostActivity()
+    else -> null
+}

@@ -387,8 +387,28 @@
     .footer-inner {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 8px 12px;
+      border-radius: var(--radius-pill);
+      color: var(--olive-ink);
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .footer-links a:hover {
+      background: var(--cream-high);
+      color: var(--forest);
     }
 
     @media (max-width: 860px) {
@@ -544,8 +564,11 @@
 
   <footer>
     <div class="container footer-inner">
-      <span>&copy; 2026 AnVề · Chia sẻ vị trí gia đình trên sự đồng thuận</span>
-      <span>Phiên bản thử nghiệm nội bộ</span>
+      <span>&copy; 2026 AnVề · Chia sẻ vị trí gia đình trên sự đồng thuận · Phiên bản thử nghiệm nội bộ</span>
+      <nav class="footer-links" aria-label="Liên kết pháp lý và hỗ trợ">
+        <a href="/privacy">Chính sách quyền riêng tư</a>
+        <a href="/delete-account">Xóa tài khoản &amp; dữ liệu</a>
+      </nav>
     </div>
   </footer>
 

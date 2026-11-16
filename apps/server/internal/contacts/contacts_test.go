@@ -369,4 +369,53 @@ func TestLandingPageHTMLContainsRequiredContentAndPalette(t *testing.T) {
 	assert.Contains(t, html, "#3D602F")
 	assert.Contains(t, html, "#F1DDE4")
 	assert.Contains(t, html, "/api/v1/contacts")
+	assert.Contains(t, html, `href="/privacy"`)
+	assert.Contains(t, html, `href="/delete-account"`)
+}
+
+func TestPrivacyPolicyAndDeletionHTMLContainRequiredContentAndPalette(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		html     []byte
+		required []string
+	}{
+		{
+			name: "privacy policy",
+			html: PrivacyPolicyHTML,
+			required: []string{
+				"Chính sách quyền riêng tư AnVề",
+				"Nguyễn Võ Quốc Dương (NianD)",
+				"nvqduong.dev@gmail.com",
+				"https://anve.niand.id.vn/privacy",
+				"SOS hiện <strong>không đính kèm tọa độ</strong>",
+				`href="/delete-account"`,
+				"#FDF9F2",
+				"#3D602F",
+				"#F1DDE4",
+			},
+		},
+		{
+			name: "account deletion",
+			html: AccountDeletionHTML,
+			required: []string{
+				"Xóa tài khoản và dữ liệu AnVề",
+				"Nguyễn Võ Quốc Dương (NianD)",
+				"nvqduong.dev@gmail.com",
+				"https://anve.niand.id.vn/delete-account",
+				"Yêu cầu xóa tài khoản AnVề",
+				"Xóa tài khoản và dữ liệu",
+				`href="/privacy"`,
+				"#FDF9F2",
+				"#3D602F",
+				"#F1DDE4",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			content := string(tc.html)
+			for _, token := range tc.required {
+				assert.Contains(t, content, token)
+			}
+		})
+	}
 }

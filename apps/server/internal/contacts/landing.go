@@ -7,6 +7,16 @@ import _ "embed"
 //go:embed landing.html
 var LandingPageHTML []byte
 
+// PrivacyPolicyHTML contains the embedded HTML5 privacy policy page.
+//
+//go:embed privacy.html
+var PrivacyPolicyHTML []byte
+
+// AccountDeletionHTML contains the embedded HTML5 account deletion page.
+//
+//go:embed delete_account.html
+var AccountDeletionHTML []byte
+
 // HeroFamilyWelcomeWebP contains the embedded landing hero illustration.
 //
 //go:embed hero_family_welcome.webp

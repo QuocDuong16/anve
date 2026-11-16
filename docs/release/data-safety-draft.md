@@ -28,8 +28,9 @@ setup are optional feature choices, while account access is required for the
 family features. The source enforces HTTPS for release configuration, but
 “all data encrypted in transit” still requires final ingress/provider checks.
 AnVề is not end-to-end encrypted: its server can process location data.
-Account/history deletion exist in-app; the public deletion-request URL and
-the published privacy-policy URL are **not established by this repository**.
+Account/history deletion exist in-app and static HTML5 handlers for `/privacy`
+and `/delete-account` exist on `apps/server`; public HTTPS publication at the
+intended domain is **pending deployment and external verification**.
 
 ## First-party data inventory
 

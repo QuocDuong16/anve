@@ -28,7 +28,7 @@
 | [M5 — History & Place Alerts](#m5--location-history--place-alerts) | Location History, Place Alerts | Implemented — Automated Verified; Pending Device Validation |
 | [M6 — SOS & Push](#m6--sos-firebase-push-event-acknowledgement) | SOS, Firebase push, event acknowledgement | Implemented — Automated Verified; chờ kiểm chứng Firebase thật và thiết bị |
 | [M7 — Safe Journey & Diagnostics](#m7--safe-journey-diagnostics-field-validation) | Safe Journey, diagnostics, field validation | M7-A/M7-B và phần tự động có automated evidence (PR #21 chưa merge); formal portal/field validation còn mở |
-| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A/M8-B/M8-C đã merge/CI xanh; M8-D merged PR #20; hồ sơ owner và signed-fixture runtime có evidence,, public/provider/field gates còn mở |
+| [M8 — Release hardening](#m8--release-hardening-google-play-readiness) | Release hardening, Google Play readiness | M8-A/M8-B/M8-C đã merge/CI xanh; M8-D merged PR #20; hồ sơ owner, trang `/privacy` + `/delete-account` trên server và signed-fixture runtime có evidence; public/provider/field gates còn mở |
 
 ## M0 — Foundation
 

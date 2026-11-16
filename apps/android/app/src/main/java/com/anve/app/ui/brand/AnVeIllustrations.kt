@@ -252,8 +252,9 @@ private fun AnVeRasterScene(
             else -> null
         }
     }
-    val surfaceColor = remember(backdropColor, isDark) {
-        if (isDark) Color(0xFF282722) else backdropColor
+    val darkSurfaceColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surfaceColor = remember(backdropColor, isDark, darkSurfaceColor) {
+        if (isDark) darkSurfaceColor else backdropColor
     }
 
     BoxWithConstraints(

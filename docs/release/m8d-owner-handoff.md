@@ -16,13 +16,13 @@ The owner supplied these public details in the implementation conversation:
 | Distribution/signing direction | Google Play with Play App Signing | Console enrollment, upload key and actual signing fingerprints remain pending |
 | API/provider readiness | Owner confirmed no HTTPS API or Google Cloud/Firebase project yet | Follow the [first-real-test setup guide](../operations/first-real-test.vi.md); no real provider validation claimed |
 
-Proposed public routes: `https://anve.niand.id.vn/privacy` and
-`https://anve.niand.id.vn/delete-account`. These are **planned URLs**, not
-published policy/deletion resources. Content drafts are
-[privacy policy](privacy-policy.vi.draft.md) and
-[deletion instructions](account-deletion.vi.draft.md). Page UI must follow the
-repository's Impeccable/comp-first workflow before frontend implementation.
-No webpage or DNS change is included in this slice.
+Các tuyến công khai đã được implement trong Go HTTP server (`apps/server`) tại
+`/privacy` và `/delete-account` (và mở qua `Caddyfile.prod`), tương ứng với hai
+URL dự kiến `https://anve.niand.id.vn/privacy` và
+`https://anve.niand.id.vn/delete-account`. Tuy nhiên đây vẫn là **chưa công bố
+ra Internet** cho đến khi hoàn tất triển khai máy chủ, DNS, TLS và chốt các mục
+vận hành/lưu trữ còn mở trong [privacy policy](privacy-policy.vi.draft.md) và
+[deletion instructions](account-deletion.vi.draft.md).
 
 ## Signed fixture runtime gate
 
@@ -96,7 +96,7 @@ Sources: [Android app signing](https://developer.android.com/studio/publish/app-
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| Public resources | Working HTTPS privacy/deletion pages and an exercised support-email request | Owner/domain known; content drafted; publication/delivery pending |
+| Public resources | Working HTTPS privacy/deletion pages and an exercised support-email request | Owner/domain known; static HTML5 handlers for `/privacy` & `/delete-account` implemented on server (`apps/server` + `Caddyfile.prod`); HTTPS deployment & email handling pending |
 | Operator data handling | Hosting region/subprocessors, audit/log/backup retention, restore deletion procedure and provider deletion handling | Decisions and operational evidence pending; no invented time limits |
 | Audience/distribution | Target age groups, distribution countries, final Data Safety classifications and permission declaration/video | Owner decisions/Console submission pending |
 | Upload/release environment | Owner-controlled upload key/recovery, protected `android-release` environment, verified actual release AAB | Play signing direction chosen; setup/build not yet verified |

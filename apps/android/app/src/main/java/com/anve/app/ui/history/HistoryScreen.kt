@@ -4,7 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -78,6 +80,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -234,7 +237,11 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
     val camera = key(state.owner) { rememberCameraPositionState() }
     var mapLoaded by remember(state.owner) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val member = state.member ?: return
+    val member = state.member
+    if (member == null) {
+        AnVeCheckingState(stringResource(R.string.home_checking_account))
+        return
+    }
     // Same server-confirmed mutation mechanism as PlacesScreen: the ViewModel
     // emits one confirmation event, the screen resolves the copy in
     // composition (stringResource is a composable call, the snackbar runs in
@@ -807,9 +814,15 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         }
                     },
                     enabled = datePickerState.selectedDateMillis != null,
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.history_pick_confirm)) }
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         ) {
             DatePicker(state = datePickerState)
         }
@@ -827,12 +840,21 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 // Prevents an invalid interval at the source: confirm enables
                 // only when start < end, matching timeInterval's require. The
                 // ViewModel keeps its own error as the backstop.
-                TextButton(onClick = {
-                    showStartTimePicker = false
-                    vm.selectTimes(timeState.hour * 60 + timeState.minute, state.endMinute)
-                }, enabled = timeState.hour * 60 + timeState.minute < state.endMinute) { Text(stringResource(R.string.history_pick_confirm)) }
+                TextButton(
+                    onClick = {
+                        showStartTimePicker = false
+                        vm.selectTimes(timeState.hour * 60 + timeState.minute, state.endMinute)
+                    },
+                    enabled = timeState.hour * 60 + timeState.minute < state.endMinute,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.history_pick_confirm)) }
             },
-            dismissButton = { TextButton(onClick = { showStartTimePicker = false }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { showStartTimePicker = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         ) {
             TimePicker(state = timeState)
         }
@@ -849,12 +871,21 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
             confirmButton = {
                 // Same source-level prevention as the start picker: end must
                 // stay after start.
-                TextButton(onClick = {
-                    showEndTimePicker = false
-                    vm.selectTimes(state.startMinute, timeState.hour * 60 + timeState.minute)
-                }, enabled = state.startMinute < timeState.hour * 60 + timeState.minute) { Text(stringResource(R.string.history_pick_confirm)) }
+                TextButton(
+                    onClick = {
+                        showEndTimePicker = false
+                        vm.selectTimes(state.startMinute, timeState.hour * 60 + timeState.minute)
+                    },
+                    enabled = state.startMinute < timeState.hour * 60 + timeState.minute,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.history_pick_confirm)) }
             },
-            dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { showEndTimePicker = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         ) {
             TimePicker(state = timeState)
         }
@@ -869,32 +900,60 @@ private fun HistorySummaryCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val largeFont = LocalDensity.current.fontScale > 1.35f
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = colors.surfaceContainerLow,
         border = BorderStroke(1.dp, stitch.hairline),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HistoryStatItem(
-                label = stringResource(R.string.history_metric_points),
-                value = pointCount.toString(),
-                modifier = Modifier.weight(1f),
-            )
-            HistoryStatItem(
-                label = stringResource(R.string.history_metric_delayed),
-                value = delayedCount.toString(),
-                modifier = Modifier.weight(1f),
-            )
-            HistoryStatItem(
-                label = stringResource(R.string.history_metric_retention),
-                value = retentionDaysLabel,
-                modifier = Modifier.weight(1f),
-            )
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
+            if (maxWidth < 320.dp || largeFont) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    maxItemsInEachRow = 2,
+                ) {
+                    HistoryStatItem(
+                        label = stringResource(R.string.history_metric_points),
+                        value = pointCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    HistoryStatItem(
+                        label = stringResource(R.string.history_metric_delayed),
+                        value = delayedCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    HistoryStatItem(
+                        label = stringResource(R.string.history_metric_retention),
+                        value = retentionDaysLabel,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HistoryStatItem(
+                        label = stringResource(R.string.history_metric_points),
+                        value = pointCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    HistoryStatItem(
+                        label = stringResource(R.string.history_metric_delayed),
+                        value = delayedCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    HistoryStatItem(
+                        label = stringResource(R.string.history_metric_retention),
+                        value = retentionDaysLabel,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     }
 }

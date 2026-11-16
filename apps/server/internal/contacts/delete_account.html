@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Xóa tài khoản và dữ liệu — AnVề</title>
+  <meta name="description" content="Hướng dẫn xóa tài khoản và dữ liệu AnVề trực tiếp trong ứng dụng Android hoặc gửi yêu cầu qua email khi không truy cập được ứng dụng." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream-bg: #FDF9F2;
+      --cream-low: #F7F3EC;
+      --cream-mid: #F1EDE7;
+      --cream-high: #EBE8E1;
+      --forest: #3D602F;
+      --sage: #557945;
+      --on-forest: #FFFFFF;
+      --mint: #DBFFC6;
+      --blush: #F1DDE4;
+      --blush-ink: #4A3B40;
+      --plum: #695B60;
+      --ink: #1C1C18;
+      --olive-ink: #43483E;
+      --outline-var: #C3C8BB;
+      --rose: #9E3E56;
+      --rose-bg: #F6E2E9;
+      --rose-ink: #4A1C28;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-pill: 9999px;
+      --transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 92px;
+      scrollbar-color: var(--outline-var) var(--cream-bg);
+    }
+    ::selection {
+      background: var(--mint);
+      color: var(--ink);
+    }
+    body {
+      margin: 0;
+      font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      background-color: var(--cream-bg);
+      color: var(--ink);
+      line-height: 1.65;
+      caret-color: var(--forest);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--forest);
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+    }
+    a:hover {
+      color: var(--sage);
+    }
+    :focus-visible {
+      outline: 2px solid var(--forest);
+      outline-offset: 3px;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      padding: 12px 18px;
+      background: var(--forest);
+      color: var(--on-forest);
+      border-radius: var(--radius-pill);
+      font-weight: 600;
+      z-index: 50;
+    }
+    .skip-link:focus {
+      left: 16px;
+      top: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--cream-bg);
+      border-bottom: 1px solid var(--outline-var);
+    }
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      min-height: 70px;
+      padding: 10px 0;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--forest);
+      text-decoration: none;
+      min-height: 48px;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--blush);
+      border: 1px solid rgba(61, 96, 47, 0.25);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 10px 16px;
+      border-radius: var(--radius-pill);
+      font-size: 0.94rem;
+      font-weight: 500;
+      color: var(--olive-ink);
+      text-decoration: none;
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .nav-link:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+    .nav-link[aria-current="page"] {
+      background: var(--cream-mid);
+      color: var(--forest);
+      font-weight: 600;
+    }
+
+    /* Document Layout */
+    .doc-wrap {
+      padding: 40px 0 64px;
+    }
+    .doc-shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 44px;
+      align-items: start;
+    }
+    .toc-rail {
+      position: sticky;
+      top: 94px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .toc-title {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .toc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 4px;
+    }
+    .toc-list a {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--olive-ink);
+      text-decoration: none;
+      transition: background-color var(--transition), color var(--transition);
+    }
+    .toc-list a:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+
+    .doc-article {
+      max-width: 72ch;
+      min-width: 0;
+    }
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(1.85rem, 3.6vw, 2.5rem);
+      line-height: 1.22;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .doc-lead {
+      margin: 0 0 24px;
+      font-size: 1.05rem;
+      color: var(--olive-ink);
+    }
+
+    .meta-strip {
+      margin: 0 0 28px;
+      padding: 18px 20px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 24px;
+    }
+    .meta-item dt {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--olive-ink);
+      margin-bottom: 2px;
+    }
+    .meta-item dd {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+
+    section.doc-section {
+      padding-top: 28px;
+      margin-top: 28px;
+      border-top: 1px solid var(--outline-var);
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.38rem;
+      line-height: 1.3;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 1.06rem;
+      line-height: 1.35;
+      font-weight: 600;
+      color: var(--forest);
+    }
+    p {
+      margin: 0 0 14px;
+      color: var(--olive-ink);
+    }
+    ol, ul {
+      margin: 0 0 18px;
+      padding-left: 22px;
+      color: var(--olive-ink);
+    }
+    li {
+      margin-bottom: 10px;
+    }
+    li strong {
+      color: var(--ink);
+    }
+
+    .callout {
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      margin: 18px 0 20px;
+      font-size: 0.94rem;
+    }
+    .callout-blush {
+      background: var(--blush);
+      color: var(--blush-ink);
+      border: 1px solid rgba(105, 91, 96, 0.28);
+    }
+    .callout-danger {
+      background: var(--rose-bg);
+      color: var(--rose-ink);
+      border: 1px solid rgba(158, 62, 86, 0.34);
+    }
+    .callout strong {
+      color: var(--ink);
+    }
+    .callout-danger strong {
+      color: var(--rose-ink);
+    }
+
+    /* Email Helper Box */
+    .helper-box {
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      margin: 20px 0 24px;
+    }
+    .helper-box h3 {
+      margin-top: 0;
+      color: var(--ink);
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .field label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .field input {
+      width: 100%;
+      min-height: 48px;
+      font-family: inherit;
+      font-size: 0.96rem;
+      color: var(--ink);
+      background: var(--cream-bg);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .field input:focus {
+      outline: none;
+      border-color: var(--forest);
+      box-shadow: 0 0 0 3px rgba(61, 96, 47, 0.16);
+    }
+    .template-preview {
+      margin: 0 0 16px;
+      padding: 14px 16px;
+      background: var(--cream-bg);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.86rem;
+      line-height: 1.55;
+      color: var(--ink);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 12px 22px;
+      border-radius: var(--radius-pill);
+      font-family: inherit;
+      font-size: 0.94rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background-color var(--transition), color var(--transition), transform var(--transition);
+    }
+    .btn-pill:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--forest);
+      color: var(--on-forest);
+    }
+    .btn-primary:hover {
+      background: var(--sage);
+      color: var(--on-forest);
+    }
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--sage);
+      color: var(--forest);
+    }
+    .btn-secondary:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+    .copy-status {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--forest);
+      min-height: 22px;
+      margin-top: 10px;
+    }
+
+    /* Table */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin: 18px 0 20px;
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      background: var(--cream-low);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 560px;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+    th, td {
+      padding: 13px 16px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--outline-var);
+    }
+    tr:last-child td {
+      border-bottom: 0;
+    }
+    th {
+      background: var(--cream-mid);
+      color: var(--ink);
+      font-weight: 600;
+    }
+    td {
+      color: var(--olive-ink);
+    }
+    td strong {
+      color: var(--ink);
+    }
+
+    footer {
+      border-top: 1px solid var(--outline-var);
+      padding: 24px 0 36px;
+      color: var(--olive-ink);
+      font-size: 0.9rem;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 8px 12px;
+      border-radius: var(--radius-pill);
+      text-decoration: none;
+      color: var(--olive-ink);
+    }
+    .footer-links a:hover {
+      background: var(--cream-high);
+      color: var(--forest);
+    }
+
+    @media (max-width: 920px) {
+      .doc-shell {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      .toc-rail {
+        position: static;
+      }
+      .toc-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      .meta-strip, .toc-list {
+        grid-template-columns: 1fr;
+      }
+      .doc-wrap {
+        padding: 28px 0 48px;
+      }
+      .helper-box {
+        padding: 18px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+
+    @media print {
+      .topbar, .toc-rail, .helper-box .action-row, footer { display: none; }
+      body { background: #FFFFFF; color: #000000; }
+      .doc-shell { display: block; }
+      .doc-article { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Chuyển tới nội dung chính</a>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/" aria-label="AnVề Trang chủ">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 108 108" fill="none">
+            <path d="M20 48 L54 21 L88 48" stroke="#3D602F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M47 67 L47 50 C47 45 50 42 54 42 C58 42 61 45 61 50 L61 67 Z" fill="#695B60"/>
+            <path d="M54 68 C54 75 67 76 67 82 C67 86 59 88 53 90" stroke="#557945" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>AnVề</span>
+      </a>
+      <nav class="nav-actions" aria-label="Điều hướng chính">
+        <a class="nav-link" href="/">Trang chủ</a>
+        <a class="nav-link" href="/privacy">Quyền riêng tư</a>
+        <a class="nav-link" href="/delete-account" aria-current="page">Xóa tài khoản</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="doc-wrap">
+    <div class="container doc-shell">
+      <aside class="toc-rail" aria-label="Mục lục hướng dẫn xóa tài khoản">
+        <p class="toc-title">Mục lục hướng dẫn</p>
+        <ul class="toc-list">
+          <li><a href="#xoa-trong-app">1. Xóa trong ứng dụng</a></li>
+          <li><a href="#xoa-qua-email">2. Yêu cầu qua email</a></li>
+          <li><a href="#pham-vi-du-lieu">3. Dữ liệu xóa &amp; giữ lại</a></li>
+          <li><a href="#tai-lieu-lien-quan">4. Quyền riêng tư &amp; hỗ trợ</a></li>
+        </ul>
+      </aside>
+
+      <article class="doc-article">
+        <h1>Xóa tài khoản và dữ liệu AnVề</h1>
+        <p class="doc-lead">
+          Bạn có thể tự xóa tài khoản AnVề trực tiếp trong ứng dụng Android bất kỳ lúc nào, hoặc gửi yêu cầu qua email nếu không còn đăng nhập được vào ứng dụng.
+        </p>
+
+        <dl class="meta-strip">
+          <div class="meta-item">
+            <dt>Đơn vị vận hành</dt>
+            <dd>Nguyễn Võ Quốc Dương (NianD)</dd>
+          </div>
+          <div class="meta-item">
+            <dt>Email tiếp nhận yêu cầu</dt>
+            <dd><a href="mailto:nvqduong.dev@gmail.com">nvqduong.dev@gmail.com</a></dd>
+          </div>
+          <div class="meta-item">
+            <dt>Đường dẫn hướng dẫn</dt>
+            <dd>https://anve.niand.id.vn/delete-account</dd>
+          </div>
+          <div class="meta-item">
+            <dt>Tiêu đề email quy định</dt>
+            <dd>Yêu cầu xóa tài khoản AnVề</dd>
+          </div>
+        </dl>
+
+        <section id="xoa-trong-app" class="doc-section">
+          <h2>1. Cách 1: Tự xóa trực tiếp trong ứng dụng AnVề</h2>
+          <p>
+            Nếu bạn vẫn còn truy cập được ứng dụng AnVề trên điện thoại Android, đây là cách nhanh và chính xác nhất:
+          </p>
+          <ol>
+            <li>Mở ứng dụng <strong>AnVề</strong> và vào phần <strong>Tài khoản</strong> (từ màn hình <strong>Nhà</strong>).</li>
+            <li>Cuộn xuống thẻ bảo mật tài khoản và nhấn <strong>Xóa tài khoản và dữ liệu</strong>.</li>
+            <li>Đọc kỹ cảnh báo xác nhận và nhấn <strong>Xóa vĩnh viễn</strong>.</li>
+          </ol>
+
+          <div class="callout callout-blush" role="note">
+            <strong>Quy tắc bảo vệ nhóm gia đình khi bạn là chủ nhóm:</strong> Nếu tài khoản của bạn đang làm chủ một nhóm gia đình còn thành viên khác, ứng dụng sẽ từ chối xóa ngay để tránh giải tán nhóm của người khác ngoài ý muốn. Bạn cần vào mục <strong>Nhóm</strong> để giải tán nhóm trước khi thực hiện xóa tài khoản. Yêu cầu hỗ trợ qua email cũng <strong>không</strong> bỏ qua quyền của các thành viên khác trong nhóm.
+          </div>
+        </section>
+
+        <section id="xoa-qua-email" class="doc-section">
+          <h2>2. Cách 2: Yêu cầu xóa khi không truy cập được ứng dụng</h2>
+          <p>
+            Nếu bạn đã gỡ ứng dụng, đổi máy hoặc không còn đăng nhập được để tự xóa trong app, hãy gửi email đến <a href="mailto:nvqduong.dev@gmail.com"><strong>nvqduong.dev@gmail.com</strong></a> với tiêu đề <strong>“Yêu cầu xóa tài khoản AnVề”</strong> và nêu địa chỉ email Google bạn đã dùng đăng nhập AnVề.
+          </p>
+
+          <div class="callout callout-danger" role="alert">
+            <strong>Cảnh báo bảo mật thông tin:</strong> Tuyệt đối <strong>không</strong> gửi mật khẩu, mã OTP, token đăng nhập, ảnh chụp giấy tờ tùy thân hay lịch sử vị trí trong email yêu cầu xóa tài khoản.
+          </div>
+
+          <div class="helper-box">
+            <h3>Trợ giúp soạn email yêu cầu xóa</h3>
+            <p>
+              Trang web công khai không tự xóa tài khoản thay cho bạn để bảo vệ an toàn. Bạn có thể nhập email Google từng dùng để tạo nhanh mẫu thư hoặc sao chép thông tin gửi tới <span id="support-email-text">nvqduong.dev@gmail.com</span>.
+            </p>
+            <div class="field">
+              <label for="account-email-input">Email Google đã dùng đăng nhập AnVề (tùy chọn)</label>
+              <input id="account-email-input" type="email" inputmode="email" autocomplete="email" placeholder="ten-tai-khoan@gmail.com" />
+            </div>
+            <pre id="template-preview" class="template-preview">Người nhận: nvqduong.dev@gmail.com
+Tiêu đề: Yêu cầu xóa tài khoản AnVề
+
+Xin chào nhóm vận hành AnVề,
+Tôi không còn truy cập được ứng dụng và muốn yêu cầu xóa tài khoản AnVề gắn với email đăng nhập: [Điền email Google bạn đã dùng đăng nhập]
+
+(Tôi xác nhận không đính kèm mật khẩu, mã OTP, token, giấy tờ tùy thân hay lịch sử vị trí.)</pre>
+
+            <div class="action-row">
+              <a id="mailto-btn" class="btn-pill btn-primary" href="mailto:nvqduong.dev@gmail.com?subject=Y%C3%AAu%20c%E1%BA%A7u%20x%C3%B3a%20t%C3%A0i%20kho%E1%BA%A3n%20AnV%E1%BB%81&body=Xin%20ch%C3%A0o%20nh%C3%B3m%20v%E1%BA%ADn%20h%C3%A0nh%20AnV%E1%BB%81%2C%0A%0AT%C3%B4i%20kh%C3%B4ng%20c%C3%B2n%20truy%20c%E1%BA%ADp%20%C4%91%C6%B0%E1%BB%A3c%20%E1%BB%A9ng%20d%E1%BB%A5ng%20v%C3%A0%20mu%E1%BB%91n%20y%C3%AAu%20c%E1%BA%A7u%20x%C3%B3a%20t%C3%A0i%20kho%E1%BA%A3n%20AnV%E1%BB%81%20g%E1%BA%AFn%20v%E1%BB%9Bi%20email%20%C4%91%C4%83ng%20nh%E1%BA%ADp%3A%20%5B%C4%90i%E1%BB%81n%20email%20Google%20b%E1%BA%A1n%20%C4%91%C3%A3%20d%C3%B9ng%20%C4%91%C4%83ng%20nh%E1%BA%ADp%5D%0A%0A%28T%C3%B4i%20x%C3%A1c%20nh%E1%BA%ADn%20kh%C3%B4ng%20%C4%91%C3%ADnh%20k%C3%A8m%20m%E1%BA%ADt%20kh%E1%BA%A9u%2C%20m%C3%A3%20OTP%2C%20token%2C%20gi%E1%BA%A5y%20t%E1%BB%9D%20t%C3%B9y%20th%C3%A2n%20hay%20l%E1%BB%8Bch%20s%E1%BB%AD%20v%E1%BB%8B%20tr%C3%AD.%29">Mở ứng dụng email</a>
+              <button id="copy-template-btn" type="button" class="btn-pill btn-secondary">Sao chép nội dung yêu cầu</button>
+            </div>
+            <div id="copy-status" class="copy-status" role="status" aria-live="polite"></div>
+          </div>
+
+          <p>
+            Để tránh yêu cầu giả mạo, người vận hành có thể phản hồi để xác minh bạn thực sự kiểm soát tài khoản trước khi xử lý (không chỉ dựa vào địa chỉ người gửi của email). Thời hạn xử lý chi tiết và quy trình dọn bản sao lưu phục hồi đang được chuẩn hóa theo hạ tầng phát hành chính thức.
+          </p>
+        </section>
+
+        <section id="pham-vi-du-lieu" class="doc-section">
+          <h2>3. Dữ liệu nào bị xóa và dữ liệu nào có thể còn giữ lại</h2>
+          <p>
+            Sau khi yêu cầu xóa được xác nhận trên máy chủ, hệ thống sẽ xóa tài khoản cùng các dữ liệu vận hành phụ thuộc trong cơ sở dữ liệu AnVề theo phạm vi sau:
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Loại dữ liệu</th>
+                  <th>Kết quả khi xóa tài khoản</th>
+                  <th>Giới hạn &amp; lưu ý</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Tài khoản, thiết bị &amp; phiên đăng nhập</strong></td>
+                  <td>Xóa khỏi cơ sở dữ liệu vận hành AnVề; các phiên thiết bị không còn hiệu lực.</td>
+                  <td>Việc xóa tài khoản AnVề <strong>không</strong> xóa tài khoản Google của bạn.</td>
+                </tr>
+                <tr>
+                  <td><strong>Dữ liệu vị trí &amp; lịch sử di chuyển</strong></td>
+                  <td>Xóa các bản ghi vị trí gắn với tài khoản trong cơ sở dữ liệu AnVề.</td>
+                  <td>Dữ liệu người thân đã nhận, lưu hoặc chụp lại trên máy của họ trước đó không thể thu hồi từ họ.</td>
+                </tr>
+                <tr>
+                  <td><strong>Ảnh đại diện, Địa điểm, Hành trình &amp; SOS</strong></td>
+                  <td>Xóa dữ liệu vận hành phụ thuộc và bytes ảnh đại diện gắn với tài khoản.</td>
+                  <td>Một số revision kỹ thuật hoặc hàng rào chống lạm dụng tối thiểu có thể tồn tại theo vòng đời kỹ thuật trước khi hết hạn.</td>
+                </tr>
+                <tr>
+                  <td><strong>Nhóm gia đình bạn sở hữu</strong></td>
+                  <td>Nếu bạn là thành viên duy nhất, nhóm bị giải tán và xóa theo tài khoản.</td>
+                  <td>Nếu nhóm còn thành viên khác, thao tác xóa bị chặn cho đến khi bạn tự giải tán nhóm trong app.</td>
+                </tr>
+                <tr>
+                  <td><strong>Bản ghi kiểm toán (audit), nhật ký, sao lưu &amp; Google/Firebase</strong></td>
+                  <td>Audit có thể giữ định danh kỹ thuật; WAL, log hệ thống và bản sao lưu DB không xóa tức thì.</td>
+                  <td>Thời hạn giữ lại của bản sao lưu, audit và dữ liệu tại Google/Firebase chịu sự quản lý của cấu hình hạ tầng và chính sách nhà cung cấp tương ứng.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="tai-lieu-lien-quan" class="doc-section">
+          <h2>4. Tài liệu liên quan</h2>
+          <p>
+            Để hiểu đầy đủ cách AnVề thu thập, bảo vệ và lưu trữ dữ liệu trước khi xóa tài khoản, bạn có thể xem thêm Chính sách quyền riêng tư.
+          </p>
+          <div class="action-row">
+            <a class="btn-pill btn-primary" href="/privacy">Đọc Chính sách quyền riêng tư</a>
+            <a class="btn-pill btn-secondary" href="/">Quay lại trang chủ AnVề</a>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>&copy; 2026 AnVề · Vận hành bởi Nguyễn Võ Quốc Dương (NianD)</span>
+      <nav class="footer-links" aria-label="Liên kết chân trang">
+        <a href="/">Trang chủ</a>
+        <a href="/privacy">Quyền riêng tư</a>
+        <a href="/delete-account" aria-current="page">Xóa tài khoản</a>
+        <a href="mailto:nvqduong.dev@gmail.com">nvqduong.dev@gmail.com</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const supportEmail = 'nvqduong.dev@gmail.com';
+      const subject = 'Yêu cầu xóa tài khoản AnVề';
+      const emailInput = document.getElementById('account-email-input');
+      const previewEl = document.getElementById('template-preview');
+      const mailtoBtn = document.getElementById('mailto-btn');
+      const copyBtn = document.getElementById('copy-template-btn');
+      const statusEl = document.getElementById('copy-status');
+
+      function buildBody(rawEmail) {
+        const account = rawEmail.trim() || '[Điền email Google bạn đã dùng đăng nhập]';
+        return (
+          'Xin chào nhóm vận hành AnVề,\n\n' +
+          'Tôi không còn truy cập được ứng dụng và muốn yêu cầu xóa tài khoản AnVề gắn với email đăng nhập: ' +
+          account +
+          '\n\n(Tôi xác nhận không đính kèm mật khẩu, mã OTP, token, giấy tờ tùy thân hay lịch sử vị trí.)'
+        );
+      }
+
+      function syncHelper() {
+        const body = buildBody(emailInput.value);
+        previewEl.textContent =
+          'Người nhận: ' + supportEmail + '\n' +
+          'Tiêu đề: ' + subject + '\n\n' +
+          body;
+        mailtoBtn.setAttribute(
+          'href',
+          'mailto:' + supportEmail +
+            '?subject=' + encodeURIComponent(subject) +
+            '&body=' + encodeURIComponent(body)
+        );
+      }
+
+      emailInput.addEventListener('input', syncHelper);
+
+      copyBtn.addEventListener('click', async function () {
+        const text = previewEl.textContent;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const tmp = document.createElement('textarea');
+            tmp.value = text;
+            tmp.setAttribute('readonly', '');
+            tmp.style.position = 'absolute';
+            tmp.style.left = '-9999px';
+            document.body.appendChild(tmp);
+            tmp.select();
+            document.execCommand('copy');
+            document.body.removeChild(tmp);
+          }
+          statusEl.textContent = 'Đã sao chép mẫu yêu cầu và địa chỉ email nvqduong.dev@gmail.com.';
+        } catch (_) {
+          statusEl.textContent = 'Không thể tự động sao chép. Vui lòng chọn trực tiếp khung nội dung ở trên.';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

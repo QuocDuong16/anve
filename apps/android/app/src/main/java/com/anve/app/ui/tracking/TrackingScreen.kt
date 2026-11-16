@@ -681,38 +681,55 @@ private fun TrackingControlCard(
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AnVeSharingHeroIllustration(
-                        active = status.activelyTracking,
-                        modifier = Modifier.width(114.dp).height(88.dp),
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        StitchSemanticBadge(
-                            text = stateLabel,
-                            kind = when {
-                                status.activelyTracking -> StitchBadgeKind.SAFE_HOME
-                                status.recoveryRequired -> StitchBadgeKind.DELAYED_OFFLINE
-                                else -> StitchBadgeKind.NEUTRAL
-                            },
-                            showDot = status.activelyTracking,
-                        )
-                        Text(
-                            text = heroTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = heroBody,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
+                val largeFont = LocalDensity.current.fontScale > 1.25f
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(6.dp)) {
+                    val stackVertical = maxWidth < 320.dp || largeFont
+                    val bannerText: @Composable (Modifier) -> Unit = { colMod ->
+                        Column(
+                            modifier = colMod,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            StitchSemanticBadge(
+                                text = stateLabel,
+                                kind = when {
+                                    status.activelyTracking -> StitchBadgeKind.SAFE_HOME
+                                    status.recoveryRequired -> StitchBadgeKind.DELAYED_OFFLINE
+                                    else -> StitchBadgeKind.NEUTRAL
+                                },
+                                showDot = status.activelyTracking,
+                            )
+                            Text(
+                                text = heroTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = heroBody,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (stackVertical) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AnVeSharingHeroIllustration(
+                                active = status.activelyTracking,
+                                modifier = Modifier.fillMaxWidth().height(88.dp),
+                            )
+                            bannerText(Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AnVeSharingHeroIllustration(
+                                active = status.activelyTracking,
+                                modifier = Modifier.width(114.dp).height(88.dp),
+                            )
+                            bannerText(Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -1234,7 +1251,7 @@ private fun StatusCard(
 
 @Composable
 private fun DiagnosticsCard(status: TrackingStatus) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     OutlinedCard(
@@ -1312,7 +1329,11 @@ private fun DiagnosticsCard(status: TrackingStatus) {
 
 @Composable
 private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
         Text(
             label,
             modifier = Modifier.weight(1f),
@@ -1321,6 +1342,7 @@ private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier)
         )
         Text(
             value,
+            modifier = Modifier.weight(1f, fill = false),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )

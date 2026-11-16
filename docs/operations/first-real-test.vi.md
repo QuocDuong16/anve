@@ -21,7 +21,8 @@ còn nháp không được mô tả là đã công khai hoặc đã được Goo
 Owner chọn nơi đặt máy chủ, vùng dữ liệu và cách vận hành/backup. Cần Go API,
 PostgreSQL có PostGIS, cùng Cloudflare Tunnel làm public ingress HTTPS.
 Hostname công khai `anve.niand.id.vn` có thể dùng chung; Caddy chỉ nhận HTTP từ
-tunnel rồi chuyển `/api/*`, `/healthz` và `/readyz` vào Go API. `API_DOMAIN`
+tunnel rồi chuyển `/`, `/privacy`, `/delete-account`, `/assets/*`, `/api/*`,
+`/healthz` và `/readyz` vào Go API. `API_DOMAIN`
 chỉ nhận hostname, không có scheme hoặc path. Android đặt
 `ANVE_API_URL=https://anve.niand.id.vn`; endpoint đã có tiền tố `/api/v1`.
 Không có bản ghi DNS hoặc hạ tầng production nào được tạo bởi hướng dẫn này.
@@ -30,7 +31,7 @@ Các giá trị production được giữ trong `.env.prod` trên máy chủ:
 
 | Input | Thiết lập cần có |
 | --- | --- |
-| `API_DOMAIN` | Hostname public `anve.niand.id.vn`; Caddy dùng Host để route `/api/*` qua HTTP nội bộ |
+| `API_DOMAIN` | Hostname public `anve.niand.id.vn`; Caddy dùng Host để route `/`, `/privacy`, `/delete-account`, `/api/*` qua HTTP nội bộ |
 | `HTTP_PORT` | Cổng host trong dải 24xxx cho Cloudflare Tunnel origin; mặc định `24080` |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Tài khoản database riêng; mật khẩu 64 ký tự hex được sinh ngẫu nhiên. Compose tạo `DATABASE_URL` nội bộ. |
 | `ENVIRONMENT`, `LISTEN_ADDR`, `AUTH_DEV_LOGIN_ENABLED` | `production`, `0.0.0.0:8080`, `false`; Make guard từ chối giá trị khác |

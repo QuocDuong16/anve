@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -50,7 +50,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -77,11 +76,12 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
     val dark = isDarkSurface()
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = stitch.cardTactile,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val sheetMaxHeight = maxHeight * 0.86f
         Column(
             Modifier
                 .fillMaxWidth()
-                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
-                .navigationBarsPadding()
+                .heightIn(max = sheetMaxHeight)
                 .imePadding()
                 .padding(horizontal = 16.dp)
                 .testTag("email-invite-sheet"),
@@ -194,6 +194,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                 Text(if (state.unknown) stringResource(R.string.invite_check_result) else stringResource(R.string.invite_create))
             }
             Spacer(Modifier.height(16.dp))
+        }
         }
     }
 }

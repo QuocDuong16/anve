@@ -58,6 +58,41 @@ paths:
             text/html:
               schema:
                 type: string
+  /privacy:
+    get:
+      operationId: getPrivacyPolicyPage
+      summary: Serve the AnVề public Privacy Policy page
+      description: |
+        Returns the public Vietnamese HTML5 privacy policy page describing what
+        information AnVề collects, consent controls, Google/Firebase services,
+        retention windows and deletion boundaries.
+      tags: [contacts]
+      security: []
+      responses:
+        "200":
+          description: The AnVề HTML5 privacy policy page.
+          content:
+            text/html:
+              schema:
+                type: string
+  /delete-account:
+    get:
+      operationId: getAccountDeletionPage
+      summary: Serve the AnVề public Account Deletion page
+      description: |
+        Returns the public Vietnamese HTML5 account and data deletion guide,
+        explaining both in-app deletion and email-based requests when the app
+        is inaccessible, as well as the Circle-owner safeguard and retained
+        audit/backup boundaries.
+      tags: [contacts]
+      security: []
+      responses:
+        "200":
+          description: The AnVề HTML5 account deletion instructions page.
+          content:
+            text/html:
+              schema:
+                type: string
   /metrics:
     servers:
       - url: http://127.0.0.1:9090

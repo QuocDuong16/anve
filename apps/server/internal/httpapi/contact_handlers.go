@@ -13,13 +13,25 @@ import (
 
 const maxContactBodyBytes = 16 << 10
 
-func landingPageHandler() http.HandlerFunc {
+func staticHTMLHandler(html []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(contacts.LandingPageHTML)
+		_, _ = w.Write(html)
 	}
+}
+
+func landingPageHandler() http.HandlerFunc {
+	return staticHTMLHandler(contacts.LandingPageHTML)
+}
+
+func privacyPolicyHandler() http.HandlerFunc {
+	return staticHTMLHandler(contacts.PrivacyPolicyHTML)
+}
+
+func accountDeletionHandler() http.HandlerFunc {
+	return staticHTMLHandler(contacts.AccountDeletionHTML)
 }
 
 func heroAssetHandler() http.HandlerFunc {
