@@ -4,21 +4,41 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FF11201F"
-        android:strokeWidth="6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M20,48 L54,21 L88,48" />
+    <!-- Sun -->
     <path
         android:fillColor="#FF11201F"
-        android:pathData="M47,67 L47,50 C47,45 50,42 54,42 C58,42 61,45 61,50 L61,67 Z" />
+        android:pathData="M72,30.5 A5,5 0 1 1 72,40.5 A5,5 0 1 1 72,30.5 Z" />
+
+    <!-- Chimney + pitched roof -->
+    <path
+        android:fillColor="#FF11201F"
+        android:pathData="M42.3,39.0 A1.4,1.4 0 0 1 43.7,37.6 L46.5,37.6 A1.4,1.4 0 0 1 47.9,39.0 L47.9,40.2 L54.0,35.5 L74.2,51.0 L33.8,51.0 L42.3,44.5 Z" />
+
+    <!-- Cottage wall with negative-space window and open arched doorway -->
+    <path
+        android:fillColor="#FF11201F"
+        android:fillType="evenOdd"
+        android:pathData="M41.2,52.8 L66.8,52.8 A2.2,2.2 0 0 1 69.0,55.0 L69.0,67.8 A2.2,2.2 0 0 1 66.8,70.0 L64.2,70.0 L64.2,62.1 A3.5,3.5 0 0 0 60.7,58.6 L60.3,58.6 A3.5,3.5 0 0 0 56.8,62.1 L56.8,70.0 L41.2,70.0 A2.2,2.2 0 0 1 39.0,67.8 L39.0,55.0 A2.2,2.2 0 0 1 41.2,52.8 Z M45.4,55.6 L49.6,55.6 A1.6,1.6 0 0 1 51.2,57.2 L51.2,61.4 A1.6,1.6 0 0 1 49.6,63.0 L45.4,63.0 A1.6,1.6 0 0 1 43.8,61.4 L43.8,57.2 A1.6,1.6 0 0 1 45.4,55.6 Z" />
+
+    <!-- Subtle horizon accents flanking the house -->
     <path
         android:fillColor="@android:color/transparent"
+        android:pathData="M27.5,65.5 Q32.0,64.2 36.2,65.2"
         android:strokeColor="#FF11201F"
-        android:strokeWidth="5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M54,68 C54,75 67,76 67,82 C67,86 59,88 53,90" />
+        android:strokeWidth="3.0" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M71.8,65.2 Q76.0,64.2 80.5,65.5"
+        android:strokeColor="#FF11201F"
+        android:strokeLineCap="round"
+        android:strokeWidth="3.0" />
+
+    <!-- Winding path ribbon leading from doorway -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M60.5,70.0 C58.5,76.5 49.0,79.0 46.5,85.0"
+        android:strokeColor="#FF11201F"
+        android:strokeLineCap="round"
+        android:strokeWidth="3.8" />
 </vector>
