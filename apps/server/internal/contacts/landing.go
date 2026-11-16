@@ -21,3 +21,8 @@ var AccountDeletionHTML []byte
 //
 //go:embed hero_family_welcome.webp
 var HeroFamilyWelcomeWebP []byte
+
+// BrandLogoSVG contains the embedded AnVề circular cottage emblem in SVG form.
+//
+//go:embed anve_logo.svg
+var BrandLogoSVG []byte

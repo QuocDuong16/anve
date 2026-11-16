@@ -103,6 +103,7 @@ func NewRouter(deps Deps) chi.Router {
 	r.Get("/privacy", privacyPolicyHandler())
 	r.Get("/delete-account", accountDeletionHandler())
 	r.Get("/assets/hero-family-welcome.webp", heroAssetHandler())
+	r.Get("/assets/anve-logo.svg", brandLogoAssetHandler())
 	r.Get("/healthz", healthHandler(deps.Version))
 	r.Get("/readyz", readyHandler(deps))
 

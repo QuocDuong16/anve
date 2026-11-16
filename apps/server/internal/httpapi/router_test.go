@@ -155,12 +155,21 @@ func TestLandingPageServesHTML(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Internal Testing")
 	assert.Contains(t, rec.Body.String(), "AnVề hiện đang trong giai đoạn phát triển")
 	assert.Contains(t, rec.Body.String(), "/assets/hero-family-welcome.webp")
+	assert.Contains(t, rec.Body.String(), "/assets/anve-logo.svg")
 
 	assetRec := httptest.NewRecorder()
 	router.ServeHTTP(assetRec, httptest.NewRequest(http.MethodGet, "/assets/hero-family-welcome.webp", nil))
 	assert.Equal(t, http.StatusOK, assetRec.Code)
 	assert.Equal(t, "image/webp", assetRec.Header().Get("Content-Type"))
+	assert.Equal(t, "nosniff", assetRec.Header().Get("X-Content-Type-Options"))
 	assert.NotEmpty(t, assetRec.Body.Bytes())
+
+	logoRec := httptest.NewRecorder()
+	router.ServeHTTP(logoRec, httptest.NewRequest(http.MethodGet, "/assets/anve-logo.svg", nil))
+	assert.Equal(t, http.StatusOK, logoRec.Code)
+	assert.Equal(t, "image/svg+xml; charset=utf-8", logoRec.Header().Get("Content-Type"))
+	assert.Equal(t, "nosniff", logoRec.Header().Get("X-Content-Type-Options"))
+	assert.Contains(t, logoRec.Body.String(), "<svg")
 }
 
 func TestPublicLegalPagesServeHTML(t *testing.T) {

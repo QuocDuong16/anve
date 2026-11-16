@@ -368,9 +368,16 @@ func TestLandingPageHTMLContainsRequiredContentAndPalette(t *testing.T) {
 	assert.Contains(t, html, "#FDF9F2")
 	assert.Contains(t, html, "#3D602F")
 	assert.Contains(t, html, "#F1DDE4")
+	assert.Contains(t, html, "#C87A28")
+	assert.Contains(t, html, "#778F68")
+	assert.Contains(t, html, "#FFE2B3")
+	assert.Contains(t, html, "/assets/anve-logo.svg")
 	assert.Contains(t, html, "/api/v1/contacts")
 	assert.Contains(t, html, `href="/privacy"`)
 	assert.Contains(t, html, `href="/delete-account"`)
+	assert.Contains(t, string(BrandLogoSVG), "#F1DDE4")
+	assert.Contains(t, string(BrandLogoSVG), "#778F68")
+	assert.Contains(t, string(BrandLogoSVG), "#C87A28")
 }
 
 func TestPrivacyPolicyAndDeletionHTMLContainRequiredContentAndPalette(t *testing.T) {
@@ -389,9 +396,11 @@ func TestPrivacyPolicyAndDeletionHTMLContainRequiredContentAndPalette(t *testing
 				"https://anve.niand.id.vn/privacy",
 				"SOS hiện <strong>không đính kèm tọa độ</strong>",
 				`href="/delete-account"`,
+				"/assets/anve-logo.svg",
 				"#FDF9F2",
 				"#3D602F",
 				"#F1DDE4",
+				"#C87A28",
 			},
 		},
 		{
@@ -405,9 +414,11 @@ func TestPrivacyPolicyAndDeletionHTMLContainRequiredContentAndPalette(t *testing
 				"Yêu cầu xóa tài khoản AnVề",
 				"Xóa tài khoản và dữ liệu",
 				`href="/privacy"`,
+				"/assets/anve-logo.svg",
 				"#FDF9F2",
 				"#3D602F",
 				"#F1DDE4",
+				"#C87A28",
 			},
 		},
 	} {

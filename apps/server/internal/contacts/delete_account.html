@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Xóa tài khoản và dữ liệu — AnVề</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/anve-logo.svg" />
   <meta name="description" content="Hướng dẫn xóa tài khoản và dữ liệu AnVề trực tiếp trong ứng dụng Android hoặc gửi yêu cầu qua email khi không truy cập được ứng dụng." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -118,14 +119,20 @@
       min-height: 48px;
     }
     .brand-mark {
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
+      overflow: hidden;
       background: var(--blush);
-      border: 1px solid rgba(61, 96, 47, 0.25);
-      display: grid;
-      place-items: center;
+      border: 1.5px solid rgba(61, 96, 47, 0.24);
+      box-shadow: 0 2px 8px rgba(61, 96, 47, 0.12);
+      display: inline-flex;
       flex-shrink: 0;
+    }
+    .brand-mark svg {
+      display: block;
+      width: 100%;
+      height: 100%;
     }
     .nav-actions {
       display: flex;
@@ -515,10 +522,17 @@
     <div class="container topbar-inner">
       <a class="brand" href="/" aria-label="AnVề Trang chủ">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="24" height="24" viewBox="0 0 108 108" fill="none">
-            <path d="M20 48 L54 21 L88 48" stroke="#3D602F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M47 67 L47 50 C47 45 50 42 54 42 C58 42 61 45 61 50 L61 67 Z" fill="#695B60"/>
-            <path d="M54 68 C54 75 67 76 67 82 C67 86 59 88 53 90" stroke="#557945" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="42" height="42" viewBox="12 12 84 84" fill="none">
+            <rect x="0" y="0" width="108" height="108" fill="#F1DDE4" />
+            <path d="M0,66 C24,59 40,61 54,62 C68,63 86,59 108,65 L108,108 L0,108 Z" fill="#778F68" />
+            <circle cx="72" cy="35.5" r="12" fill="#C87A28" fill-opacity="0.25" />
+            <circle cx="72" cy="35.5" r="5.5" fill="#C87A28" />
+            <path d="M56.5,70.0 C52.0,83.0 42.0,93.0 34.0,108.0 L62.0,108.0 C59.0,93.0 65.5,82.0 64.5,70.0 Z" fill="#FFE2B3" />
+            <path d="M42.3,39.0 A1.4,1.4 0 0 1 43.7,37.6 L46.5,37.6 A1.4,1.4 0 0 1 47.9,39.0 L47.9,48.0 L42.3,48.0 Z" fill="#7E6E74" />
+            <path d="M41.0,48.6 L67.0,48.6 A2.4,2.4 0 0 1 69.4,51.0 L69.4,67.6 A2.4,2.4 0 0 1 67.0,70.0 L41.0,70.0 A2.4,2.4 0 0 1 38.6,67.6 L38.6,51.0 A2.4,2.4 0 0 1 41.0,48.6 Z" fill="#FDF9F2" />
+            <path d="M54.0,35.5 L74.2,51.4 L33.8,51.4 Z" fill="#695B60" />
+            <path d="M56.5,70.0 L56.5,61.8 A3.8,3.8 0 0 1 60.3,58.0 L60.7,58.0 A3.8,3.8 0 0 1 64.5,61.8 L64.5,70.0 Z" fill="#C87A28" />
+            <path d="M45.3,54.2 L49.7,54.2 A1.8,1.8 0 0 1 51.5,56.0 L51.5,60.4 A1.8,1.8 0 0 1 49.7,62.2 L45.3,62.2 A1.8,1.8 0 0 1 43.5,60.4 L43.5,56.0 A1.8,1.8 0 0 1 45.3,54.2 Z" fill="#FFD885" />
           </svg>
         </span>
         <span>AnVề</span>
