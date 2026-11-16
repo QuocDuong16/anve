@@ -125,6 +125,7 @@ func run() error {
 				Port:        cfg.SMTPPort,
 				User:        cfg.SMTPUser,
 				Pass:        cfg.SMTPPass,
+				From:        cfg.SMTPFrom,
 				NotifyEmail: cfg.NotifyEmail,
 			},
 			contacts.TelegramConfig{

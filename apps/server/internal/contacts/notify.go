@@ -55,6 +55,7 @@ type SMTPConfig struct {
 	Port        int
 	User        string
 	Pass        string
+	From        string
 	NotifyEmail string
 }
 
@@ -173,25 +174,25 @@ func sendSMTPEmail(ctx context.Context, cfg SMTPConfig, contact Contact) error {
 	host := strings.TrimSpace(cfg.Host)
 	recipient := strings.TrimSpace(cfg.NotifyEmail)
 	user := strings.TrimSpace(cfg.User)
+	from := strings.TrimSpace(cfg.From)
 
-	if hasCRLF(host) || hasCRLF(recipient) || hasCRLF(user) {
+	if hasCRLF(host) || hasCRLF(recipient) || hasCRLF(user) || hasCRLF(from) {
 		return errors.New("smtp configuration contains forbidden control characters")
 	}
-	if _, err := mail.ParseAddress(recipient); err != nil {
+	parsedRecipient, err := mail.ParseAddress(recipient)
+	if err != nil {
 		return fmt.Errorf("invalid NOTIFY_EMAIL: %w", err)
 	}
 
-	sender := recipient
-	if user != "" {
-		if _, err := mail.ParseAddress(user); err == nil {
-			sender = user
-		}
+	envelopeFrom, headerFrom, err := resolveSMTPSender(from, user, parsedRecipient)
+	if err != nil {
+		return err
 	}
+	headerTo := formatMailHeader(parsedRecipient)
 
 	addr := net.JoinHostPort(host, strconv.Itoa(cfg.Port))
 	dialer := &net.Dialer{Timeout: notifyTimeout}
 	var conn net.Conn
-	var err error
 	if cfg.Port == 465 {
 		tlsDialer := &tls.Dialer{
 			NetDialer: dialer,
@@ -234,10 +235,10 @@ func sendSMTPEmail(ctx context.Context, cfg SMTPConfig, contact Contact) error {
 		}
 	}
 
-	if err := client.Mail(sender); err != nil {
+	if err := client.Mail(envelopeFrom); err != nil {
 		return fmt.Errorf("smtp mail from: %w", err)
 	}
-	if err := client.Rcpt(recipient); err != nil {
+	if err := client.Rcpt(parsedRecipient.Address); err != nil {
 		return fmt.Errorf("smtp rcpt to: %w", err)
 	}
 
@@ -245,7 +246,7 @@ func sendSMTPEmail(ctx context.Context, cfg SMTPConfig, contact Contact) error {
 	if err != nil {
 		return fmt.Errorf("smtp data: %w", err)
 	}
-	body := buildEmailMessage(sender, recipient, contact)
+	body := buildEmailMessage(headerFrom, headerTo, contact)
 	if _, err := wc.Write([]byte(body)); err != nil {
 		_ = wc.Close()
 		return fmt.Errorf("smtp write body: %w", err)
@@ -296,6 +297,29 @@ func formatNotificationText(c Contact) string {
 
 func hasCRLF(s string) bool {
 	return strings.ContainsAny(s, "\r\n")
+}
+
+func resolveSMTPSender(from, user string, fallback *mail.Address) (string, string, error) {
+	if from != "" {
+		parsed, err := mail.ParseAddress(from)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid SMTP_FROM: %w", err)
+		}
+		return parsed.Address, formatMailHeader(parsed), nil
+	}
+	if user != "" {
+		if parsed, err := mail.ParseAddress(user); err == nil {
+			return parsed.Address, formatMailHeader(parsed), nil
+		}
+	}
+	return fallback.Address, formatMailHeader(fallback), nil
+}
+
+func formatMailHeader(addr *mail.Address) string {
+	if addr.Name != "" {
+		return addr.String()
+	}
+	return addr.Address
 }
 
 func sanitizeHeaderValue(s string) string {

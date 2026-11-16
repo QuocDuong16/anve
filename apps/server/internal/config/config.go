@@ -80,6 +80,7 @@ type Config struct {
 	SMTPPort    int    `env:"SMTP_PORT" envDefault:"587"`
 	SMTPUser    string `env:"SMTP_USER"`
 	SMTPPass    string `env:"SMTP_PASS"`
+	SMTPFrom    string `env:"SMTP_FROM"`
 	NotifyEmail string `env:"NOTIFY_EMAIL"`
 
 	// Optional Telegram Bot settings for landing-page contact notifications.

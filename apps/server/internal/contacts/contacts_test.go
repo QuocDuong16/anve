@@ -286,6 +286,7 @@ func TestSendSMTPEmailMockServer(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = ln.Close() }()
 
+	var mailFromCmd string
 	var received strings.Builder
 	done := make(chan struct{})
 	go func() {
@@ -317,6 +318,7 @@ func TestSendSMTPEmailMockServer(t *testing.T) {
 			case strings.HasPrefix(upper, "EHLO"), strings.HasPrefix(upper, "HELO"):
 				_, _ = conn.Write([]byte("250-localhost\r\n250 OK\r\n"))
 			case strings.HasPrefix(upper, "MAIL FROM:"):
+				mailFromCmd = strings.TrimSpace(line)
 				_, _ = conn.Write([]byte("250 OK\r\n"))
 			case strings.HasPrefix(upper, "RCPT TO:"):
 				_, _ = conn.Write([]byte("250 OK\r\n"))
@@ -340,6 +342,7 @@ func TestSendSMTPEmailMockServer(t *testing.T) {
 	err = sendSMTPEmail(context.Background(), SMTPConfig{
 		Host:        "127.0.0.1",
 		Port:        port,
+		From:        "AnVe<no-reply@anve.niand.id.vn>",
 		NotifyEmail: "ops@example.com",
 	}, Contact{
 		ID:        "c-1",
@@ -352,6 +355,8 @@ func TestSendSMTPEmailMockServer(t *testing.T) {
 	<-done
 
 	body := received.String()
+	assert.Equal(t, "MAIL FROM:<no-reply@anve.niand.id.vn>", mailFromCmd)
+	assert.Contains(t, body, `From: "AnVe" <no-reply@anve.niand.id.vn>`)
 	assert.Contains(t, body, "To: ops@example.com")
 	assert.Contains(t, body, "Subject: [AnVe Internal Testing] Lien he moi tu Tester")
 	assert.Contains(t, body, "Xin chao AnVe")
