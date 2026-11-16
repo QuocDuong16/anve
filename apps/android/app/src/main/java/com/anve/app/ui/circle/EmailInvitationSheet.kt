@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -74,8 +77,15 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
     val dark = isDarkSurface()
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = stitch.cardTactile,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
-            .padding(horizontal = 16.dp).testTag("email-invite-sheet")) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 16.dp)
+                .testTag("email-invite-sheet"),
+        ) {
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item {
                     AnVeSectionHeader(
@@ -86,7 +96,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                 item { FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("EMAIL" to stringResource(R.string.invite_mode_email), "LINK" to stringResource(R.string.invite_mode_link)).forEach { (mode, label) ->
-                        Surface(Modifier.weight(1f).heightIn(min = 48.dp).selectable(state.mode == mode, enabled = editable,
+                        Surface(Modifier.weight(1f).widthIn(min = 140.dp).heightIn(min = 48.dp).selectable(state.mode == mode, enabled = editable,
                             role = Role.RadioButton, onClick = { onMode(mode) }), shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(1.dp, if (state.mode == mode) colors.primary else stitch.hairline),
                             color = if (state.mode == mode) stitch.liveContainer else colors.surfaceContainerLow,

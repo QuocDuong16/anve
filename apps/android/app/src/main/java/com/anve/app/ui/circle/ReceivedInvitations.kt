@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Refresh
@@ -97,7 +99,7 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                     color = colors.onSurfaceVariant,
                 )
             }
-            state.inboxErrorRes?.let { res -> AnveErrorNotice(stringResource(res)) }
+            state.inboxErrorRes?.let { res -> AnveErrorNotice(stringResource(res), onRetry = onRefresh) }
             state.received.forEachIndexed { index, invite ->
                 if (index > 0) {
                     HorizontalDivider(color = stitch.hairline)
@@ -150,7 +152,12 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
             shape = RoundedCornerShape(24.dp),
             icon = { Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = colors.error) },
             title = { Text(stringResource(R.string.invite_hide_title)) },
-            text = { Text(stringResource(R.string.invite_hide_body)) },
+            text = {
+                Text(
+                    stringResource(R.string.invite_hide_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -162,12 +169,16 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                         containerColor = colors.error,
                         contentColor = colors.onError,
                     ),
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Text(stringResource(R.string.invite_hide_confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { hideTarget = null }) {
+                TextButton(
+                    onClick = { hideTarget = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

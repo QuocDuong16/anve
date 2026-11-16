@@ -12,26 +12,29 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Groups
@@ -74,12 +77,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
@@ -97,6 +100,7 @@ import com.anve.app.data.sos.SosCachedMember
 import com.anve.app.data.sos.SosLocalState
 import com.anve.app.data.sos.SosOutboxItem
 import com.anve.app.ui.brand.AnVeSosCareIllustration
+import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
@@ -105,6 +109,7 @@ import com.anve.app.ui.common.StitchLivePulseDot
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.LocalStitchColors
@@ -155,11 +160,7 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
     if (owner == null || state.owner != owner) {
         // Session not re-emitted yet (fresh process or account switch): state
         // the wait instead of a blank frame, same wording as the account area.
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) { Text(stringResource(R.string.home_checking_account)) }
+        AnVeCheckingState(stringResource(R.string.home_checking_account))
         return
     }
     SosContent(state, vm, permission, pushMessage, onNotifications = { explainPermission = true }, onSystemSettings = {
@@ -171,14 +172,29 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
     if (explainPermission) AlertDialog(
         onDismissRequest = { explainPermission = false },
         title = { Text(stringResource(R.string.sos_notifications_dialog_title)) },
-        text = { Text(stringResource(R.string.sos_notifications_dialog_body)) },
-        confirmButton = { Button(onClick = {
-            explainPermission = false
-            if (Build.VERSION.SDK_INT >= 33 && !permission) permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-            else if (FirebaseSetup.initialize(context)) { container.pushRegistrationScheduler.schedule(owner); pushMessage = pushRegisteringMessage }
-            else pushMessage = pushUnavailableMessage
-        }) { Text(stringResource(R.string.sos_notifications_continue)) } },
-        dismissButton = { TextButton(onClick = { explainPermission = false }) { Text(stringResource(R.string.sos_notifications_later)) } },
+        text = {
+            Text(
+                stringResource(R.string.sos_notifications_dialog_body),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    explainPermission = false
+                    if (Build.VERSION.SDK_INT >= 33 && !permission) permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    else if (FirebaseSetup.initialize(context)) { container.pushRegistrationScheduler.schedule(owner); pushMessage = pushRegisteringMessage }
+                    else pushMessage = pushUnavailableMessage
+                },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.sos_notifications_continue)) }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { explainPermission = false },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.sos_notifications_later)) }
+        },
     )
 }
 
@@ -479,16 +495,15 @@ private fun SosContentBody(
                     // The disclaimer asks the user to call the official emergency
                     // numbers, so the dial affordances sit right beside it: ACTION_DIAL
                     // only pre-fills the dialer — AnVề still never places the call.
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    val largeFont = LocalDensity.current.fontScale > 1.25f
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val stackHotlines = maxWidth < 340.dp || largeFont
                         val hotlines = listOf(
                             Triple(113, R.string.sos_service_police, Icons.Outlined.Shield),
                             Triple(114, R.string.sos_service_fire, Icons.Outlined.Warning),
                             Triple(115, R.string.sos_service_ambulance, Icons.Outlined.Phone),
                         )
-                        hotlines.forEach { (number, serviceRes, icon) ->
+                        val hotlineCard: @Composable (Int, Int, ImageVector, Modifier) -> Unit = { number, serviceRes, icon, cardMod ->
                             val iconFg = when (number) {
                                 113 -> colors.onPrimaryContainer
                                 114 -> stitch.onTransitContainer
@@ -499,45 +514,88 @@ private fun SosContentBody(
                                 shape = RoundedCornerShape(16.dp),
                                 color = colors.surfaceContainerLowest,
                                 border = BorderStroke(1.dp, stitch.hairline),
-                                modifier = Modifier.weight(1f).heightIn(min = 64.dp),
+                                modifier = cardMod.heightIn(min = 64.dp),
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 6.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
+                                if (stackHotlines) {
                                     Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
                                             imageVector = icon,
                                             contentDescription = null,
                                             tint = iconFg,
-                                            modifier = Modifier.size(16.dp),
+                                            modifier = Modifier.size(20.dp),
                                         )
                                         Text(
-                                            text = number.toString(),
+                                            text = "$number · ${stringResource(serviceRes)}",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = colors.onSurface,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.sos_call_number, number),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = iconFg,
+                                            fontWeight = FontWeight.SemiBold,
                                         )
                                     }
-                                    Text(
-                                        text = stringResource(serviceRes),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colors.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.sos_call_number, number),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = iconFg,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
+                                } else {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = null,
+                                                tint = iconFg,
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                            Text(
+                                                text = number.toString(),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.onSurface,
+                                            )
+                                        }
+                                        Text(
+                                            text = stringResource(serviceRes),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.sos_call_number, number),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = iconFg,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (stackHotlines) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                hotlines.forEach { (number, serviceRes, icon) ->
+                                    hotlineCard(number, serviceRes, icon, Modifier.fillMaxWidth())
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                hotlines.forEach { (number, serviceRes, icon) ->
+                                    hotlineCard(number, serviceRes, icon, Modifier.weight(1f))
                                 }
                             }
                         }
@@ -674,16 +732,32 @@ private fun SosContentBody(
                                 showDot = item.state == SosLocalState.CONFIRMED || item.state == SosLocalState.SENDING,
                             )
                             if (item.state in setOf(SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CONFIRMED)) {
-                                TextButton(onClick = { action = item.eventId to "cancel" }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_action)) }
+                                TextButton(
+                                    onClick = { action = item.eventId to "cancel" },
+                                    enabled = !state.pending,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.sos_cancel_action)) }
                             }
                             if (item.state == SosLocalState.CANCEL_REQUESTED) {
-                                TextButton(onClick = { onRecheckCancel(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_cancel_recheck)) }
+                                TextButton(
+                                    onClick = { onRecheckCancel(item.eventId) },
+                                    enabled = !state.pending,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.sos_cancel_recheck)) }
                             }
                             if (item.state == SosLocalState.UNKNOWN) {
-                                TextButton(onClick = { onRecheckUnknown(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_recheck)) }
+                                TextButton(
+                                    onClick = { onRecheckUnknown(item.eventId) },
+                                    enabled = !state.pending,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.sos_recheck)) }
                             }
                             if (item.state in setOf(SosLocalState.CANCELLED, SosLocalState.RESOLVED, SosLocalState.EXPIRED, SosLocalState.SERVER_EXPIRED)) {
-                                TextButton(onClick = { onClearFinished(item.eventId) }, enabled = !state.pending) { Text(stringResource(R.string.sos_clear_finished)) }
+                                TextButton(
+                                    onClick = { onClearFinished(item.eventId) },
+                                    enabled = !state.pending,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.sos_clear_finished)) }
                             }
                         }
                     }
@@ -814,7 +888,11 @@ private fun SosContentBody(
                                 } else {
                                     Text(statusLine, style = MaterialTheme.typography.bodySmall)
                                 }
-                                TextButton(onClick = { revokeRecipient = event.id to recipient.userId }, enabled = !state.pending) {
+                                TextButton(
+                                    onClick = { revokeRecipient = event.id to recipient.userId },
+                                    enabled = !state.pending,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) {
                                     // Destructive trigger carries the error color,
                                     // same as the revoke rows in Home/Circle/Places.
                                     Text(stringResource(R.string.sos_revoke_viewer, person), color = colors.error)
@@ -823,17 +901,33 @@ private fun SosContentBody(
                         }
                         if (event.state == "ACTIVE") {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = { action = event.id to "cancel" }) { Text(stringResource(R.string.sos_cancel)) }
-                                TextButton(onClick = { action = event.id to "resolve" }) { Text(stringResource(R.string.sos_resolve)) }
+                                TextButton(
+                                    onClick = { action = event.id to "cancel" },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.sos_cancel)) }
+                                TextButton(
+                                    onClick = { action = event.id to "resolve" },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.sos_resolve)) }
                             }
                         }
                     } else if (event.state == "ACTIVE" && event.acknowledgedAt == null) {
-                        Button(onClick = { action = event.id to "acknowledge" }, shape = CircleShape) { Text(stringResource(R.string.sos_acknowledge)) }
+                        Button(
+                            onClick = { action = event.id to "acknowledge" },
+                            shape = CircleShape,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) { Text(stringResource(R.string.sos_acknowledge)) }
                     }
                 }
             })
         }
-        add(SosRow("refresh") { TextButton(onClick = onRefresh, enabled = !state.loading && !state.pending) { Text(stringResource(R.string.sos_check_again)) } })
+        add(SosRow("refresh") {
+            TextButton(
+                onClick = onRefresh,
+                enabled = !state.loading && !state.pending,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.sos_check_again)) }
+        })
     }
 
     // The send confirms itself in place the moment the request is durably
@@ -874,7 +968,8 @@ private fun SosContentBody(
         bottomBar = {
             // Emergency container marks urgency without claiming a failure;
             // the send call stays visible above whatever part of the list the
-            // user has scrolled to.
+            // user has scrolled to. The outer HomeScreen Scaffold already
+            // consumes navigationBars insets, so none is added again here.
             Surface(
                 color = emergency.emergencyContainer,
                 contentColor = emergency.onEmergencyContainer,
@@ -882,54 +977,82 @@ private fun SosContentBody(
                 border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.25f)),
                 tonalElevation = 3.dp,
             ) {
-                Column(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        when {
-                            state.pending -> stringResource(R.string.sos_bottom_pending)
-                            state.members.isEmpty() -> stringResource(R.string.sos_bottom_no_recipients)
-                            selected.isEmpty() -> stringResource(R.string.sos_bottom_none_selected)
-                            else -> stringResource(R.string.sos_bottom_ready, selected.size)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Button(
-                        onClick = { confirmSend = true },
-                        enabled = !state.pending && selected.isNotEmpty(),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = emergency.emergency,
-                            contentColor = emergency.onEmergency,
-                        ),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    ) { Text(stringResource(R.string.sos_send_button)) }
-                    Text(stringResource(R.string.sos_bottom_disclaimer), style = MaterialTheme.typography.bodySmall)
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .anveContentWidth()
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            when {
+                                state.pending -> stringResource(R.string.sos_bottom_pending)
+                                state.members.isEmpty() -> stringResource(R.string.sos_bottom_no_recipients)
+                                selected.isEmpty() -> stringResource(R.string.sos_bottom_none_selected)
+                                else -> stringResource(R.string.sos_bottom_ready, selected.size)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Button(
+                            onClick = { confirmSend = true },
+                            enabled = !state.pending && selected.isNotEmpty(),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = emergency.emergency,
+                                contentColor = emergency.onEmergency,
+                            ),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                        ) { Text(stringResource(R.string.sos_send_button)) }
+                        Text(stringResource(R.string.sos_bottom_disclaimer), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         },
     ) { padding ->
-        LazyColumn(
-            state = listState,
+        Box(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            items(rows, key = { it.key }) { row -> row.content() }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(rows, key = { it.key }) { row -> row.content() }
+            }
         }
     }
 
     // Sending is the wanted action, not a destruction, so it keeps a filled
     // primary confirm; only cancel/resolve/revoke below take the error pair.
-    if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text(stringResource(R.string.sos_confirm_title)) },
-        text = { Text(stringResource(R.string.sos_confirm_body, selected.size)) },
-        confirmButton = { Button(onClick = {
-            confirmSend = false
-            onSend(selected); selected = emptySet()
-        }) { Text(stringResource(R.string.sos_confirm_send)) } },
-        dismissButton = { TextButton(onClick = { confirmSend = false }) { Text(stringResource(R.string.action_cancel)) } })
+    if (confirmSend) AlertDialog(
+        onDismissRequest = { confirmSend = false },
+        title = { Text(stringResource(R.string.sos_confirm_title)) },
+        text = {
+            Text(
+                stringResource(R.string.sos_confirm_body, selected.size),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    confirmSend = false
+                    onSend(selected); selected = emptySet()
+                },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.sos_confirm_send)) }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { confirmSend = false },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
     // One dialog serves three kinds with different weight: cancel and resolve
     // destroy the request, so their confirm follows the app-wide
     // destructive-confirm pattern (error text + neutral Hủy). Acknowledge is a
@@ -937,24 +1060,79 @@ private fun SosContentBody(
     // journey ARRIVE confirm — and coloring it error would break the semantic
     // color roles: SOS urgency is not a failure (cf. the emergency-vs-error
     // rule in DESIGN.md and the HomeScreen SOS FAB comment).
-    action?.let { (id, kind) -> AlertDialog(onDismissRequest = { action = null }, title = { Text(when (kind) { "cancel" -> stringResource(R.string.sos_action_cancel_title); "resolve" -> stringResource(R.string.sos_action_resolve_title); else -> stringResource(R.string.sos_action_acknowledge_title) }) },
-        text = { Text(stringResource(R.string.sos_action_dialog_body)) },
-        confirmButton = { TextButton(onClick = { action = null; when (kind) { "cancel" -> onCancel(id); "resolve" -> onResolve(id); else -> onAcknowledge(id) } }) {
-            Text(stringResource(R.string.sos_confirm), color = when (kind) {
-                "cancel", "resolve" -> MaterialTheme.colorScheme.error
-                else -> Color.Unspecified
-            })
-        } },
-        dismissButton = { TextButton(onClick = { action = null }) { Text(stringResource(R.string.action_cancel)) } }) }
-    revokeRecipient?.let { (event, recipient) -> AlertDialog(
-        onDismissRequest = { revokeRecipient = null },
-        title = { Text(stringResource(R.string.sos_revoke_dialog_title)) },
-        text = { Text(stringResource(R.string.sos_revoke_dialog_body)) },
-        // Revoking a viewer's access is always destructive: the confirm keeps
-        // the error pair while the dismiss stays neutral.
-        confirmButton = { TextButton(onClick = { revokeRecipient = null; onRevokeRecipient(event, recipient) }) { Text(stringResource(R.string.sos_revoke), color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { revokeRecipient = null }) { Text(stringResource(R.string.action_cancel)) } },
-    ) }
+    action?.let { (id, kind) ->
+        AlertDialog(
+            onDismissRequest = { action = null },
+            title = {
+                Text(
+                    when (kind) {
+                        "cancel" -> stringResource(R.string.sos_action_cancel_title)
+                        "resolve" -> stringResource(R.string.sos_action_resolve_title)
+                        else -> stringResource(R.string.sos_action_acknowledge_title)
+                    },
+                )
+            },
+            text = {
+                Text(
+                    stringResource(R.string.sos_action_dialog_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        action = null
+                        when (kind) {
+                            "cancel" -> onCancel(id)
+                            "resolve" -> onResolve(id)
+                            else -> onAcknowledge(id)
+                        }
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.sos_confirm),
+                        color = when (kind) {
+                            "cancel", "resolve" -> MaterialTheme.colorScheme.error
+                            else -> Color.Unspecified
+                        },
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { action = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+    revokeRecipient?.let { (event, recipient) ->
+        AlertDialog(
+            onDismissRequest = { revokeRecipient = null },
+            title = { Text(stringResource(R.string.sos_revoke_dialog_title)) },
+            text = {
+                Text(
+                    stringResource(R.string.sos_revoke_dialog_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            // Revoking a viewer's access is always destructive: the confirm keeps
+            // the error pair while the dismiss stays neutral.
+            confirmButton = {
+                TextButton(
+                    onClick = { revokeRecipient = null; onRevokeRecipient(event, recipient) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.sos_revoke), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { revokeRecipient = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
 }
 
 // AnveTime.full already falls back when parsing fails; the fallback comes

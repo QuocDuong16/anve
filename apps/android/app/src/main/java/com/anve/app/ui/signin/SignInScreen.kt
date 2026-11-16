@@ -6,13 +6,16 @@ import android.content.ContextWrapper
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -65,6 +68,7 @@ import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.UiMessage
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 
@@ -141,25 +145,44 @@ fun SignInContent(
     val stitch = LocalStitchColors.current
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (state) {
-            is SignInUiState.Loading -> Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            is SignInUiState.Loading -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding(),
+                contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
-                StitchLoadingSkeletonCard(rows = 2)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .anveContentWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                    StitchLoadingSkeletonCard(rows = 2)
+                }
             }
 
             is SignInUiState.Ready -> {
                 val colors = MaterialTheme.colorScheme
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .safeDrawingPadding()
+                        .imePadding(),
+                    contentAlignment = Alignment.Center,
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .anveContentWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                     OutlinedCard(
                         shape = RoundedCornerShape(24.dp),
                         border = BorderStroke(1.dp, stitch.hairline),
@@ -317,6 +340,7 @@ fun SignInContent(
                         HorizontalDivider(color = stitch.hairline)
                         DevLoginForm(enabled = !busy, onSignIn = onDevSignIn)
                     }
+                    }
                 }
             }
 
@@ -343,7 +367,10 @@ private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = text, style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
                 Text(stringResource(R.string.action_dismiss))
             }
         }

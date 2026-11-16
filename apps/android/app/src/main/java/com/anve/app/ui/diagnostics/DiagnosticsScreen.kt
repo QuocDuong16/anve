@@ -12,16 +12,20 @@ import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -43,6 +47,7 @@ import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -110,6 +115,7 @@ import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
@@ -228,8 +234,20 @@ internal fun DiagnosticsExportReview(report: String, onDismiss: () -> Unit, onSh
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onShare, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text(stringResource(R.string.diag_export_share)) } },
-        dismissButton = { TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = actionColor)) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = {
+            TextButton(
+                onClick = onShare,
+                colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.diag_export_share)) }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -260,6 +278,7 @@ fun DiagnosticsContent(
     // Equal-contrast crossover for black versus white system status icons.
     DiagnosticsStatusBar(appBarBackground.luminance() > 0.179f)
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.diag_title)) },
@@ -269,8 +288,9 @@ fun DiagnosticsContent(
             )
         },
     ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).testTag("diagnostics-list"),
+            Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth().testTag("diagnostics-list"),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -291,7 +311,15 @@ fun DiagnosticsContent(
                 }
             }
             if (!ready) {
-                item { Text(stringResource(R.string.diag_not_ready)) }
+                item {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text(stringResource(R.string.diag_not_ready))
+                    }
+                }
                 return@LazyColumn
             }
             item {
@@ -315,7 +343,12 @@ fun DiagnosticsContent(
                             )
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(diagnosis.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                diagnosis.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.semantics { heading() },
+                            )
                             Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                         }
                         HorizontalDivider(color = stitch.hairline)
@@ -370,7 +403,7 @@ fun DiagnosticsContent(
                 )
             }
             if (actionError != null) item { AnveErrorNotice(actionError) }
-            if (state.readFailed) item { AnveErrorNotice(stringResource(R.string.diag_details_failed)) }
+            if (state.readFailed) item { AnveErrorNotice(stringResource(R.string.diag_details_failed), onRetry = onRefresh) }
             if (!showDetails) {
                 item { DiagnosticsSection(stringResource(R.string.diag_section_capture), Icons.Outlined.LocationOn) {
                     DiagnosticRow(stringResource(R.string.diag_row_service), if (status.activelyTracking) stringResource(R.string.diag_value_running) else if (status.serviceRunning) stringResource(R.string.diag_value_capture_unconfirmed) else stringResource(R.string.diag_value_stopped))
@@ -406,7 +439,7 @@ fun DiagnosticsContent(
                         onClick = { onAction(DiagnosticsAction.RETRY_SYNC) },
                         enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0,
                         shape = CircleShape,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(16.dp).heightIn(min = 48.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
                     ) { Text(stringResource(R.string.diag_retry_sync)) }
                 } }
@@ -450,6 +483,7 @@ fun DiagnosticsContent(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -536,6 +570,7 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
 @Composable
 private fun DiagnosticRow(label: String, value: String) {
     val colors = MaterialTheme.colorScheme
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -544,7 +579,7 @@ private fun DiagnosticRow(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        if (value.length <= 22) {
+        if (value.length <= 22 && !largeFont) {
             StitchSemanticBadge(
                 text = value,
                 kind = StitchBadgeKind.NEUTRAL,

@@ -143,10 +143,20 @@ fun InvitationDialog(
         },
         confirmButton = {
             when {
-                state.unknown -> TextButton(onClick = onCheck, enabled = online && !state.busy, colors = ButtonDefaults.textButtonColors(contentColor = action)) {
+                state.unknown -> TextButton(
+                    onClick = onCheck,
+                    enabled = online && !state.busy,
+                    colors = ButtonDefaults.textButtonColors(contentColor = action),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.invite_check_result))
                 }
-                state.retryable -> TextButton(onClick = onRetry, enabled = online && !state.loading && !state.busy, colors = ButtonDefaults.textButtonColors(contentColor = action)) {
+                state.retryable -> TextButton(
+                    onClick = onRetry,
+                    enabled = online && !state.loading && !state.busy,
+                    colors = ButtonDefaults.textButtonColors(contentColor = action),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.action_retry))
                 }
                 state.preview != null && !state.blocked -> Button(
@@ -157,13 +167,17 @@ fun InvitationDialog(
                         containerColor = if (dark) colors.primaryContainer else colors.primary,
                         contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
                     ),
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) {
                     Text(stringResource(R.string.invite_dialog_join))
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.invite_dialog_later), color = action) }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.invite_dialog_later), color = action) }
         },
     )
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +70,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -74,6 +78,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -102,6 +107,7 @@ import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLivePulseDot
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -136,8 +142,9 @@ fun LiveMapScreen(
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val lifecycleOwner = LocalLifecycleOwner.current
     val ownerId = session?.userId
+    var locationRetryTick by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(ownerId, lifecycleOwner) {
+    LaunchedEffect(ownerId, lifecycleOwner, locationRetryTick) {
         viewModel.ownerChanged(ownerId)
         if (ownerId != null) {
             val snapshotGeneration = viewModel.beginLocationSnapshotCollection(ownerId)
@@ -164,6 +171,7 @@ fun LiveMapScreen(
         onCloseSharing = { viewModel.showSharing(false, ownerId) },
         onToggleViewer = { member, enabled -> viewModel.toggleViewer(ownerId, member, enabled) },
         onRetrySharing = { viewModel.refreshSharing(ownerId) },
+        onRetryLocation = { locationRetryTick++ },
         onOpenLocation = onOpenLocation,
         onOpenCircle = onOpenCircle,
         onOpenJourney = onOpenJourney,
@@ -179,6 +187,7 @@ private fun LiveMapContent(
     onCloseSharing: () -> Unit,
     onToggleViewer: (AudienceMember, Boolean) -> Unit,
     onRetrySharing: () -> Unit,
+    onRetryLocation: () -> Unit = {},
     onOpenLocation: () -> Unit = {},
     onOpenCircle: () -> Unit = {},
     onOpenJourney: () -> Unit = {},
@@ -223,7 +232,8 @@ private fun LiveMapContent(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val maxSheetHeight = (maxHeight * 0.56f).coerceAtLeast(180.dp)
         if (mapsConfigured) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
@@ -305,20 +315,26 @@ private fun LiveMapContent(
                 onOpenLocation = onOpenLocation,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 80.dp, start = 16.dp, end = 16.dp),
+                    .anveContentWidth()
+                    .padding(top = 76.dp, start = 16.dp, end = 16.dp, bottom = 140.dp),
             )
         }
 
         val colors = MaterialTheme.colorScheme
         val stitch = LocalStitchColors.current
         Column(
-            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .anveContentWidth()
+                .align(Alignment.TopCenter)
+                .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
                     shape = CircleShape,
@@ -387,8 +403,8 @@ private fun LiveMapContent(
             }
             snapshot?.error?.let { message ->
                 // Same failure presentation as the other screens: the shared
-                // errorContainer notice, not a bare text card.
-                AnveErrorNotice(message)
+                // errorContainer notice with a retry action that restarts the poll.
+                AnveErrorNotice(message, onRetry = onRetryLocation)
             }
         }
 
@@ -401,9 +417,11 @@ private fun LiveMapContent(
                 shadowElevation = 6.dp,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .anveContentWidth()
+                    .heightIn(max = maxSheetHeight),
             ) {
-                Box(Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 56.dp)) {
+                Box(Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 64.dp)) {
                     StitchLoadingSkeletonCard(rows = 2)
                 }
             }
@@ -414,10 +432,14 @@ private fun LiveMapContent(
                 shadowElevation = 6.dp,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .anveContentWidth()
+                    .heightIn(max = maxSheetHeight),
             ) {
                 Column(
-                    modifier = Modifier.padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 56.dp),
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 64.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Box(
@@ -457,7 +479,7 @@ private fun LiveMapContent(
                     )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         OutlinedButton(
                             onClick = onOpenSharing,
@@ -478,6 +500,9 @@ private fun LiveMapContent(
             }
             else -> {
                 val toggleDesc = stringResource(R.string.map_pulse_toggle_content_desc)
+                val expandStateDesc = stringResource(
+                    if (sheetExpanded) R.string.action_state_expanded else R.string.action_state_collapsed,
+                )
                 Surface(
                     shape = sheetShape,
                     color = stitch.cardTactile,
@@ -485,18 +510,29 @@ private fun LiveMapContent(
                     shadowElevation = 6.dp,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .anveContentWidth()
+                        .heightIn(max = maxSheetHeight)
                         .align(Alignment.BottomCenter),
                 ) {
                     Column(
-                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 10.dp),
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 14.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 48.dp)
                                 .clip(CircleShape)
-                                .clickable(onClickLabel = toggleDesc) { sheetExpanded = !sheetExpanded }
-                                .padding(vertical = 4.dp),
+                                .clickable(
+                                    role = Role.Button,
+                                    onClickLabel = toggleDesc,
+                                ) { sheetExpanded = !sheetExpanded }
+                                .semantics {
+                                    contentDescription = toggleDesc
+                                    stateDescription = expandStateDesc
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
                             Box(
@@ -505,10 +541,11 @@ private fun LiveMapContent(
                                     .background(stitch.hairline, CircleShape),
                             )
                         }
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -521,7 +558,7 @@ private fun LiveMapContent(
                                     Text(
                                         text = stringResource(R.string.map_pulse_title),
                                         style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.semantics { heading() },
                                     )
@@ -533,12 +570,11 @@ private fun LiveMapContent(
                                     color = colors.onSurfaceVariant,
                                 )
                             }
-                            Spacer(Modifier.width(8.dp))
                             FilledTonalButton(
                                 onClick = onOpenJourney,
                                 shape = CircleShape,
-                                modifier = Modifier.heightIn(min = 40.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             ) {
                                 Icon(Icons.Outlined.Home, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
@@ -580,19 +616,20 @@ private fun LiveMapContent(
                             }
                         }
                         // Reserve right-side clearance so the docked SOS pill
-                        // never overlaps the details toggle.
+                        // never overlaps the details toggle or expanded card.
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(end = 92.dp),
+                                .padding(end = 112.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Row(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .clickable { sheetExpanded = !sheetExpanded }
+                                    .clickable(role = Role.Button) { sheetExpanded = !sheetExpanded }
                                     .heightIn(min = 48.dp)
-                                    .padding(horizontal = 4.dp),
+                                    .padding(horizontal = 8.dp)
+                                    .semantics { stateDescription = expandStateDesc },
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -713,7 +750,7 @@ private fun MemberShelfPillCard(
             width = if (selected) 1.5.dp else 1.dp,
             color = if (selected) colors.primary else stitch.hairline,
         ),
-        modifier = Modifier.widthIn(min = 144.dp, max = 188.dp),
+        modifier = Modifier.widthIn(min = 144.dp, max = 260.dp),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
@@ -739,7 +776,7 @@ private fun MemberShelfPillCard(
                 Text(
                     text = location.displayName,
                     style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Row(
@@ -756,7 +793,7 @@ private fun MemberShelfPillCard(
                         text = confidence.toConfidenceLabel(),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (selected) colors.onSurface else colors.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -854,43 +891,62 @@ private fun AudienceSheet(
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = stitch.cardTactile) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AnVeSharingHeroIllustration(
-                active = state.sharing?.consentEnabled ?: true,
-                modifier = Modifier.fillMaxWidth().height(96.dp),
-            )
-            AnVeSectionHeader(
-                icon = Icons.Outlined.Group,
-                title = stringResource(R.string.map_audience_title),
-            )
+            item {
+                AnVeSharingHeroIllustration(
+                    active = state.sharing?.consentEnabled ?: true,
+                    modifier = Modifier.fillMaxWidth().height(96.dp),
+                )
+            }
+            item {
+                AnVeSectionHeader(
+                    icon = Icons.Outlined.Group,
+                    title = stringResource(R.string.map_audience_title),
+                )
+            }
             // One fact per line: the old 60+ word paragraph asked readers to
             // hold consent, timing and offline behavior at once.
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = colors.surfaceVariant.copy(alpha = 0.42f),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = colors.surfaceVariant.copy(alpha = 0.42f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(stringResource(R.string.map_audience_explainer_consent), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.map_audience_explainer_timing), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.map_audience_explainer_offline), style = MaterialTheme.typography.bodySmall)
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(stringResource(R.string.map_audience_explainer_consent), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.map_audience_explainer_timing), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.map_audience_explainer_offline), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
             if (state.sharingLoading && state.sharing == null) {
-                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
             state.sharingErrorRes?.let { res ->
-                // Same failure presentation as the rest of the app; the sheet
-                // keeps its own retry below, so the notice takes no second retry.
-                AnveErrorNotice(stringResource(res))
-                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.map_retry))
+                item {
+                    // Same failure presentation as the rest of the app; the sheet
+                    // keeps its own retry below, so the notice takes no second retry.
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AnveErrorNotice(stringResource(res))
+                        TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(stringResource(R.string.map_retry))
+                        }
+                    }
                 }
             }
             val sharing = state.sharing
@@ -899,26 +955,32 @@ private fun AudienceSheet(
                 // The two setup notices carry their own action: a pointer that
                 // only names the screen leaves the reader to close the sheet
                 // and hunt for the link underneath it.
-                !sharing.hasCircle -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.map_no_circle), style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = onOpenCircle, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(stringResource(R.string.map_open_circle))
+                !sharing.hasCircle -> item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.map_no_circle), style = MaterialTheme.typography.bodyMedium)
+                        TextButton(onClick = onOpenCircle, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(stringResource(R.string.map_open_circle))
+                        }
                     }
                 }
-                !sharing.consentEnabled -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                !sharing.consentEnabled -> item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.map_consent_off),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        TextButton(onClick = onOpenLocation, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(stringResource(R.string.action_open_location))
+                        }
+                    }
+                }
+                sharing.members.none { it.userId != ownerId } -> item {
                     Text(
-                        stringResource(R.string.map_consent_off),
+                        stringResource(R.string.map_no_other_members),
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    TextButton(onClick = onOpenLocation, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(stringResource(R.string.action_open_location))
-                    }
                 }
-                sharing.members.none { it.userId != ownerId } -> Text(
-                    stringResource(R.string.map_no_other_members),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                else -> {
                     items(sharing.members.filter { it.userId != ownerId }, key = AudienceMember::userId) { member ->
                         // The whole row toggles so TalkBack announces the member's
                         // name together with the switch state instead of an
@@ -972,9 +1034,9 @@ private fun AudienceSheet(
                                     // layer keeps AudienceMember faithful to the server
                                     // payload while reusing the Circle screen's
                                     // standardized labels, so one concept keeps one wording.
-                                    Row(
+                                    FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
                                         Text(
                                             text = if (member.role == "owner") {
@@ -1012,7 +1074,6 @@ private fun AudienceSheet(
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }

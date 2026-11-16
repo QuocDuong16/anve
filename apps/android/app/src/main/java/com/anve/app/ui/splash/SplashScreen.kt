@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +33,7 @@ import com.anve.app.R
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
 import com.anve.app.ui.brand.AnVeIllustratedBanner
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 
@@ -51,13 +55,18 @@ fun SplashScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background),
+            .background(colors.background)
+            .safeDrawingPadding(),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(28.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .anveContentWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(28.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Box(

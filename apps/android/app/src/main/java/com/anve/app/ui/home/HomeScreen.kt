@@ -6,22 +6,32 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
@@ -51,6 +61,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -64,7 +78,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +90,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -100,6 +115,7 @@ import com.anve.app.ui.avatar.AvatarImage
 import com.anve.app.ui.brand.AnVeAccountShieldIllustration
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.circle.CircleScreen
+import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnVeSosPillButton
 import com.anve.app.ui.common.AnveErrorNotice
@@ -108,6 +124,7 @@ import com.anve.app.ui.common.StitchEmptyStateCard
 import com.anve.app.ui.common.StitchLiveSharingPill
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.diagnostics.DiagnosticsScreen
 import com.anve.app.ui.history.HistoryScreen
 import com.anve.app.ui.map.LiveMapScreen
@@ -202,7 +219,7 @@ internal val HOME_FAB_CLEARANCE = 64.dp
  * The signed-in surface keeps five primary destinations and routes secondary
  * account and SOS screens above the selected destination.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     var tab by rememberSaveable(stateSaver = homeTabSaver) { mutableStateOf(HomeTab.CIRCLE) }
@@ -342,164 +359,215 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         selectedSos = null
     }
     BackHandler(enabled = secondaryPage != null, onBack = returnFromSecondaryPage)
-    Scaffold(
-        // Hosts the push deep-link snackbar plus one-shot results posted from
-        // tab content (Nhóm) that has no Scaffold of its own; screens owning
-        // a Scaffold (History, Places, SOS) keep their own hosts (DESIGN.md).
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            secondaryPage?.let { page ->
-                TopAppBar(
-                    title = { Text(stringResource(page.titleRes)) },
-                    navigationIcon = {
-                        IconButton(onClick = returnFromSecondaryPage) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                )
-            }
-        },
-        bottomBar = {
-            val stitch = LocalStitchColors.current
-            Column(modifier = Modifier.fillMaxWidth()) {
-                HorizontalDivider(color = stitch.hairline)
-                NavigationBar(
+    val stitch = LocalStitchColors.current
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val useRail = maxWidth >= 600.dp
+        val navBarColors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val navRailColors = NavigationRailItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val tabIcon: @Composable (HomeTab) -> Unit = { entry ->
+            // The label below already announces the tab; an icon contentDescription
+            // would make TalkBack read the same text twice (M3 labeled-destination rule).
+            Icon(
+                imageVector = when (entry) {
+                    HomeTab.MAP -> Icons.Outlined.Map
+                    HomeTab.CIRCLE -> Icons.Outlined.Groups
+                    HomeTab.PLACES -> Icons.Outlined.Place
+                    HomeTab.HISTORY -> Icons.Outlined.History
+                },
+                contentDescription = null,
+            )
+        }
+        val tabLabel: @Composable (HomeTab) -> Unit = { entry ->
+            Text(
+                text = stringResource(entry.labelRes),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        val selectTab: (HomeTab) -> Unit = { entry ->
+            tab = entry
+            secondaryPage = null
+            sosReturnPage = null
+            selectedSos = null
+        }
+
+        Row(Modifier.fillMaxSize()) {
+            if (useRail) {
+                NavigationRail(
                     containerColor = stitch.cardTactile,
-                    tonalElevation = 0.dp,
+                    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start),
                 ) {
-                    val navColors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Spacer(Modifier.height(12.dp))
                     HomeTab.entries.forEach { entry ->
-                        NavigationBarItem(
+                        NavigationRailItem(
                             selected = secondaryPage == null && tab == entry,
-                            onClick = {
-                                tab = entry
-                                secondaryPage = null
-                                sosReturnPage = null
-                                selectedSos = null
-                            },
-                            colors = navColors,
-                            icon = {
-                                // The label below already announces the tab; an
-                                // icon contentDescription would make TalkBack read
-                                // the same text twice (M3 labeled-destination rule).
-                                Icon(
-                                    imageVector = when (entry) {
-                                        HomeTab.MAP -> Icons.Outlined.Map
-                                        HomeTab.CIRCLE -> Icons.Outlined.Groups
-                                        HomeTab.PLACES -> Icons.Outlined.Place
-                                        HomeTab.HISTORY -> Icons.Outlined.History
-                                    },
-                                    contentDescription = null,
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(entry.labelRes),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
+                            onClick = { selectTab(entry) },
+                            colors = navRailColors,
+                            icon = { tabIcon(entry) },
+                            label = { tabLabel(entry) },
                         )
                     }
                 }
+                VerticalDivider(color = stitch.hairline)
             }
-        },
-        floatingActionButton = {
-            if (secondaryPage != HomeSecondaryPage.SOS) {
-                AnVeSosPillButton(
-                    onClick = {
-                        sosReturnPage = secondaryPage
-                        selectedSos = null
-                        secondaryPage = HomeSecondaryPage.SOS
-                    },
-                )
-            }
-        },
-    ) { padding ->
-        Box(Modifier.padding(padding)) {
-            when (secondaryPage) {
-                HomeSecondaryPage.ACCOUNT -> AccountContent(
-                    container = container,
-                    onOpenTracking = {
-                        secondaryPage = HomeSecondaryPage.SHARING
-                    },
-                    onOpenDiagnostics = { showDiagnostics = true },
-                )
-                HomeSecondaryPage.SHARING -> TrackingScreen(
-                    container = container,
-                    onOpenDiagnostics = { showDiagnostics = true },
-                    onOpenJourney = {
-                        selectedJourney = null
-                        showJourneys = true
-                    },
-                    onOpenAudience = {
-                        openMapAudience = true
-                        tab = HomeTab.MAP
-                        secondaryPage = null
-                    },
-                )
-                HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
-                null -> Column(Modifier.fillMaxSize()) {
-                    val trackingStatus by container.trackingManager.status.collectAsStateWithLifecycle()
-                    AnVeShellHeader(
-                        sharing = trackingStatus.activelyTracking,
-                        onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
-                        onOpenSharing = { secondaryPage = HomeSecondaryPage.SHARING },
-                    )
-                    Box(Modifier.fillMaxWidth().weight(1f)) {
-                        when (tab) {
-                            HomeTab.MAP -> LiveMapScreen(
-                                container = container,
-                                onOpenLocation = {
-                                    secondaryPage = HomeSecondaryPage.SHARING
-                                },
-                                onOpenCircle = {
-                                    secondaryPage = null
-                                    tab = HomeTab.CIRCLE
-                                },
-                                onOpenJourney = {
-                                    selectedJourney = null
-                                    showJourneys = true
-                                },
-                                openSharingRequest = openMapAudience,
-                                onSharingRequestConsumed = { openMapAudience = false },
+            Scaffold(
+                modifier = Modifier.weight(1f),
+                contentWindowInsets = if (useRail) {
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
+                } else {
+                    WindowInsets.safeDrawing
+                },
+                // Hosts the push deep-link snackbar plus one-shot results posted from
+                // tab content (Nhóm) that has no Scaffold of its own; screens owning
+                // a Scaffold (History, Places, SOS) keep their own hosts (DESIGN.md).
+                snackbarHost = { SnackbarHost(snackbarHostState) },
+                topBar = {
+                    secondaryPage?.let { page ->
+                        TopAppBar(
+                            title = { Text(stringResource(page.titleRes)) },
+                            navigationIcon = {
+                                IconButton(onClick = returnFromSecondaryPage) {
+                                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                                }
+                            },
+                            windowInsets = if (useRail) {
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End)
+                            } else {
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                titleContentColor = MaterialTheme.colorScheme.onSurface,
+                                navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                        )
+                    }
+                },
+                bottomBar = {
+                    if (!useRail) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            HorizontalDivider(color = stitch.hairline)
+                            NavigationBar(
+                                containerColor = stitch.cardTactile,
+                                tonalElevation = 0.dp,
+                            ) {
+                                HomeTab.entries.forEach { entry ->
+                                    NavigationBarItem(
+                                        selected = secondaryPage == null && tab == entry,
+                                        onClick = { selectTab(entry) },
+                                        colors = navBarColors,
+                                        icon = { tabIcon(entry) },
+                                        label = { tabLabel(entry) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                floatingActionButton = {
+                    if (secondaryPage != HomeSecondaryPage.SOS) {
+                        AnVeSosPillButton(
+                            onClick = {
+                                sosReturnPage = secondaryPage
+                                selectedSos = null
+                                secondaryPage = HomeSecondaryPage.SOS
+                            },
+                        )
+                    }
+                },
+            ) { padding ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .consumeWindowInsets(padding),
+                ) {
+                    when (secondaryPage) {
+                        HomeSecondaryPage.ACCOUNT -> AccountContent(
+                            container = container,
+                            onOpenTracking = {
+                                secondaryPage = HomeSecondaryPage.SHARING
+                            },
+                            onOpenDiagnostics = { showDiagnostics = true },
+                        )
+                        HomeSecondaryPage.SHARING -> TrackingScreen(
+                            container = container,
+                            onOpenDiagnostics = { showDiagnostics = true },
+                            onOpenJourney = {
+                                selectedJourney = null
+                                showJourneys = true
+                            },
+                            onOpenAudience = {
+                                openMapAudience = true
+                                tab = HomeTab.MAP
+                                secondaryPage = null
+                            },
+                        )
+                        HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
+                        null -> Column(Modifier.fillMaxSize()) {
+                            val trackingStatus by container.trackingManager.status.collectAsStateWithLifecycle()
+                            AnVeShellHeader(
+                                sharing = trackingStatus.activelyTracking,
+                                onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
+                                onOpenSharing = { secondaryPage = HomeSecondaryPage.SHARING },
                             )
-                            HomeTab.CIRCLE -> CircleScreen(
-                                container = container,
-                                invitationId = selectedInvitation,
-                                onInvitationConsumed = { selectedInvitation = null },
-                                onOpenLocation = {
-                                    secondaryPage = HomeSecondaryPage.SHARING
-                                },
-                                onOpenMap = {
-                                    circleAudienceStepHidden = true
-                                    openMapAudience = true
-                                    tab = HomeTab.MAP
-                                    secondaryPage = null
-                                    sosReturnPage = null
-                                    selectedSos = null
-                                },
-                                audienceStepHidden = circleAudienceStepHidden,
-                                snackbarHostState = snackbarHostState,
-                            )
-                            HomeTab.PLACES -> PlacesScreen(
-                                container = container,
-                                onOpenLocation = {
-                                    secondaryPage = HomeSecondaryPage.SHARING
-                                },
-                            )
-                            HomeTab.HISTORY -> HistoryScreen(container = container)
+                            Box(Modifier.fillMaxWidth().weight(1f)) {
+                                when (tab) {
+                                    HomeTab.MAP -> LiveMapScreen(
+                                        container = container,
+                                        onOpenLocation = {
+                                            secondaryPage = HomeSecondaryPage.SHARING
+                                        },
+                                        onOpenCircle = {
+                                            secondaryPage = null
+                                            tab = HomeTab.CIRCLE
+                                        },
+                                        onOpenJourney = {
+                                            selectedJourney = null
+                                            showJourneys = true
+                                        },
+                                        openSharingRequest = openMapAudience,
+                                        onSharingRequestConsumed = { openMapAudience = false },
+                                    )
+                                    HomeTab.CIRCLE -> CircleScreen(
+                                        container = container,
+                                        invitationId = selectedInvitation,
+                                        onInvitationConsumed = { selectedInvitation = null },
+                                        onOpenLocation = {
+                                            secondaryPage = HomeSecondaryPage.SHARING
+                                        },
+                                        onOpenMap = {
+                                            circleAudienceStepHidden = true
+                                            openMapAudience = true
+                                            tab = HomeTab.MAP
+                                            secondaryPage = null
+                                            sosReturnPage = null
+                                            selectedSos = null
+                                        },
+                                        audienceStepHidden = circleAudienceStepHidden,
+                                        snackbarHostState = snackbarHostState,
+                                    )
+                                    HomeTab.PLACES -> PlacesScreen(
+                                        container = container,
+                                        onOpenLocation = {
+                                            secondaryPage = HomeSecondaryPage.SHARING
+                                        },
+                                    )
+                                    HomeTab.HISTORY -> HistoryScreen(container = container)
+                                }
+                            }
                         }
                     }
                 }
@@ -512,67 +580,98 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
 private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenSharing: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val compactOrLargeFont = LocalDensity.current.fontScale > 1.35f
     Surface(
         color = colors.background,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.primaryContainer.copy(alpha = 0.55f),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.size(42.dp),
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = Modifier.fillMaxWidth().anveContentWidth()) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        AnVeBrandMark(Modifier.size(34.dp))
+                    val stackAccountButton = maxWidth < 340.dp || compactOrLargeFont
+                    val brandRow: @Composable (Modifier) -> Unit = { rowModifier ->
+                        Row(
+                            modifier = rowModifier,
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = colors.primaryContainer.copy(alpha = 0.55f),
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                modifier = Modifier.size(42.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    AnVeBrandMark(Modifier.size(34.dp))
+                                }
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.home_brand_name),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = stringResource(R.string.home_brand_tagline),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                    maxLines = if (stackAccountButton) 2 else 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                    val accountButton: @Composable (Modifier) -> Unit = { btnModifier ->
+                        FilledTonalButton(
+                            onClick = onOpenAccount,
+                            shape = CircleShape,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = colors.secondaryContainer,
+                                contentColor = colors.onSecondaryContainer,
+                            ),
+                            modifier = btnModifier.heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.tab_account),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    if (stackAccountButton) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            brandRow(Modifier.fillMaxWidth())
+                            accountButton(Modifier.align(Alignment.End))
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            brandRow(Modifier.weight(1f))
+                            accountButton(Modifier)
+                        }
                     }
                 }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.home_brand_name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = stringResource(R.string.home_brand_tagline),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                FilledTonalButton(
-                    onClick = onOpenAccount,
-                    shape = CircleShape,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = colors.secondaryContainer,
-                        contentColor = colors.onSecondaryContainer,
-                    ),
-                    modifier = Modifier.heightIn(min = 48.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                ) {
-                    Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.tab_account), maxLines = 1)
-                }
+                // Full-width pinned Stitch status pill keeping sharing toggle
+                // discoverable across every primary tab without crowding the nav bar.
+                StitchLiveSharingPill(
+                    text = stringResource(if (sharing) R.string.sharing_chip_on else R.string.sharing_chip_off),
+                    active = sharing,
+                    onClick = onOpenSharing,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                )
             }
-            // Full-width pinned Stitch status pill keeping sharing toggle
-            // discoverable across every primary tab without crowding the nav bar.
-            StitchLiveSharingPill(
-                text = stringResource(if (sharing) R.string.sharing_chip_on else R.string.sharing_chip_off),
-                active = sharing,
-                onClick = onOpenSharing,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
-            )
             HorizontalDivider(color = stitch.hairline)
         }
     }
@@ -587,7 +686,7 @@ private fun AccountContent(
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
-        Text(stringResource(R.string.home_checking_account), Modifier.padding(16.dp))
+        AnVeCheckingState(stringResource(R.string.home_checking_account))
         return
     }
     val viewModel: HomeViewModel = viewModel(
@@ -689,15 +788,19 @@ fun HomeContent(
     val stitch = LocalStitchColors.current
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                StitchLoadingSkeletonCard(rows = 2)
-                StitchLoadingSkeletonCard(rows = 3)
-                StitchLoadingSkeletonCard(rows = 2)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .anveContentWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    StitchLoadingSkeletonCard(rows = 2)
+                    StitchLoadingSkeletonCard(rows = 3)
+                    StitchLoadingSkeletonCard(rows = 2)
+                }
             }
             return@Surface
         }
@@ -716,20 +819,22 @@ fun HomeContent(
                     icon = Icons.Outlined.Security,
                     actionLabel = stringResource(R.string.action_retry),
                     onAction = onRetry,
+                    modifier = Modifier.anveContentWidth(),
                 )
             }
             return@Surface
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            // 72dp bottom = FAB container 56dp + 16dp gap (HOME_FAB_CLEARANCE):
-            // the shell Scaffold floats the FAB over the content without
-            // reserving room for it, so the last action row would otherwise
-            // sit under the thumb-zone FAB (same clearance as History/Places).
-            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            LazyColumn(
+                modifier = Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth(),
+                // 72dp bottom = FAB container 56dp + 16dp gap (HOME_FAB_CLEARANCE):
+                // the shell Scaffold floats the FAB over the content without
+                // reserving room for it, so the last action row would otherwise
+                // sit under the thumb-zone FAB (same clearance as History/Places).
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
             item {
                 StitchLiveSharingPill(
                     text = stringResource(R.string.home_privacy_live_pill),
@@ -800,6 +905,23 @@ fun HomeContent(
                         text = stringResource(R.string.home_device_count_badge, state.devices.size),
                         kind = StitchBadgeKind.NEUTRAL,
                     )
+                }
+            }
+            if (state.devices.isEmpty()) {
+                item {
+                    OutlinedCard(
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.home_devices_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
             }
             items(state.devices, key = { it.id }) { device ->
@@ -892,6 +1014,7 @@ fun HomeContent(
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -1154,64 +1277,88 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val isCurrent = device.session?.current == true
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     OutlinedCard(
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, stitch.hairline),
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Devices,
-                contentDescription = null,
-                tint = if (isCurrent) colors.primary else colors.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+        BoxWithConstraints(modifier = Modifier.padding(14.dp).fillMaxWidth()) {
+            val stackAction = maxWidth < 320.dp || largeFont
+            val detailsRow: @Composable (Modifier) -> Unit = { rowMod ->
                 Row(
+                    modifier = rowMod,
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
-                        device.name.ifBlank { stringResource(R.string.home_device_fallback_name) },
-                        style = MaterialTheme.typography.titleSmall,
+                    Icon(
+                        imageVector = Icons.Outlined.Devices,
+                        contentDescription = null,
+                        tint = if (isCurrent) colors.primary else colors.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
                     )
-                    if (isCurrent) {
-                        // A read-only label, not a chip: the device name is
-                        // informational and has no action behind it.
-                        StitchSemanticBadge(
-                            text = stringResource(R.string.home_device_this),
-                            kind = StitchBadgeKind.SAFE_HOME,
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                device.name.ifBlank { stringResource(R.string.home_device_fallback_name) },
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            if (isCurrent) {
+                                // A read-only label, not a chip: the device name is
+                                // informational and has no action behind it.
+                                StitchSemanticBadge(
+                                    text = stringResource(R.string.home_device_this),
+                                    kind = StitchBadgeKind.SAFE_HOME,
+                                )
+                            }
+                        }
+                        Text(
+                            text = listOfNotNull(
+                                device.platform,
+                                device.appVersion?.takeIf { it.isNotBlank() },
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
                         )
                     }
                 }
-                Text(
-                    text = listOfNotNull(
-                        device.platform,
-                        device.appVersion?.takeIf { it.isNotBlank() },
-                    ).joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                )
             }
             // The session in use cannot revoke itself: confirming it would
             // sign this very device out and throw the user out of the app
             // mid-settings. Other devices revoke, and only via the dialog.
-            OutlinedButton(
-                onClick = onRevoke,
-                enabled = !isCurrent,
-                shape = CircleShape,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.home_device_revoke))
+            val revokeButton: @Composable (Modifier) -> Unit = { btnMod ->
+                OutlinedButton(
+                    onClick = onRevoke,
+                    enabled = !isCurrent,
+                    shape = CircleShape,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                    modifier = btnMod.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.home_device_revoke))
+                }
+            }
+            if (stackAction) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    detailsRow(Modifier.fillMaxWidth())
+                    revokeButton(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    detailsRow(Modifier.weight(1f))
+                    revokeButton(Modifier)
+                }
             }
         }
     }
@@ -1226,24 +1373,29 @@ private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss
         icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
         title = { Text(stringResource(R.string.home_rename_title)) },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                label = { Text(stringResource(R.string.home_rename_label)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    label = { Text(stringResource(R.string.home_rename_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
         confirmButton = {
             Button(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank(),
                 shape = CircleShape,
+                modifier = Modifier.heightIn(min = 48.dp),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.action_cancel))
+            }
         },
     )
 }
@@ -1255,14 +1407,21 @@ private fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         shape = RoundedCornerShape(24.dp),
         icon = { Icon(Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = null) },
         title = { Text(stringResource(R.string.home_sign_out_title)) },
-        text = { Text(stringResource(R.string.home_sign_out_body)) },
+        text = {
+            Text(
+                text = stringResource(R.string.home_sign_out_body),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
         confirmButton = {
-            Button(onClick = onConfirm, shape = CircleShape) {
+            Button(onClick = onConfirm, shape = CircleShape, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(stringResource(R.string.home_sign_out))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.action_cancel))
+            }
         },
     )
 }
@@ -1274,7 +1433,12 @@ private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         shape = RoundedCornerShape(24.dp),
         icon = { Icon(Icons.Outlined.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = { Text(stringResource(R.string.home_delete_title)) },
-        text = { Text(stringResource(R.string.home_delete_body)) },
+        text = {
+            Text(
+                text = stringResource(R.string.home_delete_body),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
         confirmButton = {
             Button(
                 onClick = onConfirm,
@@ -1283,12 +1447,15 @@ private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
                 ),
+                modifier = Modifier.heightIn(min = 48.dp),
             ) {
                 Text(stringResource(R.string.home_delete_confirm))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.action_cancel))
+            }
         },
     )
 }
@@ -1302,7 +1469,12 @@ private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         shape = RoundedCornerShape(24.dp),
         icon = { Icon(Icons.Outlined.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = { Text(stringResource(R.string.home_device_revoke_title)) },
-        text = { Text(stringResource(R.string.home_device_revoke_body)) },
+        text = {
+            Text(
+                text = stringResource(R.string.home_device_revoke_body),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
         confirmButton = {
             Button(
                 onClick = onConfirm,
@@ -1311,12 +1483,15 @@ private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
                 ),
+                modifier = Modifier.heightIn(min = 48.dp),
             ) {
                 Text(stringResource(R.string.home_device_revoke))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.action_cancel))
+            }
         },
     )
 }

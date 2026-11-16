@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -66,7 +67,13 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = stitch.cardTactile,
     ) {
-        Column(Modifier.fillMaxWidth().heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f).padding(horizontal = 16.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp),
+        ) {
             LazyColumn(
                 Modifier.fillMaxWidth().weight(1f, fill = false).testTag("journey-options-sheet"),
                 contentPadding = PaddingValues(bottom = 16.dp),

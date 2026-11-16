@@ -15,19 +15,23 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -108,6 +112,7 @@ import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.LocationRequestOptions
 import com.anve.app.ui.brand.AnVePlacesSceneIllustration
+import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
@@ -115,6 +120,7 @@ import com.anve.app.ui.common.StitchEmptyStateCard
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
@@ -175,11 +181,7 @@ fun PlacesScreen(container: AppContainer, onOpenLocation: () -> Unit = {}) {
     if (owner == null || state.owner != owner) {
         // Session not re-emitted yet (fresh process or account switch): state
         // the wait instead of a blank frame, same wording as the account area.
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) { Text(stringResource(R.string.home_checking_account)) }
+        AnVeCheckingState(stringResource(R.string.home_checking_account))
         return
     }
     PlacesContent(state, vm, onOpenLocation)
@@ -323,8 +325,9 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
             onRefresh = vm::refresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth().padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = HOME_FAB_CLEARANCE),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -337,7 +340,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         )
                     }
                     state.noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
-                    state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
+                    state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res), onRetry = vm::refresh) } }
                     item {
                         Button(
                             onClick = {
@@ -370,17 +373,18 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                     }
                     item {
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = stringResource(R.string.places_list_section_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.semantics { heading() },
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 FilterChip(
                                     selected = !filterMine,
                                     onClick = { filterMine = false },
@@ -473,10 +477,14 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         }
                     }
                 } else if (selected == null) {
-                    state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
+                    state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res), onRetry = vm::refresh) } }
                     item { Text(stringResource(R.string.places_missing)) }
                     item {
-                        TextButton(onClick = { showDetails = false; vm.refresh() }, enabled = !state.loading && !state.refreshing) {
+                        TextButton(
+                            onClick = { showDetails = false; vm.refresh() },
+                            enabled = !state.loading && !state.refreshing,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
                             Text(stringResource(R.string.places_refresh_list))
                         }
                     }
@@ -517,7 +525,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         item(key = "preview-${selected.id}") { PlacePreview(selected) }
                     }
                     state.noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
-                    state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
+                    state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res), onRetry = vm::refresh) } }
                     if (state.loading || state.pending) item {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(Modifier.size(24.dp))
@@ -562,6 +570,13 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                         stringResource(R.string.places_share_notice),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
+                                    if (otherMembers.isEmpty()) {
+                                        Text(
+                                            text = stringResource(R.string.places_share_empty_members),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                    }
                                     otherMembers.forEach { person ->
                                         // The whole row toggles so TalkBack announces the member's
                                         // name together with the switch state; the switch itself
@@ -614,6 +629,13 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (eligibleMembers.isEmpty()) {
+                                    Text(
+                                        text = stringResource(R.string.places_alerts_empty_members),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
                                 eligibleMembers.forEach { person ->
                                     // Row-level checkbox for the same TalkBack reason as the
                                     // share rows above; the inner checkbox stays indicative.
@@ -644,7 +666,10 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 if (!state.sharing.consentEnabled) {
                                     ConsentNotice(onOpenLocation)
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
                                     Button(
                                         onClick = {
                                             configureBaseline = state.confirmation
@@ -652,11 +677,16 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                         },
                                         shape = CircleShape,
                                         enabled = !state.pending && state.sharing.consentEnabled,
+                                        modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
                                         Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))
                                     }
                                     if (state.monitor != null) {
-                                        TextButton(onClick = { vm.stop(selected.id) }, enabled = !state.pending) { Text(stringResource(R.string.places_monitor_stop)) }
+                                        TextButton(
+                                            onClick = { vm.stop(selected.id) },
+                                            enabled = !state.pending,
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                        ) { Text(stringResource(R.string.places_monitor_stop)) }
                                     }
                                 }
                             }
@@ -738,23 +768,37 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     }
                 }
             }
+            }
         }
     }
     deleteId?.let { id ->
         AlertDialog(
             onDismissRequest = { deleteId = null },
             title = { Text(stringResource(R.string.places_delete_title)) },
-            text = { Text(stringResource(R.string.places_delete_body)) },
+            text = {
+                Text(
+                    stringResource(R.string.places_delete_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 // Same destructive-confirm pattern as the circle dialogs:
                 // error-colored text action plus a neutral Hủy.
-                TextButton(onClick = {
-                    deleteId = null
-                    showDetails = false
-                    vm.delete(id)
-                }) { Text(stringResource(R.string.places_delete_confirm), color = MaterialTheme.colorScheme.error) }
+                TextButton(
+                    onClick = {
+                        deleteId = null
+                        showDetails = false
+                        vm.delete(id)
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.places_delete_confirm), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { deleteId = null }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { deleteId = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 }
@@ -780,7 +824,10 @@ private fun ConsentNotice(onOpenLocation: () -> Unit) {
             Icon(Icons.Outlined.Info, null, Modifier.size(24.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.places_consent_notice))
-                TextButton(onClick = onOpenLocation) {
+                TextButton(
+                    onClick = onOpenLocation,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.action_open_location))
                 }
             }
@@ -805,7 +852,12 @@ private fun PlacesNotesCard(expanded: Boolean, onToggle: () -> Unit) {
             // TalkBack announces the disclosure state instead of only the icon
             // swap; same treatment as the Tracking technical-details toggle.
             val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
-            TextButton(onClick = onToggle, modifier = Modifier.semantics { stateDescription = disclosureState }) {
+            TextButton(
+                onClick = onToggle,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .semantics { stateDescription = disclosureState },
+            ) {
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
@@ -841,6 +893,7 @@ private fun PlacePreview(place: PlaceDto) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onCancel: () -> Unit, onSave: (PlaceInputDto) -> Unit) {
     // Draft fields and the pending discard confirm survive process death. The
@@ -868,13 +921,14 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
         latitude != (place?.latitude?.toString() ?: "") ||
         longitude != (place?.longitude?.toString() ?: "") ||
         radius != (place?.radiusMeters ?: 150.0)
-    BackHandler {
+    val requestBack = {
         when {
             pending -> onCancel()
             hasChanges -> confirmDiscard = true
             else -> onCancel()
         }
     }
+    BackHandler(onBack = requestBack)
     val camera = rememberCameraPositionState {
         position = if (point == null) CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 1f) else CameraPosition.fromLatLngZoom(point, 14f)
     }
@@ -977,20 +1031,35 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
         stringResource(R.string.places_preset_work),
         stringResource(R.string.places_preset_grandparents),
     )
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(
-                stringResource(if (place == null) R.string.places_add else R.string.places_edit),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(if (place == null) R.string.places_add else R.string.places_edit)) },
+                navigationIcon = {
+                    IconButton(onClick = requestBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0),
             )
-        }
-        item {
-            PlaceSearchCard(
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { editorPadding ->
+        Box(
+            modifier = Modifier.fillMaxSize().padding(editorPadding),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+                    .anveContentWidth()
+                    .imePadding(),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    PlaceSearchCard(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
                 outcome = searchOutcome,
@@ -1181,7 +1250,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
-                        .clickable { showManualCoords = !showManualCoords }
+                        .clickable(role = Role.Button) { showManualCoords = !showManualCoords }
                         .semantics { stateDescription = coordsToggleState },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -1230,6 +1299,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     stringResource(R.string.places_editor_invalid_coords),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
         }
@@ -1239,6 +1309,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     stringResource(R.string.places_editor_invalid_name),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
         }
@@ -1258,23 +1329,43 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
                     enabled = valid && !pending,
                     shape = CircleShape,
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.action_save)) }
-                TextButton(onClick = onCancel, enabled = !pending) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(
+                    onClick = onCancel,
+                    enabled = !pending,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
+        }
             }
         }
     }
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },
         title = { Text(stringResource(R.string.places_discard_title)) },
-        text = { Text(stringResource(R.string.places_discard_body)) },
+        text = {
+            Text(
+                stringResource(R.string.places_discard_body),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
         confirmButton = {
             // Discard is destructive to the typed draft; same confirm pattern
             // as the delete dialog in this file.
-            TextButton(onClick = { confirmDiscard = false; onCancel() }) {
+            TextButton(
+                onClick = { confirmDiscard = false; onCancel() },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
                 Text(stringResource(R.string.places_discard_confirm), color = MaterialTheme.colorScheme.error)
             }
         },
-        dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(
+                onClick = { confirmDiscard = false },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 

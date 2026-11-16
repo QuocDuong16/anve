@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,9 +23,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -93,12 +96,14 @@ import com.anve.app.R
 import com.anve.app.data.api.HistoryPointDto
 import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeHistorySceneIllustration
+import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchEmptyStateCard
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchTimelineItem
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -205,11 +210,7 @@ fun HistoryScreen(container: AppContainer) {
     if (state.owner != owner || owner == null) {
         // Session not re-emitted yet (fresh process or account switch): state
         // the wait instead of a blank frame, same wording as the account area.
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) { Text(stringResource(R.string.home_checking_account)) }
+        AnVeCheckingState(stringResource(R.string.home_checking_account))
         return
     }
     HistoryContent(state, vm)
@@ -319,8 +320,9 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
             onRefresh = vm::refresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth().padding(horizontal = 16.dp),
                 state = listState,
                 contentPadding = PaddingValues(top = 16.dp, bottom = HOME_FAB_CLEARANCE),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -355,7 +357,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     leadingIcon = {
                                         Box(
                                             modifier = Modifier
-                                                .size(20.dp)
+                                                .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
                                                 .background(
                                                     color = if (member == person.ownerId) {
                                                         colors.primary
@@ -363,7 +365,8 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                                         colors.surfaceContainerHigh
                                                     },
                                                     shape = CircleShape,
-                                                ),
+                                                )
+                                                .padding(horizontal = 4.dp, vertical = 1.dp),
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Text(
@@ -713,6 +716,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     }
                 }
             }
+            }
         }
     }
 
@@ -727,17 +731,26 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         DeletionScope.DAY -> R.string.history_delete_scope_day
                         DeletionScope.RANGE -> R.string.history_delete_scope_range
                     }) + " " + stringResource(R.string.history_delete_privacy_note),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
                 )
             },
             confirmButton = {
                 // Same destructive-confirm pattern as the circle/places dialogs:
                 // error-colored text action plus a neutral Hủy.
-                TextButton(onClick = {
-                    deletionScope = null
-                    vm.delete(scope == DeletionScope.ALL, scope == DeletionScope.RANGE)
-                }) { Text(stringResource(R.string.history_delete_confirm), color = MaterialTheme.colorScheme.error) }
+                TextButton(
+                    onClick = {
+                        deletionScope = null
+                        vm.delete(scope == DeletionScope.ALL, scope == DeletionScope.RANGE)
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.history_delete_confirm), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { deletionScope = null }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { deletionScope = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 
@@ -749,14 +762,27 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
         AlertDialog(
             onDismissRequest = { pendingRetentionDays = null },
             title = { Text(stringResource(R.string.history_retention_confirm_title)) },
-            text = { Text(stringResource(R.string.history_retention_confirm_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingRetentionDays = null
-                    vm.changeRetention(days)
-                }) { Text(stringResource(R.string.history_retention_confirm), color = MaterialTheme.colorScheme.error) }
+            text = {
+                Text(
+                    stringResource(R.string.history_retention_confirm_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
             },
-            dismissButton = { TextButton(onClick = { pendingRetentionDays = null }) { Text(stringResource(R.string.action_cancel)) } },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRetentionDays = null
+                        vm.changeRetention(days)
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.history_retention_confirm), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingRetentionDays = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 

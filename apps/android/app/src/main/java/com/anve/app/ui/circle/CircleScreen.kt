@@ -4,22 +4,28 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Groups
@@ -55,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -73,12 +80,14 @@ import com.anve.app.data.api.MemberDto
 import com.anve.app.data.circles.InviteLink
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
 import com.anve.app.ui.brand.AnVeIllustratedBanner
+import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -113,7 +122,7 @@ fun CircleScreen(
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
     if (owner == null) {
-        Text(stringResource(R.string.invite_session_checking), Modifier.padding(24.dp))
+        AnVeCheckingState(stringResource(R.string.invite_session_checking))
         return
     }
     val viewModel: CircleViewModel = viewModel(
@@ -228,21 +237,44 @@ fun CircleScreen(
         AlertDialog(
             onDismissRequest = { showLeaveDialog = false },
             title = { Text(stringResource(R.string.circle_leave_title)) },
-            text = { Text(stringResource(R.string.circle_leave_body)) },
-            confirmButton = { TextButton(onClick = { viewModel.leave(false); showLeaveDialog = false }) { Text(stringResource(R.string.circle_leave_button)) } },
-            dismissButton = { TextButton(onClick = { showLeaveDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+            text = {
+                Text(
+                    stringResource(R.string.circle_leave_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.leave(false); showLeaveDialog = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.circle_leave_button)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLeaveDialog = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
     if (showDissolveDialog) {
         AlertDialog(
             onDismissRequest = { showDissolveDialog = false },
             title = { Text(stringResource(R.string.circle_dissolve_title)) },
-            text = { Text(stringResource(R.string.circle_dissolve_body)) },
+            text = {
+                Text(
+                    stringResource(R.string.circle_dissolve_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.leave(true)
-                    showDissolveDialog = false
-                }) {
+                TextButton(
+                    onClick = {
+                        viewModel.leave(true)
+                        showDissolveDialog = false
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(
                         stringResource(R.string.circle_dissolve_confirm),
                         color = MaterialTheme.colorScheme.error,
@@ -250,7 +282,10 @@ fun CircleScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDissolveDialog = false }) {
+                TextButton(
+                    onClick = { showDissolveDialog = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -260,12 +295,20 @@ fun CircleScreen(
         AlertDialog(
             onDismissRequest = { removeTarget = null },
             title = { Text(stringResource(R.string.circle_remove_title, target.displayName)) },
-            text = { Text(stringResource(R.string.circle_remove_body)) },
+            text = {
+                Text(
+                    stringResource(R.string.circle_remove_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.removeMember(target.userId)
-                    removeTarget = null
-                }) {
+                TextButton(
+                    onClick = {
+                        viewModel.removeMember(target.userId)
+                        removeTarget = null
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(
                         stringResource(R.string.circle_remove_confirm),
                         color = MaterialTheme.colorScheme.error,
@@ -273,7 +316,10 @@ fun CircleScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { removeTarget = null }) {
+                TextButton(
+                    onClick = { removeTarget = null },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -316,15 +362,19 @@ fun CircleContent(
     val stitch = LocalStitchColors.current
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.loading) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                StitchLoadingSkeletonCard(rows = 2)
-                StitchLoadingSkeletonCard(rows = 3)
-                StitchLoadingSkeletonCard(rows = 2)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .anveContentWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    StitchLoadingSkeletonCard(rows = 2)
+                    StitchLoadingSkeletonCard(rows = 3)
+                    StitchLoadingSkeletonCard(rows = 2)
+                }
             }
             return@Surface
         }
@@ -370,9 +420,11 @@ fun CircleContent(
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { onRefresh?.invoke() },
+            modifier = Modifier.fillMaxSize(),
         ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().testTag("circle-content"),
+                modifier = Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth().testTag("circle-content"),
                 // 72dp bottom clears the shell FAB (56dp container + 16dp gap):
                 // the Scaffold floats it over tab content without reserving
                 // room, so the last row would sit under the thumb-zone FAB
@@ -481,18 +533,27 @@ fun CircleContent(
                     }
                 }
             }
+            }
         }
         revokeInviteId?.let { target ->
             AlertDialog(
                 onDismissRequest = { revokeInviteId = null },
                 shape = RoundedCornerShape(24.dp),
                 title = { Text(stringResource(R.string.circle_invite_revoke_title)) },
-                text = { Text(stringResource(R.string.circle_invite_revoke_body)) },
+                text = {
+                    Text(
+                        stringResource(R.string.circle_invite_revoke_body),
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                    )
+                },
                 confirmButton = {
-                    TextButton(onClick = {
-                        onRevokeInvite(target)
-                        revokeInviteId = null
-                    }) {
+                    TextButton(
+                        onClick = {
+                            onRevokeInvite(target)
+                            revokeInviteId = null
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
                         Text(
                             stringResource(R.string.circle_invite_revoke),
                             color = colors.error,
@@ -500,7 +561,10 @@ fun CircleContent(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { revokeInviteId = null }) {
+                    TextButton(
+                        onClick = { revokeInviteId = null },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
                         Text(stringResource(R.string.action_cancel))
                     }
                 },
@@ -523,24 +587,30 @@ private fun CircleSetup(
     var circleName by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (receivedContent != null) item { receivedContent() }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AnVeIllustratedBanner {
-                    AnVeFamilySceneIllustration(
-                        modifier = Modifier.fillMaxWidth().height(132.dp),
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .anveContentWidth()
+                .imePadding(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (receivedContent != null) item { receivedContent() }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AnVeIllustratedBanner {
+                        AnVeFamilySceneIllustration(
+                            modifier = Modifier.fillMaxWidth().height(132.dp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.circle_setup_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.semantics { heading() },
                     )
-                }
-                Text(
-                    text = stringResource(R.string.circle_setup_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
                 Text(
                     text = stringResource(R.string.circle_setup_body),
                     style = MaterialTheme.typography.bodyMedium,
@@ -633,6 +703,7 @@ private fun CircleSetup(
                 color = colors.onSurfaceVariant,
             )
         }
+        }
     }
 }
 
@@ -640,6 +711,7 @@ private fun CircleSetup(
 private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, onLeave: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     OutlinedCard(
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, stitch.hairline),
@@ -660,46 +732,62 @@ private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, o
                     modifier = Modifier.fillMaxWidth().height(124.dp),
                 )
             }
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            BoxWithConstraints(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                val stackLeave = maxWidth < 340.dp || largeFont
+                val headerInfo: @Composable (Modifier) -> Unit = { colMod ->
+                    Column(colMod, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FlowRow(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = if (stackLeave) 2 else 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            StitchSemanticBadge(
+                                text = if (isOwner) {
+                                    stringResource(R.string.circle_role_owner)
+                                } else {
+                                    stringResource(R.string.circle_role_member)
+                                },
+                                kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.NEUTRAL,
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.circle_hearth_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+                val leaveButton: @Composable (Modifier) -> Unit = { btnMod ->
+                    TextButton(onClick = onLeave, modifier = btnMod.heightIn(min = 48.dp)) {
+                        Text(
+                            text = stringResource(
+                                if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
+                            ),
+                            color = colors.error,
+                        )
+                    }
+                }
+                if (stackLeave) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        headerInfo(Modifier.fillMaxWidth())
+                        leaveButton(Modifier.align(Alignment.End))
+                    }
+                } else {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        StitchSemanticBadge(
-                            text = if (isOwner) {
-                                stringResource(R.string.circle_role_owner)
-                            } else {
-                                stringResource(R.string.circle_role_member)
-                            },
-                            kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.NEUTRAL,
-                        )
+                        headerInfo(Modifier.weight(1f))
+                        leaveButton(Modifier)
                     }
-                    Text(
-                        text = stringResource(R.string.circle_hearth_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                TextButton(onClick = onLeave) {
-                    Text(
-                        text = stringResource(
-                            if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
-                        ),
-                        color = colors.error,
-                    )
                 }
             }
         }
@@ -777,6 +865,7 @@ private fun CircleActivationChecklist(
                 stringResource(R.string.circle_activation_warm_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.semantics { heading() },
             )
             Text(
                 stringResource(R.string.circle_activation_intro),
@@ -817,55 +906,86 @@ private fun CircleActivationStepRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = colors.surfaceContainerLow,
         border = BorderStroke(1.dp, stitch.hairline),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = if (primary) colors.primaryContainer else colors.surface,
-                contentColor = if (primary) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                border = if (primary) null else BorderStroke(1.dp, stitch.hairline),
-                modifier = Modifier.size(30.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stepNumber.toString(),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            val stackCta = maxWidth < 340.dp || largeFont
+            val stepBadge: @Composable () -> Unit = {
+                Surface(
+                    shape = CircleShape,
+                    color = if (primary) colors.primaryContainer else colors.surface,
+                    contentColor = if (primary) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                    border = if (primary) null else BorderStroke(1.dp, stitch.hairline),
+                    modifier = Modifier.defaultMinSize(minWidth = 32.dp, minHeight = 32.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                        Text(
+                            text = stepNumber.toString(),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    supporting,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                )
+            val stepAction: @Composable (Modifier) -> Unit = { btnMod ->
+                if (primary) {
+                    Button(
+                        onClick = action,
+                        shape = CircleShape,
+                        modifier = btnMod.heightIn(min = 48.dp),
+                    ) {
+                        Text(actionLabel)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = action,
+                        shape = CircleShape,
+                        modifier = btnMod.heightIn(min = 48.dp),
+                    ) {
+                        Text(actionLabel)
+                    }
+                }
             }
-            if (primary) {
-                Button(
-                    onClick = action,
-                    shape = CircleShape,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text(actionLabel)
+            if (stackCta) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        stepBadge()
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(title, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                supporting,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    stepAction(Modifier.fillMaxWidth())
                 }
             } else {
-                OutlinedButton(
-                    onClick = action,
-                    shape = CircleShape,
-                    modifier = Modifier.heightIn(min = 48.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(actionLabel)
+                    stepBadge()
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            supporting,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                    stepAction(Modifier)
                 }
             }
         }
@@ -883,70 +1003,97 @@ private fun MemberRow(
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val isOwner = member.role == "owner"
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     OutlinedCard(
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, stitch.hairline),
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (avatar != null) {
-                avatar()
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .background(
-                            color = colors.secondaryContainer,
-                            shape = CircleShape,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        member.displayName.take(1).uppercase().ifBlank { "?" },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSecondaryContainer,
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
+        BoxWithConstraints(modifier = Modifier.padding(14.dp).fillMaxWidth()) {
+            val stackRemove = canRemove && (maxWidth < 320.dp || largeFont)
+            val memberDetails: @Composable (Modifier) -> Unit = { rowMod ->
                 Row(
+                    modifier = rowMod,
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(member.displayName, style = MaterialTheme.typography.titleSmall)
-                    if (isSelf) {
+                    if (avatar != null) {
+                        avatar()
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .background(
+                                    color = colors.secondaryContainer,
+                                    shape = CircleShape,
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                member.displayName.take(1).uppercase().ifBlank { "?" },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.onSecondaryContainer,
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                member.displayName,
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            if (isSelf) {
+                                StitchSemanticBadge(
+                                    text = stringResource(R.string.circle_self_badge),
+                                    kind = StitchBadgeKind.NEUTRAL,
+                                )
+                            }
+                        }
                         StitchSemanticBadge(
-                            text = stringResource(R.string.circle_self_badge),
-                            kind = StitchBadgeKind.NEUTRAL,
+                            text = if (isOwner) {
+                                stringResource(R.string.circle_role_owner)
+                            } else {
+                                stringResource(R.string.circle_role_member)
+                            },
+                            kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.SAFE_HOME,
+                            icon = Icons.Outlined.CheckCircle,
                         )
                     }
                 }
-                StitchSemanticBadge(
-                    text = if (isOwner) {
-                        stringResource(R.string.circle_role_owner)
-                    } else {
-                        stringResource(R.string.circle_role_member)
-                    },
-                    kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.SAFE_HOME,
-                    icon = Icons.Outlined.CheckCircle,
-                )
             }
-            if (canRemove) {
+            val removeButton: @Composable (Modifier) -> Unit = { btnMod ->
                 OutlinedButton(
                     onClick = onRemove,
                     shape = CircleShape,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
-                    modifier = Modifier.heightIn(min = 48.dp),
+                    modifier = btnMod.heightIn(min = 48.dp),
                 ) {
                     Text(stringResource(R.string.circle_remove_short))
+                }
+            }
+            if (stackRemove) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    memberDetails(Modifier.fillMaxWidth())
+                    removeButton(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    memberDetails(Modifier.weight(1f))
+                    if (canRemove) {
+                        removeButton(Modifier)
+                    }
                 }
             }
         }

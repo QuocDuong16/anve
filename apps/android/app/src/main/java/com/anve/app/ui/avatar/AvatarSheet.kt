@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -76,6 +77,7 @@ fun AvatarSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.86f)
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .testTag("avatar-sheet"),
         ) {

@@ -4,24 +4,30 @@ import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -110,6 +116,7 @@ import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -193,16 +200,18 @@ fun JourneyContent(
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
-    Scaffold(topBar = {
-        TopAppBar(
-            title = { Text(if (creating) stringResource(R.string.journey_creating_title) else stringResource(R.string.journey_title)) },
-            navigationIcon = { IconButton(onClick = handleBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } },
-            actions = { IconButton(onClick = onReload, enabled = !state.loading && !state.busy) { Icon(Icons.Outlined.Refresh, stringResource(R.string.journey_reload_content_desc)) } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
-                titleContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
-                navigationIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
-                actionIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
-        )
+    Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            TopAppBar(
+                title = { Text(if (creating) stringResource(R.string.journey_creating_title) else stringResource(R.string.journey_title)) },
+                navigationIcon = { IconButton(onClick = handleBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } },
+                actions = { IconButton(onClick = onReload, enabled = !state.loading && !state.busy) { Icon(Icons.Outlined.Refresh, stringResource(R.string.journey_reload_content_desc)) } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
+                    titleContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
+                    navigationIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
+                    actionIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
+            )
         },
         floatingActionButton = {
             // The overlay's own Scaffold replaces the home shell, whose FAB is
@@ -213,7 +222,8 @@ fun JourneyContent(
     ) { padding ->
         // Bottom clearance mirrors the shell (HOME_FAB_CLEARANCE): the FAB
         // below must not cover the last card while scrolling.
-        LazyColumn(Modifier.padding(padding).testTag("journey-content"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + HOME_FAB_CLEARANCE), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth().testTag("journey-content"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + HOME_FAB_CLEARANCE), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (state.loading || state.busy) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -345,6 +355,7 @@ fun JourneyContent(
                 JourneyPrimaryAction(stringResource(R.string.journey_start_new), { onSelect(null); creating = true }, !state.busy && state.pending.isEmpty())
             }
         }
+        }
     }
     confirmation?.let { choice ->
         val title = when (choice.action) {
@@ -360,11 +371,16 @@ fun JourneyContent(
         AlertDialog(
             onDismissRequest = { confirmation = null },
             title = { Text(title) },
-            text = { Text(when (choice.action) {
-                JourneyAction.ARRIVE -> stringResource(R.string.journey_confirm_arrive_body, choice.journey.destination.label)
-                JourneyAction.REVOKE_RECIPIENT -> stringResource(R.string.journey_confirm_revoke_body)
-                else -> stringResource(R.string.journey_confirm_end_body)
-            }) },
+            text = {
+                Text(
+                    when (choice.action) {
+                        JourneyAction.ARRIVE -> stringResource(R.string.journey_confirm_arrive_body, choice.journey.destination.label)
+                        JourneyAction.REVOKE_RECIPIENT -> stringResource(R.string.journey_confirm_revoke_body)
+                        else -> stringResource(R.string.journey_confirm_end_body)
+                    },
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             dismissButton = { JourneyTextAction(stringResource(R.string.action_cancel), { confirmation = null }) },
             // Destructive-confirm convention (error confirm + neutral Hủy,
             // cf. the RevokeSessionDialog/DeleteAccountDialog pair in
@@ -385,11 +401,19 @@ fun JourneyContent(
     if (discardDraft) AlertDialog(
         onDismissRequest = { discardDraft = false },
         title = { Text(stringResource(R.string.places_discard_title)) },
-        text = { Text(stringResource(R.string.places_discard_body)) },
+        text = {
+            Text(
+                stringResource(R.string.places_discard_body),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
         confirmButton = {
             // Discard is destructive to the drafted journey; same confirm
             // pattern as the PlaceEditor discard dialog in PlacesScreen.
-            TextButton(onClick = { creating = false; createDraftDirty = false; discardDraft = false }) {
+            TextButton(
+                onClick = { creating = false; createDraftDirty = false; discardDraft = false },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
                 Text(stringResource(R.string.places_discard_confirm), color = MaterialTheme.colorScheme.error)
             }
         },

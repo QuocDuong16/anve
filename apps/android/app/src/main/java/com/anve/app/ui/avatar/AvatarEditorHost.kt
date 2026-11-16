@@ -14,9 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anve.app.AppContainer
+import com.anve.app.R
 import com.anve.app.data.avatar.decodeAvatarImage
 import com.anve.app.data.avatar.preparePickedAvatar
 
@@ -46,8 +48,21 @@ fun AvatarEditorHost(container: AppContainer, owner: String, name: String, conte
             }
         }, onRemove = controller::chooseRemoval, onSave = { controller.save(tracking.online) },
             onCheck = { controller.checkAgain(tracking.online) }, onRetry = controller::refresh) {
-            if (selected != null || state.removeDraft || state.metadata?.imageId == null) AvatarFrame(name, selected, Modifier.size(160.dp))
-            else AvatarImage(owner, owner, state.metadata?.imageId, name, container.avatarRepository, Modifier.size(160.dp), retryable = true)
+            val previewDesc = stringResource(R.string.avatar_preview_content_desc)
+            if (selected != null || state.removeDraft || state.metadata?.imageId == null) {
+                AvatarFrame(name, selected, Modifier.size(160.dp), imageContentDescription = previewDesc)
+            } else {
+                AvatarImage(
+                    owner,
+                    owner,
+                    state.metadata?.imageId,
+                    name,
+                    container.avatarRepository,
+                    Modifier.size(160.dp),
+                    retryable = true,
+                    imageContentDescription = previewDesc,
+                )
+            }
         }
     }
 }

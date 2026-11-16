@@ -15,11 +15,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,9 +30,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -63,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -97,6 +102,7 @@ import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLiveSharingPill
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -256,7 +262,12 @@ fun TrackingScreen(
                 pending = PendingAction.NONE
             },
             title = { Text(stringResource(R.string.tracking_disclosure_title)) },
-            text = { Text(stringResource(R.string.tracking_disclosure_body)) },
+            text = {
+                Text(
+                    stringResource(R.string.tracking_disclosure_body),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -275,6 +286,7 @@ fun TrackingScreen(
                             PendingAction.NONE -> Unit
                         }
                     },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.tracking_disclosure_accept)) }
             },
             dismissButton = {
@@ -283,6 +295,7 @@ fun TrackingScreen(
                         showDisclosure = false
                         pending = PendingAction.NONE
                     },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.tracking_disclosure_later)) }
             },
         )
@@ -301,7 +314,12 @@ fun TrackingScreen(
         AlertDialog(
             onDismissRequest = { showBackgroundEducation = false },
             title = { Text(stringResource(R.string.tracking_background_settings_title)) },
-            text = { Text(stringResource(R.string.tracking_background_settings_body, systemOption)) },
+            text = {
+                Text(
+                    stringResource(R.string.tracking_background_settings_body, systemOption),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -318,10 +336,14 @@ fun TrackingScreen(
                             else -> viewModel.refresh()
                         }
                     },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.tracking_background_settings_open)) }
             },
             dismissButton = {
-                TextButton(onClick = { showBackgroundEducation = false }) {
+                TextButton(
+                    onClick = { showBackgroundEducation = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.tracking_disclosure_later))
                 }
             },
@@ -411,8 +433,9 @@ fun TrackingContent(
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     Surface(modifier = Modifier.fillMaxSize(), color = colors.background) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth(),
             // 72dp bottom clears the shell FAB (56dp container + 16dp gap,
             // HOME_FAB_CLEARANCE): the Scaffold floats it over secondary-page
             // content without reserving room, so the last card would sit
@@ -472,7 +495,10 @@ fun TrackingContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                             )
-                            TextButton(onClick = onDismissMessage) {
+                            TextButton(
+                                onClick = onDismissMessage,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
                                 Text(stringResource(R.string.tracking_message_dismiss))
                             }
                         }
@@ -495,7 +521,10 @@ fun TrackingContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                             )
-                            TextButton(onClick = onDismissMessage) {
+                            TextButton(
+                                onClick = onDismissMessage,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
                                 Text(stringResource(R.string.tracking_message_dismiss))
                             }
                         }
@@ -584,6 +613,7 @@ fun TrackingContent(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -817,6 +847,7 @@ private fun TrackingControlCard(
 @Composable
 private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
     val stitch = LocalStitchColors.current
+    val largeFont = LocalDensity.current.fontScale > 1.25f
     OutlinedCard(
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, stitch.hairline),
@@ -826,37 +857,54 @@ private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
             contentColor = stitch.onTransitContainer,
         ),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AnVeIllustratedBanner(
-                modifier = Modifier.width(108.dp),
-            ) {
-                AnVeJourneySceneIllustration(
-                    modifier = Modifier.fillMaxWidth().height(92.dp),
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.tracking_journey_card_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = stringResource(R.string.tracking_journey_card_body),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Button(
-                    onClick = onOpenJourney,
-                    shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
+            val stackVertical = maxWidth < 320.dp || largeFont
+            val details: @Composable (Modifier) -> Unit = { colMod ->
+                Column(
+                    modifier = colMod,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(stringResource(R.string.tracking_journey_card_cta))
+                    Text(
+                        text = stringResource(R.string.tracking_journey_card_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(R.string.tracking_journey_card_body),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(
+                        onClick = onOpenJourney,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.tracking_journey_card_cta))
+                    }
+                }
+            }
+            if (stackVertical) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
+                        AnVeJourneySceneIllustration(
+                            modifier = Modifier.fillMaxWidth().height(92.dp),
+                        )
+                    }
+                    details(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AnVeIllustratedBanner(
+                        modifier = Modifier.width(108.dp),
+                    ) {
+                        AnVeJourneySceneIllustration(
+                            modifier = Modifier.fillMaxWidth().height(92.dp),
+                        )
+                    }
+                    details(Modifier.weight(1f))
                 }
             }
         }
@@ -890,7 +938,10 @@ private fun ProblemCard(status: TrackingStatus, onOpenSettings: () -> Unit) {
                 Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             }
             if (status.lastError == TrackingProblem.LOCATION_DISABLED) {
-                TextButton(onClick = onOpenSettings) {
+                TextButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(stringResource(R.string.tracking_location_services_settings))
                 }
             }

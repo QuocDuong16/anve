@@ -996,4 +996,10 @@
     <string name="app_update_launch_error">Không thể mở cập nhật trực tiếp từ Google Play. Bạn có thể thử lại hoặc mở trang ứng dụng trên Google Play.</string>
     <string name="app_update_open_play">Mở Google Play</string>
     <string name="app_update_play_unavailable">Không tìm thấy Google Play trên thiết bị này.</string>
+
+    <!-- Accessibility & Empty States -->
+    <string name="home_devices_empty">Chưa có thiết bị nào được ghi nhận.</string>
+    <string name="places_share_empty_members">Chưa có thành viên khác trong nhóm để chia sẻ.</string>
+    <string name="places_alerts_empty_members">Chưa có thành viên đủ điều kiện nhận thông báo.</string>
+    <string name="avatar_preview_content_desc">Ảnh đại diện hiện tại</string>
 </resources>

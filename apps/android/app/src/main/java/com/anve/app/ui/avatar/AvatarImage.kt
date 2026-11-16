@@ -39,7 +39,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, gateway: AvatarGateway, modifier: Modifier = Modifier, retryable: Boolean = false) {
+fun AvatarImage(
+    owner: String,
+    subject: String,
+    imageId: String?,
+    name: String,
+    gateway: AvatarGateway,
+    modifier: Modifier = Modifier,
+    retryable: Boolean = false,
+    imageContentDescription: String? = null,
+) {
     var image by remember(owner, subject, imageId) { mutableStateOf<ImageBitmap?>(null) }
     var loading by remember(owner, subject, imageId) { mutableStateOf(imageId != null) }
     var failed by remember(owner, subject, imageId) { mutableStateOf(false) }
@@ -60,7 +69,7 @@ fun AvatarImage(owner: String, subject: String, imageId: String?, name: String, 
         catch (_: Exception) { failed = true }
         loading = false
     }
-    AvatarFrame(name, image, modifier.semantics { if (failed) contentDescription = failedDescription }) {
+    AvatarFrame(name, image, modifier.semantics { if (failed) contentDescription = failedDescription }, imageContentDescription = imageContentDescription) {
         if (failed && retryable) Surface(Modifier.align(Alignment.BottomEnd).size(48.dp), shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
             IconButton(onClick = { attempt++ }) { Icon(Icons.Outlined.Refresh, retryDescription) }
@@ -74,6 +83,7 @@ fun AvatarFrame(
     name: String,
     image: ImageBitmap?,
     modifier: Modifier = Modifier,
+    imageContentDescription: String? = null,
     overlay: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {},
 ) {
     val stitch = LocalStitchColors.current
@@ -87,7 +97,7 @@ fun AvatarFrame(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (image != null) {
-                    Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    Image(image, imageContentDescription, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 } else {
                     Text(
                         text = name.take(1).uppercase().ifBlank { "?" },
