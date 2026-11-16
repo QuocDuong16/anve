@@ -1049,295 +1049,277 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             modifier = Modifier.fillMaxSize().padding(editorPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
-            LazyColumn(
+            Column(
                 modifier = Modifier
-                    .fillMaxHeight()
                     .fillMaxWidth()
                     .anveContentWidth()
-                    .imePadding(),
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = HOME_FAB_CLEARANCE),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
-                    PlaceSearchCard(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                outcome = searchOutcome,
-                searching = searching,
-                enabled = !pending,
-                onPick = { suggestion ->
-                    latitude = suggestion.latitude.toString()
-                    longitude = suggestion.longitude.toString()
-                    if (name.isBlank()) name = suggestion.title.take(80)
-                    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-                        camera.position = CameraPosition.fromLatLngZoom(LatLng(suggestion.latitude, suggestion.longitude), 16f)
-                    }
-                    searchQuery = ""
-                    searchOutcome = null
-                },
-            )
-        }
-        item {
-            val stitch = LocalStitchColors.current
-            OutlinedCard(
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, stitch.hairline),
-                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(
-                        stringResource(R.string.places_quick_name_title),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        presetNames.forEach { preset ->
-                            FilterChip(
-                                selected = name.trim() == preset,
-                                onClick = { if (!pending) name = preset },
-                                enabled = !pending,
-                                label = { Text(preset) },
-                            )
+                PlaceSearchCard(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    outcome = searchOutcome,
+                    searching = searching,
+                    enabled = !pending,
+                    onPick = { suggestion ->
+                        latitude = suggestion.latitude.toString()
+                        longitude = suggestion.longitude.toString()
+                        if (name.isBlank()) name = suggestion.title.take(80)
+                        if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+                            camera.position = CameraPosition.fromLatLngZoom(LatLng(suggestion.latitude, suggestion.longitude), 16f)
                         }
-                    }
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        shape = RoundedCornerShape(14.dp),
-                        label = { Text(stringResource(R.string.places_editor_name_label)) },
-                        enabled = !pending,
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-        }
-        item {
-            val stitch = LocalStitchColors.current
-            OutlinedCard(
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, stitch.hairline),
-                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        searchQuery = ""
+                        searchOutcome = null
+                    },
+                )
+                val stitch = LocalStitchColors.current
+                OutlinedCard(
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-                        // The editor's map is one item in the LazyColumn form, so pan
-                        // would swallow the form's scroll. Tap-to-select stays wired
-                        // through onMapClick, and the position can still be set with
-                        // the current-location action and the coordinate fields.
-                        GoogleMap(
-                            modifier = Modifier.fillMaxWidth().height(240.dp),
-                            cameraPositionState = camera,
-                            uiSettings = MapUiSettings(scrollGesturesEnabled = false),
-                            onMapClick = {
-                                if (!pending) {
-                                    latitude = it.latitude.toString()
-                                    longitude = it.longitude.toString()
-                                }
-                            },
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.places_quick_name_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            point?.let {
-                                val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
-                                Marker(state = marker, title = name)
-                                Circle(
-                                    center = it,
-                                    radius = radius,
-                                    strokeColor = MaterialTheme.colorScheme.primary,
-                                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
+                            presetNames.forEach { preset ->
+                                FilterChip(
+                                    selected = name.trim() == preset,
+                                    onClick = { if (!pending) name = preset },
+                                    enabled = !pending,
+                                    label = { Text(preset) },
                                 )
                             }
                         }
-                        Text(
-                            stringResource(R.string.places_editor_map_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        AnVePlacesSceneIllustration(
-                            modifier = Modifier.fillMaxWidth().height(128.dp),
-                        )
-                        Text(
-                            stringResource(R.string.places_editor_no_map),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            stringResource(R.string.places_map_cta_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            shape = RoundedCornerShape(14.dp),
+                            label = { Text(stringResource(R.string.places_editor_name_label)) },
+                            enabled = !pending,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                    OutlinedButton(
-                        onClick = { useCurrentLocation() },
-                        enabled = !pending && !locating,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                }
+                OutlinedCard(
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text(stringResource(R.string.places_editor_use_current_location))
-                    }
-                    locationNote?.let { res ->
-                        Text(
-                            stringResource(res),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
-                    if (locating) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            CircularProgressIndicator(Modifier.size(24.dp))
+                        if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+                            // The editor's map sits inside a scrolling form, so pan
+                            // would swallow the form's scroll. Tap-to-select stays wired
+                            // through onMapClick, and the position can still be set with
+                            // the current-location action and the coordinate fields.
+                            GoogleMap(
+                                modifier = Modifier.fillMaxWidth().height(240.dp),
+                                cameraPositionState = camera,
+                                uiSettings = MapUiSettings(scrollGesturesEnabled = false),
+                                onMapClick = {
+                                    if (!pending) {
+                                        latitude = it.latitude.toString()
+                                        longitude = it.longitude.toString()
+                                    }
+                                },
+                            ) {
+                                point?.let {
+                                    val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
+                                    Marker(state = marker, title = name)
+                                    Circle(
+                                        center = it,
+                                        radius = radius,
+                                        strokeColor = MaterialTheme.colorScheme.primary,
+                                        fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
+                                    )
+                                }
+                            }
                             Text(
-                                stringResource(R.string.action_processing),
+                                stringResource(R.string.places_editor_map_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            AnVePlacesSceneIllustration(
+                                modifier = Modifier.fillMaxWidth().height(128.dp),
+                            )
+                            Text(
+                                stringResource(R.string.places_editor_no_map),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                stringResource(R.string.places_map_cta_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { useCurrentLocation() },
+                            enabled = !pending && !locating,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.places_editor_use_current_location))
+                        }
+                        locationNote?.let { res ->
+                            Text(
+                                stringResource(res),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
+                        if (locating) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(Modifier.size(24.dp))
+                                Text(
+                                    stringResource(R.string.action_processing),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                OutlinedCard(
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            // About 80 m per minute at an ordinary walking pace, so the
+                            // radius reads as something a family member can picture.
+                            stringResource(R.string.places_radius_walk, radius.toInt(), maxOf(1, (radius / 80.0).roundToInt())),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Slider(
+                            value = radius.toFloat(),
+                            onValueChange = { radius = it.toDouble() },
+                            valueRange = 50f..5000f,
+                            enabled = !pending,
+                        )
+                        if (place != null) {
+                            Text(
+                                stringResource(R.string.places_editor_radius_note),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                 }
-            }
-        }
-        item {
-            val stitch = LocalStitchColors.current
-            OutlinedCard(
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, stitch.hairline),
-                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        // About 80 m per minute at an ordinary walking pace, so the
-                        // radius reads as something a family member can picture.
-                        stringResource(R.string.places_radius_walk, radius.toInt(), maxOf(1, (radius / 80.0).roundToInt())),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Slider(
-                        value = radius.toFloat(),
-                        onValueChange = { radius = it.toDouble() },
-                        valueRange = 50f..5000f,
-                        enabled = !pending,
-                    )
-                    if (place != null) {
+                val coordsToggleState = stringResource(
+                    if (showManualCoords) R.string.action_state_expanded else R.string.action_state_collapsed,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable(role = Role.Button) { showManualCoords = !showManualCoords }
+                            .semantics { stateDescription = coordsToggleState },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            stringResource(R.string.places_editor_radius_note),
+                            stringResource(R.string.places_manual_coords_toggle),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Icon(
+                            imageVector = if (showManualCoords) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                            contentDescription = null,
+                        )
+                    }
+                    AnimatedVisibility(visible = showManualCoords) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = latitude,
+                                onValueChange = { latitude = it },
+                                label = { Text(stringResource(R.string.places_editor_lat_label)) },
+                                enabled = !pending,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            OutlinedTextField(
+                                value = longitude,
+                                onValueChange = { longitude = it },
+                                label = { Text(stringResource(R.string.places_editor_lon_label)) },
+                                enabled = !pending,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+                noticeRes?.let { res -> AnveErrorNotice(stringResource(res)) }
+                // The Save button locks on invalid coordinates; say what is wrong while
+                // the user is still in the fields, not only through a disabled button.
+                val coordsInvalid = (latitude.isNotBlank() || longitude.isNotBlank()) &&
+                    !(lat != null && lon != null && lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0)
+                // Same explanation style as the coordinate check: the name constraint
+                // (1–80 codepoints, per validPlaceInput) is stated where the user is
+                // typing instead of only through a silently locked Save button.
+                val nameInvalid = name.trim().isEmpty() || name.trim().codePointCount(0, name.trim().length) > 80
+                if (coordsInvalid) {
+                    Text(
+                        stringResource(R.string.places_editor_invalid_coords),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+                if (nameInvalid) {
+                    Text(
+                        stringResource(R.string.places_editor_invalid_name),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+                if (pending) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(24.dp))
+                        Text(
+                            stringResource(R.string.action_processing),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-            }
-        }
-        item {
-            val coordsToggleState = stringResource(
-                if (showManualCoords) R.string.action_state_expanded else R.string.action_state_collapsed,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .clickable(role = Role.Button) { showManualCoords = !showManualCoords }
-                        .semantics { stateDescription = coordsToggleState },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(R.string.places_manual_coords_toggle),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Icon(
-                        imageVector = if (showManualCoords) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = null,
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
+                        enabled = valid && !pending,
+                        shape = CircleShape,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.action_save)) }
+                    TextButton(
+                        onClick = onCancel,
+                        enabled = !pending,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.action_cancel)) }
                 }
-                AnimatedVisibility(visible = showManualCoords) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = latitude,
-                            onValueChange = { latitude = it },
-                            label = { Text(stringResource(R.string.places_editor_lat_label)) },
-                            enabled = !pending,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = longitude,
-                            onValueChange = { longitude = it },
-                            label = { Text(stringResource(R.string.places_editor_lon_label)) },
-                            enabled = !pending,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
-        }
-        noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
-        // The Save button locks on invalid coordinates; say what is wrong while
-        // the user is still in the fields, not only through a disabled button.
-        val coordsInvalid = (latitude.isNotBlank() || longitude.isNotBlank()) &&
-            !(lat != null && lon != null && lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0)
-        // Same explanation style as the coordinate check: the name constraint
-        // (1–80 codepoints, per validPlaceInput) is stated where the user is
-        // typing instead of only through a silently locked Save button.
-        val nameInvalid = name.trim().isEmpty() || name.trim().codePointCount(0, name.trim().length) > 80
-        if (coordsInvalid) {
-            item {
-                Text(
-                    stringResource(R.string.places_editor_invalid_coords),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                )
-            }
-        }
-        if (nameInvalid) {
-            item {
-                Text(
-                    stringResource(R.string.places_editor_invalid_name),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                )
-            }
-        }
-        if (pending) item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(24.dp))
-                Text(
-                    stringResource(R.string.action_processing),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
-                    enabled = valid && !pending,
-                    shape = CircleShape,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.action_save)) }
-                TextButton(
-                    onClick = onCancel,
-                    enabled = !pending,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.action_cancel)) }
-            }
-        }
             }
         }
     }

@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -117,7 +121,6 @@ import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.anveContentWidth
-import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
@@ -213,17 +216,34 @@ fun JourneyContent(
                     actionIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary),
             )
         },
-        floatingActionButton = {
-            // The overlay's own Scaffold replaces the home shell, whose FAB is
-            // otherwise hidden with it — the emergency affordance must survive
-            // the highest-risk scenario: while following a journey home.
-            AnVeSosPillButton(onClick = onOpenSos)
+        bottomBar = {
+            // Keep the emergency SOS trigger pinned outside the scrollable list
+            // so it never overlaps trailing actions (such as "Thu hồi") when
+            // scrolling near the bottom of a journey card.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+                    )
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                AnVeSosPillButton(onClick = onOpenSos)
+            }
         },
     ) { padding ->
-        // Bottom clearance mirrors the shell (HOME_FAB_CLEARANCE): the FAB
-        // below must not cover the last card while scrolling.
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-        LazyColumn(Modifier.fillMaxHeight().fillMaxWidth().anveContentWidth().testTag("journey-content"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + HOME_FAB_CLEARANCE), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .anveContentWidth()
+                .imePadding()
+                .testTag("journey-content"),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             if (state.loading || state.busy) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
