@@ -100,6 +100,7 @@ func NewRouter(deps Deps) chi.Router {
 	// proxy CIDR allowlist is added when the API is deployed behind a proxy.
 
 	r.Get("/", landingPageHandler())
+	r.Get("/assets/hero-family-welcome.webp", heroAssetHandler())
 	r.Get("/healthz", healthHandler(deps.Version))
 	r.Get("/readyz", readyHandler(deps))
 

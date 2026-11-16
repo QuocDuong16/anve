@@ -1,6 +1,6 @@
 # MISSING_ASSETS.md
 
-Danh sách các tài nguyên hình ảnh minh họa (raster/PNG/WebP hoặc vector chi tiết) bổ sung tùy chọn cho hệ thống **Warm Tactile Minimalism** của **AnVề** (đồng bộ với Google Stitch project `13521834583655677229`). Hiện tại ứng dụng đã sử dụng các vector minh họa Compose (`AnVeIllustrations.kt`), `ic_launcher_foreground.xml` và biểu tượng SVG nhúng đồng bộ bảng màu Forest Green (`#3D602F`), Soft Blush (`#F1DDE4`), Paper Cream (`#FDF9F2`) làm lớp hiển thị an toàn; bạn có thể thay thế bằng các ảnh minh họa tùy biến dưới đây nếu muốn bổ sung artwork raster độ phân giải cao.
+> **Trạng thái: Đã tạo & tích hợp đủ 7/7 tài nguyên `.webp`** vào `apps/android/app/src/main/res/drawable-nodpi/` (được dùng bởi `AnVeIllustrations.kt`) và `apps/server/internal/contacts/hero_family_welcome.webp` (phục vụ tại `/assets/hero-family-welcome.webp` trên Landing Page). Các hàng dưới đây được giữ lại làm tài liệu tham khảo prompt/kích thước.
 
 | Tên file cần thay | Vị trí xuất hiện | Kích thước | Prompt mô tả chi tiết bức ảnh |
 | --- | --- | --- | --- |

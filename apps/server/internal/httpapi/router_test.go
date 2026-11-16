@@ -154,6 +154,13 @@ func TestLandingPageServesStitchHTML(t *testing.T) {
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
 	assert.Contains(t, rec.Body.String(), "Internal Testing")
 	assert.Contains(t, rec.Body.String(), "AnVe hiện đang trong giai đoạn phát triển")
+	assert.Contains(t, rec.Body.String(), "/assets/hero-family-welcome.webp")
+
+	assetRec := httptest.NewRecorder()
+	router.ServeHTTP(assetRec, httptest.NewRequest(http.MethodGet, "/assets/hero-family-welcome.webp", nil))
+	assert.Equal(t, http.StatusOK, assetRec.Code)
+	assert.Equal(t, "image/webp", assetRec.Header().Get("Content-Type"))
+	assert.NotEmpty(t, assetRec.Body.Bytes())
 }
 
 func TestContactsEndpointRoutes(t *testing.T) {

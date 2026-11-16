@@ -1,33 +1,51 @@
 package com.anve.app.ui.brand
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.anve.app.R
 import com.anve.app.ui.theme.AnVeTheme
-import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.BlushSecondary
 import com.anve.app.ui.theme.BlushSecondaryContainer
 import com.anve.app.ui.theme.CreamBackground
@@ -42,6 +60,7 @@ import com.anve.app.ui.theme.ForestPrimaryContainer
 import com.anve.app.ui.theme.InkDarkBackground
 import com.anve.app.ui.theme.InkDarkContainer
 import com.anve.app.ui.theme.InkPrimary
+import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.WarmAmber
 import com.anve.app.ui.theme.WarmAmberContainer
 import com.anve.app.ui.theme.WarmAmberDark
@@ -205,340 +224,163 @@ fun AnVeHomeEmblem(modifier: Modifier = Modifier) {
 }
 
 /**
- * Banner illustration for the Family Circle header and onboarding empty state,
- * depicting parents and a child together outside a sunlit home.
+ * Renders an editorial WebP scene illustration framed consistently for Light and Dark surfaces.
  */
+@Suppress("UnusedBoxWithConstraintsScope")
 @Composable
-fun AnVeFamilySceneIllustration(modifier: Modifier = Modifier) {
-    val palette = rememberIllustrationPalette()
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = palette.skySecondary,
-            cornerRadius = CornerRadius(h * 0.14f, h * 0.14f),
-        )
-        drawCircle(
-            color = palette.sun.copy(alpha = 0.22f),
-            radius = h * 0.28f,
-            center = Offset(w * 0.84f, h * 0.26f),
-        )
-        drawCircle(
-            color = palette.sun,
-            radius = h * 0.16f,
-            center = Offset(w * 0.84f, h * 0.26f),
-        )
-
-        val ground = Path().apply {
-            moveTo(0f, h * 0.76f)
-            cubicTo(w * 0.30f, h * 0.68f, w * 0.70f, h * 0.72f, w, h * 0.76f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
+private fun AnVeRasterScene(
+    @DrawableRes drawableRes: Int,
+    backdropColor: Color,
+    imageAspectRatio: Float,
+    modifier: Modifier = Modifier,
+    circular: Boolean = false,
+    dimmed: Boolean = false,
+    featherHorizontalEdges: Boolean = false,
+) {
+    val isDark = isDarkSurface()
+    val stitch = LocalStitchColors.current
+    val clipShape = if (circular) CircleShape else RoundedCornerShape(18.dp)
+    val filter = remember(dimmed, isDark) {
+        when {
+            dimmed -> ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.35f) })
+            isDark -> ColorFilter.colorMatrix(
+                ColorMatrix().apply {
+                    // Gently tone paper-cream artwork so prints integrate naturally on dark cards.
+                    setToScale(0.92f, 0.90f, 0.87f, 1f)
+                },
+            )
+            else -> null
         }
-        drawPath(ground, color = palette.meadow)
+    }
+    val surfaceColor = remember(backdropColor, isDark) {
+        if (isDark) Color(0xFF282722) else backdropColor
+    }
 
-        drawSoftTree(Offset(w * 0.12f, h * 0.56f), h * 0.28f, palette.treeFoliageMuted, palette.meadowDeep)
-        drawSoftTree(Offset(w * 0.20f, h * 0.50f), h * 0.34f, palette.treeFoliage, palette.meadowDeep)
+    BoxWithConstraints(
+        modifier = modifier
+            .clip(clipShape)
+            .background(surfaceColor)
+            .then(
+                if (isDark) {
+                    Modifier.border(1.dp, stitch.hairline, clipShape)
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        val boxAspect = if (maxHeight > 0.dp) maxWidth / maxHeight else imageAspectRatio
+        val useCrop = circular || (boxAspect <= imageAspectRatio * 1.45f && boxAspect >= imageAspectRatio * 0.68f)
 
-        drawCozyHouse(
-            left = w * 0.16f,
-            top = h * 0.24f,
-            width = w * 0.34f,
-            height = h * 0.54f,
-            palette = palette,
-            lit = true,
+        Image(
+            painter = painterResource(drawableRes),
+            contentDescription = null,
+            contentScale = if (useCrop) ContentScale.Crop else ContentScale.Fit,
+            alpha = if (dimmed) 0.72f else 1f,
+            colorFilter = filter,
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Family silhouettes standing warmly on the right side
-        drawPerson(
-            centerX = w * 0.59f,
-            baseY = h * 0.84f,
-            height = h * 0.46f,
-            shirtColor = palette.personTwoShirt,
-            skinColor = palette.skin,
-            hairColor = palette.hair,
-            longHair = true,
-        )
-        drawPerson(
-            centerX = w * 0.75f,
-            baseY = h * 0.84f,
-            height = h * 0.52f,
-            shirtColor = palette.personOneShirt,
-            skinColor = palette.skin,
-            hairColor = palette.hair,
-            longHair = false,
-        )
-        drawPerson(
-            centerX = w * 0.67f,
-            baseY = h * 0.86f,
-            height = h * 0.32f,
-            shirtColor = palette.childShirt,
-            skinColor = palette.skin,
-            hairColor = palette.hair,
-            longHair = false,
-        )
+        if (!useCrop && featherHorizontalEdges && !isDark) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.28f)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(backdropColor, Color.Transparent),
+                            ),
+                        ),
+                )
+                Spacer(modifier = Modifier.weight(0.44f))
+                Box(
+                    modifier = Modifier
+                        .weight(0.28f)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, backdropColor),
+                            ),
+                        ),
+                )
+            }
+        }
     }
 }
 
 /**
- * Illustrated cottage for the Sharing Hub hero card.
- * Shows glowing lanterns and warm lit windows when active, and a restful garden scene when paused.
+ * Banner illustration for the Family Circle header, splash, sign-in, and onboarding empty state,
+ * depicting a sunlit home and family walking home together.
+ */
+@Composable
+fun AnVeFamilySceneIllustration(modifier: Modifier = Modifier) {
+    AnVeRasterScene(
+        drawableRes = R.drawable.hero_family_welcome,
+        backdropColor = Color(0xFFFDF9ED),
+        imageAspectRatio = 1f,
+        featherHorizontalEdges = true,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Editorial illustration for the Sharing Hub hero card, softly desaturated when sharing is paused.
  */
 @Composable
 fun AnVeSharingHeroIllustration(
     active: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val palette = rememberIllustrationPalette()
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = if (active) palette.sky else palette.skySecondary.copy(alpha = 0.75f),
-            cornerRadius = CornerRadius(h * 0.18f, h * 0.18f),
-        )
-
-        drawSoftTree(Offset(w * 0.17f, h * 0.56f), h * 0.30f, palette.treeFoliageMuted, palette.meadowDeep)
-        drawSoftTree(Offset(w * 0.84f, h * 0.52f), h * 0.34f, palette.treeFoliage, palette.meadowDeep)
-
-        val ground = Path().apply {
-            moveTo(0f, h * 0.72f)
-            cubicTo(w * 0.35f, h * 0.65f, w * 0.68f, h * 0.66f, w, h * 0.72f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
-        }
-        drawPath(ground, color = if (active) palette.meadowDeep else palette.meadow)
-
-        drawWindingPath(
-            startX = w * 0.50f,
-            startY = h * 0.70f,
-            endX = w * 0.44f,
-            endY = h,
-            startWidth = w * 0.12f,
-            endWidth = w * 0.34f,
-            color = palette.pathSurface,
-        )
-
-        drawCozyHouse(
-            left = w * 0.26f,
-            top = h * 0.22f,
-            width = w * 0.48f,
-            height = h * 0.52f,
-            palette = palette,
-            lit = active,
-        )
-
-        if (active) {
-            drawCircle(
-                color = palette.windowGlow.copy(alpha = 0.35f),
-                radius = h * 0.11f,
-                center = Offset(w * 0.32f, h * 0.74f),
-            )
-            drawCircle(
-                color = palette.windowGlow,
-                radius = h * 0.045f,
-                center = Offset(w * 0.32f, h * 0.74f),
-            )
-            drawCircle(
-                color = palette.windowGlow.copy(alpha = 0.35f),
-                radius = h * 0.11f,
-                center = Offset(w * 0.70f, h * 0.77f),
-            )
-            drawCircle(
-                color = palette.windowGlow,
-                radius = h * 0.045f,
-                center = Offset(w * 0.70f, h * 0.77f),
-            )
-        }
-    }
+    AnVeRasterScene(
+        drawableRes = R.drawable.scene_sharing_hub,
+        backdropColor = Color(0xFFFDF7E9),
+        imageAspectRatio = 16f / 9f,
+        dimmed = !active,
+        featherHorizontalEdges = true,
+        modifier = modifier,
+    )
 }
 
 /**
- * Sunset valley path leading to a lit family home for the "Hành trình An Về" card and flow.
+ * Editorial valley route illustration for the Safe Journey ("Hành trình An Về") cards and active state.
  */
 @Composable
 fun AnVeJourneySceneIllustration(modifier: Modifier = Modifier) {
-    val palette = rememberIllustrationPalette()
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = palette.skySecondary,
-            cornerRadius = CornerRadius(h * 0.16f, h * 0.16f),
-        )
-        drawCircle(
-            color = palette.sun.copy(alpha = 0.24f),
-            radius = h * 0.34f,
-            center = Offset(w * 0.44f, h * 0.42f),
-        )
-        drawCircle(
-            color = palette.sun,
-            radius = h * 0.18f,
-            center = Offset(w * 0.44f, h * 0.42f),
-        )
-
-        val farHill = Path().apply {
-            moveTo(0f, h * 0.62f)
-            cubicTo(w * 0.3f, h * 0.44f, w * 0.65f, h * 0.48f, w, h * 0.58f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
-        }
-        drawPath(farHill, color = palette.treeFoliageMuted)
-
-        val nearHill = Path().apply {
-            moveTo(0f, h * 0.70f)
-            cubicTo(w * 0.25f, h * 0.60f, w * 0.72f, h * 0.56f, w, h * 0.66f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
-        }
-        drawPath(nearHill, color = palette.meadow)
-
-        drawWindingPath(
-            startX = w * 0.64f,
-            startY = h * 0.60f,
-            endX = w * 0.26f,
-            endY = h,
-            startWidth = w * 0.06f,
-            endWidth = w * 0.32f,
-            color = palette.pathSurface,
-        )
-
-        drawSoftTree(Offset(w * 0.18f, h * 0.56f), h * 0.26f, palette.treeFoliage, palette.meadowDeep)
-        drawCozyHouse(
-            left = w * 0.58f,
-            top = h * 0.33f,
-            width = w * 0.30f,
-            height = h * 0.34f,
-            palette = palette,
-            lit = true,
-        )
-    }
+    AnVeRasterScene(
+        drawableRes = R.drawable.scene_journey_route,
+        backdropColor = Color(0xFFFBF5E7),
+        imageAspectRatio = 16f / 9f,
+        featherHorizontalEdges = true,
+        modifier = modifier,
+    )
 }
 
 /**
- * Stylized safe-zone map card illustration with home pin for the Places screen.
+ * Editorial safe-zone landmarks illustration for the Places empty state and setup cards.
  */
 @Composable
 fun AnVePlacesSceneIllustration(modifier: Modifier = Modifier) {
-    val palette = rememberIllustrationPalette()
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = palette.skySecondary,
-            cornerRadius = CornerRadius(h * 0.16f, h * 0.16f),
-        )
-        // Park patches
-        drawRoundRect(
-            color = palette.meadow.copy(alpha = 0.25f),
-            topLeft = Offset(w * 0.06f, h * 0.12f),
-            size = Size(w * 0.28f, h * 0.42f),
-            cornerRadius = CornerRadius(h * 0.08f, h * 0.08f),
-        )
-        drawRoundRect(
-            color = palette.meadow.copy(alpha = 0.22f),
-            topLeft = Offset(w * 0.68f, h * 0.48f),
-            size = Size(w * 0.26f, h * 0.40f),
-            cornerRadius = CornerRadius(h * 0.08f, h * 0.08f),
-        )
-
-        // Subtle roads
-        drawLine(
-            color = palette.wall,
-            start = Offset(0f, h * 0.68f),
-            end = Offset(w, h * 0.30f),
-            strokeWidth = h * 0.06f,
-        )
-        drawLine(
-            color = palette.pathSurface,
-            start = Offset(w * 0.22f, 0f),
-            end = Offset(w * 0.72f, h),
-            strokeWidth = h * 0.055f,
-        )
-
-        val center = Offset(w * 0.50f, h * 0.54f)
-        drawCircle(color = palette.zoneFill, radius = h * 0.36f, center = center)
-        drawCircle(
-            color = palette.pinFill.copy(alpha = 0.55f),
-            radius = h * 0.36f,
-            center = center,
-            style = Stroke(width = 2.5f),
-        )
-
-        // Pin silhouette
-        val pinCenter = Offset(w * 0.50f, h * 0.42f)
-        val pinRadius = h * 0.17f
-        val tail = Path().apply {
-            moveTo(pinCenter.x - pinRadius * 0.72f, pinCenter.y + pinRadius * 0.42f)
-            lineTo(pinCenter.x, pinCenter.y + pinRadius * 1.55f)
-            lineTo(pinCenter.x + pinRadius * 0.72f, pinCenter.y + pinRadius * 0.42f)
-            close()
-        }
-        drawPath(tail, color = palette.pinFill)
-        drawCircle(color = palette.pinFill, radius = pinRadius, center = pinCenter)
-
-        // Tiny home inside pin
-        val homeSize = pinRadius * 0.95f
-        drawCozyHouse(
-            left = pinCenter.x - homeSize * 0.5f,
-            top = pinCenter.y - homeSize * 0.48f,
-            width = homeSize,
-            height = homeSize * 0.92f,
-            palette = palette.copy(roof = CreamBackground, wall = CreamBackground, door = palette.pinFill, windowGlow = palette.pinFill),
-            lit = true,
-        )
-    }
+    AnVeRasterScene(
+        drawableRes = R.drawable.scene_safe_places_empty,
+        backdropColor = Color(0xFFFDF6EE),
+        imageAspectRatio = 4f / 3f,
+        modifier = modifier,
+    )
 }
 
 /**
- * Calm journal illustration for an empty History day showing a restful home and dotted route.
+ * Calm journal illustration for an empty History day showing a breadcrumb trail and pocket watch.
  */
 @Composable
 fun AnVeHistorySceneIllustration(modifier: Modifier = Modifier) {
-    val palette = rememberIllustrationPalette()
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = palette.sky,
-            cornerRadius = CornerRadius(h * 0.16f, h * 0.16f),
-        )
-        val route = Path().apply {
-            moveTo(w * 0.16f, h * 0.66f)
-            cubicTo(w * 0.34f, h * 0.28f, w * 0.52f, h * 0.80f, w * 0.72f, h * 0.58f)
-        }
-        drawPath(
-            path = route,
-            color = palette.lineAccent,
-            style = Stroke(
-                width = 4f,
-                cap = StrokeCap.Round,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f), 0f),
-            ),
-        )
-        drawCircle(
-            color = palette.sun,
-            radius = h * 0.08f,
-            center = Offset(w * 0.16f, h * 0.66f),
-        )
-        drawCozyHouse(
-            left = w * 0.64f,
-            top = h * 0.28f,
-            width = w * 0.22f,
-            height = h * 0.44f,
-            palette = palette,
-            lit = true,
-        )
-    }
+    AnVeRasterScene(
+        drawableRes = R.drawable.scene_history_timeline_empty,
+        backdropColor = Color(0xFFFBF7EB),
+        imageAspectRatio = 4f / 3f,
+        featherHorizontalEdges = true,
+        modifier = modifier,
+    )
 }
 
 private fun DrawScope.drawCozyHouse(
@@ -702,91 +544,20 @@ private fun DrawScope.drawPerson(
 /**
  * Warm protective beacon and family care shield illustration for SOS alerts.
  */
+/**
+ * Dignified reassuring care beacon and protective shelter scene for the SOS hero card.
+ */
 @Composable
 fun AnVeSosCareIllustration(modifier: Modifier = Modifier) {
-    val palette = rememberIllustrationPalette()
-    val emergencyAmber = MaterialTheme.colorScheme.secondary
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = palette.skySecondary,
-            topLeft = Offset.Zero,
-            size = Size(w, h),
-            cornerRadius = CornerRadius(h * 0.18f, h * 0.18f),
-        )
-        drawOval(
-            color = palette.meadowDeep.copy(alpha = 0.28f),
-            topLeft = Offset(-w * 0.08f, h * 0.68f),
-            size = Size(w * 1.16f, h * 0.55f),
-        )
-
-        val center = Offset(w * 0.50f, h * 0.45f)
-        // Warm comforting beacon waves
-        drawCircle(
-            color = emergencyAmber.copy(alpha = 0.14f),
-            radius = h * 0.40f,
-            center = center,
-        )
-        drawCircle(
-            color = emergencyAmber.copy(alpha = 0.22f),
-            radius = h * 0.28f,
-            center = center,
-        )
-
-        // Family shield badge in the center
-        val shieldWidth = h * 0.34f
-        val shieldHeight = h * 0.38f
-        val shieldTop = center.y - shieldHeight * 0.52f
-        val shield = Path().apply {
-            moveTo(center.x, shieldTop)
-            lineTo(center.x + shieldWidth * 0.50f, shieldTop + shieldHeight * 0.20f)
-            quadraticTo(
-                center.x + shieldWidth * 0.48f,
-                shieldTop + shieldHeight * 0.72f,
-                center.x,
-                shieldTop + shieldHeight,
-            )
-            quadraticTo(
-                center.x - shieldWidth * 0.48f,
-                shieldTop + shieldHeight * 0.72f,
-                center.x - shieldWidth * 0.50f,
-                shieldTop + shieldHeight * 0.20f,
-            )
-            close()
-        }
-        drawPath(shield, color = palette.wall)
-        drawPath(shield, color = emergencyAmber, style = Stroke(width = 3.5f))
-
-        // Tiny cozy home inside the shield
-        drawCozyHouse(
-            left = center.x - shieldWidth * 0.25f,
-            top = shieldTop + shieldHeight * 0.26f,
-            width = shieldWidth * 0.50f,
-            height = shieldHeight * 0.46f,
-            palette = palette,
-            lit = true,
-        )
-
-        // Caring family silhouettes flanking the beacon
-        drawPerson(
-            centerX = w * 0.22f,
-            baseY = h * 0.84f,
-            height = h * 0.36f,
-            shirtColor = palette.personOneShirt,
-            skinColor = palette.skin,
-            hairColor = palette.hair,
-            longHair = false,
-        )
-        drawPerson(
-            centerX = w * 0.78f,
-            baseY = h * 0.84f,
-            height = h * 0.34f,
-            shirtColor = palette.personTwoShirt,
-            skinColor = palette.skin,
-            hairColor = palette.hair,
-            longHair = true,
+    BoxWithConstraints(modifier = modifier) {
+        val nearSquare = maxHeight > 0.dp && maxWidth <= maxHeight * 1.35f
+        AnVeRasterScene(
+            drawableRes = R.drawable.scene_sos_care_banner,
+            backdropColor = Color(0xFFFCF8EC),
+            imageAspectRatio = 5f / 3f,
+            circular = nearSquare,
+            featherHorizontalEdges = !nearSquare,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -936,89 +707,22 @@ fun AnVeDiagnosticsIllustration(
 }
 
 /**
- * Stitch Screen 53 & 55 tactile safe-zone radar illustration showing a warm paper
- * neighborhood grid, concentric safety rings, a lit cottage anchor, and family beacon nodes.
+ * Tactile safe-zone radar illustration showing a warm paper neighborhood map,
+ * concentric safety rings, and family cottage anchor.
  */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun AnVeSafeRadarScene(
     memberCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val palette = rememberIllustrationPalette()
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        drawRoundRect(
-            color = palette.sky,
-            cornerRadius = CornerRadius(h * 0.14f, h * 0.14f),
-        )
-        // Neighborhood road blocks
-        drawRoundRect(
-            color = palette.meadow.copy(alpha = 0.24f),
-            topLeft = Offset(w * 0.06f, h * 0.14f),
-            size = Size(w * 0.22f, h * 0.30f),
-            cornerRadius = CornerRadius(14f, 14f),
-        )
-        drawRoundRect(
-            color = palette.skySecondary.copy(alpha = 0.72f),
-            topLeft = Offset(w * 0.72f, h * 0.56f),
-            size = Size(w * 0.22f, h * 0.30f),
-            cornerRadius = CornerRadius(14f, 14f),
-        )
-        drawLine(
-            color = palette.wall.copy(alpha = 0.85f),
-            start = Offset(0f, h * 0.72f),
-            end = Offset(w, h * 0.24f),
-            strokeWidth = h * 0.055f,
-        )
-        drawLine(
-            color = palette.pathSurface,
-            start = Offset(w * 0.24f, 0f),
-            end = Offset(w * 0.68f, h),
-            strokeWidth = h * 0.05f,
-        )
-
-        val center = Offset(w * 0.50f, h * 0.52f)
-        drawCircle(color = palette.zoneFill, radius = h * 0.38f, center = center)
-        drawCircle(
-            color = palette.lineAccent.copy(alpha = 0.40f),
-            radius = h * 0.38f,
-            center = center,
-            style = Stroke(
-                width = 2.5f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
-            ),
-        )
-        drawCircle(
-            color = palette.lineAccent.copy(alpha = 0.18f),
-            radius = h * 0.22f,
-            center = center,
-        )
-
-        val homeSize = h * 0.28f
-        drawCozyHouse(
-            left = center.x - homeSize * 0.5f,
-            top = center.y - homeSize * 0.48f,
-            width = homeSize,
-            height = homeSize * 0.92f,
-            palette = palette,
-            lit = true,
-        )
-
-        // Subtle family nodes placed symmetrically within the safe zone
-        val nodeOffsets = listOf(
-            Offset(w * 0.28f, h * 0.38f),
-            Offset(w * 0.74f, h * 0.34f),
-            Offset(w * 0.36f, h * 0.76f),
-            Offset(w * 0.66f, h * 0.74f),
-        )
-        nodeOffsets.take(memberCount.coerceIn(0, nodeOffsets.size)).forEachIndexed { idx, pt ->
-            val color = if (idx % 2 == 0) palette.personOneShirt else palette.personTwoShirt
-            drawCircle(color = palette.wall, radius = h * 0.075f, center = pt)
-            drawCircle(color = color, radius = h * 0.05f, center = pt)
-        }
-    }
+    AnVeRasterScene(
+        drawableRes = R.drawable.scene_map_safe_radar,
+        backdropColor = Color(0xFFFCF8EC),
+        imageAspectRatio = 16f / 9f,
+        featherHorizontalEdges = true,
+        modifier = modifier,
+    )
 }
 
 /**

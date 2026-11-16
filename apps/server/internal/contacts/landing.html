@@ -236,6 +236,23 @@
       color: var(--mint);
     }
 
+    .hero-visual {
+      margin: 0;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--outline-var);
+      background: var(--cream-bg);
+      aspect-ratio: 16 / 10;
+    }
+
+    .hero-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 68%;
+    }
+
     .mini-card {
       background: var(--cream-bg);
       border: 1px solid var(--outline-var);
@@ -509,6 +526,16 @@
             <strong style="font-size: 1rem;">Gia đình AnVề</strong>
             <span class="pill-tag">Đang chia sẻ tự nguyện</span>
           </div>
+          <figure class="hero-visual">
+            <img
+              src="/assets/hero-family-welcome.webp"
+              alt="Minh họa mái nhà ấm áp AnVề cùng gia đình kết nối an tâm"
+              width="1024"
+              height="1024"
+              loading="eager"
+              decoding="async"
+            />
+          </figure>
           <div class="mini-card">
             <div>
               <p class="mini-title">Minh Anh · Vừa cập nhật</p>

@@ -22,6 +22,15 @@ func landingPageHandler() http.HandlerFunc {
 	}
 }
 
+func heroAssetHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/webp")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(contacts.HeroFamilyWelcomeWebP)
+	}
+}
+
 func contactCreateHandler(svc *contacts.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if svc == nil {
