@@ -2,6 +2,7 @@ package com.anve.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,6 +36,29 @@ class ThemeContrastTest {
     @Test
     fun `dark stitch extended color pairs meet body text contrast`() {
         assertStitchContrast(DarkStitchColors)
+    }
+
+    @Test
+    fun `every typography role uses Be Vietnam Pro`() {
+        listOf(
+            AnVeTypography.displayLarge,
+            AnVeTypography.displayMedium,
+            AnVeTypography.displaySmall,
+            AnVeTypography.headlineLarge,
+            AnVeTypography.headlineMedium,
+            AnVeTypography.headlineSmall,
+            AnVeTypography.titleLarge,
+            AnVeTypography.titleMedium,
+            AnVeTypography.titleSmall,
+            AnVeTypography.bodyLarge,
+            AnVeTypography.bodyMedium,
+            AnVeTypography.bodySmall,
+            AnVeTypography.labelLarge,
+            AnVeTypography.labelMedium,
+            AnVeTypography.labelSmall,
+        ).forEach { style ->
+            assertEquals(BeVietnamProFontFamily, style.fontFamily)
+        }
     }
 
     private fun assertStitchContrast(stitch: StitchColors) {
