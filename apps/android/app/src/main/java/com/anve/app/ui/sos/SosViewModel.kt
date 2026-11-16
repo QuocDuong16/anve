@@ -70,14 +70,22 @@ class SosViewModel(
         if (owner != null) refresh()
     }
 
-    fun refresh(keepError: Boolean = false) {
+    fun refresh(keepError: Boolean = false) = load(keepError = keepError, silent = false)
+
+    fun poll() {
+        val current = mutable.value
+        if (current.owner == null || current.pending || loadJob?.isActive == true) return
+        load(keepError = false, silent = true)
+    }
+
+    private fun load(keepError: Boolean, silent: Boolean) {
         val owner = mutable.value.owner ?: return
         if (mutable.value.pending) return
         val priorError = if (keepError) mutable.value.errorRes else null
         val selectedId = mutable.value.selected?.id
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(loading = true, errorRes = priorError) }
+        if (!silent) mutable.update { it.copy(loading = true, errorRes = priorError) }
         loadJob = viewModelScope.launch {
             try {
                 var local = outbox.read(owner)
@@ -196,7 +204,7 @@ class SosViewModel(
             } finally {
                 if (generation == token && mutable.value.owner == owner) {
                     mutable.update { it.copy(pending = false) }
-                    refresh(keepError = true)
+                    load(keepError = true, silent = true)
                 }
             }
         }

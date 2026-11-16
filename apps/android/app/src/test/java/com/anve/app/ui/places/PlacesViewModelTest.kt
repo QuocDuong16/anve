@@ -105,6 +105,54 @@ class PlacesViewModelTest {
         assertFalse(vm.state.value.pending)
     }
 
+    @Test fun `initial load and manual refresh keep loading and refreshing indicators separate`() {
+        val gate = CompletableDeferred<List<PlaceDto>>()
+        source.list = { gate.await() }
+        vm.activate("a")
+        assertTrue(vm.state.value.loading)
+        assertFalse(vm.state.value.refreshing)
+        gate.complete(listOf(place("p", "a")))
+        assertFalse(vm.state.value.loading)
+        assertFalse(vm.state.value.refreshing)
+
+        val refreshGate = CompletableDeferred<List<PlaceDto>>()
+        source.list = { refreshGate.await() }
+        vm.refresh()
+        assertFalse(vm.state.value.loading)
+        assertTrue(vm.state.value.refreshing)
+        refreshGate.complete(listOf(place("p", "a")))
+        assertFalse(vm.state.value.loading)
+        assertFalse(vm.state.value.refreshing)
+    }
+
+    @Test fun `background poll stays silent and does not cancel an active refresh`() {
+        vm.activate("a")
+        val pollGate = CompletableDeferred<List<PlaceDto>>()
+        source.list = { pollGate.await() }
+        vm.poll()
+        assertFalse(vm.state.value.loading)
+        assertFalse(vm.state.value.refreshing)
+        // A second poll while one is still in flight must not restart it.
+        vm.poll()
+        pollGate.complete(listOf(place("p2", "a")))
+        assertEquals(listOf("p2"), vm.state.value.places.map { it.id })
+        assertFalse(vm.state.value.loading)
+        assertFalse(vm.state.value.refreshing)
+
+        val manualGate = CompletableDeferred<List<PlaceDto>>()
+        var listCalls = 0
+        source.list = {
+            listCalls++
+            manualGate.await()
+        }
+        vm.refresh()
+        assertEquals(1, listCalls)
+        vm.poll()
+        assertEquals(1, listCalls)
+        manualGate.complete(listOf(place("p3", "a")))
+        assertEquals(listOf("p3"), vm.state.value.places.map { it.id })
+    }
+
     private fun place(id: String, owner: String) = PlaceDto(id, owner, "circle", "Nhà", 10.0, 106.0, 150.0, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z")
     private fun event() = PlaceEventDto("e", "p", "Nhà", "a", "A", "ENTER", "2026-01-01T00:00:00Z", "2026-01-01T00:05:00Z", true, "OBSERVED")
 

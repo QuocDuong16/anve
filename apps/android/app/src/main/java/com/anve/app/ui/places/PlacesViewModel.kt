@@ -35,6 +35,7 @@ data class PlacesState(
     val eligibleRecipients: Set<String> = emptySet(),
     val monitor: PlaceMonitorDto? = null,
     val loading: Boolean = false,
+    val refreshing: Boolean = false,
     val pending: Boolean = false,
     val confirmation: Long = 0,
     val errorRes: Int? = null,
@@ -44,6 +45,8 @@ data class PlacesState(
 class PlacesViewModel(
     private val repository: PlacesDataSource,
 ) : ViewModel() {
+    private enum class LoadMode { INITIAL, REFRESH, SILENT }
+
     private val mutable = MutableStateFlow(PlacesState())
     val state = mutable.asStateFlow()
     private var generation = 0L
@@ -55,22 +58,34 @@ class PlacesViewModel(
         loadJob?.cancel()
         mutationJob?.cancel()
         mutable.value = PlacesState(owner = owner)
-        if (owner != null) refresh()
+        if (owner != null) load(LoadMode.INITIAL)
     }
 
     fun select(id: String?) {
         if (mutable.value.pending) return
         mutable.update { it.copy(selectedId = id, access = emptySet(), eligibleRecipients = emptySet(), monitor = null, errorRes = null, noticeRes = null) }
-        refresh()
+        load(LoadMode.INITIAL)
     }
 
-    fun refresh() {
+    fun refresh() = load(LoadMode.REFRESH)
+
+    fun poll() {
+        val current = mutable.value
+        if (current.owner == null || current.pending || loadJob?.isActive == true) return
+        load(LoadMode.SILENT)
+    }
+
+    private fun load(mode: LoadMode) {
         val current = mutable.value
         val owner = current.owner ?: return
         if (current.pending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(loading = true, errorRes = null) }
+        when (mode) {
+            LoadMode.INITIAL -> mutable.update { it.copy(loading = true, refreshing = false, errorRes = null) }
+            LoadMode.REFRESH -> mutable.update { it.copy(refreshing = true, loading = false, errorRes = null) }
+            LoadMode.SILENT -> Unit
+        }
         loadJob = viewModelScope.launch {
             try {
                 val places = repository.places(owner)
@@ -82,7 +97,7 @@ class PlacesViewModel(
                 val monitor = if (selected != null) repository.monitor(owner, selected.id) else null
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update { it.copy(places = places, events = events, sharing = sharing, selectedId = selected?.id,
-                    access = access, eligibleRecipients = eligible, monitor = monitor, loading = false, errorRes = null) }
+                    access = access, eligibleRecipients = eligible, monitor = monitor, loading = false, refreshing = false, errorRes = null) }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner) mutable.update {
                     // A transient poll failure keeps the last good snapshot and
@@ -90,7 +105,7 @@ class PlacesViewModel(
                     // are reading (like HistoryScreen keeping loaded pages).
                     // "No longer available" is reserved for a successful load
                     // that really lacks the place.
-                    it.copy(loading = false, errorRes = R.string.places_error_load_failed)
+                    it.copy(loading = false, refreshing = false, errorRes = R.string.places_error_load_failed)
                 }
             }
         }
@@ -121,18 +136,18 @@ class PlacesViewModel(
         if (mutable.value.pending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(pending = true, loading = false, events = emptyList(), errorRes = null, noticeRes = null) }
+        mutable.update { it.copy(pending = true, loading = false, refreshing = false, events = emptyList(), errorRes = null, noticeRes = null) }
         mutationJob = viewModelScope.launch {
             try {
                 action(owner)
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update { it.copy(pending = false, confirmation = it.confirmation + 1) }
-                refresh()
+                load(LoadMode.SILENT)
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner) {
                     mutable.update { it.copy(pending = false, events = emptyList(), access = emptySet(), eligibleRecipients = emptySet(), monitor = null,
                         noticeRes = R.string.places_error_mutation_unconfirmed) }
-                    refresh()
+                    load(LoadMode.SILENT)
                 }
             }
         }

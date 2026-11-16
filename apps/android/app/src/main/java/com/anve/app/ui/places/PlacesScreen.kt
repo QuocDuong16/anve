@@ -177,7 +177,7 @@ fun PlacesScreen(container: AppContainer, onOpenLocation: () -> Unit = {}) {
         if (owner != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(10_000)
-                vm.refresh()
+                vm.poll()
             }
         }
     }
@@ -291,7 +291,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     }
                 },
                 actions = {
-                    IconButton(onClick = vm::refresh, enabled = !state.pending && !state.loading) {
+                    IconButton(onClick = vm::refresh, enabled = !state.pending && !state.loading && !state.refreshing) {
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.places_refresh))
                     }
                     if (showDetails && selected?.ownerId == owner) {
@@ -328,7 +328,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
         // two affordances. The refresh button stays for users who do not use
         // the gesture.
         PullToRefreshBox(
-            isRefreshing = state.loading,
+            isRefreshing = state.refreshing,
             onRefresh = vm::refresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
@@ -531,7 +531,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                     state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                     item { Text(stringResource(R.string.places_missing)) }
                     item {
-                        TextButton(onClick = { showDetails = false; vm.refresh() }, enabled = !state.loading) {
+                        TextButton(onClick = { showDetails = false; vm.refresh() }, enabled = !state.loading && !state.refreshing) {
                             Text(stringResource(R.string.places_refresh_list))
                         }
                     }

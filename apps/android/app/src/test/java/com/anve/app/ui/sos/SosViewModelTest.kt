@@ -119,6 +119,32 @@ class SosViewModelTest {
         assertTrue(vm.state.value.errorRes != null)
     }
 
+    @Test fun `background poll stays silent and does not cancel an active refresh`() {
+        vm.activate("a")
+        val pollGate = CompletableDeferred<List<MemberDto>>()
+        source.memberLoad = { pollGate.await() }
+        vm.poll()
+        assertTrue(!vm.state.value.loading)
+        pollGate.complete(listOf(MemberDto("c", "C", "member", "today")))
+        assertEquals("c", vm.state.value.members.single().userId)
+        assertTrue(!vm.state.value.loading)
+
+        val manualGate = CompletableDeferred<List<MemberDto>>()
+        var calls = 0
+        source.memberLoad = {
+            calls++
+            manualGate.await()
+        }
+        vm.refresh()
+        assertTrue(vm.state.value.loading)
+        assertEquals(1, calls)
+        vm.poll()
+        assertEquals(1, calls)
+        manualGate.complete(listOf(MemberDto("d", "D", "member", "today")))
+        assertEquals("d", vm.state.value.members.single().userId)
+        assertTrue(!vm.state.value.loading)
+    }
+
     private class FakeSource : SosDataSource {
         var offline = false
         var failRevoke = false

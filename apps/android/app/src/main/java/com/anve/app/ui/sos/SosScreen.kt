@@ -149,7 +149,7 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
     }
     LaunchedEffect(owner, lifecycle) {
         if (owner != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) { delay(10_000); vm.refresh() }
+            while (true) { delay(10_000); vm.poll() }
         }
     }
     LaunchedEffect(owner, eventId, state.owner) { if (owner != null && state.owner == owner && eventId != null) vm.select(eventId) }
