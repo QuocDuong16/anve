@@ -14,10 +14,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,7 +42,6 @@ import com.anve.app.data.api.InvitePreviewDto
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -66,12 +65,10 @@ fun InvitationDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(26.dp),
         icon = {
-            StitchCategoryIconBox(
-                icon = Icons.Default.Email,
-                size = 46.dp,
-                iconSize = 22.dp,
-                containerColor = colors.secondaryContainer,
-                contentColor = colors.onSecondaryContainer,
+            Icon(
+                imageVector = Icons.Outlined.Email,
+                contentDescription = null,
+                tint = colors.primary,
             )
         },
         title = { Text(stringResource(R.string.invite_dialog_title)) },
@@ -119,9 +116,9 @@ fun InvitationDialog(
                                     kind = StitchBadgeKind.SAFE_HOME,
                                 )
                             }
-                            InvitationDetail(Icons.Default.Email, stringResource(R.string.invite_single_use))
+                            InvitationDetail(Icons.Outlined.Email, stringResource(R.string.invite_single_use))
                             val expiry = AnveTime.full(preview.expiresAt, stringResource(R.string.invite_expiry_unreadable_detail))
-                            InvitationDetail(Icons.Default.DateRange, stringResource(R.string.invite_expiry_prefix, expiry))
+                            InvitationDetail(Icons.Outlined.DateRange, stringResource(R.string.invite_expiry_prefix, expiry))
                         }
                     }
                 }
@@ -131,13 +128,13 @@ fun InvitationDialog(
                     shape = MaterialTheme.shapes.medium,
                 ) {
                     Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Default.Info, null)
+                        Icon(Icons.Outlined.Info, null)
                         Text(stringResource(R.string.invite_join_consent_note), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 if (state.accountLabel.isNotEmpty()) {
                     HorizontalDivider(color = colors.onSurface.copy(alpha = 0.16f))
-                    InvitationDetail(Icons.Default.Person, stringResource(R.string.invite_logged_in_as, state.accountLabel))
+                    InvitationDetail(Icons.Outlined.Person, stringResource(R.string.invite_logged_in_as, state.accountLabel))
                 }
                 if (!online) Text(stringResource(R.string.invite_dialog_offline), style = MaterialTheme.typography.bodyMedium)
                 state.errorRes?.let { res -> AnveErrorNotice(stringResource(res)) }

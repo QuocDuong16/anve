@@ -32,14 +32,13 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -92,12 +91,11 @@ import com.anve.app.tracking.backgroundPermissionAction
 import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.brand.AnVeSharingHeroIllustration
+import com.anve.app.ui.common.AnVeMetricColumn
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchLiveSharingPill
-import com.anve.app.ui.common.StitchMetricTile
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
@@ -566,7 +564,7 @@ fun TrackingContent(
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Icon(
-                                imageVector = if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                imageVector = if (showDetails) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                                 contentDescription = null,
                             )
                         }
@@ -688,29 +686,25 @@ private fun TrackingControlCard(
                     }
                 }
             }
+            HorizontalDivider(color = stitch.hairline)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                StitchMetricTile(
+                AnVeMetricColumn(
                     label = stringResource(R.string.tracking_metric_last_fix),
                     value = formatTime(status.lastFixAtMillis, stringResource(R.string.tracking_never)),
-                    icon = Icons.Default.Schedule,
                     modifier = Modifier.weight(1f),
-                    containerColor = colors.surfaceContainerLow,
-                    accentColor = colors.primary,
                 )
-                StitchMetricTile(
+                AnVeMetricColumn(
                     label = stringResource(R.string.tracking_metric_queue),
                     value = pluralStringResource(
                         R.plurals.tracking_pending_value,
                         status.pendingQueueCount,
                         status.pendingQueueCount,
                     ),
-                    icon = Icons.Default.Sync,
+                    valueColor = if (status.pendingQueueCount > 0) stitch.onTransitContainer else colors.onSurface,
                     modifier = Modifier.weight(1f),
-                    containerColor = if (status.pendingQueueCount > 0) stitch.transitContainer else colors.surfaceContainerLow,
-                    accentColor = if (status.pendingQueueCount > 0) stitch.onTransitContainer else colors.primary,
                 )
             }
             HorizontalDivider(color = stitch.hairline)
@@ -718,82 +712,61 @@ private fun TrackingControlCard(
             // decision, so TalkBack must read 'Đồng ý chia sẻ: …' + the
             // server-vs-device note + state from ONE focus — row-toggleable
             // with the switch itself indicative, not an anonymous "bật".
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = colors.surfaceContainerLowest,
-                border = BorderStroke(1.dp, stitch.hairline),
-                modifier = Modifier.fillMaxWidth(),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            StitchCategoryIconBox(
-                                icon = Icons.Default.Security,
-                                size = 32.dp,
-                                iconSize = 17.dp,
-                                cornerRadius = 11.dp,
-                                containerColor = stitch.liveContainer,
-                                contentColor = stitch.onLiveContainer,
-                            )
-                            Text(
-                                text = stringResource(R.string.tracking_consent_card_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                        StitchSemanticBadge(
-                            text = consentValue,
-                            kind = consentBadgeKind,
-                        )
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .toggleable(
-                                value = status.conflictServerConsent ?: status.consentEnabled,
-                                enabled = enabled,
-                                role = Role.Switch,
-                                onValueChange = onToggleConsent,
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                stringResource(R.string.tracking_consent_server_value, consentValue),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            Text(
-                                stringResource(R.string.tracking_consent_server_note),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Switch(
-                            checked = status.conflictServerConsent ?: status.consentEnabled,
-                            onCheckedChange = null,
+                    Text(
+                        text = stringResource(R.string.tracking_consent_card_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    StitchSemanticBadge(
+                        text = consentValue,
+                        kind = consentBadgeKind,
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .toggleable(
+                            value = status.conflictServerConsent ?: status.consentEnabled,
                             enabled = enabled,
-                        )
-                    }
-                    if (status.consentConflict) {
+                            role = Role.Switch,
+                            onValueChange = onToggleConsent,
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            stringResource(R.string.tracking_problem_consent_conflict),
+                            stringResource(R.string.tracking_consent_server_value, consentValue),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            stringResource(R.string.tracking_consent_server_note),
                             style = MaterialTheme.typography.bodySmall,
-                            color = colors.error,
+                            color = colors.onSurfaceVariant,
                         )
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = status.conflictServerConsent ?: status.consentEnabled,
+                        onCheckedChange = null,
+                        enabled = enabled,
+                    )
+                }
+                if (status.consentConflict) {
+                    Text(
+                        stringResource(R.string.tracking_problem_consent_conflict),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.error,
+                    )
                 }
             }
             if (status.activelyTracking) {
@@ -835,7 +808,7 @@ private fun TrackingControlCard(
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.size(8.dp))
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null)
             }
         }
     }
@@ -908,13 +881,11 @@ private fun ProblemCard(status: TrackingStatus, onOpenSettings: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                StitchCategoryIconBox(
-                    icon = Icons.Default.Warning,
-                    size = 36.dp,
-                    iconSize = 18.dp,
-                    cornerRadius = 12.dp,
-                    containerColor = colors.error.copy(alpha = 0.14f),
-                    contentColor = colors.onErrorContainer,
+                Icon(
+                    imageVector = Icons.Outlined.Warning,
+                    contentDescription = null,
+                    tint = colors.onErrorContainer,
+                    modifier = Modifier.size(20.dp),
                 )
                 Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             }
@@ -960,7 +931,7 @@ private fun PermissionsCard(
         ) {
             Box(Modifier.padding(16.dp)) {
                 AnVeSectionHeader(
-                    icon = Icons.Default.Security,
+                    icon = Icons.Outlined.Security,
                     title = stringResource(R.string.tracking_permissions_title),
                     badgeText = stringResource(R.string.tracking_permissions_ok),
                     badgeContainerColor = stitch.liveContainer,
@@ -978,7 +949,7 @@ private fun PermissionsCard(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Default.Security,
+                icon = Icons.Outlined.Security,
                 title = stringResource(R.string.tracking_permissions_title),
                 badgeText = stringResource(R.string.tracking_permissions_need_attention),
                 badgeContainerColor = stitch.transitContainer,
@@ -1118,7 +1089,7 @@ private fun StatusCard(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Default.Sync,
+                icon = Icons.Outlined.Sync,
                 title = stringResource(R.string.tracking_status_title),
                 badgeText = stringResource(
                     if (status.activelyTracking) {
@@ -1223,7 +1194,7 @@ private fun DiagnosticsCard(status: TrackingStatus) {
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Default.Tune,
+                icon = Icons.Outlined.Tune,
                 title = stringResource(R.string.tracking_diagnostics),
                 iconContainerColor = colors.surfaceContainerLow,
                 iconContentColor = colors.primary,
@@ -1241,7 +1212,7 @@ private fun DiagnosticsCard(status: TrackingStatus) {
             ) {
                 Text(stringResource(R.string.tracking_diagnostics), modifier = Modifier.weight(1f))
                 Icon(
-                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
                 )
             }

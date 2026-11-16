@@ -26,16 +26,14 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -98,13 +96,8 @@ import com.anve.app.ui.brand.AnVeHistorySceneIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
-import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchEmptyStateCard
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchMetricTile
-import com.anve.app.ui.common.StitchReassuranceFooter
-import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
@@ -289,11 +282,11 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 title = { Text(stringResource(R.string.history_title)) },
                 actions = {
                     IconButton(onClick = vm::refresh, enabled = !state.loading && !state.mutationPending) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.history_refresh_content_desc))
+                        Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.history_refresh_content_desc))
                     }
                     if (state.member == state.owner) Box {
                         IconButton(onClick = { showActions = true }, enabled = !state.mutationPending) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.history_actions_content_desc))
+                            Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.history_actions_content_desc))
                         }
                         DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
                             DropdownMenuItem(
@@ -346,7 +339,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     onClick = { state.owner?.let { vm.select(it, state.date) } },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.Default.Person,
+                                            imageVector = Icons.Outlined.Person,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp),
                                         )
@@ -406,21 +399,21 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                 IconButton(
                                     onClick = { vm.select(member, state.date.minusDays(1)) },
                                     enabled = !state.mutationPending,
-                                ) { Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(R.string.history_prev_day_content_desc)) }
+                                ) { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = stringResource(R.string.history_prev_day_content_desc)) }
                                 FilledTonalButton(
                                     onClick = { showDatePicker = true },
                                     enabled = !state.mutationPending,
                                     shape = CircleShape,
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                                 ) {
-                                    Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Outlined.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(8.dp))
                                     Text(historyDateFormatter.format(state.date))
                                 }
                                 IconButton(
                                     onClick = { vm.select(member, state.date.plusDays(1)) },
                                     enabled = !state.mutationPending && state.date < LocalDate.now(),
-                                ) { Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.history_next_day_content_desc)) }
+                                ) { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.history_next_day_content_desc)) }
                             }
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -433,7 +426,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                         shape = CircleShape,
                                         modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
-                                        Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text(stringResource(R.string.history_time_from, formatMinute(state.startMinute)))
                                     }
@@ -521,7 +514,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     enabled = mapLoaded && state.points.isNotEmpty(),
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                                 ) {
-                                    Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Outlined.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
                                     Text(stringResource(R.string.history_center_map))
                                 }
@@ -615,7 +608,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     val mock = if (point.isMock) stringResource(R.string.history_mock_suffix) else ""
                     val isSelected = point.eventId == selectedId
                     StitchTimelineItem(
-                        icon = if (isSelected) Icons.Default.MyLocation else Icons.Default.Schedule,
+                        icon = if (isSelected) Icons.Outlined.MyLocation else Icons.Outlined.Schedule,
                         nodeContainerColor = if (isSelected) colors.primary else colors.surfaceContainerHigh,
                         nodeContentColor = if (isSelected) colors.onPrimary else colors.onSurfaceVariant,
                         isLast = index == state.points.lastIndex,
@@ -683,7 +676,6 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         ) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 AnVeSectionHeader(
-                                    icon = Icons.Default.Schedule,
                                     title = stringResource(R.string.history_retention_title),
                                 )
                                 val currentDays = state.effectiveRetentionDays ?: state.retentionDays
@@ -719,9 +711,6 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                             }
                         }
                     }
-                }
-                item {
-                    StitchReassuranceFooter(quote = stringResource(R.string.history_footer_quote))
                 }
             }
         }
@@ -854,91 +843,59 @@ private fun HistorySummaryCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
-    OutlinedCard(
-        shape = RoundedCornerShape(24.dp),
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = colors.surfaceContainerLow,
         border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StitchCategoryIconBox(
-                        icon = Icons.Default.Route,
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                        cornerRadius = 14.dp,
-                        containerColor = colors.primaryContainer,
-                        contentColor = colors.onPrimaryContainer,
-                    )
-                    Text(
-                        text = stringResource(R.string.history_summary_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                }
-                StitchSemanticBadge(
-                    text = stringResource(R.string.history_metric_retention) + ": " + retentionDaysLabel,
-                    kind = StitchBadgeKind.SAFE_HOME,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StitchMetricTile(
-                    label = stringResource(R.string.history_metric_points),
-                    value = pointCount.toString(),
-                    icon = Icons.Default.MyLocation,
-                    modifier = Modifier.weight(1f),
-                )
-                StitchMetricTile(
-                    label = stringResource(R.string.history_metric_delayed),
-                    value = delayedCount.toString(),
-                    icon = Icons.Default.Schedule,
-                    modifier = Modifier.weight(1f),
-                )
-                StitchMetricTile(
-                    label = stringResource(R.string.history_metric_retention),
-                    value = retentionDaysLabel,
-                    icon = Icons.Default.CalendarToday,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = stitch.liveContainer.copy(alpha = 0.65f),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.VerifiedUser,
-                        contentDescription = null,
-                        tint = stitch.onLiveContainer,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.history_summary_safe_banner),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = stitch.onLiveContainer,
-                    )
-                }
-            }
+            HistoryStatItem(
+                label = stringResource(R.string.history_metric_points),
+                value = pointCount.toString(),
+                modifier = Modifier.weight(1f),
+            )
+            HistoryStatItem(
+                label = stringResource(R.string.history_metric_delayed),
+                value = delayedCount.toString(),
+                modifier = Modifier.weight(1f),
+            )
+            HistoryStatItem(
+                label = stringResource(R.string.history_metric_retention),
+                value = retentionDaysLabel,
+                modifier = Modifier.weight(1f),
+            )
         }
+    }
+}
+
+@Composable
+private fun HistoryStatItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.onSurface,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant,
+        )
     }
 }
 

@@ -23,22 +23,21 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -105,11 +104,9 @@ import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnVeSosPillButton
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchEmptyStateCard
 import com.anve.app.ui.common.StitchLiveSharingPill
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.diagnostics.DiagnosticsScreen
 import com.anve.app.ui.history.HistoryScreen
@@ -356,7 +353,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     title = { Text(stringResource(page.titleRes)) },
                     navigationIcon = {
                         IconButton(onClick = returnFromSecondaryPage) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -398,10 +395,10 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 // the same text twice (M3 labeled-destination rule).
                                 Icon(
                                     imageVector = when (entry) {
-                                        HomeTab.MAP -> Icons.Default.Map
-                                        HomeTab.CIRCLE -> Icons.Default.Groups
-                                        HomeTab.PLACES -> Icons.Default.Place
-                                        HomeTab.HISTORY -> Icons.Default.History
+                                        HomeTab.MAP -> Icons.Outlined.Map
+                                        HomeTab.CIRCLE -> Icons.Outlined.Groups
+                                        HomeTab.PLACES -> Icons.Outlined.Place
+                                        HomeTab.HISTORY -> Icons.Outlined.History
                                     },
                                     contentDescription = null,
                                 )
@@ -563,7 +560,7 @@ private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenS
                     modifier = Modifier.heightIn(min = 48.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.tab_account), maxLines = 1)
                 }
@@ -631,7 +628,7 @@ private fun AccountContent(
                 AvatarImage(owner, owner, avatar.metadata?.imageId, visible.user?.displayName.orEmpty(), container.avatarRepository, Modifier.size(64.dp))
                 Surface(Modifier.align(Alignment.BottomEnd), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
-                    Icon(Icons.Default.Edit, null, Modifier.padding(4.dp).size(16.dp))
+                    Icon(Icons.Outlined.Edit, null, Modifier.padding(4.dp).size(16.dp))
                 }
             }
         },
@@ -715,8 +712,8 @@ fun HomeContent(
             ) {
                 StitchEmptyStateCard(
                     title = stringResource(R.string.home_load_failed),
-                    body = stringResource(R.string.home_footer_quote),
-                    icon = Icons.Default.Security,
+                    body = stringResource(R.string.home_account_security_subtitle),
+                    icon = Icons.Outlined.Security,
                     actionLabel = stringResource(R.string.action_retry),
                     onAction = onRetry,
                 )
@@ -794,7 +791,7 @@ fun HomeContent(
                 ) {
                     Box(Modifier.weight(1f)) {
                         AnVeSectionHeader(
-                            icon = Icons.Default.Devices,
+                            icon = Icons.Outlined.Devices,
                             title = stringResource(R.string.home_group_devices_title),
                             subtitle = stringResource(R.string.home_group_devices_subtitle),
                         )
@@ -814,7 +811,7 @@ fun HomeContent(
             item {
                 OutlinedCard(
                     onClick = onOpenDiagnostics,
-                    shape = RoundedCornerShape(22.dp),
+                    shape = RoundedCornerShape(20.dp),
                     border = BorderStroke(1.dp, stitch.hairline),
                     colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                     modifier = Modifier.fillMaxWidth(),
@@ -827,11 +824,11 @@ fun HomeContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StitchCategoryIconBox(
-                            icon = Icons.Default.Security,
-                            size = 44.dp,
-                            containerColor = colors.primaryContainer,
-                            contentColor = colors.onPrimaryContainer,
+                        Icon(
+                            imageVector = Icons.Outlined.Security,
+                            contentDescription = null,
+                            tint = colors.primary,
+                            modifier = Modifier.size(22.dp),
                         )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.titleSmall)
@@ -842,7 +839,7 @@ fun HomeContent(
                             )
                         }
                         Icon(
-                            Icons.Default.ChevronRight,
+                            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                             contentDescription = null,
                             tint = colors.onSurfaceVariant,
                         )
@@ -851,7 +848,7 @@ fun HomeContent(
             }
             item {
                 OutlinedCard(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(22.dp),
                     border = BorderStroke(1.dp, stitch.hairline),
                     colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                     modifier = Modifier.fillMaxWidth(),
@@ -861,10 +858,9 @@ fun HomeContent(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         AnVeSectionHeader(
-                            icon = Icons.Default.Lock,
+                            icon = Icons.Outlined.Lock,
                             title = stringResource(R.string.home_account_security_title),
                             subtitle = stringResource(R.string.home_account_security_subtitle),
-                            iconContainerColor = colors.surfaceVariant,
                             iconContentColor = colors.onSurfaceVariant,
                         )
                         OutlinedButton(
@@ -873,7 +869,7 @@ fun HomeContent(
                             shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.home_sign_out))
                         }
@@ -883,7 +879,7 @@ fun HomeContent(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = Icons.Outlined.Delete,
                                 contentDescription = null,
                                 tint = colors.error,
                                 modifier = Modifier.size(18.dp),
@@ -896,9 +892,6 @@ fun HomeContent(
                         }
                     }
                 }
-            }
-            item {
-                StitchReassuranceFooter(quote = stringResource(R.string.home_footer_quote))
             }
         }
     }
@@ -949,7 +942,7 @@ private fun ResultNoticeCard(text: String, onDismiss: () -> Unit) {
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle,
+                            imageVector = Icons.Outlined.CheckCircle,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )
@@ -981,7 +974,7 @@ private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Co
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, stitch.hairline),
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
@@ -990,70 +983,49 @@ private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Co
             AnVeAccountShieldIllustration(
                 modifier = Modifier.fillMaxWidth().height(92.dp),
             )
-            Column(
+            Row(
                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    if (avatarContent != null) {
-                        avatarContent()
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(58.dp)
-                                .background(
-                                    color = colors.primaryContainer,
-                                    shape = CircleShape,
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = user.displayName.take(1).uppercase().ifBlank { "?" },
-                                style = MaterialTheme.typography.titleLarge,
-                                color = colors.onPrimaryContainer,
-                            )
-                        }
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                if (avatarContent != null) {
+                    avatarContent()
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(58.dp)
+                            .background(
+                                color = colors.primaryContainer,
+                                shape = CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(user.displayName, style = MaterialTheme.typography.titleLarge)
                         Text(
-                            user.email,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
+                            text = user.displayName.take(1).uppercase().ifBlank { "?" },
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colors.onPrimaryContainer,
                         )
                     }
-                    FilledTonalButton(
-                        onClick = onRename,
-                        shape = CircleShape,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.action_rename))
-                    }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    StitchSemanticBadge(
-                        text = stringResource(R.string.home_profile_verified_member),
-                        kind = StitchBadgeKind.SAFE_HOME,
-                        icon = Icons.Default.CheckCircle,
+                    Text(user.displayName, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        user.email,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
                     )
-                    StitchSemanticBadge(
-                        text = stringResource(R.string.home_profile_family_badge),
-                        kind = StitchBadgeKind.AT_PLACE,
-                        icon = Icons.Default.Shield,
-                    )
+                }
+                FilledTonalButton(
+                    onClick = onRename,
+                    shape = CircleShape,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.action_rename))
                 }
             }
         }
@@ -1078,7 +1050,7 @@ private fun ConsentCard(
         else -> stringResource(R.string.home_sharing_state_off)
     }
     OutlinedCard(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, stitch.hairline),
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
@@ -1097,24 +1069,11 @@ private fun ConsentCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
+                Text(
+                    text = stringResource(R.string.home_sharing_title),
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StitchCategoryIconBox(
-                        icon = Icons.Default.Security,
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                        cornerRadius = 13.dp,
-                        containerColor = colors.primaryContainer,
-                        contentColor = colors.onPrimaryContainer,
-                    )
-                    Text(
-                        text = stringResource(R.string.home_sharing_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
+                )
                 StitchSemanticBadge(
                     text = statusBadge,
                     kind = when {
@@ -1125,40 +1084,33 @@ private fun ConsentCard(
                     showDot = requestedEnabled || syncPending,
                 )
             }
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.surfaceContainerLow,
-                border = BorderStroke(1.dp, stitch.hairline),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .toggleable(
-                            value = requestedEnabled,
-                            enabled = !busy,
-                            role = Role.Switch,
-                            onValueChange = onToggle,
-                        )
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(R.string.home_sharing_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = requestedEnabled,
+            HorizontalDivider(color = stitch.hairline)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .toggleable(
+                        value = requestedEnabled,
                         enabled = !busy,
-                        // Indicative only: the row above carries the toggle so the
-                        // switch does not double-register as a toggleable node.
-                        onCheckedChange = null,
-                    )
-                }
+                        role = Role.Switch,
+                        onValueChange = onToggle,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.home_sharing_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = requestedEnabled,
+                    enabled = !busy,
+                    // Indicative only: the row above carries the toggle so the
+                    // switch does not double-register as a toggleable node.
+                    onCheckedChange = null,
+                )
             }
             if (conflict) {
                 Text(
@@ -1213,12 +1165,11 @@ private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            StitchCategoryIconBox(
-                icon = Icons.Default.Devices,
-                size = 44.dp,
-                iconSize = 20.dp,
-                containerColor = if (isCurrent) colors.primaryContainer else colors.surfaceContainerHigh,
-                contentColor = if (isCurrent) colors.onPrimaryContainer else colors.onSurfaceVariant,
+            Icon(
+                imageVector = Icons.Outlined.Devices,
+                contentDescription = null,
+                tint = if (isCurrent) colors.primary else colors.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -1272,7 +1223,7 @@ private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.Default.Edit, contentDescription = null) },
+        icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
         title = { Text(stringResource(R.string.home_rename_title)) },
         text = {
             OutlinedTextField(
@@ -1302,7 +1253,7 @@ private fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
+        icon = { Icon(Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = null) },
         title = { Text(stringResource(R.string.home_sign_out_title)) },
         text = { Text(stringResource(R.string.home_sign_out_body)) },
         confirmButton = {
@@ -1321,7 +1272,7 @@ private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        icon = { Icon(Icons.Outlined.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = { Text(stringResource(R.string.home_delete_title)) },
         text = { Text(stringResource(R.string.home_delete_body)) },
         confirmButton = {
@@ -1349,7 +1300,7 @@ private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.Default.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        icon = { Icon(Icons.Outlined.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = { Text(stringResource(R.string.home_device_revoke_title)) },
         text = { Text(stringResource(R.string.home_device_revoke_body)) },
         confirmButton = {

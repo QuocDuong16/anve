@@ -10,20 +10,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
@@ -47,7 +49,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
@@ -73,7 +74,7 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
             ) {
                 item {
                     AnVeSectionHeader(
-                        icon = Icons.Default.Tune,
+                        icon = Icons.Outlined.Tune,
                         title = stringResource(R.string.journey_options_title),
                         subtitle = stringResource(R.string.journey_options_subtitle),
                         iconContainerColor = stitch.liveContainer,
@@ -84,7 +85,7 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
                     OptionCard(
                         title = stringResource(R.string.journey_options_auto_title),
                         helper = stringResource(R.string.journey_options_auto_helper),
-                        icon = Icons.Default.LocationOn,
+                        icon = Icons.Outlined.LocationOn,
                         checked = automatic,
                         onChecked = { automatic = it },
                         tag = "automatic-arrival",
@@ -101,7 +102,7 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
                             OptionRow(
                                 title = stringResource(R.string.journey_options_stale_title),
                                 helper = stringResource(R.string.journey_options_stale_helper),
-                                icon = Icons.Default.Notifications,
+                                icon = Icons.Outlined.Notifications,
                                 checked = stale > 0,
                                 onChecked = { stale = if (it) 10 else 0 },
                                 tag = "stale-reminder",
@@ -173,13 +174,11 @@ private fun OptionRow(title: String, helper: String, icon: ImageVector, checked:
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            StitchCategoryIconBox(
-                icon = icon,
-                size = 38.dp,
-                iconSize = 19.dp,
-                cornerRadius = 13.dp,
-                containerColor = if (checked) stitch.liveContainer else colors.surfaceContainerHigh,
-                contentColor = if (checked) stitch.onLiveContainer else colors.onSurfaceVariant,
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (checked) colors.primary else colors.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Switch(checked = checked, onCheckedChange = null)

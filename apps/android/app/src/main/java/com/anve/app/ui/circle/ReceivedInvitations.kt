@@ -23,11 +23,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -91,53 +91,42 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                     CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
                 }
             } else if (state.received.isEmpty() && state.inboxErrorRes == null) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.invite_received_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.invite_received_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
             }
             state.inboxErrorRes?.let { res -> AnveErrorNotice(stringResource(res)) }
-            state.received.forEach { invite ->
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = colors.surfaceContainerLow,
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(invite.circleName, style = MaterialTheme.typography.titleSmall)
-                        Text(stringResource(R.string.invite_received_intro, invite.inviterDisplayName), style = MaterialTheme.typography.bodyMedium)
-                        val expiry = AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unknown))
-                        Text(
-                            stringResource(R.string.invite_expiry_prefix, expiry),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilledTonalButton(
-                                onClick = { onReview(invite.id) },
-                                enabled = !state.detailBusy,
-                                shape = CircleShape,
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            ) {
-                                Text(stringResource(R.string.invite_view))
-                            }
-                            TextButton(
-                                onClick = { hideTarget = invite.id },
-                                enabled = !state.detailBusy,
-                                colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            ) {
-                                Text(stringResource(R.string.invite_hide))
-                            }
+            state.received.forEachIndexed { index, invite ->
+                if (index > 0) {
+                    HorizontalDivider(color = stitch.hairline)
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(invite.circleName, style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.invite_received_intro, invite.inviterDisplayName), style = MaterialTheme.typography.bodyMedium)
+                    val expiry = AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unknown))
+                    Text(
+                        stringResource(R.string.invite_expiry_prefix, expiry),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(
+                            onClick = { onReview(invite.id) },
+                            enabled = !state.detailBusy,
+                            shape = CircleShape,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.invite_view))
+                        }
+                        TextButton(
+                            onClick = { hideTarget = invite.id },
+                            enabled = !state.detailBusy,
+                            colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.invite_hide))
                         }
                     }
                 }

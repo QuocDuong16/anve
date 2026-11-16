@@ -45,9 +45,6 @@ import com.anve.app.R
 import com.anve.app.data.api.AvatarStateDto
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
-import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
-import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
@@ -88,22 +85,13 @@ fun AvatarSheet(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AnVeSectionHeader(
-                            icon = Icons.Outlined.AccountCircle,
-                            title = stringResource(R.string.avatar_title),
-                            subtitle = stringResource(R.string.avatar_subtitle),
-                            iconContainerColor = stitch.liveContainer,
-                            iconContentColor = stitch.onLiveContainer,
-                        )
-                        StitchSemanticBadge(
-                            text = stringResource(R.string.avatar_studio_badge),
-                            kind = StitchBadgeKind.NEUTRAL,
-                        )
-                    }
+                    AnVeSectionHeader(
+                        icon = Icons.Outlined.AccountCircle,
+                        title = stringResource(R.string.avatar_title),
+                        subtitle = stringResource(R.string.avatar_subtitle),
+                        iconContainerColor = stitch.liveContainer,
+                        iconContentColor = stitch.onLiveContainer,
+                    )
                 }
                 item {
                     Surface(
@@ -185,13 +173,11 @@ fun AvatarSheet(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            StitchCategoryIconBox(
-                                icon = Icons.Outlined.Lock,
-                                size = 34.dp,
-                                iconSize = 18.dp,
-                                cornerRadius = 11.dp,
-                                containerColor = stitch.liveContainer,
-                                contentColor = stitch.onLiveContainer,
+                            Icon(
+                                imageVector = Icons.Outlined.Lock,
+                                contentDescription = null,
+                                tint = colors.primary,
+                                modifier = Modifier.size(18.dp),
                             )
                             Text(
                                 text = stringResource(R.string.avatar_privacy_note),

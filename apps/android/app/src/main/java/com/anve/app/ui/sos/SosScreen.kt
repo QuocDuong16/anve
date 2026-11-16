@@ -33,22 +33,23 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Outbox
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Outbox
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -100,10 +101,8 @@ import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchLivePulseDot
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.theme.AnVeTheme
@@ -333,14 +332,6 @@ private fun SosContentBody(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            StitchCategoryIconBox(
-                                icon = Icons.Default.Shield,
-                                size = 34.dp,
-                                iconSize = 18.dp,
-                                cornerRadius = 17.dp,
-                                containerColor = stitch.liveContainer,
-                                contentColor = stitch.livePulse,
-                            )
                             StitchLivePulseDot(active = !state.pending && !state.offline)
                             Text(
                                 text = stringResource(R.string.sos_title),
@@ -474,19 +465,12 @@ private fun SosContentBody(
                             )
                         }
                     }
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = colors.surfaceContainerLow,
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.sos_emergency_disclaimer),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                            modifier = Modifier.padding(10.dp),
-                        )
-                    }
+                    HorizontalDivider(color = stitch.hairline)
+                    Text(
+                        text = stringResource(R.string.sos_emergency_disclaimer),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                     Text(
                         text = stringResource(R.string.sos_emergency_calls_label),
                         style = MaterialTheme.typography.labelLarge,
@@ -500,9 +484,9 @@ private fun SosContentBody(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         val hotlines = listOf(
-                            Triple(113, R.string.sos_service_police, Icons.Default.Shield),
-                            Triple(114, R.string.sos_service_fire, Icons.Default.Warning),
-                            Triple(115, R.string.sos_service_ambulance, Icons.Default.Phone),
+                            Triple(113, R.string.sos_service_police, Icons.Outlined.Shield),
+                            Triple(114, R.string.sos_service_fire, Icons.Outlined.Warning),
+                            Triple(115, R.string.sos_service_ambulance, Icons.Outlined.Phone),
                         )
                         hotlines.forEach { (number, serviceRes, icon) ->
                             val iconFg = when (number) {
@@ -564,7 +548,7 @@ private fun SosContentBody(
         add(SosRow("recipients-card") {
             SosCard(
                 title = stringResource(R.string.sos_recipients_title),
-                icon = Icons.Default.Groups,
+                icon = Icons.Outlined.Groups,
                 trailing = {
                     if (state.members.isNotEmpty()) {
                         StitchSemanticBadge(
@@ -640,7 +624,7 @@ private fun SosContentBody(
             }
         })
         add(SosRow(OUTBOX_TITLE_KEY) {
-            SosCard(stringResource(R.string.sos_outbox_title), Icons.Default.Outbox) {
+            SosCard(stringResource(R.string.sos_outbox_title), Icons.Outlined.Outbox) {
                 if (state.outbox.isEmpty()) {
                     Text(stringResource(R.string.sos_outbox_empty), color = colors.onSurfaceVariant)
                 }
@@ -652,9 +636,9 @@ private fun SosContentBody(
                         else -> Triple(StitchBadgeKind.NEUTRAL, colors.surfaceContainerHigh, colors.onSurfaceVariant)
                     }
                     val timelineIcon = when (item.state) {
-                        SosLocalState.CONFIRMED -> Icons.Default.Warning
-                        SosLocalState.CANCELLED, SosLocalState.RESOLVED -> Icons.Default.CheckCircle
-                        else -> Icons.Default.Schedule
+                        SosLocalState.CONFIRMED -> Icons.Outlined.Warning
+                        SosLocalState.CANCELLED, SosLocalState.RESOLVED -> Icons.Outlined.CheckCircle
+                        else -> Icons.Outlined.Schedule
                     }
                     StitchTimelineItem(
                         icon = timelineIcon,
@@ -707,36 +691,28 @@ private fun SosContentBody(
             }
         })
         add(SosRow("notifications-card") {
-            SosCard(stringResource(R.string.sos_notifications_section), Icons.Default.Notifications) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surfaceContainerLow,
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Server-side push configuration lives here, next to the
-                        // device registration it enables; the top of the screen keeps
-                        // its focus on picking who receives the request.
-                        Text(
-                            text = when (state.pushConfigured) {
-                                true -> stringResource(R.string.sos_push_configured)
-                                false -> stringResource(R.string.sos_push_unconfigured)
-                                null -> stringResource(R.string.sos_push_unknown)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = if (!notificationPermission) stringResource(R.string.sos_notifications_disabled) else when (state.pushRegistered) {
-                                true -> stringResource(R.string.sos_push_registered)
-                                false -> stringResource(R.string.sos_push_not_registered)
-                                null -> stringResource(R.string.sos_push_check_unknown)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (!notificationPermission) emergency.onEmergencyContainer else colors.onSurface,
-                        )
-                    }
-                }
+            SosCard(stringResource(R.string.sos_notifications_section), Icons.Outlined.Notifications) {
+                // Server-side push configuration lives here, next to the
+                // device registration it enables; the top of the screen keeps
+                // its focus on picking who receives the request.
+                Text(
+                    text = when (state.pushConfigured) {
+                        true -> stringResource(R.string.sos_push_configured)
+                        false -> stringResource(R.string.sos_push_unconfigured)
+                        null -> stringResource(R.string.sos_push_unknown)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = if (!notificationPermission) stringResource(R.string.sos_notifications_disabled) else when (state.pushRegistered) {
+                        true -> stringResource(R.string.sos_push_registered)
+                        false -> stringResource(R.string.sos_push_not_registered)
+                        null -> stringResource(R.string.sos_push_check_unknown)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (!notificationPermission) emergency.onEmergencyContainer else colors.onSurface,
+                )
+                HorizontalDivider(color = stitch.hairline)
                 // Status rows use plain language; the acceptance-vs-delivery
                 // distinction stays explicit in this technical annotation.
                 Text(
@@ -756,7 +732,7 @@ private fun SosContentBody(
             }
         })
         add(SosRow("events-card") {
-            SosCard(stringResource(R.string.sos_events_title), Icons.Default.History) {
+            SosCard(stringResource(R.string.sos_events_title), Icons.Outlined.History) {
                 if (state.events.isEmpty() && !state.loading) {
                     Text(stringResource(R.string.sos_events_empty), color = colors.onSurfaceVariant)
                 }
@@ -764,7 +740,7 @@ private fun SosContentBody(
                     val person = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member)
                     val active = event.state == "ACTIVE"
                     StitchTimelineItem(
-                        icon = if (active) Icons.Default.Warning else Icons.Default.CheckCircle,
+                        icon = if (active) Icons.Outlined.Warning else Icons.Outlined.CheckCircle,
                         nodeContainerColor = if (active) emergency.emergencyContainer else colors.surfaceContainerHigh,
                         nodeContentColor = if (active) emergency.onEmergencyContainer else colors.onSurfaceVariant,
                         isLast = index == state.events.lastIndex,
@@ -797,7 +773,7 @@ private fun SosContentBody(
         })
         state.selected?.let { event ->
             add(SosRow(DETAIL_CARD_KEY) {
-                SosCard(stringResource(R.string.sos_detail_title), Icons.Default.Info) {
+                SosCard(stringResource(R.string.sos_detail_title), Icons.Outlined.Info) {
                     val sender = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member_unnamed)
                     Text(stringResource(R.string.sos_detail_sender, sender), fontWeight = FontWeight.Medium)
                     Text(
@@ -858,12 +834,6 @@ private fun SosContentBody(
             })
         }
         add(SosRow("refresh") { TextButton(onClick = onRefresh, enabled = !state.loading && !state.pending) { Text(stringResource(R.string.sos_check_again)) } })
-        add(SosRow("footer") {
-            StitchReassuranceFooter(
-                quote = stringResource(R.string.sos_footer_quote),
-                accentBarColor = emergency.emergency.copy(alpha = 0.55f),
-            )
-        })
     }
 
     // The send confirms itself in place the moment the request is durably

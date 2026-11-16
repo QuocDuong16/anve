@@ -364,7 +364,7 @@ func TestSendSMTPEmailMockServer(t *testing.T) {
 
 func TestLandingPageHTMLContainsRequiredContentAndPalette(t *testing.T) {
 	html := string(LandingPageHTML)
-	assert.Contains(t, html, "AnVe hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.")
+	assert.Contains(t, html, "AnVề hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.")
 	assert.Contains(t, html, "#FDF9F2")
 	assert.Contains(t, html, "#3D602F")
 	assert.Contains(t, html, "#F1DDE4")

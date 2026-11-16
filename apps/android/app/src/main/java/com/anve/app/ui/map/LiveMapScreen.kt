@@ -33,12 +33,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -354,7 +354,7 @@ private fun LiveMapContent(
                     ),
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
-                    Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Group, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.map_audience_action))
                 }
@@ -378,7 +378,7 @@ private fun LiveMapContent(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Default.MyLocation,
+                            imageVector = Icons.Outlined.MyLocation,
                             contentDescription = stringResource(R.string.map_recenter_content_desc),
                             modifier = Modifier.size(20.dp),
                         )
@@ -540,7 +540,7 @@ private fun LiveMapContent(
                                 modifier = Modifier.heightIn(min = 40.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             ) {
-                                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Outlined.Home, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text(stringResource(R.string.map_start_journey_short), maxLines = 1)
                             }
@@ -604,7 +604,7 @@ private fun LiveMapContent(
                                     color = colors.primary,
                                 )
                                 Icon(
-                                    imageVector = if (sheetExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                    imageVector = if (sheetExpanded) Icons.Outlined.KeyboardArrowDown else Icons.Outlined.KeyboardArrowUp,
                                     contentDescription = null,
                                     tint = colors.primary,
                                     modifier = Modifier.size(18.dp),
@@ -834,7 +834,7 @@ private fun MemberLocationCard(
             ) {
                 // A refresh glyph reads as "reload the data"; MyLocation is the
                 // camera-recenter convention on map surfaces.
-                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.map_recenter_content_desc))
+                Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.map_recenter_content_desc))
             }
         }
     }
@@ -863,7 +863,7 @@ private fun AudienceSheet(
                 modifier = Modifier.fillMaxWidth().height(96.dp),
             )
             AnVeSectionHeader(
-                icon = Icons.Default.Group,
+                icon = Icons.Outlined.Group,
                 title = stringResource(R.string.map_audience_title),
             )
             // One fact per line: the old 60+ word paragraph asked readers to
@@ -991,7 +991,7 @@ private fun AudienceSheet(
                                                 else R.string.map_audience_paused_chip,
                                             ),
                                             kind = if (member.canViewLocation) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
-                                            icon = if (member.canViewLocation) Icons.Default.Visibility else null,
+                                            icon = if (member.canViewLocation) Icons.Outlined.Visibility else null,
                                         )
                                     }
                                 }

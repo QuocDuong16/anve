@@ -143,7 +143,7 @@ func (f *fakeContactStore) UpdateStatus(_ context.Context, _ string, _ contacts.
 	return nil
 }
 
-func TestLandingPageServesStitchHTML(t *testing.T) {
+func TestLandingPageServesHTML(t *testing.T) {
 	t.Parallel()
 
 	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
@@ -153,7 +153,7 @@ func TestLandingPageServesStitchHTML(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
 	assert.Contains(t, rec.Body.String(), "Internal Testing")
-	assert.Contains(t, rec.Body.String(), "AnVe hiện đang trong giai đoạn phát triển")
+	assert.Contains(t, rec.Body.String(), "AnVề hiện đang trong giai đoạn phát triển")
 	assert.Contains(t, rec.Body.String(), "/assets/hero-family-welcome.webp")
 
 	assetRec := httptest.NewRecorder()

@@ -29,21 +29,19 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Radar
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Radar
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -93,7 +91,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -110,21 +107,15 @@ import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.LocationRequestOptions
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVePlacesSceneIllustration
-import com.anve.app.ui.brand.AnVeSafeRadarScene
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchEmptyStateCard
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchMetricTile
-import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
-import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.google.android.gms.maps.model.CameraPosition
@@ -286,18 +277,18 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                 navigationIcon = {
                     if (showDetails) {
                         IconButton(onClick = { showDetails = false }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.places_back_content_desc))
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.places_back_content_desc))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = vm::refresh, enabled = !state.pending && !state.loading && !state.refreshing) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.places_refresh))
+                        Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.places_refresh))
                     }
                     if (showDetails && selected?.ownerId == owner) {
                         Box {
                             IconButton(onClick = { showActions = true }, enabled = !state.pending) {
-                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.places_actions_content_desc))
+                                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.places_actions_content_desc))
                             }
                             DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
                                 DropdownMenuItem(
@@ -339,10 +330,10 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
             ) {
                 if (!showDetails) {
                     item {
-                        PlacesOverviewBanner(
-                            totalPlaces = state.places.size,
-                            eventCount = visibleEvents.size,
-                            sharedCount = state.places.count { it.ownerId != owner },
+                        Text(
+                            text = stringResource(R.string.places_monitoring_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
                         )
                     }
                     state.noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
@@ -358,7 +349,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                             shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.places_add))
                         }
@@ -431,99 +422,53 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 }
                             },
                             enabled = !state.pending,
-                            shape = RoundedCornerShape(22.dp),
+                            shape = RoundedCornerShape(20.dp),
                             border = BorderStroke(1.dp, stitch.hairline),
                             colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    StitchCategoryIconBox(
-                                        icon = if (isMine) Icons.Default.Home else Icons.Default.Place,
-                                        size = 44.dp,
-                                        iconSize = 22.dp,
-                                        containerColor = if (isMine) colors.primaryContainer else colors.secondaryContainer,
-                                        contentColor = if (isMine) colors.onPrimaryContainer else colors.onSecondaryContainer,
-                                    )
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Text(place.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f, fill = false))
-                                            StitchSemanticBadge(
-                                                text = label,
-                                                kind = if (isMine) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.AT_PLACE,
-                                            )
-                                        }
-                                        Text(
-                                            stringResource(
-                                                R.string.places_radius_of_walk,
-                                                label,
-                                                place.radiusMeters.toInt(),
-                                                maxOf(1, (place.radiusMeters / 80.0).roundToInt()),
-                                            ),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colors.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                                Surface(
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = colors.surfaceContainerLow,
-                                    modifier = Modifier.fillMaxWidth(),
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Radar,
-                                                contentDescription = null,
-                                                tint = colors.primary,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.places_radius_bar_label, place.radiusMeters.toInt()),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = colors.onSurface,
-                                            )
-                                        }
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.places_edit_short),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = colors.primary,
-                                            )
-                                            Icon(
-                                                imageVector = Icons.Default.ChevronRight,
-                                                contentDescription = null,
-                                                tint = colors.primary,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                        }
+                                        Text(
+                                            text = place.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            modifier = Modifier.weight(1f, fill = false),
+                                        )
+                                        StitchSemanticBadge(
+                                            text = label,
+                                            kind = if (isMine) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.AT_PLACE,
+                                        )
                                     }
+                                    Text(
+                                        stringResource(
+                                            R.string.places_radius_of_walk,
+                                            label,
+                                            place.radiusMeters.toInt(),
+                                            maxOf(1, (place.radiusMeters / 80.0).roundToInt()),
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
                                 }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = colors.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
                             }
                         }
                     }
@@ -548,7 +493,12 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                StitchCategoryIconBox(icon = Icons.Default.Radar)
+                                Icon(
+                                    imageVector = Icons.Outlined.Radar,
+                                    contentDescription = null,
+                                    tint = colors.primary,
+                                    modifier = Modifier.size(22.dp),
+                                )
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
                                         stringResource(R.string.places_radius, selected.radiusMeters.toInt()),
@@ -758,7 +708,7 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                         val confidence = if (event.confidence == "OBSERVED") stringResource(R.string.places_confidence_observed) else stringResource(R.string.places_confidence_unknown)
                         val isEnter = event.type == "ENTER"
                         StitchTimelineItem(
-                            icon = Icons.Default.Notifications,
+                            icon = Icons.Outlined.Notifications,
                             nodeContainerColor = if (isEnter) colors.primaryContainer else colors.secondaryContainer,
                             nodeContentColor = if (isEnter) colors.onPrimaryContainer else colors.onSecondaryContainer,
                             isLast = index == visibleEvents.lastIndex,
@@ -784,11 +734,6 @@ internal fun PlacesContent(state: PlacesState, vm: PlacesViewModel, onOpenLocati
                                     )
                                 }
                             }
-                        }
-                    }
-                    if (!showDetails) {
-                        item {
-                            StitchReassuranceFooter(quote = stringResource(R.string.places_footer_quote))
                         }
                     }
                 }
@@ -832,7 +777,7 @@ private fun ConsentNotice(onOpenLocation: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Info, null, Modifier.size(24.dp))
+            Icon(Icons.Outlined.Info, null, Modifier.size(24.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.places_consent_notice))
                 TextButton(onClick = onOpenLocation) {
@@ -862,7 +807,7 @@ private fun PlacesNotesCard(expanded: Boolean, onToggle: () -> Unit) {
             val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
             TextButton(onClick = onToggle, modifier = Modifier.semantics { stateDescription = disclosureState }) {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
                 )
                 Text(stringResource(R.string.places_notes_toggle))
@@ -1246,7 +1191,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Icon(
-                        imageVector = if (showManualCoords) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        imageVector = if (showManualCoords) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                         contentDescription = null,
                     )
                 }
@@ -1353,11 +1298,11 @@ private fun PlaceSearchCard(
                 singleLine = true,
                 label = { Text(stringResource(R.string.places_search_label)) },
                 placeholder = { Text(stringResource(R.string.places_search_hint)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.places_search_clear))
+                            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.places_search_clear))
                         }
                     }
                 },
@@ -1381,7 +1326,7 @@ private fun PlaceSearchCard(
                             supportingContent = {
                                 Text(suggestion.subtitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             },
-                            leadingContent = { Icon(Icons.Default.Place, contentDescription = null) },
+                            leadingContent = { Icon(Icons.Outlined.Place, contentDescription = null) },
                             modifier = Modifier.heightIn(min = 56.dp).clickable(enabled = enabled) { onPick(suggestion) },
                         )
                     }
@@ -1401,104 +1346,10 @@ private fun PlaceSearchCard(
 }
 
 @Composable
-private fun PlacesOverviewBanner(
-    totalPlaces: Int,
-    eventCount: Int,
-    sharedCount: Int,
-) {
-    val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
-    OutlinedCard(
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.places_header_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = stringResource(R.string.places_monitoring_notice),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
-            )
-            AnVeIllustratedBanner(
-                overlayBadge = {
-                    StitchSemanticBadge(
-                        text = stringResource(R.string.places_smart_protection_badge),
-                        kind = StitchBadgeKind.SAFE_HOME,
-                        icon = Icons.Default.Shield,
-                        showDot = true,
-                    )
-                },
-            ) {
-                AnVeSafeRadarScene(
-                    memberCount = totalPlaces,
-                    modifier = Modifier.fillMaxWidth().height(132.dp),
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StitchMetricTile(
-                    label = stringResource(R.string.places_metric_total),
-                    value = totalPlaces.toString(),
-                    icon = Icons.Default.Home,
-                    modifier = Modifier.weight(1f),
-                )
-                StitchMetricTile(
-                    label = stringResource(R.string.places_metric_events),
-                    value = eventCount.toString(),
-                    icon = Icons.Default.Notifications,
-                    modifier = Modifier.weight(1f),
-                )
-                StitchMetricTile(
-                    label = stringResource(R.string.places_metric_shared),
-                    value = sharedCount.toString(),
-                    icon = Icons.Default.Place,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun SearchNote(res: Int) {
     Text(
         stringResource(res),
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PlacesOverviewBannerPreview() {
-    AnVeTheme {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            Box(Modifier.padding(16.dp)) {
-                PlacesOverviewBanner(totalPlaces = 3, eventCount = 5, sharedCount = 1)
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PlacesOverviewBannerDarkPreview() {
-    AnVeTheme(darkTheme = true) {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            Box(Modifier.padding(16.dp)) {
-                PlacesOverviewBanner(totalPlaces = 3, eventCount = 5, sharedCount = 1)
-            }
-        }
-    }
 }

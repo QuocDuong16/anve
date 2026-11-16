@@ -23,21 +23,21 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.RadioButtonChecked
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,6 +46,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -102,14 +103,12 @@ import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
+import com.anve.app.ui.common.AnVeMetricColumn
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnVeSosPillButton
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchMetricTile
-import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
@@ -197,8 +196,8 @@ fun JourneyContent(
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(if (creating) stringResource(R.string.journey_creating_title) else stringResource(R.string.journey_title)) },
-            navigationIcon = { IconButton(onClick = handleBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
-            actions = { IconButton(onClick = onReload, enabled = !state.loading && !state.busy) { Icon(Icons.Default.Refresh, stringResource(R.string.journey_reload_content_desc)) } },
+            navigationIcon = { IconButton(onClick = handleBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } },
+            actions = { IconButton(onClick = onReload, enabled = !state.loading && !state.busy) { Icon(Icons.Outlined.Refresh, stringResource(R.string.journey_reload_content_desc)) } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = if (dark) colors.primaryContainer else colors.primary,
                 titleContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
                 navigationIconContentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
@@ -227,7 +226,7 @@ fun JourneyContent(
             }
             state.errorRes?.let { res -> item { JourneyNotice(stringResource(res), failure = true) { ink -> JourneyTextAction(stringResource(R.string.journey_reload_action), onReload, !state.busy, ink) } } }
             if (!tracking.online && !state.loading && (selected == null || creating)) item {
-                JourneyNotice(stringResource(R.string.journey_offline_end_notice), Icons.Default.WifiOff)
+                JourneyNotice(stringResource(R.string.journey_offline_end_notice), Icons.Outlined.WifiOff)
             }
             items(state.pending, key = { it.operationId }) { operation ->
                 JourneyNotice(stringResource(
@@ -308,13 +307,11 @@ fun JourneyContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StitchCategoryIconBox(
-                            icon = Icons.Default.Route,
-                            size = 42.dp,
-                            iconSize = 21.dp,
-                            cornerRadius = 14.dp,
-                            containerColor = if (journey.state == "ACTIVE") stitch.transitContainer else stitch.liveContainer,
-                            contentColor = if (journey.state == "ACTIVE") stitch.onTransitContainer else stitch.onLiveContainer,
+                        Icon(
+                            imageVector = Icons.Outlined.Route,
+                            contentDescription = null,
+                            tint = if (journey.state == "ACTIVE") stitch.onTransitContainer else colors.primary,
+                            modifier = Modifier.size(22.dp),
                         )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -346,9 +343,6 @@ fun JourneyContent(
             }
             if (selected != null && selected.state != "ACTIVE" && selected.ownerId == state.owner) item {
                 JourneyPrimaryAction(stringResource(R.string.journey_start_new), { onSelect(null); creating = true }, !state.busy && state.pending.isEmpty())
-            }
-            if (!state.loading) item {
-                StitchReassuranceFooter(quote = stringResource(R.string.journey_footer_quote))
             }
         }
     }
@@ -426,58 +420,45 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                         )
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StitchCategoryIconBox(
-                        icon = Icons.Default.Home,
-                        size = 48.dp,
-                        iconSize = 24.dp,
-                        cornerRadius = 16.dp,
-                        containerColor = if (active) stitch.transitContainer else stitch.liveContainer,
-                        contentColor = if (active) stitch.onTransitContainer else stitch.onLiveContainer,
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    StitchSemanticBadge(
+                        text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
+                        kind = when (journey.state) {
+                            "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
+                            "ARRIVED" -> StitchBadgeKind.SAFE_HOME
+                            else -> StitchBadgeKind.NEUTRAL
+                        },
+                        showDot = active,
                     )
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        StitchSemanticBadge(
-                            text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
-                            kind = when (journey.state) {
-                                "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
-                                "ARRIVED" -> StitchBadgeKind.SAFE_HOME
-                                else -> StitchBadgeKind.NEUTRAL
-                            },
-                            showDot = active,
-                        )
-                        Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        if (!owner) Text(stringResource(R.string.journey_of_owner, journey.ownerName), style = MaterialTheme.typography.titleMedium)
-                        val timeUnknown = stringResource(R.string.journey_time_unknown)
-                        Text(
-                            if (active) stringResource(R.string.journey_expires_auto, journeyTime(journey.expiresAt, timeUnknown)) else journey.endedAt?.let { stringResource(R.string.journey_ended_at, journeyTime(it, timeUnknown)) } ?: stringResource(R.string.journey_ended),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
+                    Text(journey.destination.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                    if (!owner) Text(stringResource(R.string.journey_of_owner, journey.ownerName), style = MaterialTheme.typography.titleMedium)
+                    val timeUnknown = stringResource(R.string.journey_time_unknown)
+                    Text(
+                        if (active) stringResource(R.string.journey_expires_auto, journeyTime(journey.expiresAt, timeUnknown)) else journey.endedAt?.let { stringResource(R.string.journey_ended_at, journeyTime(it, timeUnknown)) } ?: stringResource(R.string.journey_ended),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
                 journey.progress?.let { progress ->
                     val age = ((now - Instant.parse(progress.recordedAt).toEpochMilli()).coerceAtLeast(0) / 60_000)
                     val formattedKm = String.format(Locale.forLanguageTag("vi-VN"), "%.1f", progress.distanceMeters / 1000)
                     val freshnessValue = if (age == 0L) stringResource(R.string.journey_age_under_minute) else stringResource(R.string.journey_age_minutes, age)
+                    HorizontalDivider(color = stitch.hairline)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        StitchMetricTile(
+                        AnVeMetricColumn(
                             label = stringResource(R.string.journey_metric_distance),
                             value = "$formattedKm km",
-                            icon = Icons.Default.Route,
+                            valueColor = stitch.onTransitContainer,
                             modifier = Modifier.weight(1f),
-                            containerColor = colors.surfaceContainerLow,
-                            accentColor = stitch.onTransitContainer,
                         )
-                        StitchMetricTile(
+                        AnVeMetricColumn(
                             label = stringResource(R.string.journey_metric_freshness),
                             value = freshnessValue,
-                            icon = Icons.Default.Schedule,
+                            valueColor = stitch.onLiveContainer,
                             modifier = Modifier.weight(1f),
-                            containerColor = colors.surfaceContainerLow,
-                            accentColor = stitch.onLiveContainer,
                         )
                     }
                 }
@@ -490,11 +471,11 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 if (progress == null) Text(if (active) stringResource(R.string.journey_no_fix_after_start) else stringResource(R.string.journey_pending_ended), style = MaterialTheme.typography.bodyMedium)
                 else {
                     val age = ((now - Instant.parse(progress.recordedAt).toEpochMilli()).coerceAtLeast(0) / 60_000)
-                    JourneyObservation(Icons.Default.LocationOn, stringResource(
+                    JourneyObservation(Icons.Outlined.LocationOn, stringResource(
                         R.string.journey_observation_age,
                         if (age == 0L) stringResource(R.string.journey_age_under_minute) else stringResource(R.string.journey_age_minutes, age),
                     ))
-                    JourneyObservation(Icons.Default.Route, stringResource(R.string.journey_distance_km, String.format(Locale.forLanguageTag("vi-VN"), "%.1f", progress.distanceMeters / 1000)))
+                    JourneyObservation(Icons.Outlined.Route, stringResource(R.string.journey_distance_km, String.format(Locale.forLanguageTag("vi-VN"), "%.1f", progress.distanceMeters / 1000)))
                     Text(stringResource(
                         R.string.journey_accuracy,
                         progress.accuracyMeters.toInt(),
@@ -569,7 +550,7 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                 }
             }
             if (active) {
-                if (!tracking.online) JourneyNotice(stringResource(R.string.journey_offline_end_notice), Icons.Default.WifiOff)
+                if (!tracking.online) JourneyNotice(stringResource(R.string.journey_offline_end_notice), Icons.Outlined.WifiOff)
                 if (!tracking.activelyTracking) JourneyNotice(stringResource(R.string.journey_capture_stopped_notice)) { ink ->
                     JourneyTextAction(stringResource(R.string.journey_open_location), onLocation, color = ink)
                 }
@@ -585,12 +566,12 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = rememberInkOnSurface()),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 ) {
-                    Icon(Icons.Default.Close, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.journey_end_action), style = MaterialTheme.typography.titleMedium)
+                    Icon(Icons.Outlined.Close, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.journey_end_action), style = MaterialTheme.typography.titleMedium)
                 }
                 Text(stringResource(R.string.journey_end_priority_note), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
         } else {
-            if (!tracking.online) JourneyNotice(stringResource(R.string.journey_offline_reload_notice), Icons.Default.WifiOff)
+            if (!tracking.online) JourneyNotice(stringResource(R.string.journey_offline_reload_notice), Icons.Outlined.WifiOff)
             Text(stringResource(R.string.journey_viewer_manages_arrival), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
         }
     }
@@ -604,9 +585,9 @@ private fun JourneyStep(title: String, current: Boolean = false, completed: Bool
         Column(Modifier.width(32.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = when {
-                    completed -> Icons.Default.CheckCircle
-                    current -> Icons.Default.RadioButtonChecked
-                    else -> Icons.Default.RadioButtonUnchecked
+                    completed -> Icons.Outlined.CheckCircle
+                    current -> Icons.Outlined.RadioButtonChecked
+                    else -> Icons.Outlined.RadioButtonUnchecked
                 },
                 contentDescription = null,
                 modifier = Modifier.size(30.dp),
@@ -688,7 +669,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             modifier = Modifier.fillMaxWidth(),
         ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Default.Home,
+                icon = Icons.Outlined.Home,
                 title = stringResource(R.string.journey_step_destination),
                 iconContainerColor = stitch.liveContainer,
                 iconContentColor = stitch.onLiveContainer,
@@ -709,7 +690,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             modifier = Modifier.fillMaxWidth(),
         ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Default.Schedule,
+                icon = Icons.Outlined.Schedule,
                 title = stringResource(R.string.journey_step_expiry),
                 iconContainerColor = stitch.transitContainer,
                 iconContentColor = stitch.onTransitContainer,
@@ -741,7 +722,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             modifier = Modifier.fillMaxWidth(),
         ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Default.Groups,
+                icon = Icons.Outlined.Groups,
                 title = stringResource(R.string.journey_step_viewers),
                 subtitle = stringResource(R.string.journey_viewers_note),
                 iconContainerColor = stitch.liveContainer,
@@ -770,13 +751,11 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             modifier = Modifier.fillMaxWidth().testTag("journey-options"),
         ) {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                StitchCategoryIconBox(
-                    icon = Icons.Default.Settings,
-                    size = 38.dp,
-                    iconSize = 19.dp,
-                    cornerRadius = 13.dp,
-                    containerColor = colors.surfaceContainerLow,
-                    contentColor = colors.primary,
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(20.dp),
                 )
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.journey_options_entry), style = MaterialTheme.typography.titleMedium)
@@ -786,7 +765,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                         if (staleMinutes > 0) stringResource(R.string.journey_option_stale_summary, staleMinutes) else "",
                     ), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 }
-                Icon(Icons.Default.ChevronRight, null)
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null)
             }
         }
         // One blocking condition at a time, highest priority first: capture
@@ -797,7 +776,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
         when {
             !state.consentEnabled || !tracking.activelyTracking ->
                 JourneyNotice(stringResource(R.string.journey_requires_capture)) { ink -> JourneyTextAction(stringResource(R.string.journey_open_location), onLocation, color = ink) }
-            !tracking.online -> JourneyNotice(stringResource(R.string.journey_requires_network), Icons.Default.WifiOff)
+            !tracking.online -> JourneyNotice(stringResource(R.string.journey_requires_network), Icons.Outlined.WifiOff)
             recipients.isEmpty() -> JourneyNotice(stringResource(R.string.journey_no_recipients_selected))
             destination == null -> JourneyNotice(stringResource(R.string.journey_no_destination_selected))
         }
@@ -824,7 +803,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
 // composable stays instead of AnveErrorNotice because the reload action rides
 // inside the notice and needs the matching content color as its ink.
 @Composable
-private fun JourneyNotice(text: String, icon: ImageVector = Icons.Default.Info, failure: Boolean = false, actions: @Composable (Color) -> Unit = {}) {
+private fun JourneyNotice(text: String, icon: ImageVector = Icons.Outlined.Info, failure: Boolean = false, actions: @Composable (Color) -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val dark = isDarkSurface()
@@ -847,13 +826,11 @@ private fun JourneyNotice(text: String, icon: ImageVector = Icons.Default.Info, 
         border = BorderStroke(1.dp, ink.copy(alpha = 0.16f)),
     ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StitchCategoryIconBox(
-                icon = icon,
-                size = 36.dp,
-                iconSize = 18.dp,
-                cornerRadius = 12.dp,
-                containerColor = ink.copy(alpha = 0.12f),
-                contentColor = ink,
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = ink,
+                modifier = Modifier.size(20.dp),
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(text); actions(ink) }
         }

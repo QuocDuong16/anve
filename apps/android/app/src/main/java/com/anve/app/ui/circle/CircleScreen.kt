@@ -21,12 +21,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -77,9 +77,7 @@ import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
@@ -476,14 +474,11 @@ fun CircleContent(
                             shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
-                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.circle_invite_create))
                         }
                     }
-                }
-                item {
-                    StitchReassuranceFooter(quote = stringResource(R.string.circle_footer_quote))
                 }
             }
         }
@@ -569,7 +564,7 @@ private fun CircleSetup(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AnVeSectionHeader(
-                        icon = Icons.Default.Home,
+                        icon = Icons.Outlined.Home,
                         title = stringResource(R.string.circle_create_title),
                     )
                     OutlinedTextField(
@@ -601,7 +596,7 @@ private fun CircleSetup(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AnVeSectionHeader(
-                        icon = Icons.Default.Groups,
+                        icon = Icons.Outlined.Groups,
                         title = stringResource(R.string.circle_join_title),
                         iconContainerColor = colors.secondaryContainer,
                         iconContentColor = colors.onSecondaryContainer,
@@ -632,9 +627,10 @@ private fun CircleSetup(
             }
         }
         item {
-            StitchReassuranceFooter(
-                quote = stringResource(R.string.circle_privacy_note),
-                caption = stringResource(R.string.circle_footer_quote),
+            Text(
+                text = stringResource(R.string.circle_privacy_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
             )
         }
     }
@@ -645,7 +641,7 @@ private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, o
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     OutlinedCard(
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, stitch.hairline),
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
@@ -661,66 +657,50 @@ private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, o
                 },
             ) {
                 AnVeFamilySceneIllustration(
-                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                    modifier = Modifier.fillMaxWidth().height(124.dp),
                 )
             }
-            Column(
+            Row(
                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    StitchCategoryIconBox(
-                        icon = Icons.Default.Home,
-                        size = 44.dp,
-                        containerColor = colors.secondaryContainer,
-                        contentColor = colors.onSecondaryContainer,
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        StitchSemanticBadge(
+                            text = if (isOwner) {
+                                stringResource(R.string.circle_role_owner)
+                            } else {
+                                stringResource(R.string.circle_role_member)
+                            },
+                            kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.NEUTRAL,
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.circle_hearth_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
                     )
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
-                            StitchSemanticBadge(
-                                text = if (isOwner) {
-                                    stringResource(R.string.circle_role_owner)
-                                } else {
-                                    stringResource(R.string.circle_role_member)
-                                },
-                                kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.NEUTRAL,
-                            )
-                        }
-                        Text(
-                            text = stringResource(R.string.circle_hearth_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
-                    TextButton(onClick = onLeave) {
-                        Text(
-                            text = stringResource(
-                                if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
-                            ),
-                            color = colors.error,
-                        )
-                    }
                 }
-                Text(
-                    text = stringResource(R.string.circle_header_warm_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                )
+                TextButton(onClick = onLeave) {
+                    Text(
+                        text = stringResource(
+                            if (isOwner) R.string.circle_dissolve_button else R.string.circle_leave_button,
+                        ),
+                        color = colors.error,
+                    )
+                }
             }
         }
     }
@@ -956,7 +936,7 @@ private fun MemberRow(
                         stringResource(R.string.circle_role_member)
                     },
                     kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.SAFE_HOME,
-                    icon = Icons.Default.CheckCircle,
+                    icon = Icons.Outlined.CheckCircle,
                 )
             }
             if (canRemove) {
@@ -1009,7 +989,7 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Schedule,
+                        imageVector = Icons.Outlined.Schedule,
                         contentDescription = null,
                         tint = colors.onSurfaceVariant,
                         modifier = Modifier.size(16.dp),
@@ -1030,7 +1010,7 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
                     shape = CircleShape,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.invite_share_link))
                 }

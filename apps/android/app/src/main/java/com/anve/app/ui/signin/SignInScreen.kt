@@ -63,9 +63,7 @@ import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
 import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnveErrorNotice
-import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.UiMessage
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -208,11 +206,6 @@ fun SignInContent(
                                     )
                                 }
                             }
-                            StitchSemanticBadge(
-                                text = stringResource(R.string.signin_trust_badge),
-                                kind = StitchBadgeKind.SAFE_HOME,
-                                icon = Icons.Outlined.Lock,
-                            )
                         }
                     }
 

@@ -19,10 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -196,7 +195,7 @@ fun StitchLiveSharingPill(
                             maxLines = 1,
                         )
                         Icon(
-                            imageVector = Icons.Default.ChevronRight,
+                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                         )
@@ -230,84 +229,35 @@ fun StitchLiveSharingPill(
 }
 
 /**
- * Squircle icon container matching Stitch cards across Places, Circle, Account, and UI Kit.
+ * Compact flat metric column displaying a concise label and prominent value
+ * inside cards or detail sections without nested card borders.
  */
 @Composable
-fun StitchCategoryIconBox(
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
-    iconSize: Dp = 22.dp,
-    cornerRadius: Dp = 15.dp,
-    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-) {
-    Surface(
-        shape = RoundedCornerShape(cornerRadius),
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = modifier.size(size),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(iconSize),
-            )
-        }
-    }
-}
-
-/**
- * Single tactile metric tile used inside 2-column and 3-column summary grids.
- */
-@Composable
-fun StitchMetricTile(
+fun AnVeMetricColumn(
     label: String,
     value: String,
-    icon: ImageVector,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
-    accentColor: Color = MaterialTheme.colorScheme.primary,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = containerColor,
-        border = BorderStroke(1.dp, stitch.hairline.copy(alpha = 0.7f)),
+    Column(
         modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(15.dp),
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -379,7 +329,7 @@ fun StitchEmptyStateCard(
     title: String,
     body: String,
     modifier: Modifier = Modifier,
-    icon: ImageVector = Icons.Default.LocationOn,
+    icon: ImageVector = Icons.Outlined.LocationOn,
     illustration: (@Composable () -> Unit)? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
@@ -400,12 +350,11 @@ fun StitchEmptyStateCard(
             if (illustration != null) {
                 illustration()
             } else {
-                StitchCategoryIconBox(
-                    icon = icon,
-                    size = 52.dp,
-                    iconSize = 26.dp,
-                    containerColor = colors.secondaryContainer,
-                    contentColor = colors.onSecondaryContainer,
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(32.dp),
                 )
             }
             Text(
@@ -502,53 +451,8 @@ fun StitchLoadingSkeletonCard(
 }
 
 /**
- * Warm signature footer shown across Stitch Screens 52-58 reinforcing AnVề's
- * voluntary, caring, non-surveillance philosophy.
- */
-@Composable
-fun StitchReassuranceFooter(
-    quote: String,
-    modifier: Modifier = Modifier,
-    caption: String? = null,
-    accentBarColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .width(44.dp)
-                .height(4.dp)
-                .clip(CircleShape)
-                .background(accentBarColor),
-        )
-        Text(
-            text = quote,
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        if (caption != null) {
-            Text(
-                text = caption,
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.outline,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-/**
- * Compact pill-shaped emergency trigger aligned with the Stitch "Warm Tactile
- * Minimalism" SOS treatment (soft blush surface + urgency dot, 48dp touch
- * target via Material3 minimumInteractiveComponentSize).
+ * Compact pill-shaped emergency trigger matching AnVề's calm SOS styling
+ * (soft blush surface + urgency dot, 48dp touch target via Material 3).
  */
 @Composable
 fun AnVeSosPillButton(
@@ -602,7 +506,7 @@ private fun StitchComponentsLightPreview() {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StitchSemanticBadge(stringResource(R.string.stitch_badge_safe_home), StitchBadgeKind.SAFE_HOME, showDot = true)
                 StitchSemanticBadge(stringResource(R.string.stitch_badge_in_transit), StitchBadgeKind.IN_TRANSIT)
-                StitchSemanticBadge(stringResource(R.string.stitch_badge_at_place), StitchBadgeKind.AT_PLACE, icon = Icons.Default.Home)
+                StitchSemanticBadge(stringResource(R.string.stitch_badge_at_place), StitchBadgeKind.AT_PLACE, icon = Icons.Outlined.Home)
             }
             StitchLiveSharingPill(
                 text = stringResource(R.string.home_privacy_live_pill),
@@ -610,22 +514,19 @@ private fun StitchComponentsLightPreview() {
                 actionLabel = stringResource(R.string.tracking_start),
                 onClick = {},
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StitchMetricTile(
-                    label = stringResource(R.string.places_metric_total),
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                AnVeMetricColumn(
+                    label = stringResource(R.string.history_metric_points),
                     value = "4",
-                    icon = Icons.Default.LocationOn,
                     modifier = Modifier.weight(1f),
                 )
-                StitchMetricTile(
+                AnVeMetricColumn(
                     label = stringResource(R.string.history_metric_retention),
                     value = "30",
-                    icon = Icons.Default.Shield,
                     modifier = Modifier.weight(1f),
                 )
             }
             StitchLoadingSkeletonCard()
-            StitchReassuranceFooter(quote = stringResource(R.string.map_reassurance_footer))
         }
     }
 }

@@ -58,8 +58,7 @@
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(253, 249, 242, 0.92);
-      backdrop-filter: blur(10px);
+      background: var(--cream-bg);
       border-bottom: 1px solid var(--outline-var);
     }
 
@@ -207,41 +206,13 @@
       gap: 12px;
     }
 
-    /* Tactile Device Preview Card */
-    .preview-card {
-      background: var(--cream-low);
-      border: 1px solid var(--outline-var);
-      border-radius: 28px;
-      padding: 24px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .preview-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .pill-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: var(--radius-pill);
-      font-size: 0.78rem;
-      font-weight: 600;
-      background: var(--sage);
-      color: var(--mint);
-    }
-
+    /* Hero Illustration */
     .hero-visual {
       margin: 0;
-      border-radius: 18px;
+      border-radius: var(--radius-lg);
       overflow: hidden;
       border: 1px solid var(--outline-var);
-      background: var(--cream-bg);
+      background: var(--cream-low);
       aspect-ratio: 16 / 10;
     }
 
@@ -253,74 +224,24 @@
       object-position: center 68%;
     }
 
-    .mini-card {
-      background: var(--cream-bg);
-      border: 1px solid var(--outline-var);
-      border-radius: 20px;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
+    /* Principles */
+    .principles {
+      padding: 20px 0 36px;
     }
-
-    .mini-card.blush {
-      background: var(--blush);
-      color: var(--blush-ink);
-      border-color: rgba(105, 91, 96, 0.22);
-    }
-
-    .mini-card.rose {
-      background: var(--rose-bg);
-      color: var(--rose-ink);
-      border-color: rgba(158, 62, 86, 0.25);
-    }
-
-    .mini-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin: 0 0 2px;
-    }
-    .mini-sub {
-      font-size: 0.84rem;
-      color: var(--olive-ink);
-      margin: 0;
-    }
-    .mini-card.blush .mini-sub { color: var(--blush-ink); }
-    .mini-card.rose .mini-sub { color: var(--rose-ink); }
-
-    /* Pillars */
-    .pillars {
-      padding: 28px 0 36px;
-    }
-    .pillars-grid {
+    .principles-grid {
+      border-top: 1px solid var(--outline-var);
+      padding-top: 24px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 18px;
+      gap: 24px;
     }
-    .pillar-card {
-      background: var(--cream-low);
-      border: 1px solid var(--outline-var);
-      border-radius: var(--radius-lg);
-      padding: 22px;
-    }
-    .pillar-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: var(--blush);
-      color: var(--forest);
-      display: grid;
-      place-items: center;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-    .pillar-card h3 {
+    .principle-item h3 {
       margin: 0 0 8px;
-      font-size: 1.05rem;
+      font-size: 1.02rem;
       font-weight: 600;
+      color: var(--ink);
     }
-    .pillar-card p {
+    .principle-item p {
       margin: 0;
       font-size: 0.92rem;
       color: var(--olive-ink);
@@ -328,13 +249,13 @@
 
     /* Contact Section */
     .contact-section {
-      padding: 24px 0 64px;
+      padding: 16px 0 56px;
     }
 
     .contact-shell {
       background: var(--cream-low);
       border: 1px solid var(--outline-var);
-      border-radius: 28px;
+      border-radius: var(--radius-lg);
       padding: 32px;
       display: grid;
       grid-template-columns: 0.92fr 1.08fr;
@@ -348,26 +269,30 @@
       font-weight: 700;
     }
     .contact-copy p {
-      margin: 0 0 16px;
+      margin: 0 0 20px;
       color: var(--olive-ink);
       font-size: 0.96rem;
     }
 
-    .channel-list {
+    .meta-list {
       margin: 0;
       padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 10px;
+      border-top: 1px solid var(--outline-var);
     }
-    .channel-item {
-      background: var(--cream-bg);
-      border: 1px solid var(--outline-var);
-      border-radius: var(--radius-md);
-      padding: 12px 14px;
+    .meta-row {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--outline-var);
       font-size: 0.9rem;
     }
-    .channel-item strong { color: var(--forest); }
+    .meta-row dt {
+      font-weight: 600;
+      color: var(--forest);
+      margin-bottom: 2px;
+    }
+    .meta-row dd {
+      margin: 0;
+      color: var(--olive-ink);
+    }
 
     form {
       display: grid;
@@ -467,7 +392,7 @@
     }
 
     @media (max-width: 860px) {
-      .hero-grid, .pillars-grid, .contact-shell, .field-row {
+      .hero-grid, .principles-grid, .contact-shell, .field-row {
         grid-template-columns: 1fr;
       }
       .nav-link { display: none; }
@@ -506,78 +431,48 @@
         <div>
           <span class="testing-badge">
             <span class="dot" aria-hidden="true"></span>
-            Thử nghiệm nội bộ · Warm Tactile Minimalism
+            Thử nghiệm nội bộ
           </span>
-          <h1>An tâm kết nối gia đình dựa trên sự đồng thuận</h1>
+          <h1>Chia sẻ vị trí gia đình trên sự đồng thuận</h1>
           <p class="hero-lead">
-            AnVề giúp các thành viên gia đình chia sẻ vị trí, theo dõi hành trình về nhà và gửi tín hiệu SOS một cách minh bạch, tôn trọng quyền riêng tư và hoàn toàn do người dùng làm chủ.
+            AnVề giúp người thân chia sẻ vị trí, theo dõi hành trình về nhà và gửi SOS khi cần. Mọi quyền chia sẻ đều minh bạch và do chính bạn bật hoặc tắt.
           </p>
           <div class="testing-callout" role="note">
-            AnVe hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.
+            AnVề hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.
           </div>
           <div class="hero-cta-group">
             <a class="btn-pill btn-primary" href="#contact">Để lại thông tin liên hệ</a>
-            <a class="btn-pill btn-secondary" href="#features">Tìm hiểu triết lý AnVề</a>
+            <a class="btn-pill btn-secondary" href="#features">Tìm hiểu nguyên tắc</a>
           </div>
         </div>
 
-        <aside class="preview-card" aria-label="Xem trước trạng thái ứng dụng AnVề">
-          <div class="preview-header">
-            <strong style="font-size: 1rem;">Gia đình AnVề</strong>
-            <span class="pill-tag">Đang chia sẻ tự nguyện</span>
-          </div>
-          <figure class="hero-visual">
-            <img
-              src="/assets/hero-family-welcome.webp"
-              alt="Minh họa mái nhà ấm áp AnVề cùng gia đình kết nối an tâm"
-              width="1024"
-              height="1024"
-              loading="eager"
-              decoding="async"
-            />
-          </figure>
-          <div class="mini-card">
-            <div>
-              <p class="mini-title">Minh Anh · Vừa cập nhật</p>
-              <p class="mini-sub">Gần điểm an toàn Nhà · Độ chính xác 12m</p>
-            </div>
-            <span class="dot" aria-hidden="true"></span>
-          </div>
-          <div class="mini-card blush">
-            <div>
-              <p class="mini-title">Hành trình về nhà</p>
-              <p class="mini-sub">Đang di chuyển · Dự kiến đến nơi 18:15</p>
-            </div>
-            <strong style="font-size: 0.85rem;">Chủ động</strong>
-          </div>
-          <div class="mini-card rose">
-            <div>
-              <p class="mini-title">SOS Khẩn cấp</p>
-              <p class="mini-sub">Gọi nhanh 113 / 114 / 115 &amp; báo người thân tin cậy</p>
-            </div>
-            <strong style="font-size: 0.85rem;">Sẵn sàng</strong>
-          </div>
-        </aside>
+        <figure class="hero-visual">
+          <img
+            src="/assets/hero-family-welcome.webp"
+            alt="Minh họa ứng dụng AnVề kết nối gia đình"
+            width="1024"
+            height="1024"
+            loading="eager"
+            decoding="async"
+          />
+        </figure>
       </div>
     </section>
 
-    <section class="pillars" id="features">
+    <section class="principles" id="features">
       <div class="container">
-        <div class="pillars-grid">
-          <article class="pillar-card">
-            <div class="pillar-icon" aria-hidden="true">1</div>
+        <div class="principles-grid">
+          <article class="principle-item">
             <h3>Chia sẻ có đồng thuận rõ ràng</h3>
-            <p>Không theo dõi ngầm. Mọi trạng thái bật/tắt chia sẻ, đối tượng xem và quyền truy cập đều minh bạch ở cả thiết bị lẫn máy chủ.</p>
+            <p>Không theo dõi ngầm. Trạng thái bật/tắt chia sẻ và danh sách người xem luôn minh bạch trên cả thiết bị lẫn máy chủ.</p>
           </article>
-          <article class="pillar-card">
-            <div class="pillar-icon" aria-hidden="true">2</div>
+          <article class="principle-item">
             <h3>Hành trình &amp; Điểm an toàn</h3>
-            <p>Tạo vòng tròn gia đình riêng tư, lưu các địa điểm quen thuộc và thông báo hành trình để cả nhà an tâm mà không làm phiền.</p>
+            <p>Lưu địa điểm quen thuộc và chia sẻ chặng đường về nhà theo thời gian bạn chọn, tự động kết thúc khi hết hạn.</p>
           </article>
-          <article class="pillar-card">
-            <div class="pillar-icon" aria-hidden="true">3</div>
-            <h3>Ngôn ngữ bình tĩnh, rõ ràng</h3>
-            <p>Phân biệt rạch ròi giữa dữ liệu chậm/mất kết nối với tình huống khẩn cấp; SOS luôn nổi bật dịu mắt và đáng tin cậy.</p>
+          <article class="principle-item">
+            <h3>SOS bình tĩnh, rõ ràng</h3>
+            <p>Phân biệt rạch ròi giữa mất kết nối tạm thời với tình huống khẩn cấp; mở nhanh 113, 114, 115 và báo người thân tin cậy.</p>
           </article>
         </div>
       </div>
@@ -587,15 +482,24 @@
       <div class="container">
         <div class="contact-shell">
           <div class="contact-copy">
-            <h2>Kết nối hợp tác &amp; đăng ký thử nghiệm</h2>
+            <h2>Hợp tác &amp; đăng ký thử nghiệm</h2>
             <p>
-              AnVe hiện đang trong giai đoạn phát triển và thử nghiệm nội bộ (Internal Testing). Vui lòng để lại thông tin nếu bạn muốn hợp tác hoặc trải nghiệm sớm.
+              Gửi thông tin cho nhóm phát triển AnVề nếu gia đình bạn muốn dùng thử bản Android hoặc trao đổi hợp tác kỹ thuật.
             </p>
-            <ul class="channel-list">
-              <li class="channel-item"><strong>Trạng thái hiện tại:</strong> Phát triển &amp; Internal Testing trên Android + Go/PostGIS Backend</li>
-              <li class="channel-item"><strong>Đối tượng phù hợp:</strong> Gia đình thử nghiệm sớm, đối tác công nghệ, chuyên gia bảo mật &amp; trải nghiệm người dùng</li>
-              <li class="channel-item"><strong>Phản hồi:</strong> Thông tin của bạn được lưu trữ an toàn và gửi trực tiếp tới nhóm phát triển AnVề</li>
-            </ul>
+            <dl class="meta-list">
+              <div class="meta-row">
+                <dt>Trạng thái hiện tại</dt>
+                <dd>Phát triển &amp; thử nghiệm nội bộ trên Android cùng máy chủ Go/PostGIS</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Đối tượng phù hợp</dt>
+                <dd>Gia đình dùng thử sớm, đối tác công nghệ, chuyên gia bảo mật &amp; trải nghiệm người dùng</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Tiếp nhận phản hồi</dt>
+                <dd>Thông tin của bạn được chuyển trực tiếp tới nhóm phát triển AnVề</dd>
+              </div>
+            </dl>
           </div>
 
           <form id="contact-form" novalidate>
@@ -640,8 +544,8 @@
 
   <footer>
     <div class="container footer-inner">
-      <span>&copy; 2026 AnVề · Family Safety &amp; Consensual Location Sharing</span>
-      <span>Giao diện đồng bộ Stitch — Warm Tactile Minimalism</span>
+      <span>&copy; 2026 AnVề · Chia sẻ vị trí gia đình trên sự đồng thuận</span>
+      <span>Phiên bản thử nghiệm nội bộ</span>
     </div>
   </footer>
 
@@ -748,7 +652,7 @@
             });
             showFeedback(
               'success',
-              'Cảm ơn bạn đã quan tâm đến AnVề! Thông tin liên hệ đã được ghi nhận và chuyển tới đội ngũ phát triển.'
+              'Đã ghi nhận thông tin. Nhóm phát triển AnVề sẽ phản hồi qua email bạn cung cấp.'
             );
             return;
           }

@@ -31,16 +31,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -106,12 +105,10 @@ import com.anve.app.tracking.diagnostics.diagnoseTracking
 import com.anve.app.tracking.diagnostics.diagnosticAgeSeconds
 import com.anve.app.ui.brand.AnVeDiagnosticsIllustration
 import com.anve.app.ui.brand.AnVeIllustratedBanner
+import com.anve.app.ui.common.AnVeMetricColumn
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchCategoryIconBox
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchMetricTile
-import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -266,8 +263,8 @@ fun DiagnosticsContent(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.diag_title)) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
-                actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, stringResource(R.string.diag_refresh_content_desc)) } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } },
+                actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, stringResource(R.string.diag_refresh_content_desc)) } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = appBarBackground, titleContentColor = appBarForeground, navigationIconContentColor = appBarForeground, actionIconContentColor = appBarForeground),
             )
         },
@@ -317,50 +314,30 @@ fun DiagnosticsContent(
                                 modifier = Modifier.fillMaxWidth().height(92.dp),
                             )
                         }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            StitchCategoryIconBox(
-                                icon = Icons.Default.LocationOn,
-                                size = 48.dp,
-                                iconSize = 24.dp,
-                                cornerRadius = 16.dp,
-                                containerColor = if (diagnosis.attention) stitch.transitContainer else stitch.liveContainer,
-                                contentColor = if (diagnosis.attention) stitch.onTransitContainer else stitch.onLiveContainer,
-                            )
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(diagnosis.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                                Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-                            }
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(diagnosis.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                            Text(diagnosis.explanation, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                         }
+                        HorizontalDivider(color = stitch.hairline)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            StitchMetricTile(
+                            AnVeMetricColumn(
                                 label = stringResource(R.string.diag_metric_fix_age),
                                 value = ageLabel(status.lastFixAtMillis, nowMillis),
-                                icon = Icons.Default.LocationOn,
                                 modifier = Modifier.weight(1f),
-                                containerColor = colors.surfaceContainerLow,
-                                accentColor = colors.primary,
                             )
-                            StitchMetricTile(
+                            AnVeMetricColumn(
                                 label = stringResource(R.string.diag_metric_queue_count),
                                 value = details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading),
-                                icon = Icons.Default.Sync,
+                                valueColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.onTransitContainer else colors.onSurface,
                                 modifier = Modifier.weight(1f),
-                                containerColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.transitContainer else colors.surfaceContainerLow,
-                                accentColor = if ((details?.queue?.queuedPoints ?: 0) > 0) stitch.onTransitContainer else colors.primary,
                             )
-                            StitchMetricTile(
+                            AnVeMetricColumn(
                                 label = stringResource(R.string.diag_metric_upload_age),
                                 value = ageLabel(status.lastUploadAtMillis, nowMillis),
-                                icon = Icons.Default.Schedule,
                                 modifier = Modifier.weight(1f),
-                                containerColor = colors.surfaceContainerLow,
-                                accentColor = colors.primary,
                             )
                         }
                     }
@@ -395,15 +372,15 @@ fun DiagnosticsContent(
             if (actionError != null) item { AnveErrorNotice(actionError) }
             if (state.readFailed) item { AnveErrorNotice(stringResource(R.string.diag_details_failed)) }
             if (!showDetails) {
-                item { DiagnosticsSection(stringResource(R.string.diag_section_capture), Icons.Default.LocationOn) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_capture), Icons.Outlined.LocationOn) {
                     DiagnosticRow(stringResource(R.string.diag_row_service), if (status.activelyTracking) stringResource(R.string.diag_value_running) else if (status.serviceRunning) stringResource(R.string.diag_value_capture_unconfirmed) else stringResource(R.string.diag_value_stopped))
                     DiagnosticRow(stringResource(R.string.diag_row_last_fix), ageLabel(status.lastFixAtMillis, nowMillis))
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_sync), Icons.Default.Sync) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_sync), Icons.Outlined.Sync) {
                     DiagnosticRow(stringResource(R.string.diag_row_queued), details?.queue?.queuedPoints?.let { stringResource(R.string.diag_points_count, it) } ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_last_upload), ageLabel(status.lastUploadAtMillis, nowMillis))
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_permissions), Icons.Default.Security) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_permissions), Icons.Outlined.Security) {
                     DiagnosticRow(stringResource(R.string.diag_row_location_permission), when (status.permission) {
                         LocationPermissionState.GRANTED_PRECISE -> stringResource(R.string.diag_value_precise)
                         LocationPermissionState.GRANTED_APPROXIMATE -> stringResource(R.string.diag_value_approximate)
@@ -416,7 +393,7 @@ fun DiagnosticsContent(
                     if (status.batterySaver || !status.backgroundPermissionGranted) Text(stringResource(R.string.diag_battery_limit_notice), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
                 } }
             } else {
-                item { DiagnosticsSection(stringResource(R.string.diag_section_queue), Icons.Default.Sync) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_queue), Icons.Outlined.Sync) {
                     DiagnosticRow(stringResource(R.string.diag_row_queued), details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_oldest), ageLabel(details?.queue?.oldestCreatedAtMillis, nowMillis))
                     DiagnosticRow(stringResource(R.string.diag_row_attempts), details?.queue?.attempts?.toString() ?: unknownLabel(state.loading))
@@ -433,14 +410,14 @@ fun DiagnosticsContent(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
                     ) { Text(stringResource(R.string.diag_retry_sync)) }
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_notifications), Icons.Default.Security) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_notifications), Icons.Outlined.Security) {
                     DiagnosticRow(stringResource(R.string.diag_row_notification_permission), yesNo(status.notificationsGranted, stringResource(R.string.diag_value_granted), stringResource(R.string.diag_value_not_granted)))
                     DiagnosticRow(stringResource(R.string.diag_row_push_registered), details?.pushRegistered?.let { yesNo(it, stringResource(R.string.diag_value_registered), stringResource(R.string.diag_value_not_registered)) } ?: unknownLabel(state.loading || state.checkingPush))
                     DiagnosticRow(stringResource(R.string.diag_row_push_configured), details?.pushConfigured?.let { yesNo(it, stringResource(R.string.diag_value_configured), stringResource(R.string.diag_value_not_configured)) } ?: unknownLabel(state.loading || state.checkingPush))
                     DiagnosticRow(stringResource(R.string.diag_row_sos_pending), details?.sosPending?.toString() ?: unknownLabel(state.loading))
                     Text(stringResource(R.string.diag_push_notice), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_device), Icons.Default.Security) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_device), Icons.Outlined.Security) {
                     DiagnosticRow(stringResource(R.string.diag_row_battery_optimization), details?.batteryOptimizationExempt?.let { yesNo(it, stringResource(R.string.diag_value_yes), stringResource(R.string.diag_value_no)) } ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_version), BuildConfig.VERSION_NAME)
                     DiagnosticRow(stringResource(R.string.diag_row_api), Build.VERSION.SDK_INT.toString())
@@ -460,13 +437,10 @@ fun DiagnosticsContent(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 4.dp, vertical = 4.dp),
                         colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
                     ) {
-                        StitchCategoryIconBox(
-                            icon = Icons.Default.Description,
-                            size = 38.dp,
-                            iconSize = 19.dp,
-                            cornerRadius = 13.dp,
-                            containerColor = LocalStitchColors.current.liveContainer,
-                            contentColor = LocalStitchColors.current.onLiveContainer,
+                        Icon(
+                            imageVector = Icons.Outlined.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
@@ -475,9 +449,6 @@ fun DiagnosticsContent(
                         }
                     }
                 }
-            }
-            item {
-                StitchReassuranceFooter(quote = stringResource(R.string.diag_footer))
             }
         }
     }
@@ -492,7 +463,7 @@ private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: 
         colors = CardDefaults.outlinedCardColors(containerColor = background, contentColor = foreground),
     ) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
-            val icon = if (networkIssue) Icons.Default.WifiOff else Icons.Default.Info
+            val icon = if (networkIssue) Icons.Outlined.WifiOff else Icons.Outlined.Info
             val action: @Composable (Modifier) -> Unit = { modifier ->
                 OutlinedButton(
                     onClick = onAction,
@@ -501,36 +472,22 @@ private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: 
                     border = BorderStroke(1.dp, foreground),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = foreground),
                 ) {
-                    Icon(Icons.Default.Settings, null, Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Settings, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(actionLabel)
                 }
             }
             if (maxWidth < 340.dp || LocalDensity.current.fontScale > 1.15f) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StitchCategoryIconBox(
-                            icon = icon,
-                            size = 38.dp,
-                            iconSize = 20.dp,
-                            cornerRadius = 13.dp,
-                            containerColor = foreground.copy(alpha = 0.14f),
-                            contentColor = foreground,
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                         Text(title, style = MaterialTheme.typography.titleMedium)
                     }
                     action(Modifier.fillMaxWidth())
                 }
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StitchCategoryIconBox(
-                        icon = icon,
-                        size = 38.dp,
-                        iconSize = 20.dp,
-                        cornerRadius = 13.dp,
-                        containerColor = foreground.copy(alpha = 0.14f),
-                        contentColor = foreground,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                     Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     action(Modifier)
                 }
@@ -544,7 +501,7 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
     val stitch = LocalStitchColors.current
     val colors = MaterialTheme.colorScheme
     OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, stitch.hairline),
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
     ) {
@@ -554,16 +511,14 @@ private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Compo
                     .fillMaxWidth()
                     .background(colors.surfaceContainerLow)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                StitchCategoryIconBox(
-                    icon = icon,
-                    size = 34.dp,
-                    iconSize = 18.dp,
-                    cornerRadius = 12.dp,
-                    containerColor = stitch.liveContainer,
-                    contentColor = stitch.onLiveContainer,
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(18.dp),
                 )
                 // TalkBack's heading navigation is the fastest way through
                 // this, the app's longest screen: marking each section title

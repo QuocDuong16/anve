@@ -121,32 +121,32 @@ fun AnveErrorNotice(
     }
 }
 
-/** Consistent warm card header with an icon badge, heading semantics, and optional status pill. */
+/** Consistent section header with heading semantics, optional subtitle, and optional status pill. */
 @Composable
 fun AnVeSectionHeader(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     badgeText: String? = null,
     badgeContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     badgeContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
-    iconContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    iconContentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    @Suppress("UNUSED_PARAMETER") iconContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    iconContentColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StitchCategoryIconBox(
-            icon = icon,
-            size = 42.dp,
-            iconSize = 20.dp,
-            cornerRadius = 14.dp,
-            containerColor = iconContainerColor,
-            contentColor = iconContentColor,
-        )
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconContentColor,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
