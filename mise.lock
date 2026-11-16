@@ -145,44 +145,44 @@ url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/6
 provenance = "github-attestations"
 
 [[tools.gradle]]
-version = "9.6.0"
+version = "9.9.1"
 backend = "aqua:gradle/gradle-distributions"
-specifiers = ["9.6.0"]
+specifiers = ["9.9.1"]
 
 [tools.gradle."platforms.linux-arm64"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [tools.gradle."platforms.linux-arm64-musl"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [tools.gradle."platforms.linux-x64"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [tools.gradle."platforms.linux-x64-musl"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [tools.gradle."platforms.macos-arm64"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [tools.gradle."platforms.macos-x64"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [tools.gradle."platforms.windows-x64"]
-checksum = "sha256:bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01"
-url = "https://github.com/gradle/gradle-distributions/releases/download/v9.6.0/gradle-9.6.0-bin.zip"
-url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/451669088"
+checksum = "sha256:d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+url = "https://github.com/gradle/gradle-distributions/releases/download/v9.9.1/gradle-9.9.1-bin.zip"
+url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/732145113"
 
 [[tools.java]]
 version = "temurin-21.0.12+8.0.LTS"
