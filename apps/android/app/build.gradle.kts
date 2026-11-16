@@ -189,6 +189,7 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.play.app.update.ktx)
 
     // Network: Retrofit + Moshi reflection (ADR 0003 — no compiler plugins,
     // compatible with AGP 9's built-in Kotlin).

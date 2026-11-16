@@ -75,6 +75,15 @@
       },
       {
         "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "activity",
+        "metadataNames": [],
+        "name": "com.google.android.play.core.common.PlayCoreDialogWrapperActivity"
+      },
+      {
+        "actions": [],
         "authorities": "${applicationId}.androidx-startup",
         "categories": [],
         "dataFilters": [],
@@ -538,6 +547,9 @@
     "com.google.android.gms:play-services-stats:17.0.2",
     "com.google.android.gms:play-services-tasks:18.4.0",
     "com.google.android.libraries.identity.googleid:googleid:1.2.1",
+    "com.google.android.play:app-update-ktx:2.1.0",
+    "com.google.android.play:app-update:2.1.0",
+    "com.google.android.play:core-common:2.0.3",
     "com.google.errorprone:error_prone_annotations:2.26.0",
     "com.google.firebase:firebase-annotations:18.0.0",
     "com.google.firebase:firebase-bom:35.1.0",

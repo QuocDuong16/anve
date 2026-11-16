@@ -1,0 +1,6 @@
+{
+  "surface": "apps/android/app/src/main/java/com/anve/app/ui/AnVeApp.kt",
+  "variant": "light",
+  "mode": "operate",
+  "prompt": "Native Android Material 3 AlertDialog for blocking Play In-App Update in Warm Tactile Minimalism light palette (#F7F3EC card, #3D602F primary pill, #1C1C18 ink)."
+}

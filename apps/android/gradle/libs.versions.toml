@@ -30,6 +30,7 @@ ksp = "2.3.12"
 playServicesLocation = "21.4.0"
 mapsCompose = "9.0.1"
 firebaseBom = "35.1.0"
+playAppUpdate = "2.1.0"
 junit = "4.13.2"
 androidxTestJunit = "1.3.0"
 espressoCore = "3.7.0"
@@ -62,6 +63,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+play-app-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "playAppUpdate" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }

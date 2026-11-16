@@ -987,4 +987,13 @@
     <string name="diag_metric_fix_age">Mẫu vị trí</string>
     <string name="diag_metric_queue_count">Hàng đợi</string>
     <string name="diag_metric_upload_age">Đồng bộ</string>
+
+    <string name="app_update_title">Cần cập nhật AnVề</string>
+    <string name="app_update_body">Đã có phiên bản mới trên Google Play. Cập nhật để tiếp tục sử dụng; nếu chọn Để sau, ứng dụng sẽ đóng.</string>
+    <string name="app_update_confirm">Cập nhật</string>
+    <string name="app_update_later">Để sau</string>
+    <string name="app_update_launching">Đang mở Google Play…</string>
+    <string name="app_update_launch_error">Không thể mở cập nhật trực tiếp từ Google Play. Bạn có thể thử lại hoặc mở trang ứng dụng trên Google Play.</string>
+    <string name="app_update_open_play">Mở Google Play</string>
+    <string name="app_update_play_unavailable">Không tìm thấy Google Play trên thiết bị này.</string>
 </resources>

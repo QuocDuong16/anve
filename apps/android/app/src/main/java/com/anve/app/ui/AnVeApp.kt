@@ -19,6 +19,8 @@ import com.anve.app.data.sos.IncomingPush
 import com.anve.app.ui.home.HomeScreen
 import com.anve.app.ui.signin.SignInScreen
 import com.anve.app.ui.splash.SplashScreen
+import com.anve.app.ui.update.AppUpdateUiState
+import com.anve.app.ui.update.ForceUpdateDialog
 import kotlinx.coroutines.delay
 
 private object Routes {
@@ -33,7 +35,15 @@ private object Routes {
  * the session read is fast and cached.
  */
 @Composable
-fun AnVeApp(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
+fun AnVeApp(
+    container: AppContainer,
+    incomingPush: IncomingPush? = null,
+    onPushConsumed: () -> Unit = {},
+    updateState: AppUpdateUiState = AppUpdateUiState(),
+    onStartAppUpdate: () -> Unit = {},
+    onOpenPlayStore: () -> Unit = {},
+    onExitForDeferredUpdate: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val session by container.authRepository.session.collectAsStateWithLifecycle(initialValue = null)
     val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
@@ -79,6 +89,14 @@ fun AnVeApp(container: AppContainer, incomingPush: IncomingPush? = null, onPushC
             composable(Routes.HOME) {
                 HomeScreen(container = container, incomingPush = incomingPush, onPushConsumed = onPushConsumed)
             }
+        }
+        if (updateState.modalVisible) {
+            ForceUpdateDialog(
+                state = updateState,
+                onConfirmUpdate = onStartAppUpdate,
+                onOpenPlayStore = onOpenPlayStore,
+                onExitApp = onExitForDeferredUpdate,
+            )
         }
     }
 }
