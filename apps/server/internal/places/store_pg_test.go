@@ -508,6 +508,77 @@ func TestPGWorkerRechecksOrderAfterWaitingForInFlightBackfill(t *testing.T) {
 	require.True(t, later.Equal(observed))
 }
 
+func TestPGSharedFamilyPlacesIncludeExistingAndJoiningMembers(t *testing.T) {
+	f := newPlaceFixture(t)
+	created, err := f.places.Create(f.ctx, f.owner.ID, Input{
+		Name:             "Nhà",
+		Latitude:         10.76,
+		Longitude:        106.66,
+		RadiusM:          150,
+		SharedWithCircle: true,
+	})
+	require.NoError(t, err)
+	require.True(t, created.SharedWithCircle)
+
+	// Existing member sees the family place immediately without activating monitoring.
+	viewerPlaces, err := f.places.List(f.ctx, f.viewer.ID)
+	require.NoError(t, err)
+	require.Len(t, viewerPlaces, 1)
+	require.Equal(t, created.ID, viewerPlaces[0].ID)
+	require.True(t, viewerPlaces[0].SharedWithCircle)
+	_, err = f.places.Monitor(f.ctx, f.viewer.ID, created.ID)
+	require.ErrorIs(t, err, ErrNotFound, "sharing a family place must never enable monitoring automatically")
+
+	// A new member joining later receives access automatically via the membership trigger.
+	lateJoiner, _, err := f.auth.DevSignIn(f.ctx, "late-joiner@example.com", "Late", auth.DeviceRegistration{ClientDeviceID: "late-device"})
+	require.NoError(t, err)
+	invite, err := f.circles.CreateInvite(f.ctx, f.owner.ID, f.circleID, nil)
+	require.NoError(t, err)
+	_, _, err = f.circles.Redeem(f.ctx, lateJoiner.ID, invite.Code)
+	require.NoError(t, err)
+
+	latePlaces, err := f.places.List(f.ctx, lateJoiner.ID)
+	require.NoError(t, err)
+	require.Len(t, latePlaces, 1)
+	require.Equal(t, created.ID, latePlaces[0].ID)
+
+	// Revoking one member clears the whole-family flag truthfully while keeping other members.
+	require.NoError(t, f.places.SetAccess(f.ctx, f.owner.ID, created.ID, lateJoiner.ID, false))
+	ownerPlaces, err := f.places.List(f.ctx, f.owner.ID)
+	require.NoError(t, err)
+	require.False(t, ownerPlaces[0].SharedWithCircle)
+	latePlacesAfterRevoke, err := f.places.List(f.ctx, lateJoiner.ID)
+	require.NoError(t, err)
+	require.Empty(t, latePlacesAfterRevoke)
+
+	// Turning SharedWithCircle back on and then off revokes family-wide access.
+	updatedOn, err := f.places.Update(f.ctx, f.owner.ID, created.ID, Input{
+		Name:             "Nhà",
+		Latitude:         10.76,
+		Longitude:        106.66,
+		RadiusM:          150,
+		SharedWithCircle: true,
+	})
+	require.NoError(t, err)
+	require.True(t, updatedOn.SharedWithCircle)
+	latePlacesRestored, err := f.places.List(f.ctx, lateJoiner.ID)
+	require.NoError(t, err)
+	require.Len(t, latePlacesRestored, 1)
+
+	updatedOff, err := f.places.Update(f.ctx, f.owner.ID, created.ID, Input{
+		Name:             "Nhà",
+		Latitude:         10.76,
+		Longitude:        106.66,
+		RadiusM:          150,
+		SharedWithCircle: false,
+	})
+	require.NoError(t, err)
+	require.False(t, updatedOff.SharedWithCircle)
+	viewerPlacesAfterOff, err := f.places.List(f.ctx, f.viewer.ID)
+	require.NoError(t, err)
+	require.Empty(t, viewerPlacesAfterOff)
+}
+
 func waitForPlaceLock(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	deadline := time.NewTimer(5 * time.Second)

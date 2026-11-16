@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.anve.app.R
 import com.anve.app.data.api.HistoryPointDto
 import com.anve.app.data.api.ApiException
+import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.location.HistoryMember
 import com.anve.app.data.location.HistoryDataSource
+import com.anve.app.data.location.PlacesDataSource
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -28,6 +30,7 @@ data class HistoryState(
     val endMinute: Int = 1440,
     val members: List<HistoryMember> = emptyList(),
     val points: List<HistoryPointDto> = emptyList(),
+    val places: List<PlaceDto> = emptyList(),
     val nextCursor: String? = null,
     val retentionDays: Int? = null,
     val effectiveRetentionDays: Int? = null,
@@ -59,6 +62,7 @@ fun timeInterval(day: LocalDate, zone: ZoneId, startMinute: Int, endMinute: Int)
 
 class HistoryViewModel(
     private val repository: HistoryDataSource,
+    private val placesDataSource: PlacesDataSource? = null,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(HistoryState())
     val state = mutable.asStateFlow()
@@ -125,12 +129,14 @@ class HistoryViewModel(
                 val page = repository.page(owner, member, from.toString(), to.toString(), cursor)
                 val members = if (append) current.members else repository.members(owner)
                 val retention = if (append) null else repository.retention(owner)
+                val places = if (append) current.places else runCatching { placesDataSource?.places(owner).orEmpty() }.getOrElse { current.places }
                 if (generation != token || mutable.value.owner != owner) return@launch
                 mutable.update {
                     it.copy(
                         points = if (append) it.points + page.points else page.points,
                         nextCursor = page.nextCursor,
                         members = members,
+                        places = places,
                         retentionDays = retention?.days ?: current.retentionDays,
                         effectiveRetentionDays = retention?.effectiveDays ?: current.effectiveRetentionDays,
                         loading = false,
@@ -226,9 +232,12 @@ class HistoryViewModel(
     }
 
     companion object {
-        fun factory(repository: HistoryDataSource): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun factory(
+            repository: HistoryDataSource,
+            placesDataSource: PlacesDataSource? = null,
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = HistoryViewModel(repository) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = HistoryViewModel(repository, placesDataSource) as T
         }
     }
 }

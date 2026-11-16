@@ -123,6 +123,20 @@ class PlacesViewModel(
         repository.share(owner, id, member, enabled)
     }
 
+    fun setSharedWithCircle(place: PlaceDto, shared: Boolean) = mutate { owner ->
+        repository.update(
+            owner,
+            place.id,
+            PlaceInputDto(
+                name = place.name,
+                latitude = place.latitude,
+                longitude = place.longitude,
+                radiusMeters = place.radiusMeters,
+                sharedWithCircle = shared,
+            ),
+        )
+    }
+
     fun configure(id: String, recipients: Set<String>) = mutate { owner ->
         repository.configure(owner, id, recipients.sorted())
     }

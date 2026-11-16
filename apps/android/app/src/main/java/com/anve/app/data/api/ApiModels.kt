@@ -227,6 +227,7 @@ data class PlaceInputDto(
     @Json(name = "latitude") val latitude: Double,
     @Json(name = "longitude") val longitude: Double,
     @Json(name = "radiusMeters") val radiusMeters: Double,
+    @Json(name = "sharedWithCircle") val sharedWithCircle: Boolean = false,
 )
 
 @JsonClass(generateAdapter = false)
@@ -240,6 +241,7 @@ data class PlaceDto(
     @Json(name = "radiusMeters") val radiusMeters: Double,
     @Json(name = "createdAt") val createdAt: String,
     @Json(name = "updatedAt") val updatedAt: String,
+    @Json(name = "sharedWithCircle") val sharedWithCircle: Boolean = false,
 )
 
 @JsonClass(generateAdapter = false)

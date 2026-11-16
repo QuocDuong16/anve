@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,8 +42,12 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.OpenInFull
+import androidx.compose.material.icons.outlined.PanToolAlt
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Radar
 import androidx.compose.material.icons.outlined.Refresh
@@ -55,6 +61,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -86,6 +93,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -97,6 +106,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -123,8 +134,12 @@ import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
+import com.anve.app.ui.map.MapOverlayPillButton
+import com.anve.app.ui.map.rememberAnVeMapProperties
+import com.anve.app.ui.map.rememberPlaceMarkerIcon
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
@@ -468,6 +483,12 @@ internal fun PlacesContent(
                                             text = label,
                                             kind = if (isMine) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.AT_PLACE,
                                         )
+                                        if (place.sharedWithCircle) {
+                                            StitchSemanticBadge(
+                                                text = stringResource(R.string.places_family_shared_badge),
+                                                kind = StitchBadgeKind.AT_PLACE,
+                                            )
+                                        }
                                     }
                                     Text(
                                         stringResource(
@@ -583,6 +604,24 @@ internal fun PlacesContent(
                                         stringResource(R.string.places_share_notice),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
+                                    ListItem(
+                                        modifier = Modifier.toggleable(
+                                            value = selected.sharedWithCircle,
+                                            enabled = !state.pending && !state.loading,
+                                            role = Role.Switch,
+                                            onValueChange = { vm.setSharedWithCircle(selected, it) },
+                                        ),
+                                        headlineContent = { Text(stringResource(R.string.places_family_share_detail_title)) },
+                                        supportingContent = { Text(stringResource(R.string.places_family_share_detail_subtitle)) },
+                                        trailingContent = {
+                                            Switch(
+                                                checked = selected.sharedWithCircle,
+                                                enabled = !state.pending && !state.loading,
+                                                onCheckedChange = null,
+                                            )
+                                        },
+                                    )
+                                    HorizontalDivider(color = stitch.hairline)
                                     if (otherMembers.isEmpty()) {
                                         Text(
                                             text = stringResource(R.string.places_share_empty_members),
@@ -890,19 +929,165 @@ private fun PlacesNotesCard(expanded: Boolean, onToggle: () -> Unit) {
 @Composable
 private fun PlacePreview(place: PlaceDto) {
     val point = LatLng(place.latitude, place.longitude)
-    val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(point, 14f) }
-    // View-only preview of the selected place inside the details LazyColumn:
-    // there is nothing to operate on, so every gesture is off — a one-finger
-    // pan or a drag-zoom would swallow the list's scroll instead of moving
-    // this map.
-    GoogleMap(
-        modifier = Modifier.fillMaxWidth().height(200.dp),
-        cameraPositionState = camera,
-        uiSettings = MapUiSettings(scrollGesturesEnabled = false, zoomGesturesEnabled = false),
+    val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(point, 14.5f) }
+    val stitch = LocalStitchColors.current
+    val mapProperties = rememberAnVeMapProperties()
+    val placeIcon = rememberPlaceMarkerIcon(place.name)
+    var fullScreenOpen by rememberSaveable(place.id) { mutableStateOf(false) }
+
+    OutlinedCard(
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, stitch.hairline),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        val marker = remember(place.id, place.latitude, place.longitude) { MarkerState(position = point) }
-        Marker(state = marker, title = place.name)
-        Circle(center = point, radius = place.radiusMeters, strokeColor = MaterialTheme.colorScheme.primary, fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(216.dp)
+                .clip(RoundedCornerShape(22.dp)),
+        ) {
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = camera,
+                properties = mapProperties,
+                uiSettings = MapUiSettings(
+                    scrollGesturesEnabled = false,
+                    zoomGesturesEnabled = false,
+                    myLocationButtonEnabled = false,
+                    mapToolbarEnabled = false,
+                    compassEnabled = false,
+                ),
+            ) {
+                val marker = remember(place.id, place.latitude, place.longitude) { MarkerState(position = point) }
+                Circle(
+                    center = point,
+                    radius = place.radiusMeters,
+                    strokeColor = MaterialTheme.colorScheme.primary,
+                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
+                )
+                Marker(
+                    state = marker,
+                    title = place.name,
+                    icon = placeIcon,
+                    anchor = Offset(0.5f, 0.5f),
+                )
+            }
+            MapOverlayPillButton(
+                text = stringResource(R.string.map_fullscreen_open),
+                icon = Icons.Outlined.OpenInFull,
+                onClick = { fullScreenOpen = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp),
+            )
+        }
+    }
+
+    if (fullScreenOpen) {
+        Dialog(
+            onDismissRequest = { fullScreenOpen = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
+        ) {
+            val colors = MaterialTheme.colorScheme
+            val scope = rememberCoroutineScope()
+            val fullCamera = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(point, 15f)
+            }
+            Surface(modifier = Modifier.fillMaxSize(), color = colors.background) {
+                Box(Modifier.fillMaxSize()) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = fullCamera,
+                        properties = mapProperties,
+                        uiSettings = MapUiSettings(
+                            scrollGesturesEnabled = true,
+                            zoomGesturesEnabled = true,
+                            myLocationButtonEnabled = false,
+                            mapToolbarEnabled = false,
+                            compassEnabled = false,
+                        ),
+                    ) {
+                        val marker = remember(place.id, place.latitude, place.longitude) { MarkerState(position = point) }
+                        Circle(
+                            center = point,
+                            radius = place.radiusMeters,
+                            strokeColor = colors.primary,
+                            fillColor = colors.primary.copy(alpha = 0.14f),
+                        )
+                        Marker(
+                            state = marker,
+                            title = place.name,
+                            icon = placeIcon,
+                            anchor = Offset(0.5f, 0.5f),
+                        )
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = stitch.cardTactile.copy(alpha = 0.94f),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .fillMaxWidth()
+                            .anveContentWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            IconButton(onClick = { fullScreenOpen = false }) {
+                                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.map_fullscreen_close))
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = place.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = stringResource(R.string.places_radius, place.radiusMeters.toInt()),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                    Surface(
+                        onClick = {
+                            scope.launch {
+                                fullCamera.animate(CameraUpdateFactory.newLatLngZoom(point, 15f))
+                            }
+                        },
+                        shape = CircleShape,
+                        color = stitch.cardTactile.copy(alpha = 0.94f),
+                        contentColor = colors.primary,
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .navigationBarsPadding()
+                            .padding(16.dp)
+                            .size(48.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.places_map_preview_title), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -919,6 +1104,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
     var latitude by rememberSaveable(place?.id) { mutableStateOf(place?.latitude?.toString() ?: "") }
     var longitude by rememberSaveable(place?.id) { mutableStateOf(place?.longitude?.toString() ?: "") }
     var radius by rememberSaveable(place?.id) { mutableStateOf(place?.radiusMeters ?: 150.0) }
+    var sharedWithCircle by rememberSaveable(place?.id) { mutableStateOf(place?.sharedWithCircle ?: false) }
     var confirmDiscard by rememberSaveable(place?.id) { mutableStateOf(false) }
     val lat = latitude.toDoubleOrNull()
     val lon = longitude.toDoubleOrNull()
@@ -933,7 +1119,8 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
     val hasChanges = name != (place?.name ?: "") ||
         latitude != (place?.latitude?.toString() ?: "") ||
         longitude != (place?.longitude?.toString() ?: "") ||
-        radius != (place?.radiusMeters ?: 150.0)
+        radius != (place?.radiusMeters ?: 150.0) ||
+        sharedWithCircle != (place?.sharedWithCircle ?: false)
     val requestBack = {
         when {
             pending -> onCancel()
@@ -1038,6 +1225,8 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
     var showManualCoords by rememberSaveable(place?.id) {
         mutableStateOf(BuildConfig.MAPS_API_KEY.isBlank())
     }
+    var inlineMapPanEnabled by remember(place?.id) { mutableStateOf(false) }
+    var fullScreenPickerOpen by rememberSaveable(place?.id) { mutableStateOf(false) }
     val presetNames = listOf(
         stringResource(R.string.places_preset_home),
         stringResource(R.string.places_preset_school),
@@ -1073,7 +1262,11 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Button(
-                                onClick = { if (valid && lat != null && lon != null) onSave(PlaceInputDto(name.trim(), lat, lon, radius)) },
+                                onClick = {
+                                    if (valid && lat != null && lon != null) {
+                                        onSave(PlaceInputDto(name.trim(), lat, lon, radius, sharedWithCircle))
+                                    }
+                                },
                                 enabled = valid && !pending,
                                 shape = CircleShape,
                                 modifier = Modifier.heightIn(min = 48.dp),
@@ -1098,7 +1291,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                 modifier = Modifier
                     .fillMaxWidth()
                     .anveContentWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState(), enabled = !inlineMapPanEnabled)
                     .imePadding()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1170,30 +1363,92 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-                            // The editor's map sits inside a scrolling form, so pan
-                            // would swallow the form's scroll. Tap-to-select stays wired
-                            // through onMapClick, and the position can still be set with
-                            // the current-location action and the coordinate fields.
-                            GoogleMap(
-                                modifier = Modifier.fillMaxWidth().height(240.dp),
-                                cameraPositionState = camera,
-                                uiSettings = MapUiSettings(scrollGesturesEnabled = false),
-                                onMapClick = {
-                                    if (!pending) {
-                                        latitude = it.latitude.toString()
-                                        longitude = it.longitude.toString()
-                                    }
-                                },
+                            val mapProperties = rememberAnVeMapProperties()
+                            val placeIcon = rememberPlaceMarkerIcon(name.ifBlank { stringResource(R.string.places_title) })
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(248.dp)
+                                    .clip(RoundedCornerShape(18.dp)),
                             ) {
-                                point?.let {
-                                    val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
-                                    Marker(state = marker, title = name)
-                                    Circle(
-                                        center = it,
-                                        radius = radius,
-                                        strokeColor = MaterialTheme.colorScheme.primary,
-                                        fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
+                                GoogleMap(
+                                    modifier = Modifier.fillMaxSize(),
+                                    cameraPositionState = camera,
+                                    properties = mapProperties,
+                                    uiSettings = MapUiSettings(
+                                        scrollGesturesEnabled = inlineMapPanEnabled,
+                                        zoomGesturesEnabled = true,
+                                        myLocationButtonEnabled = false,
+                                        mapToolbarEnabled = false,
+                                        compassEnabled = false,
+                                    ),
+                                    onMapClick = {
+                                        if (!pending) {
+                                            latitude = it.latitude.toString()
+                                            longitude = it.longitude.toString()
+                                        }
+                                    },
+                                ) {
+                                    point?.let {
+                                        val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
+                                        Circle(
+                                            center = it,
+                                            radius = radius,
+                                            strokeColor = MaterialTheme.colorScheme.primary,
+                                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                        )
+                                        Marker(
+                                            state = marker,
+                                            title = name.ifBlank { stringResource(R.string.places_title) },
+                                            icon = placeIcon,
+                                            anchor = Offset(0.5f, 0.5f),
+                                        )
+                                    }
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.TopCenter)
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    MapOverlayPillButton(
+                                        text = stringResource(
+                                            if (inlineMapPanEnabled) R.string.map_pan_lock else R.string.map_pan_unlock,
+                                        ),
+                                        icon = if (inlineMapPanEnabled) Icons.Outlined.Lock else Icons.Outlined.PanToolAlt,
+                                        active = inlineMapPanEnabled,
+                                        onClick = { inlineMapPanEnabled = !inlineMapPanEnabled },
                                     )
+                                    MapOverlayPillButton(
+                                        text = stringResource(R.string.map_fullscreen_open),
+                                        icon = Icons.Outlined.OpenInFull,
+                                        onClick = {
+                                            inlineMapPanEnabled = false
+                                            fullScreenPickerOpen = true
+                                        },
+                                    )
+                                }
+                                if (inlineMapPanEnabled) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = stitch.cardTactile.copy(alpha = 0.94f),
+                                        border = BorderStroke(1.dp, stitch.hairline),
+                                        shadowElevation = 3.dp,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.map_pan_unlocked_hint),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        )
+                                    }
                                 }
                             }
                             Text(
@@ -1274,6 +1529,47 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                    }
+                }
+                OutlinedCard(
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = sharedWithCircle,
+                                enabled = !pending,
+                                role = Role.Switch,
+                                onValueChange = { sharedWithCircle = it },
+                            )
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.places_family_share_toggle_title),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                text = stringResource(R.string.places_family_share_toggle_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = sharedWithCircle,
+                            enabled = !pending,
+                            onCheckedChange = null,
+                        )
                     }
                 }
                 val coordsToggleState = stringResource(
@@ -1381,6 +1677,199 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
             ) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+    if (fullScreenPickerOpen && BuildConfig.MAPS_API_KEY.isNotBlank()) {
+        PlaceFullScreenPickerDialog(
+            name = name.ifBlank { stringResource(R.string.places_title) },
+            point = point,
+            radius = radius,
+            pending = pending,
+            onPickPoint = { picked ->
+                if (!pending) {
+                    latitude = picked.latitude.toString()
+                    longitude = picked.longitude.toString()
+                }
+            },
+            onRadiusChange = { radius = it },
+            onDismiss = {
+                point?.let {
+                    camera.position = CameraPosition.fromLatLngZoom(it, 15f)
+                }
+                fullScreenPickerOpen = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlaceFullScreenPickerDialog(
+    name: String,
+    point: LatLng?,
+    radius: Double,
+    pending: Boolean,
+    onPickPoint: (LatLng) -> Unit,
+    onRadiusChange: (Double) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val colors = MaterialTheme.colorScheme
+        val stitch = LocalStitchColors.current
+        val scope = rememberCoroutineScope()
+        val fullCamera = rememberCameraPositionState {
+            position = if (point == null) {
+                CameraPosition.fromLatLngZoom(LatLng(16.0, 107.5), 5f)
+            } else {
+                CameraPosition.fromLatLngZoom(point, 15f)
+            }
+        }
+        val placeIcon = rememberPlaceMarkerIcon(name)
+        Surface(modifier = Modifier.fillMaxSize(), color = colors.background) {
+            Box(Modifier.fillMaxSize()) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = fullCamera,
+                    properties = rememberAnVeMapProperties(),
+                    uiSettings = MapUiSettings(
+                        scrollGesturesEnabled = true,
+                        zoomGesturesEnabled = true,
+                        myLocationButtonEnabled = false,
+                        mapToolbarEnabled = false,
+                        compassEnabled = false,
+                    ),
+                    onMapClick = { clicked ->
+                        if (!pending) onPickPoint(clicked)
+                    },
+                ) {
+                    point?.let {
+                        val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
+                        Circle(
+                            center = it,
+                            radius = radius,
+                            strokeColor = colors.primary,
+                            fillColor = colors.primary.copy(alpha = 0.14f),
+                        )
+                        Marker(
+                            state = marker,
+                            title = name,
+                            icon = placeIcon,
+                            anchor = Offset(0.5f, 0.5f),
+                        )
+                    }
+                }
+
+                // Floating top bar with hint and Done action.
+                Surface(
+                    shape = CircleShape,
+                    color = stitch.cardTactile.copy(alpha = 0.94f),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .fillMaxWidth()
+                        .anveContentWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.map_fullscreen_close))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.places_map_picker_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = stringResource(R.string.places_map_picker_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Button(
+                            onClick = onDismiss,
+                            shape = CircleShape,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.places_map_picker_done))
+                        }
+                    }
+                }
+
+                if (point != null) {
+                    Surface(
+                        onClick = {
+                            scope.launch {
+                                fullCamera.animate(CameraUpdateFactory.newLatLngZoom(point, 15.5f))
+                            }
+                        },
+                        shape = CircleShape,
+                        color = stitch.cardTactile.copy(alpha = 0.94f),
+                        contentColor = colors.primary,
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .navigationBarsPadding()
+                            .padding(end = 16.dp, bottom = 148.dp)
+                            .size(48.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.places_map_preview_title), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = stitch.cardTactile,
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .fillMaxWidth()
+                        .anveContentWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.places_radius_walk,
+                                radius.toInt(),
+                                maxOf(1, (radius / 80.0).roundToInt()),
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Slider(
+                            value = radius.toFloat(),
+                            onValueChange = { onRadiusChange(it.toDouble()) },
+                            valueRange = 50f..5000f,
+                            enabled = !pending,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 private const val SEARCH_DEBOUNCE_MS = 400L

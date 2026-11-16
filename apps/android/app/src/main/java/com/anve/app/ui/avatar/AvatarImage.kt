@@ -2,11 +2,13 @@ package com.anve.app.ui.avatar
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -22,13 +24,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
 import com.anve.app.data.avatar.AvatarGateway
@@ -108,5 +113,61 @@ fun AvatarFrame(
         }
         // Recovery controls retain their full target outside the photo's circular clip.
         overlay()
+    }
+}
+
+/**
+ * Compact 48dp circular account entry displaying the signed-in user's avatar
+ * (or person icon fallback before profile metadata loads).
+ */
+@Composable
+fun AccountAvatarButton(
+    ownerId: String?,
+    imageId: String?,
+    displayName: String,
+    gateway: AvatarGateway?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    avatarSize: Dp = 40.dp,
+    elevated: Boolean = false,
+) {
+    val accountLabel = stringResource(R.string.tab_account)
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = accountLabel },
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = stitch.cardTactile.copy(alpha = if (elevated) 0.94f else 1f),
+            border = BorderStroke(1.dp, stitch.hairline),
+            shadowElevation = if (elevated) 4.dp else 0.dp,
+            modifier = Modifier.size(avatarSize),
+        ) {
+            if (ownerId != null && gateway != null && (imageId != null || displayName.isNotBlank())) {
+                AvatarImage(
+                    owner = ownerId,
+                    subject = ownerId,
+                    imageId = imageId,
+                    name = displayName,
+                    gateway = gateway,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = null,
+                        tint = colors.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
     }
 }

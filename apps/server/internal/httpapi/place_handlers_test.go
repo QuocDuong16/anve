@@ -15,18 +15,21 @@ import (
 
 func TestPlaceBodyRejectsMissingFieldsAndAcceptsZeroCoordinates(t *testing.T) {
 	for _, tc := range []struct {
-		body string
-		ok   bool
+		body       string
+		ok         bool
+		wantShared bool
 	}{
-		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150}`, true},
-		{`{"name":"Home","longitude":0,"radiusMeters":150}`, false},
-		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150,"extra":true}`, false},
-		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150} {}`, false},
+		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150}`, true, false},
+		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150,"sharedWithCircle":true}`, true, true},
+		{`{"name":"Home","longitude":0,"radiusMeters":150}`, false, false},
+		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150,"extra":true}`, false, false},
+		{`{"name":"Home","latitude":0,"longitude":0,"radiusMeters":150} {}`, false, false},
 	} {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/places", strings.NewReader(tc.body))
-		_, err := decodePlace(httptest.NewRecorder(), req)
+		in, err := decodePlace(httptest.NewRecorder(), req)
 		if tc.ok {
 			require.NoError(t, err)
+			require.Equal(t, tc.wantShared, in.SharedWithCircle)
 		} else {
 			require.ErrorIs(t, err, places.ErrInvalid)
 		}

@@ -1,0 +1,77 @@
+[
+  {
+    "featureType": "poi.business",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "poi.medical",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "poi.attraction",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "poi.government",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "poi.place_of_worship",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "poi.sports_complex",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "transit.station",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "elementType": "geometry",
+    "stylers": [{ "color": "#161A15" }]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#9CA594" }]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{ "color": "#141410" }]
+  },
+  {
+    "featureType": "landscape.man_made",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#1B2019" }]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#1E2D1B" }]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#13222A" }]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#20271E" }]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#293226" }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#333D2E" }]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#BCC4B3" }]
+  }
+]

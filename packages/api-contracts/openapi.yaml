@@ -975,7 +975,7 @@ paths:
         "401": {description: Invalid session or active-account mismatch.}
     post:
       operationId: createPlace
-      summary: Create a place without automatically sharing it
+      summary: Create a place (optionally shared as a family place without enabling monitoring)
       tags: [places]
       security: [{bearerAuth: []}]
       parameters:
@@ -2632,6 +2632,10 @@ components:
         latitude: {type: number, format: double, minimum: -90, maximum: 90}
         longitude: {type: number, format: double, minimum: -180, maximum: 180}
         radiusMeters: {type: number, format: double, minimum: 50, maximum: 5000}
+        sharedWithCircle:
+          type: boolean
+          default: false
+          description: Optional explicit creator opt-in to share this place definition with current and newly joined active Circle members. Never activates monitoring or location sharing.
     Place:
       allOf:
         - {$ref: "#/components/schemas/PlaceInput"}

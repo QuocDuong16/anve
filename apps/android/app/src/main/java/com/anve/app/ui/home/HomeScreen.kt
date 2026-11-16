@@ -109,8 +109,10 @@ import com.anve.app.R
 import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.DeviceSessionDto
 import com.anve.app.data.api.UserDto
+import com.anve.app.data.avatar.AvatarGateway
 import com.anve.app.data.sos.IncomingPush
 import com.anve.app.data.sos.pushDestination
+import com.anve.app.ui.avatar.AccountAvatarButton
 import com.anve.app.ui.avatar.AvatarEditorHost
 import com.anve.app.ui.avatar.AvatarImage
 import com.anve.app.ui.brand.AnVeAccountShieldIllustration
@@ -244,6 +246,24 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     var circleAudienceStepHidden by rememberSaveable { mutableStateOf(false) }
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val invitation by container.invitationInbox.invitation.collectAsStateWithLifecycle()
+    var headerDisplayName by rememberSaveable(session?.userId) { mutableStateOf("") }
+    var headerAvatarId by rememberSaveable(session?.userId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(session?.userId, secondaryPage) {
+        val ownerId = session?.userId
+        if (ownerId == null) {
+            headerDisplayName = ""
+            headerAvatarId = null
+            return@LaunchedEffect
+        }
+        if (secondaryPage == null) {
+            runCatching { container.authRepository.me() }.onSuccess { me ->
+                if (me.id == ownerId) headerDisplayName = me.displayName
+            }
+            runCatching { container.avatarRepository.state(ownerId) }.onSuccess { state ->
+                headerAvatarId = state.imageId
+            }
+        }
+    }
     LaunchedEffect(invitation?.id, invitation?.owner, session?.userId) {
         if (invitation != null && invitation?.owner == session?.userId && session?.userId != null) {
             showDiagnostics = false
@@ -373,6 +393,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
     BackHandler(enabled = secondaryPage != null, onBack = returnFromSecondaryPage)
     val stitch = LocalStitchColors.current
     val editingPlaceFullScreen = placeEditorOpen && secondaryPage == null && tab == HomeTab.PLACES
+    val isMapEdgeToEdge = secondaryPage == null && tab == HomeTab.MAP
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val useRail = maxWidth >= 600.dp && !editingPlaceFullScreen
         val navBarColors = NavigationBarItemDefaults.colors(
@@ -439,10 +460,11 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
             }
             Scaffold(
                 modifier = Modifier.weight(1f),
-                contentWindowInsets = if (useRail) {
-                    WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
-                } else {
-                    WindowInsets.safeDrawing
+                contentWindowInsets = when {
+                    useRail && isMapEdgeToEdge -> WindowInsets.safeDrawing.only(WindowInsetsSides.End + WindowInsetsSides.Bottom)
+                    useRail -> WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
+                    isMapEdgeToEdge -> WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                    else -> WindowInsets.safeDrawing
                 },
                 // Hosts the push deep-link snackbar plus one-shot results posted from
                 // tab content (Nhóm) that has no Scaffold of its own; screens owning
@@ -495,7 +517,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                     }
                 },
                 floatingActionButton = {
-                    if (secondaryPage != HomeSecondaryPage.SOS && !editingPlaceFullScreen) {
+                    if (secondaryPage != HomeSecondaryPage.SOS && !editingPlaceFullScreen && !isMapEdgeToEdge) {
                         AnVeSosPillButton(
                             onClick = {
                                 sosReturnPage = secondaryPage
@@ -538,9 +560,13 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                         HomeSecondaryPage.SOS -> SosScreen(container = container, eventId = selectedSos)
                         null -> Column(Modifier.fillMaxSize()) {
                             val trackingStatus by container.trackingManager.status.collectAsStateWithLifecycle()
-                            if (!editingPlaceFullScreen) {
+                            if (!editingPlaceFullScreen && !isMapEdgeToEdge) {
                                 AnVeShellHeader(
                                     sharing = trackingStatus.activelyTracking,
+                                    ownerId = session?.userId,
+                                    avatarId = headerAvatarId,
+                                    displayName = headerDisplayName,
+                                    avatarGateway = container.avatarRepository,
                                     onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
                                     onOpenSharing = {
                                         sharingReturnPage = null
@@ -552,6 +578,15 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 when (tab) {
                                     HomeTab.MAP -> LiveMapScreen(
                                         container = container,
+                                        trackingStatus = trackingStatus,
+                                        userDisplayName = headerDisplayName,
+                                        userAvatarId = headerAvatarId,
+                                        onOpenAccount = { secondaryPage = HomeSecondaryPage.ACCOUNT },
+                                        onOpenSos = {
+                                            sosReturnPage = null
+                                            selectedSos = null
+                                            secondaryPage = HomeSecondaryPage.SOS
+                                        },
                                         onOpenLocation = {
                                             sharingReturnPage = null
                                             secondaryPage = HomeSecondaryPage.SHARING
@@ -607,99 +642,64 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
 }
 
 @Composable
-private fun AnVeShellHeader(sharing: Boolean, onOpenAccount: () -> Unit, onOpenSharing: () -> Unit) {
+private fun AnVeShellHeader(
+    sharing: Boolean,
+    ownerId: String?,
+    avatarId: String?,
+    displayName: String,
+    avatarGateway: AvatarGateway,
+    onOpenAccount: () -> Unit,
+    onOpenSharing: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
-    val compactOrLargeFont = LocalDensity.current.fontScale > 1.35f
     Surface(
         color = colors.background,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Column(modifier = Modifier.fillMaxWidth().anveContentWidth()) {
-                BoxWithConstraints(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    val stackAccountButton = maxWidth < 340.dp || compactOrLargeFont
-                    val brandRow: @Composable (Modifier) -> Unit = { rowModifier ->
-                        Row(
-                            modifier = rowModifier,
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = colors.primaryContainer.copy(alpha = 0.55f),
-                                border = BorderStroke(1.dp, stitch.hairline),
-                                modifier = Modifier.size(42.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    AnVeBrandMark(Modifier.size(34.dp))
-                                }
-                            }
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.home_brand_name),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = stringResource(R.string.home_brand_tagline),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.onSurfaceVariant,
-                                    maxLines = if (stackAccountButton) 2 else 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.primaryContainer.copy(alpha = 0.55f),
+                        border = BorderStroke(1.dp, stitch.hairline),
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            AnVeBrandMark(Modifier.size(30.dp))
                         }
                     }
-                    val accountButton: @Composable (Modifier) -> Unit = { btnModifier ->
-                        FilledTonalButton(
-                            onClick = onOpenAccount,
-                            shape = CircleShape,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = colors.secondaryContainer,
-                                contentColor = colors.onSecondaryContainer,
-                            ),
-                            modifier = btnModifier.heightIn(min = 48.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(R.string.tab_account),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    if (stackAccountButton) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            brandRow(Modifier.fillMaxWidth())
-                            accountButton(Modifier.align(Alignment.End))
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            brandRow(Modifier.weight(1f))
-                            accountButton(Modifier)
-                        }
-                    }
+                    Text(
+                        text = stringResource(R.string.home_brand_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    AccountAvatarButton(
+                        ownerId = ownerId,
+                        imageId = avatarId,
+                        displayName = displayName,
+                        gateway = avatarGateway,
+                        onClick = onOpenAccount,
+                        avatarSize = 38.dp,
+                    )
                 }
-                // Full-width pinned Stitch status pill keeping sharing toggle
-                // discoverable across every primary tab without crowding the nav bar.
+                // Compact sharing pill keeps consent/GPS status accessible across
+                // non-map tabs without taking up vertical header space with a slogan.
                 StitchLiveSharingPill(
-                    text = stringResource(if (sharing) R.string.sharing_chip_on else R.string.sharing_chip_off),
+                    text = stringResource(if (sharing) R.string.sharing_compact_on else R.string.sharing_compact_off),
                     active = sharing,
                     onClick = onOpenSharing,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                 )
             }
             HorizontalDivider(color = stitch.hairline)

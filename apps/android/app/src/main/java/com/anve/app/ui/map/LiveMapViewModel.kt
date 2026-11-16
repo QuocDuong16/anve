@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.anve.app.R
+import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.data.location.AudienceMutationOutcome
+import com.anve.app.data.location.PlacesDataSource
 import com.anve.app.data.location.SharingManagementSnapshot
 import com.anve.app.data.location.SharingManagementDataSource
 import com.anve.app.data.location.VisibleLocationSnapshot
@@ -21,6 +23,7 @@ import kotlinx.coroutines.launch
 data class LiveMapUiState(
     val ownerId: String? = null,
     val snapshot: VisibleLocationSnapshot? = null,
+    val places: List<PlaceDto> = emptyList(),
     val sharing: SharingManagementSnapshot? = null,
     val sharingLoading: Boolean = false,
     val sharingOpen: Boolean = false,
@@ -31,6 +34,7 @@ data class LiveMapUiState(
 
 class LiveMapViewModel internal constructor(
     private val repository: SharingManagementDataSource,
+    private val placesDataSource: PlacesDataSource? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LiveMapUiState())
     val state: StateFlow<LiveMapUiState> = _state.asStateFlow()
@@ -44,6 +48,7 @@ class LiveMapViewModel internal constructor(
     private var sharingGeneration = 0L
     private var locationSnapshotGeneration = 0L
     private var sharingLoadJob: Job? = null
+    private var placesLoadJob: Job? = null
 
     fun ownerChanged(ownerId: String?) {
         if (_state.value.ownerId == ownerId) return
@@ -52,6 +57,8 @@ class LiveMapViewModel internal constructor(
         locationSnapshotGeneration++
         sharingLoadJob?.cancel()
         sharingLoadJob = null
+        placesLoadJob?.cancel()
+        placesLoadJob = null
         val oldJobs = synchronized(mutationLock) {
             val jobs = mutationJobs.values.toList()
             mutationJobs.clear()
@@ -63,7 +70,10 @@ class LiveMapViewModel internal constructor(
         unresolvedDesired.clear()
         outcomeMessageRes.clear()
         _state.value = LiveMapUiState(ownerId = ownerId)
-        if (ownerId != null) loadSharing(ownerId)
+        if (ownerId != null) {
+            loadSharing(ownerId)
+            loadPlaces(ownerId)
+        }
     }
 
     fun beginLocationSnapshotCollection(expectedOwnerId: String): Long {
@@ -243,6 +253,24 @@ class LiveMapViewModel internal constructor(
         job.start()
     }
 
+    private fun loadPlaces(ownerId: String) {
+        val source = placesDataSource ?: return
+        val ownerToken = ownerGeneration
+        placesLoadJob?.cancel()
+        placesLoadJob = viewModelScope.launch {
+            try {
+                val loaded = source.places(ownerId)
+                if (isOwnerCurrent(ownerId, ownerToken)) {
+                    _state.update { it.copy(places = loaded) }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Saved family places enrich the map; failure does not block live locations.
+            }
+        }
+    }
+
     private fun isOwnerCurrent(ownerId: String, ownerToken: Long): Boolean =
         _state.value.ownerId == ownerId && ownerGeneration == ownerToken
 
@@ -272,12 +300,15 @@ class LiveMapViewModel internal constructor(
     }
 
     companion object {
-        fun factory(repository: SharingManagementDataSource): ViewModelProvider.Factory =
+        fun factory(
+            repository: SharingManagementDataSource,
+            placesDataSource: PlacesDataSource? = null,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     require(modelClass.isAssignableFrom(LiveMapViewModel::class.java))
-                    return LiveMapViewModel(repository) as T
+                    return LiveMapViewModel(repository, placesDataSource) as T
                 }
             }
     }

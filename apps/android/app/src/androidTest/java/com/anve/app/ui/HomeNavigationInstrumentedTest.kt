@@ -32,11 +32,16 @@ class HomeNavigationInstrumentedTest {
         compose.onNodeWithText("Chia sẻ của tôi").assertIsDisplayed()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
-        compose.onNodeWithText("Tài khoản").performClick()
+        compose.onNodeWithContentDescription("Tài khoản").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
         compose.onNodeWithContentDescription("SOS").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
+        compose.onNodeWithText("Nhà").performClick()
+        compose.onNodeWithText("Nhịp sống gia đình").assertIsDisplayed()
+        compose.onNodeWithText("Hành trình").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Tài khoản").assertIsDisplayed()
+        captureNativeFixture("map-home-${if (dark) "dark-font130" else "light"}")
     }
 }

@@ -20,10 +20,11 @@ var (
 
 // Input is the complete place geometry; updating it invalidates monitors.
 type Input struct {
-	Name      string  `json:"name"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	RadiusM   float64 `json:"radiusMeters"`
+	Name             string  `json:"name"`
+	Latitude         float64 `json:"latitude"`
+	Longitude        float64 `json:"longitude"`
+	RadiusM          float64 `json:"radiusMeters"`
+	SharedWithCircle bool    `json:"sharedWithCircle"`
 }
 
 func (i *Input) validate() bool {

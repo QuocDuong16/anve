@@ -1,9 +1,14 @@
 package com.anve.app.ui.map
 
 import com.anve.app.R
+import com.anve.app.data.api.PlaceDto
+import com.anve.app.data.api.PlaceEventDto
+import com.anve.app.data.api.PlaceInputDto
+import com.anve.app.data.api.PlaceMonitorDto
 import com.anve.app.data.api.VisibleLocationDto
 import com.anve.app.data.location.AudienceMember
 import com.anve.app.data.location.AudienceMutationOutcome
+import com.anve.app.data.location.PlacesDataSource
 import com.anve.app.data.location.SharingManagementDataSource
 import com.anve.app.data.location.SharingManagementSnapshot
 import com.anve.app.data.location.VisibleLocationSnapshot
@@ -300,6 +305,59 @@ class LiveMapViewModelTest {
         assertFalse(viewModel.state.value.sharing!!.members.single { it.userId == "viewer-a" }.canViewLocation)
         assertEquals(R.string.map_error_grant_rejected, viewModel.state.value.sharingErrorRes)
         assertFalse("viewer-a" in viewModel.state.value.unresolvedViewerIds)
+    }
+
+    @Test
+    fun `places load for current owner and stale places cannot overwrite after owner change`() {
+        val oldPlacesGate = CompletableDeferred<List<PlaceDto>>()
+        val homePlace = PlaceDto(
+            id = "p1",
+            ownerId = "owner-a",
+            circleId = "c1",
+            name = "Nhà",
+            latitude = 10.76,
+            longitude = 106.66,
+            radiusMeters = 150.0,
+            createdAt = "2026-11-16T00:00:00Z",
+            updatedAt = "2026-11-16T00:00:00Z",
+        )
+        val schoolPlace = PlaceDto(
+            id = "p2",
+            ownerId = "owner-b",
+            circleId = "c2",
+            name = "Trường học",
+            latitude = 10.77,
+            longitude = 106.67,
+            radiusMeters = 200.0,
+            createdAt = "2026-11-16T00:00:00Z",
+            updatedAt = "2026-11-16T00:00:00Z",
+        )
+        val placesSource = object : FakePlacesDataSource() {
+            override suspend fun places(owner: String): List<PlaceDto> =
+                if (owner == "owner-a") oldPlacesGate.await() else listOf(schoolPlace)
+        }
+        val vm = LiveMapViewModel(repository, placesSource)
+        vm.ownerChanged("owner-a")
+        vm.ownerChanged("owner-b")
+        oldPlacesGate.complete(listOf(homePlace))
+
+        assertEquals(listOf(schoolPlace), vm.state.value.places)
+        vm.ownerChanged(null)
+    }
+
+    private open class FakePlacesDataSource : PlacesDataSource {
+        override suspend fun places(owner: String): List<PlaceDto> = emptyList()
+        override suspend fun events(owner: String): List<PlaceEventDto> = emptyList()
+        override suspend fun members(owner: String) = SharingManagementSnapshot()
+        override suspend fun access(owner: String, place: String): List<String> = emptyList()
+        override suspend fun monitor(owner: String, place: String): PlaceMonitorDto? = null
+        override suspend fun eligibleRecipients(owner: String, place: String): List<String> = emptyList()
+        override suspend fun create(owner: String, input: PlaceInputDto): PlaceDto = error("unused")
+        override suspend fun update(owner: String, place: String, input: PlaceInputDto): PlaceDto = error("unused")
+        override suspend fun delete(owner: String, place: String) = Unit
+        override suspend fun share(owner: String, place: String, member: String, enabled: Boolean) = Unit
+        override suspend fun configure(owner: String, place: String, recipients: List<String>): PlaceMonitorDto = error("unused")
+        override suspend fun stop(owner: String, place: String) = Unit
     }
 
     private fun member(id: String, granted: Boolean = false) = AudienceMember(

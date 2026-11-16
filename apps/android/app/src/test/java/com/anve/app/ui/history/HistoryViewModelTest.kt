@@ -5,8 +5,14 @@ import com.anve.app.R
 import com.anve.app.data.api.HistoryRetentionDto
 import com.anve.app.data.api.HistoryPageDto
 import com.anve.app.data.api.HistoryPointDto
+import com.anve.app.data.api.PlaceDto
+import com.anve.app.data.api.PlaceEventDto
+import com.anve.app.data.api.PlaceInputDto
+import com.anve.app.data.api.PlaceMonitorDto
 import com.anve.app.data.location.HistoryMember
 import com.anve.app.data.location.HistoryDataSource
+import com.anve.app.data.location.PlacesDataSource
+import com.anve.app.data.location.SharingManagementSnapshot
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.CompletableDeferred
@@ -173,7 +179,49 @@ class HistoryViewModelTest {
         assertEquals(null, vm.retentionConfirmation.value)
     }
 
+    @Test fun `loads family places for owner and clears on account switch`() {
+        val fakePlaces = FakePlaces(
+            listOf(
+                PlaceDto(
+                    id = "place-1",
+                    ownerId = "a",
+                    circleId = "c-1",
+                    name = "Nhà",
+                    latitude = 10.77,
+                    longitude = 106.69,
+                    radiusMeters = 150.0,
+                    sharedWithCircle = true,
+                    createdAt = "2026-10-29T00:00:00Z",
+                    updatedAt = "2026-10-29T00:00:00Z",
+                ),
+            ),
+        )
+        val withPlaces = HistoryViewModel(source, fakePlaces)
+        try {
+            withPlaces.activate("a")
+            assertEquals(listOf("Nhà"), withPlaces.state.value.places.map { it.name })
+            withPlaces.activate("b")
+            assertTrue(withPlaces.state.value.places.isEmpty())
+        } finally {
+            withPlaces.activate(null)
+        }
+    }
+
     private fun point(id: String, timestamp: String, lat: Double) = HistoryPointDto(id, lat, 106.0, 10.0, timestamp, timestamp, "fused", false, false, "epoch")
+    private class FakePlaces(private val forOwnerA: List<PlaceDto>) : PlacesDataSource {
+        override suspend fun places(owner: String): List<PlaceDto> = if (owner == "a") forOwnerA else emptyList()
+        override suspend fun events(owner: String): List<PlaceEventDto> = emptyList()
+        override suspend fun members(owner: String) = SharingManagementSnapshot()
+        override suspend fun access(owner: String, place: String): List<String> = emptyList()
+        override suspend fun monitor(owner: String, place: String): PlaceMonitorDto? = null
+        override suspend fun eligibleRecipients(owner: String, place: String): List<String> = emptyList()
+        override suspend fun create(owner: String, input: PlaceInputDto): PlaceDto = error("unused")
+        override suspend fun update(owner: String, place: String, input: PlaceInputDto): PlaceDto = error("unused")
+        override suspend fun delete(owner: String, place: String) = Unit
+        override suspend fun share(owner: String, place: String, member: String, enabled: Boolean) = Unit
+        override suspend fun configure(owner: String, place: String, recipients: List<String>): PlaceMonitorDto = error("unused")
+        override suspend fun stop(owner: String, place: String) = Unit
+    }
     private class FakeHistory : HistoryDataSource {
         var failDelete = false
         var failRetention = false

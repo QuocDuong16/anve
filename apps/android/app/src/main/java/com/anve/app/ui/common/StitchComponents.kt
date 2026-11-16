@@ -1,5 +1,10 @@
 package com.anve.app.ui.common
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,7 +112,25 @@ fun StitchLivePulseDot(
     color: Color = if (active) LocalStitchColors.current.livePulse else MaterialTheme.colorScheme.outline,
     haloSize: Dp = 18.dp,
     coreSize: Dp = 8.dp,
+    breathing: Boolean = active,
 ) {
+    val haloAlpha = if (active && breathing) {
+        val transition = rememberInfiniteTransition(label = "pulseDot")
+        val alpha by transition.animateFloat(
+            initialValue = 0.16f,
+            targetValue = 0.40f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1600),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "pulseAlpha",
+        )
+        alpha
+    } else if (active) {
+        0.24f
+    } else {
+        0.14f
+    }
     Box(
         modifier = modifier.size(haloSize),
         contentAlignment = Alignment.Center,
@@ -115,7 +139,7 @@ fun StitchLivePulseDot(
             modifier = Modifier
                 .size(haloSize)
                 .clip(CircleShape)
-                .background(color.copy(alpha = if (active) 0.22f else 0.14f)),
+                .background(color.copy(alpha = haloAlpha)),
         )
         Box(
             modifier = Modifier

@@ -26,6 +26,7 @@ data class AudienceMember(
     val displayName: String,
     val role: String,
     val canViewLocation: Boolean,
+    val avatarId: String? = null,
 )
 
 data class SharingManagementSnapshot(
@@ -249,6 +250,7 @@ class VisibleLocationRepository(
         displayName = displayName,
         role = role,
         canViewLocation = false,
+        avatarId = avatarId,
     )
 
     companion object {

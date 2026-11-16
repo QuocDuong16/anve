@@ -512,10 +512,15 @@ toàn, để tôi không phải liên tục dõi bản đồ.*
 - Chống thông báo lặp; chống GPS jitter và dao động gần ranh giới (hysteresis/dwell time).
 - Phân biệt **event time** (lúc sự kiện xảy ra) và **notification delivery time**.
 
-**Luồng tương tác.** Chủ địa điểm chia sẻ địa điểm cho từng thành viên; mỗi
-thành viên tự bật theo dõi cho mình và chọn người nhận vừa có grant vị trí vừa
-có quyền xem địa điểm. Server đánh giá các mẫu M3 và hiển thị sự kiện trong app.
-Không có push M6 hay OS geofence wakeup trong M5.
+**Luồng tương tác.** Chủ địa điểm có thể chia sẻ địa điểm cho từng thành viên
+hoặc đánh dấu là **địa điểm chung gia đình** (`sharedWithCircle`) để thành viên
+hiện tại và thành viên mới gia nhập Circle thấy định nghĩa địa điểm trên danh
+sách và bản đồ (không tự động bật chia sẻ vị trí hay theo dõi vào/ra). Mỗi
+thành viên vẫn tự bật theo dõi cho mình và chọn người nhận vừa có grant vị trí
+vừa có quyền xem địa điểm. Khi tọa độ hiện tại hoặc lịch sử đã được phép xem nằm
+trong vùng một địa điểm đã lưu/chia sẻ, giao diện hiển thị ngữ cảnh *"Đang ở
+<Tên địa điểm>"* hoàn toàn trên thiết bị. Server đánh giá các mẫu M3 và hiển thị
+sự kiện trong app. Không có push M6 hay OS geofence wakeup trong M5.
 
 **Dữ liệu.** Place (tên, tọa độ, bán kính, chủ sở hữu, phạm vi áp dụng),
 Geofence Event (thành viên, place, loại enter/exit, event time, độ tin cậy).

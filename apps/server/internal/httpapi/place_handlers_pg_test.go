@@ -41,11 +41,12 @@ func TestPGPlaceHandlersCreateMonitorAndDelete(t *testing.T) {
 		return req.WithContext(WithAuthContext(req.Context(), AuthContext{User: owner}))
 	}
 	w := httptest.NewRecorder()
-	createPlaceHandler(store).ServeHTTP(w, request(http.MethodPost, "/api/v1/places", `{"name":"Nhà","latitude":10,"longitude":106,"radiusMeters":150}`, uuid.Nil))
+	createPlaceHandler(store).ServeHTTP(w, request(http.MethodPost, "/api/v1/places", `{"name":"Nhà","latitude":10,"longitude":106,"radiusMeters":150,"sharedWithCircle":true}`, uuid.Nil))
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 	var created places.Place
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
 	require.NotEqual(t, uuid.Nil, created.ID)
+	require.True(t, created.SharedWithCircle)
 	w = httptest.NewRecorder()
 	setPlaceMonitorHandler(store).ServeHTTP(w, request(http.MethodPut, "/api/v1/places/monitor", `{"recipientIds":[]}`, created.ID))
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())

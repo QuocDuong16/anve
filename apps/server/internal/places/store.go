@@ -38,11 +38,11 @@ const availableFilter = ` WHERE (p.owner_user_id=$1 OR EXISTS (SELECT 1 FROM pla
    WHERE a.place_id=p.id AND a.member_user_id=$1 AND a.member_period_id=ap.id AND a.revoked_at IS NULL)) `
 const available = availableJoins + availableFilter
 
-const placeFields = `p.id,p.owner_user_id,p.circle_id,p.name,p.latitude,p.longitude,p.radius_m,p.created_at,p.updated_at`
+const placeFields = `p.id,p.owner_user_id,p.circle_id,p.name,p.latitude,p.longitude,p.radius_m,p.shared_with_circle,p.created_at,p.updated_at`
 
 func scanPlace(row pgx.Row) (Place, error) {
 	var p Place
-	err := row.Scan(&p.ID, &p.OwnerID, &p.CircleID, &p.Name, &p.Latitude, &p.Longitude, &p.RadiusM, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.OwnerID, &p.CircleID, &p.Name, &p.Latitude, &p.Longitude, &p.RadiusM, &p.SharedWithCircle, &p.CreatedAt, &p.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Place{}, ErrNotFound
 	}
@@ -90,7 +90,22 @@ func (s *Store) List(ctx context.Context, actor uuid.UUID) ([]Place, error) {
 	return result, rows.Err()
 }
 
-// Create stores an owner-only place without granting monitoring access.
+func grantCirclePlaceAccess(ctx context.Context, tx pgx.Tx, placeID, circleID, ownerID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `INSERT INTO place_access (place_id, member_user_id, member_period_id)
+ SELECT $1, m.user_id, mp.id
+ FROM memberships m
+ JOIN circle_membership_periods mp ON mp.membership_id = m.id AND mp.ended_at IS NULL
+ WHERE m.circle_id = $2
+   AND m.user_id <> $3
+   AND (SELECT count(*) FROM place_access pa WHERE pa.member_user_id = m.user_id AND pa.revoked_at IS NULL) < 50
+ ON CONFLICT (place_id, member_user_id) WHERE revoked_at IS NULL DO NOTHING`, placeID, circleID, ownerID)
+	if err != nil {
+		return fmt.Errorf("grant circle place access: %w", err)
+	}
+	return nil
+}
+
+// Create stores a place, optionally sharing its definition with current and future Circle members.
 func (s *Store) Create(ctx context.Context, actor uuid.UUID, input Input) (Place, error) {
 	if !input.validate() {
 		return Place{}, ErrInvalid
@@ -118,12 +133,17 @@ func (s *Store) Create(ctx context.Context, actor uuid.UUID, input Input) (Place
 	if count >= 50 {
 		return Place{}, ErrInvalid
 	}
-	p, err := scanPlace(tx.QueryRow(ctx, `INSERT INTO places AS p(owner_user_id,circle_id,owner_membership_period_id,name,latitude,longitude,radius_m)
- VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING `+placeFields, actor, circle, period, input.Name, input.Latitude, input.Longitude, input.RadiusM))
+	p, err := scanPlace(tx.QueryRow(ctx, `INSERT INTO places AS p(owner_user_id,circle_id,owner_membership_period_id,name,latitude,longitude,radius_m,shared_with_circle)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING `+placeFields, actor, circle, period, input.Name, input.Latitude, input.Longitude, input.RadiusM, input.SharedWithCircle))
 	if err != nil {
 		return Place{}, err
 	}
-	if err := placeAudit(ctx, tx, actor, audit.ActionPlaceCreated, p.ID, nil); err != nil {
+	if input.SharedWithCircle {
+		if err := grantCirclePlaceAccess(ctx, tx, p.ID, circle, actor); err != nil {
+			return Place{}, err
+		}
+	}
+	if err := placeAudit(ctx, tx, actor, audit.ActionPlaceCreated, p.ID, map[string]any{"shared_with_circle": input.SharedWithCircle}); err != nil {
 		return Place{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -132,7 +152,7 @@ func (s *Store) Create(ctx context.Context, actor uuid.UUID, input Input) (Place
 	return p, nil
 }
 
-// Update changes owned geometry and ends all previous monitoring decisions.
+// Update changes owned geometry/sharing and ends all previous monitoring decisions.
 func (s *Store) Update(ctx context.Context, actor, id uuid.UUID, input Input) (Place, error) {
 	if !input.validate() {
 		return Place{}, ErrInvalid
@@ -145,16 +165,36 @@ func (s *Store) Update(ctx context.Context, actor, id uuid.UUID, input Input) (P
 	if err := lockOwner(ctx, tx, actor); err != nil {
 		return Place{}, err
 	}
-	p, err := scanPlace(tx.QueryRow(ctx, `UPDATE places AS p SET name=$3,latitude=$4,longitude=$5,radius_m=$6,revision=revision+1,updated_at=clock_timestamp()
- WHERE p.id=$2 AND p.owner_user_id=$1 AND EXISTS (SELECT 1 FROM circle_membership_periods op JOIN memberships m ON m.id=op.membership_id WHERE op.id=p.owner_membership_period_id AND op.ended_at IS NULL AND m.user_id=$1 AND m.circle_id=p.circle_id) RETURNING `+placeFields,
-		actor, id, input.Name, input.Latitude, input.Longitude, input.RadiusM))
+	var wasShared bool
+	err = tx.QueryRow(ctx, `SELECT p.shared_with_circle FROM places p
+ JOIN circle_membership_periods op ON op.id=p.owner_membership_period_id AND op.ended_at IS NULL
+ JOIN memberships m ON m.id=op.membership_id AND m.user_id=p.owner_user_id AND m.circle_id=p.circle_id
+ WHERE p.id=$2 AND p.owner_user_id=$1 FOR UPDATE OF p`, actor, id).Scan(&wasShared)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Place{}, ErrNotFound
+	}
+	if err != nil {
+		return Place{}, fmt.Errorf("lock owned place: %w", err)
+	}
+	p, err := scanPlace(tx.QueryRow(ctx, `UPDATE places AS p SET name=$3,latitude=$4,longitude=$5,radius_m=$6,shared_with_circle=$7,revision=revision+1,updated_at=clock_timestamp()
+ WHERE p.id=$2 AND p.owner_user_id=$1 RETURNING `+placeFields,
+		actor, id, input.Name, input.Latitude, input.Longitude, input.RadiusM, input.SharedWithCircle))
 	if err != nil {
 		return Place{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE place_monitors SET revoked_at=clock_timestamp() WHERE place_id=$1 AND revoked_at IS NULL`, id); err != nil {
 		return Place{}, fmt.Errorf("invalidate place monitors: %w", err)
 	}
-	if err := placeAudit(ctx, tx, actor, audit.ActionPlaceUpdated, id, nil); err != nil {
+	if input.SharedWithCircle {
+		if err := grantCirclePlaceAccess(ctx, tx, p.ID, p.CircleID, actor); err != nil {
+			return Place{}, err
+		}
+	} else if wasShared {
+		if _, err := tx.Exec(ctx, `UPDATE place_access SET revoked_at=clock_timestamp() WHERE place_id=$1 AND revoked_at IS NULL`, id); err != nil {
+			return Place{}, fmt.Errorf("revoke circle place access: %w", err)
+		}
+	}
+	if err := placeAudit(ctx, tx, actor, audit.ActionPlaceUpdated, id, map[string]any{"shared_with_circle": input.SharedWithCircle}); err != nil {
 		return Place{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -266,6 +306,9 @@ func (s *Store) SetAccess(ctx context.Context, actor, placeID, member uuid.UUID,
 		}
 		if err == nil {
 			_, err = tx.Exec(ctx, `UPDATE place_monitors SET revoked_at=clock_timestamp() WHERE place_id=$1 AND owner_user_id=$2 AND revoked_at IS NULL`, placeID, member)
+		}
+		if err == nil {
+			_, err = tx.Exec(ctx, `UPDATE places SET shared_with_circle=FALSE WHERE id=$1 AND shared_with_circle=TRUE`, placeID)
 		}
 	}
 	if err != nil {

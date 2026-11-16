@@ -5,8 +5,11 @@
 
 A Place belongs to its creator and their current Circle membership period.
 Only its owner can change or delete it. Sharing a place definition with a
-specific current member is a separate decision; it does not activate tracking
-and does not authorize any recipient of presence events. A member with access
+specific current member — or marking the place as a shared family place
+(`sharedWithCircle`, which grants definition access to current active Circle
+members and newly joining members via an insert trigger on
+`circle_membership_periods`) — is a separate decision; it does not activate
+tracking and does not authorize any recipient of presence events. A member with access
 may explicitly activate monitoring of themselves and choose recipients who
 have both their current location grant and access to that place. Each recipient
 is tied to the exact audience grant, place-access grant and sharing epoch.

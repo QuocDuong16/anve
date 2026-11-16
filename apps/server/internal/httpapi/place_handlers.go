@@ -37,10 +37,11 @@ func placePath(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, 
 
 func decodePlace(w http.ResponseWriter, r *http.Request) (places.Input, error) {
 	var body struct {
-		Name      *string  `json:"name"`
-		Latitude  *float64 `json:"latitude"`
-		Longitude *float64 `json:"longitude"`
-		RadiusM   *float64 `json:"radiusMeters"`
+		Name             *string  `json:"name"`
+		Latitude         *float64 `json:"latitude"`
+		Longitude        *float64 `json:"longitude"`
+		RadiusM          *float64 `json:"radiusMeters"`
+		SharedWithCircle *bool    `json:"sharedWithCircle"`
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	decoder := json.NewDecoder(r.Body)
@@ -51,7 +52,13 @@ func decodePlace(w http.ResponseWriter, r *http.Request) (places.Input, error) {
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return places.Input{}, places.ErrInvalid
 	}
-	return places.Input{Name: *body.Name, Latitude: *body.Latitude, Longitude: *body.Longitude, RadiusM: *body.RadiusM}, nil
+	return places.Input{
+		Name:             *body.Name,
+		Latitude:         *body.Latitude,
+		Longitude:        *body.Longitude,
+		RadiusM:          *body.RadiusM,
+		SharedWithCircle: body.SharedWithCircle != nil && *body.SharedWithCircle,
+	}, nil
 }
 
 func listPlacesHandler(store *places.Store) http.HandlerFunc {

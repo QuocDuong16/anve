@@ -216,16 +216,19 @@ data class FixDecision(
 
 /**
  * Great-circle distance on the WGS-84 mean sphere. Accuracy is sufficient
- * for motion hysteresis; it is not a distance measurement shown to users.
+ * for motion hysteresis and coarse place proximity labels.
  */
-internal fun distanceMeters(a: LocationFix, b: LocationFix): Double {
+internal fun distanceMeters(a: LocationFix, b: LocationFix): Double =
+    distanceMeters(a.latitude, a.longitude, b.latitude, b.longitude)
+
+internal fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val earthRadius = 6_371_000.0
-    val lat1 = Math.toRadians(a.latitude)
-    val lat2 = Math.toRadians(b.latitude)
-    val dLat = lat2 - lat1
-    val dLon = Math.toRadians(b.longitude - a.longitude)
+    val rLat1 = Math.toRadians(lat1)
+    val rLat2 = Math.toRadians(lat2)
+    val dLat = rLat2 - rLat1
+    val dLon = Math.toRadians(lon2 - lon1)
     val h = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2)
+        cos(rLat1) * cos(rLat2) * sin(dLon / 2) * sin(dLon / 2)
     return 2 * earthRadius * asin(min(1.0, sqrt(h)))
 }
 
