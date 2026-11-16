@@ -38,7 +38,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,7 +45,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,7 +65,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -105,6 +102,7 @@ import com.anve.app.ui.brand.AnVeAccountShieldIllustration
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.circle.CircleScreen
 import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeSosPillButton
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchCategoryIconBox
@@ -119,7 +117,6 @@ import com.anve.app.ui.map.LiveMapScreen
 import com.anve.app.ui.places.PlacesScreen
 import com.anve.app.ui.sos.SosScreen
 import com.anve.app.ui.theme.AnVeTheme
-import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.tracking.TrackingScreen
 import java.io.Serializable
@@ -199,12 +196,10 @@ private data class PrePushNav(
 }
 
 /**
- * Material Scaffold floats the FAB above the bottom bar without adding it to
- * the content padding, so full-height tab content (History, Places) clears it
- * on its own: the FAB's 56dp container (FabBaselineTokens) plus the 16dp gap
- * between the FAB and the bottom bar (Scaffold FabSpacing).
+ * Material Scaffold floats the SOS pill above the bottom bar without adding it
+ * to the content padding, so scrollable tab content clears it on its own.
  */
-internal val HOME_FAB_CLEARANCE = 72.dp
+internal val HOME_FAB_CLEARANCE = 64.dp
 
 /**
  * The signed-in surface keeps five primary destinations and routes secondary
@@ -425,25 +420,13 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
         },
         floatingActionButton = {
             if (secondaryPage != HomeSecondaryPage.SOS) {
-                // SOS is urgent-but-not-a-failure, so it uses the emergency
-                // rose role instead of error.
-                val emergency = LocalEmergencyColors.current
-                // Keep the emergency trigger compact (50dp) so it stays
-                // reachable without covering cards or list actions beneath it.
-                FloatingActionButton(
+                AnVeSosPillButton(
                     onClick = {
                         sosReturnPage = secondaryPage
                         selectedSos = null
                         secondaryPage = HomeSecondaryPage.SOS
                     },
-                    shape = CircleShape,
-                    containerColor = emergency.emergency,
-                    contentColor = emergency.onEmergency,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
-                    modifier = Modifier.size(50.dp),
-                ) {
-                    Icon(Icons.Default.Sos, contentDescription = stringResource(R.string.tab_sos))
-                }
+                )
             }
         },
     ) { padding ->

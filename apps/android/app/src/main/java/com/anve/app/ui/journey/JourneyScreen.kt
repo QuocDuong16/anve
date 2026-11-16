@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,7 +46,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -105,6 +103,7 @@ import com.anve.app.tracking.TrackingStatus
 import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeSosPillButton
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchCategoryIconBox
@@ -114,7 +113,6 @@ import com.anve.app.ui.common.StitchReassuranceFooter
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.theme.AnVeTheme
-import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.anve.app.ui.theme.rememberInkOnSurface
@@ -211,16 +209,7 @@ fun JourneyContent(
             // The overlay's own Scaffold replaces the home shell, whose FAB is
             // otherwise hidden with it — the emergency affordance must survive
             // the highest-risk scenario: while following a journey home.
-            val emergency = LocalEmergencyColors.current
-            FloatingActionButton(
-                onClick = onOpenSos,
-                shape = CircleShape,
-                containerColor = emergency.emergency,
-                contentColor = emergency.onEmergency,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Icon(Icons.Default.Sos, contentDescription = stringResource(R.string.tab_sos))
-            }
+            AnVeSosPillButton(onClick = onOpenSos)
         },
     ) { padding ->
         // Bottom clearance mirrors the shell (HOME_FAB_CLEARANCE): the FAB

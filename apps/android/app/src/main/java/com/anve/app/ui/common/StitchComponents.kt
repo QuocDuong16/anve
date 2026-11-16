@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.anve.app.R
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
@@ -538,6 +540,52 @@ fun StitchReassuranceFooter(
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.outline,
                 textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+/**
+ * Compact pill-shaped emergency trigger aligned with the Stitch "Warm Tactile
+ * Minimalism" SOS treatment (soft blush surface + urgency dot, 48dp touch
+ * target via Material3 minimumInteractiveComponentSize).
+ */
+@Composable
+fun AnVeSosPillButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val emergency = LocalEmergencyColors.current
+    val label = stringResource(R.string.tab_sos)
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = emergency.emergencyContainer,
+        contentColor = emergency.onEmergencyContainer,
+        border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.28f)),
+        shadowElevation = 3.dp,
+        tonalElevation = 2.dp,
+        modifier = modifier
+            .heightIn(min = 38.dp)
+            .semantics { contentDescription = label },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(emergency.emergency),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.6.sp,
+                maxLines = 1,
             )
         }
     }

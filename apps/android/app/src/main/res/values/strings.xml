@@ -492,6 +492,10 @@
     <!-- Quoted so the two leading spaces (icon gap) survive resource compile. -->
     <string name="map_audience_action">Ai được xem</string>
     <string name="map_start_journey">Bắt đầu hành trình về nhà</string>
+    <string name="map_start_journey_short">Hành trình</string>
+    <string name="map_pulse_expand_details">Xem chi tiết</string>
+    <string name="map_pulse_collapse_details">Thu gọn</string>
+    <string name="map_pulse_toggle_content_desc">Mở rộng hoặc thu gọn chi tiết nhịp sống gia đình</string>
     <string name="map_no_locations_notice">Chưa có người thân nào chia sẻ vị trí với bạn.</string>
     <string name="map_unavailable_title">Bản đồ chưa sẵn sàng</string>
     <string name="map_updated_at">Cập nhật lúc %1$s</string>
