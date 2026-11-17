@@ -226,7 +226,12 @@ internal val HOME_FAB_CLEARANCE = 64.dp
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
+fun HomeScreen(
+    container: AppContainer,
+    incomingPush: IncomingPush? = null,
+    onPushConsumed: () -> Unit = {},
+    onOpenOnboarding: () -> Unit = {},
+) {
     var tab by rememberSaveable(stateSaver = homeTabSaver) { mutableStateOf(HomeTab.CIRCLE) }
     val context = LocalContext.current
     LaunchedEffect(tab) {
@@ -548,6 +553,7 @@ fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPu
                                 secondaryPage = HomeSecondaryPage.SHARING
                             },
                             onOpenDiagnostics = { showDiagnostics = true },
+                            onOpenOnboarding = onOpenOnboarding,
                         )
                         HomeSecondaryPage.SHARING -> TrackingScreen(
                             container = container,
@@ -718,6 +724,7 @@ private fun AccountContent(
     container: AppContainer,
     onOpenTracking: () -> Unit,
     onOpenDiagnostics: () -> Unit = {},
+    onOpenOnboarding: () -> Unit = {},
 ) {
     val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val owner = session?.userId
@@ -751,6 +758,7 @@ private fun AccountContent(
         onDismissMessage = viewModel::consumeMessage,
         onOpenTracking = onOpenTracking,
         onOpenDiagnostics = onOpenDiagnostics,
+        onOpenOnboarding = onOpenOnboarding,
         avatarMessageRes = avatar.messageRes,
         // The controller owns this message: complete() sets it and only a new
         // operation would overwrite it, so acknowledge it here (same batch
@@ -812,6 +820,7 @@ fun HomeContent(
     onDismissMessage: () -> Unit = {},
     onOpenTracking: () -> Unit = {},
     onOpenDiagnostics: () -> Unit = {},
+    onOpenOnboarding: () -> Unit = {},
     avatarContent: (@Composable () -> Unit)? = null,
     avatarMessageRes: Int? = null,
     onDismissAvatarMessage: () -> Unit = {},
@@ -992,6 +1001,44 @@ fun HomeContent(
                             Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.titleSmall)
                             Text(
                                 stringResource(R.string.diag_account_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            item {
+                OutlinedCard(
+                    onClick = onOpenOnboarding,
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 56.dp)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Groups,
+                            contentDescription = null,
+                            tint = colors.primary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(stringResource(R.string.home_reopen_onboarding_title), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.home_reopen_onboarding_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
                             )

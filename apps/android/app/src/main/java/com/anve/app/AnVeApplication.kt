@@ -118,6 +118,9 @@ class AppContainer(application: Application) {
     val circleOnboardingStore: com.anve.app.data.circles.CircleOnboardingStorage =
         com.anve.app.data.circles.SharedPrefsCircleOnboardingStorage(application)
 
+    val onboardingStore: com.anve.app.data.onboarding.OnboardingStorage =
+        com.anve.app.data.onboarding.SharedPrefsOnboardingStorage(application)
+
     val privateInvitationRepository = com.anve.app.data.circles.PrivateInvitationRepository(profileApi, sessionStore)
 
     val avatarRepository = com.anve.app.data.avatar.AvatarRepository(profileApi, sessionStore)

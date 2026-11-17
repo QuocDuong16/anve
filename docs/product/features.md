@@ -106,10 +106,16 @@ cách có sự đồng ý, không ai bị đưa vào một cách âm thầm.*
 - Thu hồi quyền chia sẻ vị trí đã cấp.
 - Xem các thiết bị và phiên đăng nhập thuộc tài khoản của mình.
 
-**Luồng tương tác.** Tạo nhóm → nhận invite code/link → chia sẻ cho người thân
-→ người thân đăng nhập, mở link, xem quyền sẽ cấp → chấp nhận → xuất hiện trong
-danh sách thành viên. Rời nhóm: menu cài đặt cá nhân → “Rời nhóm” → xác nhận →
-quyền chia sẻ của người đó với nhóm chấm dứt.
+**Luồng tương tác.** Sau lần đăng nhập đầu tiên, người dùng chưa có nhóm có thể
+chọn **Thiết lập từng bước** (onboarding 5 bước: chào mừng → tạo nhóm + tạo
+link mời 7 ngày hoặc tham gia nhóm → cấp quyền theo bước với nút *Để sau* và
+công tắc đồng ý chia sẻ tách riêng → chọn người xem & tạo địa điểm quen thuộc
+đầu tiên → tóm tắt hoàn tất) hoặc **Tự khám phá ứng dụng**. Tạo nhóm → nhận
+invite code/link (`https://<domain>/invite#<code>` hoặc `anve://invite/<code>`)
+→ chia sẻ qua sharesheet cho người thân → người thân đăng nhập, mở link, xem
+quyền sẽ cấp → chấp nhận → xuất hiện trong danh sách thành viên. Rời nhóm: menu
+cài đặt cá nhân → “Rời nhóm” → xác nhận → quyền chia sẻ của người đó với nhóm
+chấm dứt.
 
 **Dữ liệu.** Circle, Membership, Invite một lần có hạn dùng và liên kết User ↔
 Device ↔ phiên đăng nhập đã có schema; phần mở rộng thêm avatar revision và

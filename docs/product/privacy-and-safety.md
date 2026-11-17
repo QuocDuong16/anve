@@ -68,7 +68,10 @@ Quy tắc:
 - Thu hồi có hiệu lực về phía phân phát dữ liệu **ngay cả khi client của người
   bị thu hồi không online** — server chặn từ nguồn.
 - Việc xin quyền hệ thống (location, background location, notifications) phải
-  có màn hình giải thích *trước* khi gọi permission dialog của Android.
+  có màn hình giải thích *trước* khi gọi permission dialog của Android, luôn có
+  lối bỏ qua (*Để sau*) và không bao giờ khóa cứng ứng dụng nếu người dùng từ
+  chối. Trong onboarding, công tắc đồng ý chia sẻ vị trí phải tách riêng khỏi
+  quyền hệ thống và mặc định TẮT.
 - **Consent không đồng nghĩa tracking.** Consent là bản ghi đồng ý trên máy
   chủ; điện thoại chỉ thực sự thu thập khi người dùng bật theo dõi và cấp
   quyền OS. Foreground service phải hiển thị thông báo cố định; UI tách rõ
@@ -170,10 +173,12 @@ Quy tắc:
 - Link mời là capability, không phải lệnh tự tham gia. API xem trước yêu
   cầu đăng nhập và đúng tài khoản; chỉ trả tên/ID nhóm, hạn mời. Xác nhận
   tham gia vẫn kiểm tra lại mã một lần và không bật chia sẻ. Không ghi mã
-  mời vào URL API, log hoặc báo cáo chẩn đoán. Android giữ lời mời tạm trong
-  bộ nhớ qua đăng nhập/xoay máy, xóa khi đổi tài khoản và kiểm tra lại kết quả
-  tham gia chưa rõ bằng request chỉ đọc. Chưa có xác minh HTTPS App Links
-  trên domain dự định.
+  mời vào URL API, log hoặc báo cáo chẩn đoán. Khi chia sẻ link HTTPS qua
+  trang cầu nối tĩnh `GET /invite#<code>`, mã nằm ở phần fragment (`#`) phía
+  client nên không gửi lên server hay ghi vào access log. Android giữ lời mời
+  tạm trong bộ nhớ qua đăng nhập/xoay máy, xóa khi đổi tài khoản và kiểm tra
+  lại kết quả tham gia chưa rõ bằng request chỉ đọc. Chưa có xác minh HTTPS
+  App Links trên domain dự định.
 
 ## 5. Xóa dữ liệu và tài khoản
 

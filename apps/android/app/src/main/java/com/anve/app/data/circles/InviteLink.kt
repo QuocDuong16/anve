@@ -8,6 +8,47 @@ object InviteLink {
 
     fun create(code: String): String? = if (codePattern.matches(code)) "anve://invite/$code" else null
 
+    /**
+     * Formats the user-shareable link. In HTTPS production/staging builds this
+     * produces `https://<host>/invite#<CODE>` so chat apps make the link
+     * clickable and keep the code in the fragment (never sent to the server).
+     * Local HTTP development builds fall back to `anve://invite/<CODE>`.
+     */
+    fun shareUrl(code: String, apiBaseUrl: String): String? {
+        if (!codePattern.matches(code)) return null
+        val uri = runCatching { URI(apiBaseUrl.trim()) }.getOrNull()
+        val host = uri?.host?.lowercase()
+        val isPublicHttps = uri != null &&
+            uri.scheme == "https" &&
+            !host.isNullOrBlank() &&
+            host != "localhost" &&
+            host != "127.0.0.1" &&
+            host != "10.0.2.2"
+        return if (isPublicHttps) {
+            "https://${uri.rawAuthority}/invite#$code"
+        } else {
+            "anve://invite/$code"
+        }
+    }
+
+    /**
+     * Parses a manual user-entered invite code or pasted share link (`anve://invite/<CODE>`
+     * or `https://<host>/invite#<CODE>`) for the join input field.
+     */
+    fun extractCode(raw: String?): String? {
+        val trimmed = raw?.trim().orEmpty()
+        if (trimmed.isEmpty() || trimmed.length > 256) return null
+        val upper = trimmed.uppercase()
+        if (codePattern.matches(upper)) return upper
+        parse(trimmed)?.let { return it }
+        val uri = runCatching { URI(trimmed) }.getOrNull() ?: return null
+        if (uri.scheme == "https" && uri.rawPath == "/invite") {
+            val fragment = uri.rawFragment?.trim()?.uppercase().orEmpty()
+            if (codePattern.matches(fragment)) return fragment
+        }
+        return null
+    }
+
     fun parse(raw: String?): String? {
         if (raw == null || raw.length > 180) return null
         val uri = runCatching { URI(raw) }.getOrNull() ?: return null

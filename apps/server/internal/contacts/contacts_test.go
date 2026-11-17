@@ -430,3 +430,27 @@ func TestPrivacyPolicyAndDeletionHTMLContainRequiredContentAndPalette(t *testing
 		})
 	}
 }
+
+func TestInviteBridgePageAndScriptContent(t *testing.T) {
+	html := string(InvitePageHTML)
+	for _, token := range []string{
+		"Lời mời gia đình — AnVề",
+		"#FDF9F2",
+		"#3D602F",
+		"#557945",
+		"#F1DDE4",
+		"/assets/anve-logo.svg",
+		"/assets/invite.js",
+		"anve://invite/",
+		"https://play.google.com/store/apps/details?id=com.anve.app",
+		`href="/privacy"`,
+		`href="/delete-account"`,
+		"không tự bật chia sẻ vị trí",
+	} {
+		assert.Contains(t, html, token)
+	}
+	script := string(InviteScriptJS)
+	assert.Contains(t, script, "window.location.hash")
+	assert.Contains(t, script, "anve://invite/")
+	assert.NotContains(t, script, "innerHTML")
+}

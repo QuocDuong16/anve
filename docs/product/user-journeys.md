@@ -11,11 +11,29 @@ Mở app, link hay thông báo không tự bật theo dõi hoặc tham gia nhóm
 
 1. Mở app, đăng nhập Google bằng Credential Manager; API xác minh ID token.
    Dev login chỉ dành cho môi trường phát triển được cho phép.
-2. Tạo/tham gia nhóm mà chưa cần cấp vị trí. Có thể sửa tên trong Cá nhân.
-3. Khi chủ động dùng thu thập vị trí, đọc giải thích rồi cấp quyền Android
-   theo từng bước. Vị trí nền không được xin ngay lúc khởi động app.
-4. Từ chối/thu hồi quyền không khóa các tính năng không cần vị trí. Màn Vị trí
-   và Chẩn đoán chỉ ra bước cần xử lý; không tự bật consent hay GPS.
+2. Nếu tài khoản chưa thuộc Circle nào và chưa hoàn tất/bỏ qua onboarding trên
+   thiết bị (trạng thái lưu theo `userId`), ứng dụng mở luồng thiết lập 5 bước:
+   - **B1 Chào mừng:** chọn *Thiết lập từng bước* hoặc *Tự khám phá ứng dụng*
+     để vào thẳng Home. (Khi mở app từ link mời đang chờ, chuyển thẳng sang
+     bước Tham gia ở B2.)
+   - **B2 Gia đình:** chọn *Tạo gia đình mới* (đặt tên, tạo link/mã mời 7 ngày
+     và mở Android sharesheet) hoặc *Tham gia gia đình đã có* (mở hộp thư lời
+     mời hoặc nhập mã qua hộp thoại xác nhận C). Có thể bấm *Mời thêm sau*.
+   - **B3 Quyền & đồng ý:** hiển thị giải thích nổi bật (prominent disclosure)
+     trước khi xin quyền; tách riêng thông báo (Android 13+), công tắc
+     *Đồng ý chia sẻ vị trí* (mặc định TẮT), quyền vị trí khi dùng app và
+     vị trí nền (chỉ dẫn mở Cài đặt ở Android 11+, đọc lại khi quay lại). Mọi
+     bước đều có nút **Để sau, tiếp tục**; onboarding không tự bật theo dõi GPS.
+   - **B4 Ai xem & địa điểm quen thuộc:** nếu nhóm đã có thành viên khác thì
+     cho cấp quyền xem từng người (mặc định tắt); nếu chưa có ai thì hiện thẻ
+     nhắc chờ người thân tham gia. Cho phép tạo một địa điểm quen thuộc đầu tiên
+     (`sharedWithCircle` hoặc riêng tư, kèm bật theo dõi nếu đã có người xem
+     hợp lệ) hoặc bấm **Để sau**.
+   - **B5 Hoàn tất:** tóm tắt đúng trạng thái thực tế của nhóm, quyền và địa
+     điểm trước khi vào Home. Có thể mở lại từ trang Cá nhân.
+3. Từ chối hoặc chọn *Để sau* ở bất kỳ quyền nào không khóa các tính năng không
+   cần vị trí. Màn Vị trí và Chẩn đoán vẫn chỉ ra bước cần xử lý; không tự bật
+   consent hay GPS.
 
 Avatar: mở ảnh trong Cá nhân → chọn một ảnh bằng Photo Picker → xem trước →
 bấm Lưu. Chọn ảnh và đóng bảng chưa gửi dữ liệu. Xóa ảnh cũng cần bấm Lưu;
@@ -24,9 +42,12 @@ lỗi mạng chưa rõ kết quả được kiểm tra bằng đọc metadata, k
 ## 2. Tạo nhóm và mời người thân
 
 1. Tạo nhóm bằng tên; chủ nhóm ban đầu là thành viên duy nhất.
-2. Chủ động mở Tạo lời mời; chọn email hoặc chỉ tạo mã/liên kết và thời hạn.
-3. Mã/liên kết được chia sẻ qua Android sharesheet khi người dùng chọn.
-   Email là ràng buộc tài khoản nhận, không phải thư gửi qua email.
+2. Chủ động mở Tạo lời mời (trong tab Nhóm hoặc B2 onboarding); chọn email
+   hoặc chỉ tạo mã/liên kết và thời hạn (onboarding dùng link/mã mặc định 7 ngày).
+3. Liên kết chia sẻ (`https://<domain>/invite#<code>` khi cấu hình HTTPS, hoặc
+   `anve://invite/<code>`) cùng mã dự phòng được gửi qua Android sharesheet khi
+   người dùng chọn. Mã đặt sau dấu `#` nên không gửi lên server hoặc vào log.
+   Email (trong tab Nhóm) là ràng buộc tài khoản nhận, không phải thư gửi qua email.
 4. Máy chủ luôn trả cùng kiểu kết quả cho email đã/chưa đăng ký; không cho
    người gửi xem trạng thái nhận thông báo hay việc người nhận ẩn lời mời.
 5. Chỉ người tự xác nhận tham gia mới xuất hiện trong danh sách thành viên.
@@ -36,8 +57,10 @@ không cấp quyền xem vị trí hay điều khiển thiết bị của thành
 
 ## 3. Nhận và xác nhận lời mời
 
-1. Mở `anve://invite/<code>` hoặc nhập mã, đăng nhập nếu cần. Link tùy chỉnh
-   không phải HTTPS App Link đã được xác minh.
+1. Mở `https://<domain>/invite#<code>` (bấm *Mở trong AnVề* để chuyển sang
+   `anve://invite/<code>` hoặc mở Google Play nếu chưa cài) hoặc mở trực tiếp
+   `anve://invite/<code>` / nhập mã, đăng nhập nếu cần. Đây vẫn là link tùy
+   chỉnh với trang cầu nối tĩnh, không phải HTTPS App Link đã được xác minh.
 2. Với lời mời email, xem nhóm, tên người mời và thời hạn trong mục Nhóm.
    FCM chỉ gợi ý mở luồng này; chi tiết được đọc lại với tài khoản hiện tại.
 3. Bấm Xem lời mời → hộp thoại C đã duyệt cho thấy nhóm, tài khoản đang dùng,

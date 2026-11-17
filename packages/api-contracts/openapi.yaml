@@ -93,6 +93,25 @@ paths:
             text/html:
               schema:
                 type: string
+  /invite:
+    get:
+      operationId: getInviteLandingPage
+      summary: Serve the AnVề family invitation landing page
+      description: |
+        Returns a static HTML5 page in the Warm Tactile Minimalism design
+        system. Client-side script reads the one-time invite code only from the
+        URL fragment (#CODE) so the server never receives or logs the code,
+        providing actions to open AnVề (`anve://invite/<code>`), copy the code,
+        or install AnVề from Google Play.
+      tags: [contacts]
+      security: []
+      responses:
+        "200":
+          description: The AnVề HTML5 family invitation bridge page.
+          content:
+            text/html:
+              schema:
+                type: string
   /metrics:
     servers:
       - url: http://127.0.0.1:9090

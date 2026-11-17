@@ -49,8 +49,19 @@ This draft must be reconciled with the actual store listing and release video.
 calls for the declaration, a feature demonstration, prominent disclosure and
 privacy policy. Record the exact disclosure text shown before the permission
 request, its collection/background-sharing explanation and the deliberate
-continuation action. Existing Compose screens are source evidence, not a
-finished policy review or a device video.
+continuation action:
+
+- **Onboarding Step 3 prominent disclosure (`onboarding_disclosure_body`)**:
+  *"AnVề chỉ thu thập vị trí khi bạn chủ động bật chia sẻ, kể cả khi ứng dụng đóng hoặc chạy nền, để những người bạn chọn biết vị trí và nhận thông báo địa điểm."*
+  Shown above the sequential consent switch (default OFF), foreground location
+  request, and background Settings education, always paired with a skip action
+  (*"Để sau, tiếp tục"*) so users are never blocked from using the app.
+- **Location tab disclosure (`tracking_disclosure_body` / `tracking_background_settings_body`)**:
+  Explains live foreground/background collection, offline queue purge on OFF,
+  and explicit revocation before opening the OS prompt or App Settings.
+
+Existing Compose screens are source evidence, not a finished policy review or a
+device video.
 
 For location FGS, [Android's service-type requirements](https://developer.android.com/develop/background-work/services/fgs/service-types#location)
 link the declared type and FGS permission to location runtime prerequisites

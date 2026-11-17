@@ -197,6 +197,30 @@ func TestPublicLegalPagesServeHTML(t *testing.T) {
 	}
 }
 
+func TestInvitePageAndScriptServeWithoutDatabase(t *testing.T) {
+	t.Parallel()
+
+	router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/invite", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "no-referrer", rec.Header().Get("Referrer-Policy"))
+	assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "script-src 'self'")
+	assert.Contains(t, rec.Body.String(), "Lời mời gia đình — AnVề")
+	assert.Contains(t, rec.Body.String(), "/assets/invite.js")
+
+	jsRec := httptest.NewRecorder()
+	router.ServeHTTP(jsRec, httptest.NewRequest(http.MethodGet, "/assets/invite.js", nil))
+	assert.Equal(t, http.StatusOK, jsRec.Code)
+	assert.Equal(t, "application/javascript; charset=utf-8", jsRec.Header().Get("Content-Type"))
+	assert.Equal(t, "nosniff", jsRec.Header().Get("X-Content-Type-Options"))
+	assert.Contains(t, jsRec.Body.String(), "window.location.hash")
+}
+
 func TestContactsEndpointRoutes(t *testing.T) {
 	t.Parallel()
 

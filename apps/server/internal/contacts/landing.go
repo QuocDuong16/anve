@@ -26,3 +26,13 @@ var HeroFamilyWelcomeWebP []byte
 //
 //go:embed anve_logo.svg
 var BrandLogoSVG []byte
+
+// InvitePageHTML contains the embedded HTML5 invitation bridge page.
+//
+//go:embed invite.html
+var InvitePageHTML []byte
+
+// InviteScriptJS contains the client-side fragment parser for /invite.
+//
+//go:embed invite.js
+var InviteScriptJS []byte

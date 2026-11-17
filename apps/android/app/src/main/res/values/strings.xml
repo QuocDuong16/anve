@@ -1062,4 +1062,109 @@
     <string name="places_share_empty_members">Chưa có thành viên khác trong nhóm để chia sẻ.</string>
     <string name="places_alerts_empty_members">Chưa có thành viên đủ điều kiện nhận thông báo. Hãy cấp quyền xem vị trí cho họ ở màn Nhà và chia sẻ địa điểm này cho họ.</string>
     <string name="avatar_preview_content_desc">Ảnh đại diện hiện tại</string>
+
+    <!-- First-run Onboarding -->
+    <string name="onboarding_step_badge">Bước %1$d / %2$d</string>
+    <string name="onboarding_checking_setup">Đang chuẩn bị không gian gia đình…</string>
+    <string name="onboarding_offline_notice">Đang mất kết nối mạng. Bản nháp vẫn được giữ; kết nối lại để tiếp tục thao tác này.</string>
+
+    <!-- Step 1: Welcome -->
+    <string name="onboarding_welcome_title">Chào mừng bạn đến với AnVề</string>
+    <string name="onboarding_welcome_subtitle">Đường về nhà, gần hơn mỗi ngày. Hãy dành 2 phút thiết lập để kết nối cùng người thân một cách minh bạch và tự nguyện.</string>
+    <string name="onboarding_welcome_start">Thiết lập từng bước (~2 phút)</string>
+    <string name="onboarding_welcome_skip">Tự khám phá ứng dụng</string>
+
+    <!-- Step 2: Family & Link Invitation -->
+    <string name="onboarding_family_title">Gia đình của bạn</string>
+    <string name="onboarding_family_create_title">Tạo gia đình mới</string>
+    <string name="onboarding_family_create_subtitle">Đặt tên nhóm và tạo liên kết mời người thân.</string>
+    <string name="onboarding_family_name_label">Tên gia đình</string>
+    <string name="onboarding_family_suggest_1">Nhà mình</string>
+    <string name="onboarding_family_suggest_2">Tổ ấm</string>
+    <string name="onboarding_family_suggest_3">Đại gia đình</string>
+    <string name="onboarding_circle_name_required">Vui lòng nhập tên gia đình.</string>
+    <string name="onboarding_circle_create_button">Tạo gia đình</string>
+    <string name="onboarding_circle_create_failed">Chưa tạo được gia đình. Kiểm tra lại tên nhóm và thử lại.</string>
+    <string name="onboarding_circle_unconfirmed">Chưa xác nhận được kết quả tạo nhóm. Bấm kiểm tra lại; ứng dụng không tự tạo nhóm trùng.</string>
+    <string name="onboarding_circle_check_again">Kiểm tra lại</string>
+    <string name="onboarding_circle_created_badge">Đã sẵn sàng: %1$s</string>
+    <string name="onboarding_invite_section_title">Mời người thân đầu tiên</string>
+    <string name="onboarding_invite_section_body">Tạo liên kết một lần có hiệu lực 7 ngày và gửi qua Zalo, Messenger hoặc tin nhắn.</string>
+    <string name="onboarding_invite_create_share">Tạo &amp; chia sẻ link mời</string>
+    <string name="onboarding_invite_share_again">Chia sẻ lại link mời</string>
+    <string name="onboarding_invite_copy_code">Sao chép mã</string>
+    <string name="onboarding_invite_copied">Đã sao chép mã mời.</string>
+    <string name="onboarding_invite_meta">Dùng một lần · Hết hạn sau 7 ngày · Tham gia không tự bật chia sẻ vị trí</string>
+    <string name="onboarding_invite_create_failed">Chưa tạo được link mời. Vui lòng thử lại.</string>
+    <string name="onboarding_family_join_title">Tham gia gia đình đã có</string>
+    <string name="onboarding_family_join_subtitle">Nhập mã mời 10 ký tự, dán link mời hoặc chọn lời mời đang chờ.</string>
+    <string name="onboarding_family_join_code_label">Mã mời hoặc liên kết</string>
+    <string name="onboarding_family_join_button">Xem lời mời</string>
+    <string name="onboarding_family_received_title">Lời mời đang chờ bạn</string>
+    <string name="onboarding_family_received_empty">Chưa có lời mời gửi riêng nào. Bạn có thể dán link hoặc nhập mã mời ở trên.</string>
+    <string name="onboarding_family_continue">Tiếp tục</string>
+    <string name="onboarding_family_later">Mời thêm sau</string>
+    <string name="onboarding_family_skip">Để sau, tiếp tục</string>
+
+    <!-- Step 3: Permissions & Consent -->
+    <string name="onboarding_permissions_title">Bật các quyền cần thiết</string>
+    <string name="onboarding_disclosure_title">Giải thích quyền riêng tư</string>
+    <string name="onboarding_disclosure_body">AnVề chỉ thu thập vị trí khi bạn chủ động bật chia sẻ, kể cả khi ứng dụng đóng hoặc chạy nền, để những người bạn chọn biết vị trí và nhận thông báo địa điểm.</string>
+    <string name="onboarding_perm_notif_title">Thông báo đẩy</string>
+    <string name="onboarding_perm_notif_body">Nhận tín hiệu SOS, lời mời gia đình và thông báo khi người thân đến/rời địa điểm.</string>
+    <string name="onboarding_perm_notif_action">Bật thông báo</string>
+    <string name="onboarding_perm_fg_title">Đồng ý chia sẻ &amp; Vị trí khi dùng app</string>
+    <string name="onboarding_perm_fg_body">Bật công tắc đồng ý nếu bạn sẵn sàng chia sẻ, sau đó cấp quyền vị trí cho ứng dụng.</string>
+    <string name="onboarding_perm_consent_label">Đồng ý chia sẻ vị trí</string>
+    <string name="onboarding_perm_consent_hint">Mặc định tắt. Bạn có thể bật hoặc tắt bất cứ lúc nào.</string>
+    <string name="onboarding_perm_fg_action">Bật vị trí khi dùng app</string>
+    <string name="onboarding_perm_bg_title">Vị trí chạy nền</string>
+    <string name="onboarding_perm_bg_body">Giữ kết nối hành trình khi bạn khóa máy hoặc dùng ứng dụng khác (Mở Cài đặt → chọn “%1$s”).</string>
+    <string name="onboarding_perm_bg_action">Bật vị trí chạy nền</string>
+    <string name="onboarding_perm_granted">Đã bật</string>
+    <string name="onboarding_perm_pending">Đang chờ bật</string>
+    <string name="onboarding_perm_approx">Gần đúng</string>
+    <string name="onboarding_perm_continue">Tiếp tục</string>
+    <string name="onboarding_perm_later">Để sau, tiếp tục</string>
+
+    <!-- Step 4: Audience & First Place -->
+    <string name="onboarding_step4_title">Quyền xem &amp; Địa điểm quen thuộc</string>
+    <string name="onboarding_audience_title">Ai biết vị trí của bạn</string>
+    <string name="onboarding_audience_waiting">Người thân đang chờ chấp nhận lời mời. Ngay khi họ tham gia, bạn có thể chọn ai được xem vị trí của mình.</string>
+    <string name="onboarding_audience_default_off">Mặc định luôn tắt đến khi bạn tự cấp quyền</string>
+    <string name="onboarding_audience_need_consent">Bạn đang tắt đồng ý chia sẻ vị trí. Hãy bật đồng ý ở bước trước hoặc trong Tài khoản để cấp quyền xem cho người thân.</string>
+    <string name="onboarding_audience_load_failed">Chưa tải được danh sách thành viên. Thử lại hoặc tiếp tục tạo địa điểm.</string>
+    <string name="onboarding_place_title">Tạo địa điểm quen thuộc đầu tiên</string>
+    <string name="onboarding_place_need_circle">Hãy tạo hoặc tham gia gia đình trước để lưu địa điểm chung.</string>
+    <string name="onboarding_place_name_label">Tên địa điểm</string>
+    <string name="onboarding_place_use_current">Dùng vị trí hiện tại</string>
+    <string name="onboarding_place_locating">Đang lấy vị trí hiện tại…</string>
+    <string name="onboarding_place_radius_label">Bán kính: %1$dm</string>
+    <string name="onboarding_place_shared_label">Địa điểm chung của gia đình</string>
+    <string name="onboarding_place_monitor_label">Thông báo khi tôi đến hoặc rời đi</string>
+    <string name="onboarding_place_monitor_need_viewer">Cần ít nhất một thành viên đã được bạn cấp quyền xem vị trí ở trên để chọn làm người nhận thông báo.</string>
+    <string name="onboarding_place_invalid">Vui lòng đặt tên và chọn tọa độ hợp lệ (tìm địa chỉ hoặc dùng vị trí hiện tại).</string>
+    <string name="onboarding_place_save_failed">Chưa lưu được địa điểm. Vui lòng thử lại hoặc chọn Để sau.</string>
+    <string name="onboarding_place_save_continue">Lưu địa điểm &amp; Tiếp tục</string>
+    <string name="onboarding_place_skip">Để sau</string>
+
+    <!-- Step 5: Complete -->
+    <string name="onboarding_done_title">Thiết lập hoàn tất!</string>
+    <string name="onboarding_done_summary_circle">Gia đình</string>
+    <string name="onboarding_done_summary_no_circle">Chưa tham gia gia đình</string>
+    <string name="onboarding_done_summary_invite">Đã tạo mã mời (chờ người thân tham gia)</string>
+    <string name="onboarding_done_summary_location">Quyền vị trí &amp; chia sẻ</string>
+    <string name="onboarding_done_loc_bg">Đã bật vị trí nền</string>
+    <string name="onboarding_done_loc_fg">Chỉ khi mở ứng dụng</string>
+    <string name="onboarding_done_loc_none">Chưa bật quyền vị trí</string>
+    <string name="onboarding_done_consent_on">Đã đồng ý chia sẻ</string>
+    <string name="onboarding_done_consent_off">Đang tắt chia sẻ</string>
+    <string name="onboarding_done_summary_place">Địa điểm</string>
+    <string name="onboarding_done_place_none">Chưa tạo địa điểm</string>
+    <string name="onboarding_done_privacy_note">Bạn luôn có thể tạm dừng hoặc thu hồi quyền chia sẻ bất cứ lúc nào.</string>
+    <string name="onboarding_done_enter_app">Vào ứng dụng AnVề</string>
+
+    <!-- Account screen re-entry -->
+    <string name="home_reopen_onboarding_title">Thiết lập lại từ đầu</string>
+    <string name="home_reopen_onboarding_subtitle">Mở lại hướng dẫn gia đình, quyền vị trí và địa điểm quen thuộc.</string>
 </resources>

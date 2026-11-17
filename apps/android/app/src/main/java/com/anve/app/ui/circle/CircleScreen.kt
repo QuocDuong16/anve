@@ -200,7 +200,8 @@ fun CircleScreen(
             try {
                 if (container.sessionStore.current()?.userId == owner) {
                     container.invitationInbox.accountChanged(owner)
-                    container.invitationInbox.offer(InviteLink.create(code.trim().uppercase()) ?: "")
+                    val normalized = InviteLink.extractCode(code) ?: code.trim().uppercase()
+                    container.invitationInbox.offer(InviteLink.create(normalized) ?: "")
                 }
             } catch (e: CancellationException) { throw e } catch (_: Exception) {
                 shareError = R.string.invite_join_session_error

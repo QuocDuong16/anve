@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lời mời gia đình — AnVề</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/anve-logo.svg" />
+  <meta name="description" content="Mở lời mời tham gia nhóm gia đình trên ứng dụng AnVề. Tham gia nhóm không tự động bật chia sẻ vị trí." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream-bg: #FDF9F2;
+      --cream-low: #F7F3EC;
+      --cream-mid: #F1EDE7;
+      --forest: #3D602F;
+      --sage: #557945;
+      --on-forest: #FFFFFF;
+      --mint: #DBFFC6;
+      --blush: #F1DDE4;
+      --blush-ink: #6F6066;
+      --ink: #1C1C18;
+      --olive-ink: #43483E;
+      --outline-var: #C3C8BB;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-pill: 9999px;
+      --transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    ::selection {
+      background: var(--mint);
+      color: var(--ink);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      background-color: var(--cream-bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--forest);
+      text-underline-offset: 3px;
+    }
+    :focus-visible {
+      outline: 2px solid var(--forest);
+      outline-offset: 3px;
+    }
+
+    .topbar {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--outline-var);
+      background: var(--cream-bg);
+    }
+    .topbar-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 18px;
+    }
+    .brand img {
+      width: 34px;
+      height: 34px;
+      display: block;
+    }
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+    }
+    .nav-links a {
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 16px 40px;
+    }
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--blush);
+      color: var(--blush-ink);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--olive-ink);
+      font-size: 16px;
+    }
+
+    .code-box {
+      background: #FFFFFF;
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .code-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--olive-ink);
+      margin-bottom: 4px;
+    }
+    .code-value {
+      font-family: monospace;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+    }
+    .btn-copy {
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--forest);
+      background: transparent;
+      color: var(--forest);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color var(--transition);
+    }
+    .btn-copy:hover {
+      background: var(--cream-mid);
+    }
+    .copy-status {
+      font-size: 14px;
+      color: var(--forest);
+      font-weight: 500;
+      margin: -10px 0 16px;
+      min-height: 20px;
+    }
+
+    .notice-missing {
+      background: var(--cream-mid);
+      border: 1px solid var(--outline-var);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      color: var(--olive-ink);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50px;
+      padding: 12px 22px;
+      border-radius: var(--radius-pill);
+      font-weight: 600;
+      font-size: 16px;
+      text-decoration: none;
+      text-align: center;
+      transition: background-color var(--transition), border-color var(--transition);
+    }
+    .btn-primary {
+      background: var(--sage);
+      color: var(--on-forest);
+    }
+    .btn-primary:hover {
+      background: var(--forest);
+      color: var(--on-forest);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--forest);
+      border: 1px solid var(--sage);
+    }
+    .btn-secondary:hover {
+      background: var(--cream-mid);
+    }
+
+    .privacy-note {
+      border-top: 1px solid var(--outline-var);
+      padding-top: 16px;
+      font-size: 14px;
+      color: var(--olive-ink);
+      margin: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    footer {
+      padding: 18px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--olive-ink);
+      border-top: 1px solid var(--outline-var);
+    }
+    footer nav {
+      display: inline-flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <img src="/assets/anve-logo.svg" alt="AnVề" width="34" height="34" />
+        <span>AnVề</span>
+      </a>
+      <nav class="nav-links" aria-label="Pháp lý">
+        <a href="/privacy">Quyền riêng tư</a>
+        <a href="/delete-account">Xóa tài khoản</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="invite-title">
+      <div class="badge">Lời mời gia đình</div>
+      <h1 id="invite-title">Tham gia gia đình trên AnVề</h1>
+      <p class="subtitle">
+        Nếu bạn đã cài AnVề, hãy bấm nút bên dưới để xem tên nhóm và xác nhận tham gia.
+        Nếu chưa cài ứng dụng, hãy tải AnVề trên Google Play rồi nhập mã mời bên dưới.
+      </p>
+
+      <div id="code-section" class="hidden">
+        <div class="code-box">
+          <div>
+            <div class="code-label">Mã mời một lần</div>
+            <div class="code-value" id="invite-code-text"></div>
+          </div>
+          <button type="button" class="btn-copy" id="copy-code-btn">Sao chép mã</button>
+        </div>
+        <div class="copy-status" id="copy-status" role="status" aria-live="polite"></div>
+      </div>
+
+      <div id="missing-section" class="notice-missing">
+        Không thấy mã mời hợp lệ trong đường dẫn. Bạn vẫn có thể mở ứng dụng AnVề và nhập trực tiếp mã mời gồm 10 ký tự từ người thân, hoặc nhờ người thân gửi lại liên kết mới.
+      </div>
+
+      <div class="actions">
+        <a id="open-app-btn" class="btn-pill btn-primary hidden" href="anve://invite/">Mở trong AnVề</a>
+        <a class="btn-pill btn-secondary" href="https://play.google.com/store/apps/details?id=com.anve.app" rel="noopener noreferrer">Tải AnVề trên Google Play</a>
+      </div>
+
+      <p class="privacy-note">
+        <strong>Quyền riêng tư:</strong> Mở liên kết không tự động thêm bạn vào nhóm và không tự bật chia sẻ vị trí. Bạn chỉ tham gia sau khi đăng nhập và tự bấm xác nhận trong ứng dụng.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <nav aria-label="Chân trang">
+      <a href="/">Trang chủ AnVề</a>
+      <a href="/privacy">Chính sách quyền riêng tư</a>
+      <a href="/delete-account">Xóa tài khoản &amp; dữ liệu</a>
+    </nav>
+  </footer>
+
+  <script src="/assets/invite.js"></script>
+</body>
+</html>
