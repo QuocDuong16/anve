@@ -145,8 +145,14 @@ class FakeServiceController(var startResult: Boolean = true) : TrackingServiceCo
 class FakeSyncScheduler : LocationSyncScheduler {
     var scheduled = 0
     var immediate = 0
+    val delayedDelays = mutableListOf<Long>()
 
     override fun ensureScheduled() {
+        scheduled++
+    }
+
+    override fun ensureScheduledAfter(delayMillis: Long) {
+        delayedDelays += delayMillis
         scheduled++
     }
 
@@ -229,6 +235,7 @@ class FakeSyncGateway(
 ) : com.anve.app.data.location.LocationSyncGateway {
 
     val uploads = mutableListOf<List<com.anve.app.data.api.LocationEventDto>>()
+    var generationCalls = 0
     var generationHandler: suspend (String) -> Long = { 0 }
     var uploadHandler: suspend (List<com.anve.app.data.api.LocationEventDto>) ->
         com.anve.app.data.api.LocationBatchResponseDto = { events ->
@@ -237,7 +244,10 @@ class FakeSyncGateway(
 
     override suspend fun currentUserId(): String = owner
 
-    override suspend fun captureGeneration(owner: String): Long = generationHandler(owner)
+    override suspend fun captureGeneration(owner: String): Long {
+        generationCalls++
+        return generationHandler(owner)
+    }
 
     override suspend fun upload(
         owner: String,

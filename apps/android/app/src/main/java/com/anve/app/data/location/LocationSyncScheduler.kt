@@ -22,6 +22,12 @@ interface LocationSyncScheduler {
     /** Idempotent: keeps the single unique work item. */
     fun ensureScheduled()
 
+    /**
+     * Idempotent delayed scheduling for batching: keeps an already-pending
+     * work item so the initial delay window does not reset or chain.
+     */
+    fun ensureScheduledAfter(delayMillis: Long) = ensureScheduled()
+
     /** Appends a retry after the server's Retry-After delay, when provided. */
     fun enqueueAfter(delayMillis: Long) = ensureScheduled()
 
@@ -37,6 +43,9 @@ class WorkManagerLocationSyncScheduler(context: Context) : LocationSyncScheduler
     private val appContext = context.applicationContext
 
     override fun ensureScheduled() = enqueue(ExistingWorkPolicy.KEEP)
+
+    override fun ensureScheduledAfter(delayMillis: Long) =
+        enqueue(ExistingWorkPolicy.KEEP, delayMillis.coerceAtLeast(0))
 
     override fun enqueueAfter(delayMillis: Long) =
         enqueue(ExistingWorkPolicy.APPEND_OR_REPLACE, delayMillis.coerceAtLeast(0))
@@ -79,6 +88,7 @@ class LocationSyncWorker(
 
     override suspend fun doWork(): Result {
         val application = applicationContext as? AnVeApplication ?: return Result.success()
+        application.container.trackingManager.onSyncWorkerStarted()
         return try {
             val outcome = application.container.locationSyncEngine.sync()
             when {
@@ -87,6 +97,17 @@ class LocationSyncWorker(
                     Result.success()
                 }
                 outcome.retry -> Result.retry()
+                outcome.disposition == SyncDisposition.COMPLETE && outcome.errorCode == null -> {
+                    // A fix inserted while this worker was RUNNING cannot enqueue via
+                    // KEEP; append a follow-up batch job so it is never orphaned.
+                    val remaining = application.container.locationQueue.countAll()
+                    if (remaining > 0) {
+                        val delay = application.container.trackingManager.batchDelayForPendingCount(remaining)
+                        application.container.trackingManager.onDelayedSyncScheduled(delay)
+                        application.container.locationSyncScheduler.enqueueAfter(delay)
+                    }
+                    Result.success()
+                }
                 else -> Result.success()
             }
         } catch (e: CancellationException) {

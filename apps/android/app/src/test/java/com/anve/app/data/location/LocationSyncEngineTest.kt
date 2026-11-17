@@ -693,4 +693,67 @@ class LocationSyncEngineTest {
         assertEquals(SyncDisposition.SIGNED_OUT, outcome.disposition)
         assertEquals(1, dao.rows.size)
     }
+
+    @Test
+    fun `skips capture generation fetch when checkpoint is already cached`() = runBlocking {
+        store.setConsentOwner("u1")
+        seed(count = 2)
+        gateway.generationHandler = { 2L }
+        engine = LocationSyncEngine(
+            gateway = gateway,
+            queue = queue,
+            store = store,
+            sessions = sessions,
+            now = { now },
+            consentMutations = consentMutations,
+            hasCaptureCheckpoint = { true },
+        )
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(2, outcome.uploaded)
+        assertEquals(0, gateway.generationCalls)
+        assertEquals(1, gateway.uploads.size)
+    }
+
+    @Test
+    fun `refreshes capture generation once when upload hits expired checkpoint`() = runBlocking {
+        store.setConsentOwner("u1")
+        seed(count = 3)
+        val stale = eventId("u1", 1)
+        val refreshed = mutableListOf<Pair<String, Long>>()
+        gateway.generationHandler = { 5L }
+        gateway.uploadHandler = { events ->
+            if (events.any { it.eventId == stale }) throw ApiException("LOCATION_CAPTURE_GENERATION_EXPIRED", "expired", null)
+            LocationBatchResponseDto(accepted = events.map { it.eventId })
+        }
+        engine = LocationSyncEngine(
+            gateway = gateway,
+            queue = queue,
+            store = store,
+            sessions = sessions,
+            now = { now },
+            consentMutations = consentMutations,
+            hasCaptureCheckpoint = { true },
+            onCaptureGeneration = { owner, generation, _ -> refreshed += owner to generation },
+        )
+
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(2, outcome.uploaded)
+        assertEquals(1, outcome.dropped)
+        assertEquals(1, gateway.generationCalls)
+        assertEquals(listOf("u1" to 5L), refreshed)
+    }
+
+    @Test
+    fun `empty queue performs no capture generation or upload requests`() = runBlocking {
+        val outcome = engine.sync()
+
+        assertEquals(SyncDisposition.COMPLETE, outcome.disposition)
+        assertEquals(0, gateway.generationCalls)
+        assertTrue(gateway.uploads.isEmpty())
+    }
 }

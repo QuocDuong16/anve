@@ -200,6 +200,26 @@ class LocationQueueRepositoryTest {
         assertEquals(20, dao.rows.size)
     }
 
+    @Test
+    fun `enqueueAndCount returns updated count once and throttles expiry purges`() = runBlocking {
+        var currentNow = now
+        val dao = FakeLocationQueueDao()
+        val repo = LocationQueueRepository(dao, now = { currentNow }, captureGeneration = { _, _ -> 1 })
+
+        assertEquals(1, repo.enqueueAndCount("user-1", "device-1", testFix(eventId = "e1")))
+        assertEquals(currentNow - LOCATION_QUEUE_TTL_MILLIS, dao.lastRetentionCutoff)
+
+        dao.lastRetentionCutoff = null
+        currentNow += 30_000L
+        assertEquals(2, repo.enqueueAndCount("user-1", "device-1", testFix(eventId = "e2")))
+        assertEquals(null, repo.enqueueAndCount("user-1", "device-1", testFix(eventId = "e2")))
+        assertEquals("rapid enqueues must skip redundant expiry deletes", null, dao.lastRetentionCutoff)
+
+        currentNow += 60 * 60_000L
+        assertEquals(3, repo.enqueueAndCount("user-1", "device-1", testFix(eventId = "e3")))
+        assertEquals(currentNow - LOCATION_QUEUE_TTL_MILLIS, dao.lastRetentionCutoff)
+    }
+
     private fun queued(
         eventId: String,
         owner: String,

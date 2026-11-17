@@ -84,6 +84,7 @@ class LocationSyncEngine(
     private val metrics: TrackingMetricsStore = NoOpTrackingMetricsStore,
     private val consentMutations: ConsentMutationCoordinator = ConsentMutationCoordinator(),
     private val expectedClientDeviceId: (suspend () -> String)? = null,
+    private val hasCaptureCheckpoint: (String) -> Boolean = { false },
     private val captureCheckpointRevision: () -> Long = { 0 },
     private val onCaptureGeneration: (String, Long, Long) -> Unit = { _, _, _ -> },
 ) {
@@ -135,7 +136,7 @@ class LocationSyncEngine(
         }
         val budget = RequestBudget(MAX_HTTP_REQUESTS_PER_PASS)
         var batches = 0
-        var generationChecked = false
+        val generationCheck = GenerationCheck()
         while (batches < MAX_BATCHES_PER_PASS && budget.remaining > 0) {
             val currentPending = sessions.pendingConsentOperations().firstOrNull {
                 it.ownerUserId == ownerUserId
@@ -163,33 +164,16 @@ class LocationSyncEngine(
                 return SyncOutcome(SyncDisposition.RETRY, uploaded = uploaded, dropped = dropped,
                     errorCode = "CONSENT_REVOCATION_PENDING")
             }
-            if (!generationChecked) {
-                try {
-                    val revision = captureCheckpointRevision()
-                    val generation = gateway.captureGeneration(ownerUserId)
-                    consentMutations.withLocalMutation {
-                        val current = sessions.current()
-                        val localState = store.current()
-                        val pending = sessions.pendingConsentOperations().any { it.ownerUserId == ownerUserId }
-                        if (generation > 0 && current?.userId == ownerUserId && !pending &&
-                            !consentMutations.isLocationAdmissionClosed(ownerUserId) &&
-                            localState.consentOwnerUserId == ownerUserId && localState.localConsentConfirmed &&
-                            !localState.pendingConsentRevocation
-                        ) onCaptureGeneration(ownerUserId, generation, revision)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    return SyncOutcome(SyncDisposition.RETRY, errorCode = "CAPTURE_GENERATION_UNAVAILABLE")
-                }
-                if (sessions.current()?.userId != ownerUserId) {
-                    return SyncOutcome(SyncDisposition.BLOCKED, errorCode = "ACCOUNT_CHANGED")
-                }
-                generationChecked = true
-            }
             val rows = queue.pending(ownerUserId, SYNC_BATCH_SIZE)
             if (rows.isEmpty()) {
                 return SyncOutcome(SyncDisposition.COMPLETE, uploaded = uploaded, dropped = dropped)
+            }
+            if (!generationCheck.checked && !hasCaptureCheckpoint(ownerUserId)) {
+                val failure = refreshCaptureGeneration(ownerUserId, budget)
+                if (failure != null) {
+                    return failure.copy(uploaded = uploaded, dropped = dropped)
+                }
+                generationCheck.checked = true
             }
             val invalid = rows.firstOrNull { it.validationError(now(), expectedDevice) != null }
             if (invalid != null) {
@@ -200,7 +184,7 @@ class LocationSyncEngine(
                 continue
             }
             queue.markAttempt(rows.map { it.eventId })
-            val outcome = uploadWithIsolation(ownerUserId, rows, budget)
+            val outcome = uploadWithIsolation(ownerUserId, rows, budget, generationCheck)
             uploaded += outcome.uploaded
             dropped += outcome.dropped
             if (outcome.disposition == SyncDisposition.RETRY ||
@@ -220,10 +204,41 @@ class LocationSyncEngine(
         return SyncOutcome(SyncDisposition.RETRY, uploaded = uploaded, dropped = dropped)
     }
 
+    private suspend fun refreshCaptureGeneration(
+        ownerUserId: String,
+        budget: RequestBudget,
+    ): SyncOutcome? {
+        if (budget.remaining <= 0) return SyncOutcome(SyncDisposition.RETRY)
+        budget.remaining--
+        try {
+            val revision = captureCheckpointRevision()
+            val generation = gateway.captureGeneration(ownerUserId)
+            consentMutations.withLocalMutation {
+                val current = sessions.current()
+                val localState = store.current()
+                val pending = sessions.pendingConsentOperations().any { it.ownerUserId == ownerUserId }
+                if (generation > 0 && current?.userId == ownerUserId && !pending &&
+                    !consentMutations.isLocationAdmissionClosed(ownerUserId) &&
+                    localState.consentOwnerUserId == ownerUserId && localState.localConsentConfirmed &&
+                    !localState.pendingConsentRevocation
+                ) onCaptureGeneration(ownerUserId, generation, revision)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return SyncOutcome(SyncDisposition.RETRY, errorCode = "CAPTURE_GENERATION_UNAVAILABLE")
+        }
+        if (sessions.current()?.userId != ownerUserId) {
+            return SyncOutcome(SyncDisposition.BLOCKED, errorCode = "ACCOUNT_CHANGED")
+        }
+        return null
+    }
+
     private suspend fun uploadWithIsolation(
         ownerUserId: String,
         rows: List<QueuedLocation>,
         budget: RequestBudget,
+        generationCheck: GenerationCheck,
     ): SyncOutcome {
         if (budget.remaining <= 0) return SyncOutcome(SyncDisposition.RETRY)
         var pendingOff = false
@@ -250,6 +265,13 @@ class LocationSyncEngine(
         } catch (e: CancellationException) {
             throw e
         } catch (e: ApiException) {
+            if (e.code == "LOCATION_CAPTURE_GENERATION_EXPIRED" && !generationCheck.checked) {
+                generationCheck.checked = true
+                val refreshFailure = refreshCaptureGeneration(ownerUserId, budget)
+                if (refreshFailure?.disposition == SyncDisposition.BLOCKED) {
+                    return refreshFailure
+                }
+            }
             if (e.code in VALIDATION_REJECTIONS) {
                 if (rows.size == 1) {
                     val removed = queue.remove(listOf(rows.single().eventId))
@@ -257,7 +279,7 @@ class LocationSyncEngine(
                     return SyncOutcome(SyncDisposition.PERMANENT_REJECTION, dropped = removed, errorCode = e.code)
                 }
                 val midpoint = rows.size / 2
-                val left = uploadWithIsolation(ownerUserId, rows.subList(0, midpoint), budget)
+                val left = uploadWithIsolation(ownerUserId, rows.subList(0, midpoint), budget, generationCheck)
                 if (left.disposition in setOf(
                         SyncDisposition.RETRY,
                         SyncDisposition.SIGNED_OUT,
@@ -267,7 +289,7 @@ class LocationSyncEngine(
                 ) {
                     return left
                 }
-                val right = uploadWithIsolation(ownerUserId, rows.subList(midpoint, rows.size), budget)
+                val right = uploadWithIsolation(ownerUserId, rows.subList(midpoint, rows.size), budget, generationCheck)
                 return SyncOutcome(
                     disposition = when {
                         right.disposition in setOf(
@@ -390,6 +412,8 @@ class LocationSyncEngine(
 }
 
 private data class RequestBudget(var remaining: Int)
+
+private data class GenerationCheck(var checked: Boolean = false)
 
 private fun QueuedLocation.validationError(nowMillis: Long, expectedDeviceId: String?): String? = when {
     runCatching { UUID.fromString(eventId) }.getOrNull()?.toString()?.equals(eventId, ignoreCase = true) != true ->

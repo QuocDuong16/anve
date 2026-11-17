@@ -208,6 +208,7 @@ class AppContainer(application: Application) {
         metrics = trackingMetrics,
         consentMutations = consentMutationCoordinator,
         expectedClientDeviceId = { deviceIdentity.registration().clientDeviceId },
+        hasCaptureCheckpoint = captureGenerations::has,
         captureCheckpointRevision = captureGenerations::revision,
         onCaptureGeneration = { owner, generation, revision ->
             if (captureGenerations.advanceIfCurrent(owner, generation, revision)) {

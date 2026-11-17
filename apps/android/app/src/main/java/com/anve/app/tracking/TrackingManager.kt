@@ -146,6 +146,7 @@ class TrackingManager(
     private var lastSession: com.anve.app.data.auth.StoredSession? = null
     private var clientDeviceId: String? = null
     private var initialIntentLoaded = false
+    @Volatile private var delayedBatchPending = false
     private var lastMetricsTickElapsed = elapsedNow()
     private var serviceStartedAtElapsed: Long? = null
 
@@ -1141,6 +1142,7 @@ class TrackingManager(
     }
 
     override fun retrySync() {
+        delayedBatchPending = false
         syncScheduler.enqueueImmediate()
     }
 
@@ -1435,7 +1437,7 @@ class TrackingManager(
         }
         if (!decision.accepted) return
 
-        val enqueued = try {
+        val queuedCount = try {
             consentMutations.withLocalMutation {
                 val session = sessions.current()
                 val local = store.current()
@@ -1450,9 +1452,9 @@ class TrackingManager(
                     !local.localConsentConfirmed || !local.trackingRequested ||
                     !_status.value.trackingRequested || !permissions.snapshot().canTrack
                 ) {
-                    false
+                    null
                 } else {
-                    queue.enqueue(ownerUserId = owner, clientDeviceId = device, fix = fix)
+                    queue.enqueueAndCount(ownerUserId = owner, clientDeviceId = device, fix = fix)
                 }
             }
         } catch (error: Exception) {
@@ -1462,7 +1464,7 @@ class TrackingManager(
             }
             return
         }
-        if (enqueued) {
+        if (queuedCount != null) {
             _status.update {
                 it.copy(
                     lastFixAtMillis = fix.recordedAtMillis,
@@ -1471,9 +1473,75 @@ class TrackingManager(
                     lastError = null,
                 )
             }
-            syncScheduler.ensureScheduled()
+            scheduleBatchSync(
+                motion = decision.motion,
+                batterySaver = _status.value.batterySaver,
+                countAfter = queuedCount,
+            )
         }
         updateRequestOptions(decision.request)
+    }
+
+    internal fun onSyncWorkerStarted() {
+        delayedBatchPending = false
+    }
+
+    internal fun onDelayedSyncScheduled(delayMillis: Long) {
+        delayedBatchPending = delayMillis > 0L
+    }
+
+    internal fun batchDelayForPendingCount(queuedCount: Int): Long {
+        if (queuedCount <= 0) return 0L
+        val (threshold, delayMillis) = batchSyncPolicy(
+            motion = policy.motion,
+            batterySaver = batterySaver(),
+            isFirstUpload = _status.value.lastUploadAtMillis == null,
+        )
+        return if (queuedCount >= threshold) 0L else delayMillis
+    }
+
+    private fun scheduleBatchSync(
+        motion: MotionState,
+        batterySaver: Boolean,
+        countAfter: Int,
+    ) {
+        if (countAfter <= 0) return
+        if (countAfter == 1) delayedBatchPending = false
+        val (thresholdCount, delayMillis) = batchSyncPolicy(
+            motion = motion,
+            batterySaver = batterySaver,
+            isFirstUpload = _status.value.lastUploadAtMillis == null,
+        )
+        when {
+            countAfter >= thresholdCount && delayedBatchPending -> {
+                delayedBatchPending = false
+                syncScheduler.enqueueImmediate()
+            }
+            countAfter >= thresholdCount -> {
+                delayedBatchPending = false
+                syncScheduler.ensureScheduled()
+            }
+            else -> {
+                delayedBatchPending = true
+                syncScheduler.ensureScheduledAfter(delayMillis)
+            }
+        }
+    }
+
+    private fun batchSyncPolicy(
+        motion: MotionState,
+        batterySaver: Boolean,
+        isFirstUpload: Boolean,
+    ): Pair<Int, Long> = when {
+        // First fix or stationary heartbeats (5 min apart): upload in the same wake window.
+        isFirstUpload || motion == MotionState.IDLE || motion == MotionState.STATIONARY ->
+            1 to 0L
+        motion == MotionState.JOURNEY ->
+            JOURNEY_BATCH_TRIGGER_COUNT to JOURNEY_BATCH_MAX_DELAY_MILLIS
+        motion == MotionState.MOVING && batterySaver ->
+            POWER_SAVE_MOVING_BATCH_TRIGGER_COUNT to POWER_SAVE_MOVING_BATCH_MAX_DELAY_MILLIS
+        else ->
+            MOVING_BATCH_TRIGGER_COUNT to MOVING_BATCH_MAX_DELAY_MILLIS
     }
 
     /** Internal for deterministic tests of permission/location loss. */
@@ -1643,7 +1711,15 @@ class TrackingManager(
 
     companion object {
         const val SERVICE_START_TIMEOUT_MILLIS: Long = 10_000
-        const val OPERATIONAL_CHECK_INTERVAL_MILLIS: Long = 30_000
+        const val OPERATIONAL_CHECK_INTERVAL_MILLIS: Long = 2 * 60_000L
+
+        /** State-aware batch thresholds: keep Live Map fresh while cutting radio wakeups. */
+        const val JOURNEY_BATCH_TRIGGER_COUNT: Int = 2
+        const val JOURNEY_BATCH_MAX_DELAY_MILLIS: Long = 30_000L
+        const val MOVING_BATCH_TRIGGER_COUNT: Int = 2
+        const val MOVING_BATCH_MAX_DELAY_MILLIS: Long = 60_000L
+        const val POWER_SAVE_MOVING_BATCH_TRIGGER_COUNT: Int = 4
+        const val POWER_SAVE_MOVING_BATCH_MAX_DELAY_MILLIS: Long = 2 * 60_000L
 
         /** Mirrors the server's future-timestamp tolerance. */
         const val MAX_FUTURE_SKEW_MILLIS: Long = 2 * 60 * 1000

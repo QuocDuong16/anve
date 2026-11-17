@@ -16,6 +16,9 @@ const val LOCATION_QUEUE_TTL_MILLIS: Long = 7L * 24 * 60 * 60 * 1000
 /** Server batch limit is 200; 100 keeps requests small on mobile networks. */
 const val SYNC_BATCH_SIZE: Int = 100
 
+/** Avoids running an expiry DELETE on every GPS fix while still bounding offline storage. */
+private const val ENQUEUE_PURGE_INTERVAL_MILLIS: Long = 60 * 60_000L
+
 /**
  * The durable offline queue. Every method is account-scoped: the owner id
  * is stored in each row and filters every read, so queued points can never
@@ -26,6 +29,9 @@ class LocationQueueRepository(
     private val now: () -> Long = System::currentTimeMillis,
     private val captureGeneration: (String, Long) -> Long = { _, _ -> 0 },
 ) {
+
+    @Volatile
+    private var lastPurgeAtMillis: Long = Long.MIN_VALUE
 
     fun hasCaptureProvenance(ownerUserId: String, fix: LocationFix): Boolean =
         captureGeneration(ownerUserId, fix.elapsedRealtimeNanos) > 0
@@ -39,19 +45,35 @@ class LocationQueueRepository(
         ownerUserId: String,
         clientDeviceId: String,
         fix: LocationFix,
-    ): Boolean {
-        if (!fix.isStorable()) return false
+    ): Boolean = enqueueAndCount(ownerUserId, clientDeviceId, fix) != null
+
+    /**
+     * Persists one accepted fix and returns the owner's updated queue count,
+     * or null when the fix is invalid, lacks provenance, or already exists.
+     */
+    suspend fun enqueueAndCount(
+        ownerUserId: String,
+        clientDeviceId: String,
+        fix: LocationFix,
+    ): Int? {
+        if (!fix.isStorable()) return null
         val generation = captureGeneration(ownerUserId, fix.elapsedRealtimeNanos)
-        if (generation <= 0) return false
-        purgeExpired()
+        if (generation <= 0) return null
+        val currentNow = now()
+        if (lastPurgeAtMillis == Long.MIN_VALUE || currentNow - lastPurgeAtMillis >= ENQUEUE_PURGE_INTERVAL_MILLIS) {
+            purgeExpired()
+            lastPurgeAtMillis = currentNow
+        }
         val inserted = dao.insert(
-            fix.toQueuedLocation(ownerUserId, clientDeviceId, now(), generation),
+            fix.toQueuedLocation(ownerUserId, clientDeviceId, currentNow, generation),
         ) != -1L
+        if (!inserted) return null
         val count = dao.count(ownerUserId)
         if (count > MAX_QUEUED_LOCATIONS) {
             dao.deleteOldest(ownerUserId, count - MAX_QUEUED_LOCATIONS)
+            return MAX_QUEUED_LOCATIONS
         }
-        return inserted
+        return count
     }
 
     /** Oldest-first batch for upload; event-time order is preserved. */

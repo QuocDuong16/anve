@@ -1105,4 +1105,138 @@ class TrackingManagerTest {
         emitFix(eventId = "session-2")
         awaitUntil { dao.rows.containsKey("session-2") }
     }
+
+    @Test
+    fun `first upload and stationary fixes schedule immediate sync without delay`() = runBlocking {
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+
+        emitFix(eventId = "first-moving", speed = 3.0)
+        awaitUntil { dao.rows.containsKey("first-moving") }
+        assertTrue(scheduler.delayedDelays.isEmpty())
+        assertTrue(scheduler.scheduled >= 1)
+
+        store.setLastSuccessfulUpload(now)
+        awaitUntil { manager.status.value.lastUploadAtMillis == now }
+        dao.rows.clear()
+        val scheduledBefore = scheduler.scheduled
+
+        now += 300_000
+        elapsed += 300_000
+        emitFix(eventId = "stationary-heartbeat", speed = 0.0)
+        awaitUntil { dao.rows.containsKey("stationary-heartbeat") }
+        assertEquals(MotionState.STATIONARY, manager.status.value.motion)
+        assertTrue(scheduler.delayedDelays.isEmpty())
+        assertEquals(scheduledBefore + 1, scheduler.scheduled)
+    }
+
+    @Test
+    fun `moving batching adapts delay and threshold for normal and battery saver modes`() = runBlocking {
+        store.setLastSuccessfulUpload(now - 1_000)
+        awaitUntil { manager.status.value.lastUploadAtMillis != null }
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+
+        now += 15_000
+        elapsed += 15_000
+        emitFix(eventId = "moving-1", latitude = 10.777, speed = 3.0)
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(MotionState.MOVING, manager.status.value.motion)
+        assertEquals(listOf(TrackingManager.MOVING_BATCH_MAX_DELAY_MILLIS), scheduler.delayedDelays)
+        assertEquals(0, scheduler.immediate)
+
+        now += 30_000
+        elapsed += 30_000
+        emitFix(eventId = "moving-2", latitude = 10.778, speed = 3.0)
+        awaitUntil { dao.rows.size == 2 }
+        assertEquals(1, scheduler.immediate)
+
+        now += 30_000
+        elapsed += 30_000
+        val scheduledBefore = scheduler.scheduled
+        emitFix(eventId = "moving-3-above", latitude = 10.779, speed = 3.0)
+        awaitUntil { dao.rows.size == 3 }
+        assertEquals(1, scheduler.immediate)
+        assertEquals(scheduledBefore + 1, scheduler.scheduled)
+
+        dao.rows.clear()
+        scheduler.delayedDelays.clear()
+        scheduler.immediate = 0
+        saver = true
+
+        repeat(TrackingManager.POWER_SAVE_MOVING_BATCH_TRIGGER_COUNT - 1) { index ->
+            now += 60_000
+            elapsed += 60_000
+            emitFix(eventId = "saver-$index", latitude = 10.780 + index * 0.001, speed = 3.0)
+        }
+        awaitUntil { dao.rows.size == TrackingManager.POWER_SAVE_MOVING_BATCH_TRIGGER_COUNT - 1 }
+        assertEquals(TrackingManager.POWER_SAVE_MOVING_BATCH_TRIGGER_COUNT - 1, scheduler.delayedDelays.size)
+        assertTrue(scheduler.delayedDelays.all { it == TrackingManager.POWER_SAVE_MOVING_BATCH_MAX_DELAY_MILLIS })
+        assertEquals(0, scheduler.immediate)
+
+        now += 60_000
+        elapsed += 60_000
+        emitFix(eventId = "saver-threshold", latitude = 10.785, speed = 3.0)
+        awaitUntil { dao.rows.size == TrackingManager.POWER_SAVE_MOVING_BATCH_TRIGGER_COUNT }
+        assertEquals(1, scheduler.immediate)
+    }
+
+    @Test
+    fun `journey mode batches up to 2 fixes or 30 seconds`() = runBlocking {
+        store.setLastSuccessfulUpload(now - 1_000)
+        awaitUntil { manager.status.value.lastUploadAtMillis != null }
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        assertTrue(manager.enableJourneyPriority("u1", "journey-1", now + 600_000L, manager.journeyAdmissionRevision()))
+        awaitUntil { manager.status.value.motion == MotionState.JOURNEY }
+
+        now += 15_000
+        elapsed += 15_000
+        emitFix(eventId = "journey-1", latitude = 10.777, speed = 3.0)
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(listOf(TrackingManager.JOURNEY_BATCH_MAX_DELAY_MILLIS), scheduler.delayedDelays)
+        assertEquals(0, scheduler.immediate)
+
+        now += 15_000
+        elapsed += 15_000
+        emitFix(eventId = "journey-2", latitude = 10.778, speed = 3.0)
+        awaitUntil { dao.rows.size == 2 }
+        assertEquals(1, scheduler.immediate)
+    }
+
+    @Test
+    fun `worker start prevents mid-flight replacement and delayed follow-up re-arms threshold flush`() = runBlocking {
+        store.setLastSuccessfulUpload(now - 1_000)
+        awaitUntil { manager.status.value.lastUploadAtMillis != null }
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+
+        now += 15_000
+        elapsed += 15_000
+        emitFix(eventId = "moving-1", latitude = 10.777, speed = 3.0)
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(1, scheduler.delayedDelays.size)
+        assertEquals(0, scheduler.immediate)
+
+        // Worker starts uploading moving-1 while it is still in Room.
+        manager.onSyncWorkerStarted()
+        val scheduledBefore = scheduler.scheduled
+
+        now += 30_000
+        elapsed += 30_000
+        emitFix(eventId = "moving-2-concurrent", latitude = 10.778, speed = 3.0)
+        awaitUntil { dao.rows.size == 2 }
+        assertEquals("must not REPLACE a running worker", 0, scheduler.immediate)
+        assertEquals(scheduledBefore + 1, scheduler.scheduled)
+
+        // Worker finishes moving-1 and schedules delayed follow-up for moving-2-concurrent.
+        dao.rows.remove("moving-1")
+        manager.onDelayedSyncScheduled(TrackingManager.MOVING_BATCH_MAX_DELAY_MILLIS)
+
+        now += 30_000
+        elapsed += 30_000
+        emitFix(eventId = "moving-3", latitude = 10.779, speed = 3.0)
+        awaitUntil { dao.rows.size == 2 }
+        assertEquals(1, scheduler.immediate)
+    }
 }
