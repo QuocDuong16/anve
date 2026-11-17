@@ -6,11 +6,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Surface
@@ -75,12 +78,16 @@ class PlacesScreenInstrumentedTest {
         compose.runOnIdle { vm.activate("owner") }
         val context = ApplicationProvider.getApplicationContext<Context>()
         compose.onNodeWithText("Nhà").performClick()
-        compose.onNodeWithText(context.getString(R.string.places_monitor_mine_title)).performScrollTo().assertIsDisplayed()
+        val monitorTitle = context.getString(R.string.places_monitor_mine_title)
+        val shareNotice = context.getString(R.string.places_share_notice)
+        compose.onNodeWithTag("places-content").performScrollToNode(hasText(monitorTitle))
+        compose.onNodeWithText(monitorTitle).performScrollTo().assertIsDisplayed()
         // The share rebuttal ('sharing a place does not grant event-viewing
         // rights') renders inline above the share toggles from the first
         // render; no 'Giải thích' expansion may stand between the reader and
         // it, because it blocks the most dangerous misreading of the toggles.
-        compose.onNodeWithText(context.getString(R.string.places_share_notice)).assertExists().performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("places-content").performScrollToNode(hasText(shareNotice))
+        compose.onNodeWithText(shareNotice).assertExists().performScrollTo().assertIsDisplayed()
     }
 
     @Test fun notesToggleRevealsMonitoringAndOfflineNotices() {
@@ -92,10 +99,13 @@ class PlacesScreenInstrumentedTest {
         // The share notice left the card — it is asserted inline in
         // shareNoticeShowsInlineWithoutExpandingNotes — so the collapsible
         // explainer keeps only the monitoring and offline notices.
-        compose.onNodeWithText(context.getString(R.string.places_notes_toggle)).performScrollTo().performClick()
+        val notesToggle = context.getString(R.string.places_notes_toggle)
+        compose.onNodeWithTag("places-content").performScrollToNode(hasText(notesToggle))
+        compose.onNodeWithText(notesToggle).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.places_monitor_mine_notice)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.places_offline_notice)).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.places_notes_toggle)).performScrollTo().performClick()
+        compose.onNodeWithTag("places-content").performScrollToNode(hasText(notesToggle))
+        compose.onNodeWithText(notesToggle).performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText(context.getString(R.string.places_monitor_mine_notice)).assertDoesNotExist()
         compose.onNodeWithText(context.getString(R.string.places_offline_notice)).assertDoesNotExist()
@@ -117,6 +127,7 @@ class PlacesScreenInstrumentedTest {
         val suffix = if (dark) "dark-font130" else "light"
         captureNativeFixture("places-list-$suffix")
         compose.onNodeWithText("Nhà").performClick()
+        compose.onNodeWithTag("places-content").performScrollToNode(hasText("Theo dõi vị trí của tôi tại đây"))
         compose.onNodeWithText("Theo dõi vị trí của tôi tại đây").performScrollTo().assertIsDisplayed()
         captureNativeFixture("places-detail-$suffix")
         // The back control lives in the top app bar, outside the scrolling
