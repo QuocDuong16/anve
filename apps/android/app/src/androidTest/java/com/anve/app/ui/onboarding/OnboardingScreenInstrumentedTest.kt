@@ -41,6 +41,7 @@ class OnboardingScreenInstrumentedTest {
                     state = state.value,
                     onStartGuided = { state.value = state.value.copy(step = OnboardingStep.FAMILY) },
                     onSkipAllToHome = { skippedAll = true },
+                    onContinueFromFamily = { state.value = state.value.copy(step = OnboardingStep.PERMISSIONS) },
                     onSkipFamilyStep = { state.value = state.value.copy(step = OnboardingStep.PERMISSIONS) },
                     onSkipPermissionsStep = {
                         skippedPerms = true
@@ -77,12 +78,11 @@ class OnboardingScreenInstrumentedTest {
 
         // Step 3: Permissions & Prominent Disclosure (skip remains enabled)
         compose.onNodeWithText(context.getString(R.string.onboarding_disclosure_title)).assertIsDisplayed()
-        compose.onNodeWithTag("onboarding-perm-skip").performScrollTo().assertIsEnabled()
         captureNativeFixture("onboarding-permissions-light")
-        compose.onNodeWithTag("onboarding-perm-skip").performClick()
+        compose.onNodeWithTag("onboarding-perm-skip").performScrollTo().assertIsEnabled().performClick()
         compose.runOnIdle { assertTrue(skippedPerms) }
 
-        // Step 4: Audience waiting + Place skip
+        // Step 4: Audience waiting + Place skip (scroll to confirm Place skip is reachable)
         compose.onNodeWithText(context.getString(R.string.onboarding_audience_waiting)).assertIsDisplayed()
         captureNativeFixture("onboarding-place-light")
         compose.onNodeWithTag("onboarding-place-skip").performScrollTo().performClick()
@@ -90,6 +90,7 @@ class OnboardingScreenInstrumentedTest {
 
         // Step 5: Truthful summary (permissions not enabled -> does NOT claim granted)
         compose.onNodeWithText(context.getString(R.string.onboarding_done_loc_none), substring = true).assertIsDisplayed()
+        captureNativeFixture("onboarding-complete-light")
         compose.onNodeWithTag("onboarding-complete-enter").performScrollTo().performClick()
         compose.runOnIdle { assertTrue(finished) }
     }
