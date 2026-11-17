@@ -127,6 +127,7 @@ class TrackingManager(
     private data class ProviderSubscription(
         val options: LocationRequestOptions,
         val revision: Long = 0L,
+        val requestInitialFix: Boolean = false,
     )
 
     private val policy = AdaptiveTrackingPolicy()
@@ -165,7 +166,7 @@ class TrackingManager(
         val generation = sessionGeneration
         journeyConfirmationJob = scope.launch {
             while (journeyLease.active(owner, id)) {
-                delay(20_000)
+                delay(30_000)
                 if (generation != sessionGeneration || owner != sessionOwner || !journeyLease.active(owner, id)) break
                 val active = try {
                     fetchJourneyActive(owner, id)
@@ -196,10 +197,15 @@ class TrackingManager(
     private fun updateRequestOptions(
         options: LocationRequestOptions = policy.requestOptions(batterySaver()),
         forceResubscribe: Boolean = false,
+        requestInitialFix: Boolean = false,
     ) {
         providerSubscription.update { current ->
             if (forceResubscribe || current.options != options) {
-                ProviderSubscription(options, current.revision + 1)
+                ProviderSubscription(
+                    options = options,
+                    revision = current.revision + 1,
+                    requestInitialFix = requestInitialFix,
+                )
             } else {
                 current
             }
@@ -299,8 +305,10 @@ class TrackingManager(
                     migrateLegacyRevocation(lastSession)
                     sessionOwner = null
                     lastSession = null
+                    delayedBatchPending = false
                     queue.purgeAll()
                     queueCountJob?.cancel()
+                    syncScheduler.cancel()
                     stopInternal(clearIntent = true, clearRecovery = true)
                     _status.update {
                         it.copy(
@@ -326,6 +334,7 @@ class TrackingManager(
                 val owner = session.userId
                 if (owner != null) {
                     if (owner != sessionOwner) {
+                        delayedBatchPending = false
                         captureGenerations.clear()
                         sessionGeneration++
                         _status.update {
@@ -363,6 +372,8 @@ class TrackingManager(
                         // must never carry over, even if a sign-out was
                         // interrupted before clearing them.
                         queue.purgeAll()
+                        delayedBatchPending = false
+                        syncScheduler.cancel()
                         stopInternal(clearIntent = true, clearRecovery = true)
                         store.setLocalConsentConfirmed(false)
                         migrateLegacyRevocation(lastSession)
@@ -374,6 +385,8 @@ class TrackingManager(
                         if (sessionOwner != null) {
                             // Session replacement without a null in between.
                             queue.purgeAll()
+                            delayedBatchPending = false
+                            syncScheduler.cancel()
                             stopInternal(clearIntent = true, clearRecovery = true)
                             migrateLegacyRevocation(lastSession)
                             store.setLocalConsentConfirmed(false)
@@ -568,7 +581,10 @@ class TrackingManager(
                 false
             }
 
-            attempt { syncScheduler.cancel() }
+            attempt {
+                delayedBatchPending = false
+                syncScheduler.cancel()
+            }
             var activeSession: StoredSession? = null
             var localState: LocalTrackingState? = null
             attempt { activeSession = sessions.current() }
@@ -1093,12 +1109,14 @@ class TrackingManager(
             }
             return
         }
+        val isOnline = connectivity.isOnline()
         _status.update {
             it.copy(
                 serviceRunning = true,
                 running = true,
                 providerActive = false,
-                operational = if (connectivity.isOnline()) OperationalState.ACTIVE else OperationalState.OFFLINE,
+                online = isOnline,
+                operational = if (isOnline) OperationalState.ACTIVE else OperationalState.OFFLINE,
             )
         }
         serviceStartedAtElapsed = elapsedNow()
@@ -1260,6 +1278,8 @@ class TrackingManager(
             "DEVICE_NOT_AUTHORIZED" -> TrackingProblem.SESSION_UNAVAILABLE
             else -> TrackingProblem.PROVIDER_ERROR
         }
+        delayedBatchPending = false
+        syncScheduler.cancel()
         stopInternal(clearIntent = true, clearRecovery = true)
         store.setLocalConsentConfirmed(false)
         _status.update {
@@ -1288,7 +1308,7 @@ class TrackingManager(
             if (collectionJob?.isActive == true && _status.value.running &&
                 !consentMutations.isLocationAdmissionClosed(ownerUserId)
             ) {
-                updateRequestOptions(forceResubscribe = true)
+                updateRequestOptions(forceResubscribe = true, requestInitialFix = true)
             } else {
                 updateRequestOptions()
             }
@@ -1344,15 +1364,21 @@ class TrackingManager(
             stopForPermissionLoss(TrackingProblem.PERMISSION_REVOKED)
             return
         }
-        updateRequestOptions()
+        updateRequestOptions(forceResubscribe = true, requestInitialFix = true)
         lastMetricsTickElapsed = elapsedNow()
+        val isOnline = connectivity.isOnline()
         _status.update {
-            it.copy(providerActive = true, motion = policy.motion, batterySaver = batterySaver())
+            it.copy(
+                providerActive = true,
+                online = isOnline,
+                motion = policy.motion,
+                batterySaver = batterySaver(),
+            )
         }
         collectionJob = scope.launch {
             try {
                 providerSubscription
-                    .flatMapLatest { sub -> provider.updates(sub.options) }
+                    .flatMapLatest { sub -> provider.updates(sub.options, sub.requestInitialFix) }
                     .collect { fix -> handleFix(fix, ownerUserId, generation) }
             } catch (e: CancellationException) {
                 throw e
@@ -1506,7 +1532,6 @@ class TrackingManager(
         countAfter: Int,
     ) {
         if (countAfter <= 0) return
-        if (countAfter == 1) delayedBatchPending = false
         val (thresholdCount, delayMillis) = batchSyncPolicy(
             motion = motion,
             batterySaver = batterySaver,

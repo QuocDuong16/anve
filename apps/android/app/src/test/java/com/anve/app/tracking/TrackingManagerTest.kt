@@ -1239,4 +1239,83 @@ class TrackingManagerTest {
         awaitUntil { dao.rows.size == 2 }
         assertEquals(1, scheduler.immediate)
     }
+
+    @Test
+    fun `initial fix is requested only on start or checkpoint roll`() = runBlocking {
+        assertEquals(1, connectivity.activeObservers)
+
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+        assertEquals(listOf(true), provider.initialFixRequests)
+
+        emitFix(eventId = "stationary-1", speed = 0.0)
+        awaitUntil { provider.optionsHistory.size >= 2 }
+        assertEquals(listOf(true, false), provider.initialFixRequests)
+
+        now += 15_000
+        elapsed += 15_000
+        emitFix(eventId = "moving-1", latitude = 10.778, speed = 3.0)
+        awaitUntil { provider.optionsHistory.size >= 3 }
+        assertEquals(listOf(true, false, false), provider.initialFixRequests)
+
+        now += 5_000
+        elapsed += 5_000
+        fetchCheckpoint = { 2L }
+        manager.refreshCaptureCheckpoint("u1")
+        awaitUntil { provider.optionsHistory.size >= 4 }
+        assertEquals(listOf(true, false, false, true), provider.initialFixRequests)
+
+        manager.stopTracking()
+        awaitUntil { provider.activeCollectors == 0 }
+        assertEquals(1, connectivity.activeObservers)
+    }
+
+    @Test
+    fun `stopping and restarting preserves delayed batch state so next fix flushes immediately`() = runBlocking {
+        store.setLastSuccessfulUpload(now - 1_000)
+        awaitUntil { manager.status.value.lastUploadAtMillis != null }
+        startAndConfirm()
+        awaitUntil { provider.activeCollectors == 1 }
+
+        now += 15_000
+        elapsed += 15_000
+        emitFix(eventId = "moving-before-stop", latitude = 10.777, speed = 3.0)
+        awaitUntil { dao.rows.size == 1 }
+        assertEquals(listOf(TrackingManager.MOVING_BATCH_MAX_DELAY_MILLIS), scheduler.delayedDelays)
+        assertEquals(0, scheduler.immediate)
+
+        manager.stopTracking()
+        awaitUntil { !manager.status.value.running && provider.activeCollectors == 0 }
+
+        now += 10_000
+        elapsed += 10_000
+        manager.startTracking()
+        awaitUntil { service.starts == 2 }
+        manager.onServiceStarted()
+        awaitUntil { manager.status.value.providerActive && provider.activeCollectors == 1 }
+
+        emitFix(eventId = "stationary-after-restart", latitude = 10.778, speed = 0.0)
+        awaitUntil { dao.rows.size == 2 }
+        assertEquals(1, scheduler.immediate)
+    }
+
+    @Test
+    fun `online state updates while stopped and stays consistent on service start`() = runBlocking {
+        startAndConfirm()
+        connectivity.updateOnline(false)
+        awaitUntil { !manager.status.value.online && manager.status.value.operational == OperationalState.OFFLINE }
+
+        manager.stopTracking()
+        awaitUntil { !manager.status.value.running }
+
+        connectivity.updateOnline(true)
+        awaitUntil { manager.status.value.online }
+
+        manager.startTracking()
+        awaitUntil { service.starts == 2 }
+        manager.onServiceStarted()
+        awaitUntil { manager.status.value.providerActive }
+        assertTrue(manager.status.value.online)
+        assertEquals(OperationalState.ACTIVE, manager.status.value.operational)
+    }
 }

@@ -39,5 +39,5 @@ class JourneyPriorityLease(private val elapsedNow: () -> Long) {
         revision++
     }
 
-    companion object { const val CONFIRMATION_WINDOW = 60_000L }
+    companion object { const val CONFIRMATION_WINDOW = 90_000L }
 }

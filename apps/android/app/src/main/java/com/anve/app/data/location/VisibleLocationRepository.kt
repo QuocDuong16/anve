@@ -78,6 +78,7 @@ class VisibleLocationRepository(
         var etag: String? = null
         var visible = emptyList<VisibleLocationDto>()
         var failures = 0
+        var wasConnected = false
         var dataObservedElapsed: Long? = null
         var lastSuccessfulPoll: Long? = null
         emit(VisibleLocationSnapshot(ownerId = ownerId))
@@ -88,16 +89,19 @@ class VisibleLocationRepository(
                     response.code() == 304 -> {
                         failures = 0
                         lastSuccessfulPoll = nowMillis()
-                        emit(
-                            VisibleLocationSnapshot(
-                                ownerId = ownerId,
-                                locations = visible,
-                                loading = false,
-                                connected = true,
-                                lastSuccessfulPollMillis = lastSuccessfulPoll,
-                                dataObservedElapsedMillis = dataObservedElapsed,
-                            ),
-                        )
+                        if (!wasConnected) {
+                            wasConnected = true
+                            emit(
+                                VisibleLocationSnapshot(
+                                    ownerId = ownerId,
+                                    locations = visible,
+                                    loading = false,
+                                    connected = true,
+                                    lastSuccessfulPollMillis = lastSuccessfulPoll,
+                                    dataObservedElapsedMillis = dataObservedElapsed,
+                                ),
+                            )
+                        }
                     }
                     response.isSuccessful -> {
                         val body = response.body()
@@ -105,6 +109,7 @@ class VisibleLocationRepository(
                         visible = body.locations.filter { it.isSafeForMap() }
                         etag = response.headers()["ETag"]
                         failures = 0
+                        wasConnected = true
                         dataObservedElapsed = elapsedMillis()
                         lastSuccessfulPoll = nowMillis()
                         emit(
@@ -125,6 +130,7 @@ class VisibleLocationRepository(
                 throw error
             } catch (error: Exception) {
                 failures++
+                wasConnected = false
                 val authExpired = (error as? ApiException)?.httpStatus in setOf(401, 403)
                 if (authExpired) {
                     visible = emptyList()

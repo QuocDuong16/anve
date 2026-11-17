@@ -48,7 +48,7 @@ class VisibleLocationRepositoryTest {
     }
 
     @Test
-    fun `snapshot is conditional and 304 preserves the authorized in-memory data`() = runBlocking {
+    fun `snapshot is conditional and 304 skips redundant emit while preserving data`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .addHeader("ETag", "\"snapshot-1\"")
@@ -60,6 +60,10 @@ class VisibleLocationRepositoryTest {
                 ),
         )
         server.enqueue(MockResponse().setResponseCode(304).addHeader("ETag", "\"snapshot-1\""))
+        server.enqueue(
+            MockResponse().setResponseCode(503)
+                .setBody("""{"code":"SERVICE_UNAVAILABLE","message":"try later"}"""),
+        )
 
         val snapshots = withTimeout(3_000) {
             repository.observeLatest("viewer-1").take(3).toList()
@@ -69,9 +73,9 @@ class VisibleLocationRepositoryTest {
         assertEquals(listOf("owner-1"), snapshots[1].locations.map { it.ownerId })
         assertTrue(snapshots[1].connected)
         assertEquals(50_000L, snapshots[1].dataObservedElapsedMillis)
-        assertEquals(snapshots[1].locations, snapshots[2].locations)
-        assertTrue(snapshots[2].connected)
-        assertEquals(50_000L, snapshots[2].dataObservedElapsedMillis)
+        assertEquals("cached data survives 304 without emitting a duplicate connected snapshot", snapshots[1].locations, snapshots[2].locations)
+        assertFalse(snapshots[2].connected)
+        assertEquals(3, server.requestCount)
         val initial = server.takeRequest()
         assertEquals("/api/v1/locations/visible/latest", initial.path)
         assertEquals("viewer-1", initial.getHeader("X-Anve-Expected-Owner"))
@@ -79,6 +83,34 @@ class VisibleLocationRepositoryTest {
         assertEquals("/api/v1/locations/visible/latest", conditional.path)
         assertEquals("\"snapshot-1\"", conditional.getHeader("If-None-Match"))
         assertEquals("viewer-1", conditional.getHeader("X-Anve-Expected-Owner"))
+    }
+
+    @Test
+    fun `304 after transient disconnect re-emits connected snapshot with preserved data`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .addHeader("ETag", "\"snapshot-1\"")
+                .setBody(
+                    """{"locations":[{"ownerId":"owner-1","displayName":"Mai","latitude":10.7,
+                        "longitude":106.6,"horizontalAccuracyMeters":12,"recordedAt":"2026-10-27T10:00:00Z",
+                        "receivedAt":"2026-10-27T10:00:02Z","ageMillis":60000,"confidence":"FRESH"}]}"""
+                        .replace("\n", ""),
+                ),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(503)
+                .setBody("""{"code":"SERVICE_UNAVAILABLE","message":"try later"}"""),
+        )
+        server.enqueue(MockResponse().setResponseCode(304).addHeader("ETag", "\"snapshot-1\""))
+
+        val snapshots = withTimeout(3_000) {
+            repository.observeLatest("viewer-1").take(4).toList()
+        }
+
+        assertFalse(snapshots[2].connected)
+        assertTrue(snapshots[3].connected)
+        assertEquals(listOf("owner-1"), snapshots[3].locations.map { it.ownerId })
+        assertEquals(50_000L, snapshots[3].dataObservedElapsedMillis)
     }
 
     @Test

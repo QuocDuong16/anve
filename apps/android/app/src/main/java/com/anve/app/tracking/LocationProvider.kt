@@ -29,6 +29,13 @@ interface LocationProvider {
 
     /** Registers for updates; cancelling the collector unregisters it. */
     fun updates(options: LocationRequestOptions): Flow<LocationFix>
+
+    /**
+     * Registers for updates; [requestInitialFix] triggers an immediate fresh
+     * fix only on session start or capture-checkpoint re-priming.
+     */
+    fun updates(options: LocationRequestOptions, requestInitialFix: Boolean): Flow<LocationFix> =
+        updates(options)
 }
 
 /**
@@ -45,7 +52,13 @@ class FusedLocationProvider(context: Context) : LocationProvider {
         GoogleApiAvailability.getInstance()
             .isGooglePlayServicesAvailable(appContext) == ConnectionResult.SUCCESS
 
-    override fun updates(options: LocationRequestOptions): Flow<LocationFix> = callbackFlow {
+    override fun updates(options: LocationRequestOptions): Flow<LocationFix> =
+        updates(options, requestInitialFix = true)
+
+    override fun updates(
+        options: LocationRequestOptions,
+        requestInitialFix: Boolean,
+    ): Flow<LocationFix> = callbackFlow {
         val subscribedAtNanos = SystemClock.elapsedRealtimeNanos()
         val priority = if (options.highAccuracy) {
             Priority.PRIORITY_HIGH_ACCURACY
@@ -63,9 +76,13 @@ class FusedLocationProvider(context: Context) : LocationProvider {
         // Play Services treats minUpdateDistanceMeters as an AND gate with
         // intervalMillis, starving stationary heartbeats; AdaptiveTrackingPolicy
         // handles displacement vs. heartbeat filtering instead.
+        val maxUpdateAgeMillis = minOf(
+            options.intervalMillis / 2,
+            AdaptiveTrackingPolicy.MAX_FIX_AGE_MILLIS / 2,
+        )
         val request = LocationRequest.Builder(priority, options.intervalMillis)
             .setMinUpdateDistanceMeters(0f)
-            .setMaxUpdateAgeMillis(0L)
+            .setMaxUpdateAgeMillis(maxUpdateAgeMillis)
             .setWaitForAccurateLocation(false)
             .build()
 
@@ -74,29 +91,31 @@ class FusedLocationProvider(context: Context) : LocationProvider {
                 result.locations.forEach(::deliverIfFresh)
             }
         }
-        val currentLocationToken = CancellationTokenSource()
+        val currentLocationToken = if (requestInitialFix) CancellationTokenSource() else null
 
         try {
             client.requestLocationUpdates(request, callback, Looper.getMainLooper())
                 .addOnFailureListener { error ->
                     close(error)
                 }
-            val currentRequest = CurrentLocationRequest.Builder()
-                .setPriority(priority)
-                .setMaxUpdateAgeMillis(0L)
-                .build()
-            client.getCurrentLocation(currentRequest, currentLocationToken.token)
-                .addOnSuccessListener { location ->
-                    if (location != null) deliverIfFresh(location)
-                }
+            if (currentLocationToken != null) {
+                val currentRequest = CurrentLocationRequest.Builder()
+                    .setPriority(priority)
+                    .setMaxUpdateAgeMillis(0L)
+                    .build()
+                client.getCurrentLocation(currentRequest, currentLocationToken.token)
+                    .addOnSuccessListener { location ->
+                        if (location != null) deliverIfFresh(location)
+                    }
+            }
         } catch (e: SecurityException) {
-            currentLocationToken.cancel()
+            currentLocationToken?.cancel()
             close(e)
             return@callbackFlow
         }
 
         awaitClose {
-            currentLocationToken.cancel()
+            currentLocationToken?.cancel()
             client.removeLocationUpdates(callback)
         }
     }

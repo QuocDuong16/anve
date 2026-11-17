@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import java.io.IOException
 
 class FakeTrackingStore(
@@ -81,15 +80,20 @@ class FakeLocationProvider : LocationProvider {
     var available = true
     var lastOptions: LocationRequestOptions? = null
     val optionsHistory = mutableListOf<LocationRequestOptions>()
+    val initialFixRequests = mutableListOf<Boolean>()
     private val fixes = MutableSharedFlow<LocationFix>(extraBufferCapacity = 64)
     var throwOnNextFix: Throwable? = null
     var activeCollectors = 0
 
     override fun isAvailable(): Boolean = available
 
-    override fun updates(options: LocationRequestOptions): Flow<LocationFix> = flow {
+    override fun updates(options: LocationRequestOptions): Flow<LocationFix> =
+        updates(options, requestInitialFix = false)
+
+    override fun updates(options: LocationRequestOptions, requestInitialFix: Boolean): Flow<LocationFix> = flow {
         lastOptions = options
         optionsHistory += options
+        initialFixRequests += requestInitialFix
         activeCollectors++
         try {
             fixes.collect { fix ->
@@ -111,10 +115,18 @@ class FakeLocationProvider : LocationProvider {
 
 class FakeConnectivity(var online: Boolean = true) : ConnectivityMonitor {
     private val state = MutableStateFlow(online)
+    var activeObservers = 0
 
     override fun isOnline(): Boolean = state.value
 
-    override fun observe(): Flow<Boolean> = state.map { it }
+    override fun observe(): Flow<Boolean> = flow {
+        activeObservers++
+        try {
+            state.collect { emit(it) }
+        } finally {
+            activeObservers--
+        }
+    }
 
     fun updateOnline(value: Boolean) {
         online = value

@@ -33,7 +33,7 @@ class JourneyPriorityLeaseTest {
         assertFalse(lease.active("a"))
         assertFalse(lease.renew("a", "trip", lease.revision))
         assertTrue(lease.activate("a", "trip2", 600_000, lease.revision))
-        elapsed += 60_000
+        elapsed += JourneyPriorityLease.CONFIRMATION_WINDOW
         assertFalse(lease.active("a"))
         assertFalse(lease.renew("a", "trip2", lease.revision))
     }
