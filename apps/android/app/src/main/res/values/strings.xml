@@ -112,7 +112,7 @@
     <string name="home_rename_title">Tên hiển thị</string>
     <string name="home_rename_label">Tên mà người thân sẽ thấy</string>
     <string name="home_delete_title">Xóa tài khoản?</string>
-    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.\n\nNếu bạn là chủ nhóm còn thành viên, hãy vào màn Nhóm và giải tán nhóm trước: tài khoản sẽ không xóa được khi nhóm còn người khác.</string>
+    <string name="home_delete_body">Toàn bộ tài khoản, thiết bị và phiên đăng nhập sẽ bị xóa vĩnh viễn khỏi máy chủ. Hành động này không thể hoàn tác.\n\nNếu bạn là chủ nhóm còn thành viên, hãy vào tab Gia đình và giải tán nhóm trước: tài khoản sẽ không xóa được khi nhóm còn người khác.</string>
     <string name="home_delete_confirm">Xóa vĩnh viễn</string>
     <!-- Copy HomeViewModel reports as resource IDs, resolved at the screen. -->
     <string name="home_conflict_reload_notice">Chia sẻ đã thay đổi trên một thiết bị khác. Chọn lại trạng thái để xác nhận quyết định mới.</string>
@@ -189,9 +189,10 @@
 
     <!-- Activation checklist shown while onboarding or missing consent/viewer grants.
          Steps collapse on real progress: another member joined (invite),
-         consent turned on (sharing), or the user went to the map to pick
-         viewers (audience; grants are not readable from this screen). -->
+         consent turned on (sharing), or server audience grants exist (or the
+         user dismissed the card). -->
     <string name="circle_activation_progress">Bước %1$d/%2$d</string>
+    <string name="circle_activation_dismiss">Ẩn</string>
     <string name="circle_activation_intro">Vài bước nhỏ để cả nhà luôn an tâm.</string>
     <string name="circle_activation_invite_title">Mời người thân</string>
     <string name="circle_activation_invite_body">Gửi lời mời qua tin nhắn hoặc mã. Người thân tự xác nhận tham gia.</string>
@@ -303,7 +304,7 @@
     <string name="tracking_problem_service">Android chưa cho phép dịch vụ theo dõi khởi động. Mở ứng dụng và thử lại.</string>
     <string name="tracking_problem_provider">Không nhận được vị trí từ thiết bị. Thử lại sau.</string>
     <string name="tracking_problem_queue">Không lưu được vị trí trên thiết bị. Kiểm tra dung lượng bộ nhớ.</string>
-    <string name="tracking_problem_recovery">Theo dõi đã dừng khi ứng dụng bị đóng. Nhấn “Tiếp tục theo dõi” để bật lại.</string>
+    <string name="tracking_problem_recovery">Theo dõi đã dừng khi ứng dụng bị đóng. Nhấn “Tiếp tục chia sẻ” để bật lại.</string>
     <string name="tracking_problem_clock">Đồng hồ của điện thoại có vẻ không chính xác (thời gian ghi nhận vượt quá hiện tại). Bật tự động đồng bộ thời gian rồi thử lại.</string>
     <string name="tracking_disclosure_title">Trước khi bật theo dõi vị trí</string>
     <string name="tracking_disclosure_body">Khi bạn bật theo dõi, AnVề ghi vị trí của bạn để chia sẻ với các thành viên trong nhóm gia đình.\n\n• Vị trí được ghi khi ứng dụng đang mở. Nếu bạn cho phép quyền vị trí nền, AnVề tiếp tục ghi khi màn hình tắt hoặc ứng dụng ở nền.\n• Khi mất mạng, vị trí được lưu tạm trên thiết bị và gửi khi có mạng.\n• Bạn có thể dừng bất cứ lúc nào. Khi bạn tắt chia sẻ, vị trí chưa gửi sẽ bị xóa khỏi thiết bị.\n• AnVề không theo dõi khi bạn chưa đồng ý và không che giấu hoạt động này.</string>
@@ -353,7 +354,6 @@
     <!-- Tap hint over the point list, rendered only when the day has points:
          an empty day has nothing to tap, so the hint would be false. -->
     <string name="history_hint_select_point">Chạm vào một mốc để xem chỗ đó trên bản đồ.</string>
-    <string name="history_empty_day">Chưa có chuyến đi nào trong ngày này.</string>
     <string name="history_retention_title">Thời hạn lưu</string>
     <string name="history_retention_days_value">%1$s ngày</string>
     <string name="history_retention_chip_days">%1$d ngày</string>
@@ -616,7 +616,7 @@
     <string name="journey_expiry_note">Đây là thời hạn chia sẻ, không phải giờ dự kiến đến.</string>
     <string name="journey_step_viewers">3. Chọn người theo dõi</string>
     <string name="journey_viewers_note">Chỉ hiện người bạn đã cấp quyền xem vị trí.</string>
-    <string name="journey_no_viewers">Chưa có người được cấp quyền. Mở màn Bản đồ → Quyền xem để cấp quyền xem trước.</string>
+    <string name="journey_no_viewers">Chưa có người được cấp quyền. Mở màn Nhà → Ai được xem để cấp quyền xem trước.</string>
     <string name="journey_options_entry">Tự động và nhắc nhở</string>
     <string name="journey_option_off">Đang tắt</string>
     <string name="journey_option_auto_summary">Tự đến nơi (ước tính)</string>
@@ -658,10 +658,10 @@
     <string name="places_actions_content_desc">Thao tác địa điểm</string>
     <string name="places_edit">Sửa địa điểm</string>
     <string name="places_delete_menu">Xóa địa điểm</string>
-    <string name="places_monitoring_notice">Nhận thông báo nhẹ nhàng khi người thân đến hoặc rời đi. Thông báo dựa trên vị trí đã chia sẻ nên đôi khi có thể trễ.</string>
+    <string name="places_monitoring_notice">Tạo và chia sẻ vùng an toàn cho gia đình. Từng thành viên tự bật theo dõi cho mình và chọn người nhận thông báo; sự kiện có thể trễ tùy kết nối.</string>
     <string name="places_add">Thêm địa điểm</string>
     <string name="places_refresh">Làm mới</string>
-    <string name="places_empty">Chưa có địa điểm nào. Thêm nhà, trường học hay cơ quan để nhận thông báo nhẹ nhàng khi người thân đến hoặc rời đi.</string>
+    <string name="places_empty">Chưa có địa điểm nào. Thêm nhà, trường học hay cơ quan để chia sẻ với gia đình và tự cấu hình thông báo vào/ra.</string>
     <string name="places_owner_you">Của tôi</string>
     <string name="places_member_fallback">Thành viên</string>
     <string name="places_radius_of">%1$s · vùng an toàn %2$d m</string>
@@ -677,10 +677,16 @@
     <string name="places_notes_toggle">Cách hoạt động</string>
     <string name="places_access_supporting">Quyền xem địa điểm</string>
     <string name="places_monitor_mine_title">Theo dõi vị trí của tôi tại đây</string>
+    <string name="places_monitor_mine_subtitle">Khi bạn đến hoặc rời địa điểm này, những người thân bạn chọn bên dưới sẽ nhận thông báo.</string>
+    <string name="places_monitor_other_place_hint">Đây là địa điểm do %1$s chia sẻ. Cài đặt bên dưới chỉ áp dụng cho vị trí của bạn; để nhận thông báo về %1$s, %1$s cần tự bật theo dõi trên thiết bị của họ.</string>
     <string name="places_monitor_mine_notice">Chỉ bạn bật theo dõi cho mình. Người nhận cần được bạn cấp quyền vị trí và được chia sẻ địa điểm này.</string>
+    <string name="places_incoming_monitors_title">Thông báo bạn đang nhận tại đây</string>
+    <string name="places_incoming_monitors_subtitle">Người thân đang bật gửi thông báo cho bạn khi chính họ đến hoặc rời địa điểm này.</string>
+    <string name="places_incoming_monitor_active">Đang bật thông báo khi %1$s đến hoặc rời</string>
+    <string name="places_incoming_monitors_empty">Chưa có người thân nào bật gửi thông báo cho bạn tại đây. Mỗi thành viên tự bật theo dõi cho chính mình trên thiết bị của họ.</string>
     <!-- Shown next to the disabled "Bật theo dõi" button so a first-time user
          (consent is off by default) does not hit a silent dead end. -->
-    <string name="places_consent_notice">Hãy bật chia sẻ trong “Chia sẻ của tôi” trước khi nhận thông báo đến và rời tại đây.</string>
+    <string name="places_consent_notice">Hãy bật chia sẻ trong “Chia sẻ của tôi” trước khi bật theo dõi vị trí của bạn tại đây.</string>
     <!-- Copy PlacesViewModel/PlacesEditor feedback, resolved at the screen. -->
     <string name="places_editor_invalid_coords">Vĩ độ hoặc Kinh độ chưa hợp lệ. Kiểm tra lại số đã nhập.</string>
     <string name="places_editor_invalid_name">Tên địa điểm cần từ 1 đến 80 ký tự.</string>
@@ -692,7 +698,7 @@
     <string name="places_discard_title">Bỏ thay đổi?</string>
     <string name="places_discard_body">Những gì đã nhập sẽ không được lưu.</string>
     <string name="places_discard_confirm">Bỏ</string>
-    <string name="places_recipient_supporting">Nhận thông báo sự kiện tại địa điểm này</string>
+    <string name="places_recipient_supporting">Sẽ nhận thông báo khi bạn đến hoặc rời</string>
     <string name="places_offline_notice">Bật hoặc đổi quyền theo dõi có thể loại các điểm offline chưa đồng bộ.</string>
     <string name="places_monitor_enable">Bật theo dõi</string>
     <string name="places_monitor_save">Lưu người nhận</string>
@@ -893,7 +899,7 @@
     <string name="tracking_hero_active_body">Gia đình được chọn có thể xem vị trí mới nhất của bạn khi đang di chuyển.</string>
     <string name="tracking_hero_idle_title">Chia sẻ vị trí đang tạm nghỉ</string>
     <string name="tracking_hero_idle_body">Bật chia sẻ khi bạn muốn báo bình an cho người thân.</string>
-    <string name="tracking_hero_paused_body">Bạn đã cho phép chia sẻ. Bấm Bắt đầu chia sẻ để gia đình thấy vị trí khi bạn ra ngoài.</string>
+    <string name="tracking_hero_paused_body">Bạn đã cho phép chia sẻ. Bấm Bắt đầu chia sẻ và chọn người được xem ở màn Nhà để gia đình thấy vị trí của bạn.</string>
     <string name="tracking_step_audience_action">Chọn ai được xem vị trí của bạn</string>
     <string name="tracking_journey_card_title">Hành trình về nhà</string>
     <string name="tracking_journey_card_body">Chia sẻ điểm đến với người thân khi di chuyển.</string>
@@ -916,7 +922,6 @@
     <string name="places_manual_coords_toggle">Nâng cao: nhập tọa độ</string>
     <string name="places_map_cta_hint">Chạm trên bản đồ hoặc dùng vị trí hiện tại để đặt tâm vùng an toàn.</string>
     <string name="places_share_section_title">Chia sẻ địa điểm với người thân</string>
-    <string name="places_alerts_section_title">Báo cho tôi khi người thân đến hoặc rời</string>
     <string name="history_empty_warm_title">Chưa có dữ liệu</string>
     <string name="history_empty_warm_body">Chưa có vị trí nào được chia sẻ trong ngày này.</string>
     <string name="journey_intro_warm_title">Chia sẻ đường về nhà</string>
@@ -997,7 +1002,7 @@
     <string name="places_family_share_toggle_title">Chia sẻ chung cho cả gia đình</string>
     <string name="places_family_share_toggle_subtitle">Mọi thành viên hiện tại và mới vào nhóm đều thấy địa điểm này trên bản đồ. Không tự bật theo dõi hay thông báo.</string>
     <string name="places_family_share_detail_title">Địa điểm chung gia đình</string>
-    <string name="places_family_share_detail_subtitle">Tự động chia sẻ cho mọi thành viên trong nhóm</string>
+    <string name="places_family_share_detail_subtitle">Mọi thành viên thấy địa điểm này; không tự bật thông báo vào/ra</string>
     <string name="map_place_here">Đang ở %1$s</string>
     <string name="history_at_place_badge">Đang ở %1$s</string>
     <string name="map_pulse_empty_hint">Khi người thân cho phép bạn xem và chia sẻ vị trí, vị trí mới nhất sẽ hiện ngay tại đây.</string>
@@ -1006,7 +1011,6 @@
     <string name="map_audience_verified_chip">Đang cấp quyền</string>
     <string name="map_audience_paused_chip">Chưa cấp quyền</string>
 
-    <string name="circle_hearth_subtitle">Thành viên tự nguyện chia sẻ vị trí</string>
     <string name="circle_member_count_pill">%1$d thành viên</string>
     <string name="circle_self_badge">Bạn</string>
     <string name="circle_invites_count_pill">%1$d mã chờ</string>
@@ -1056,6 +1060,6 @@
     <!-- Accessibility & Empty States -->
     <string name="home_devices_empty">Chưa có thiết bị nào được ghi nhận.</string>
     <string name="places_share_empty_members">Chưa có thành viên khác trong nhóm để chia sẻ.</string>
-    <string name="places_alerts_empty_members">Chưa có thành viên đủ điều kiện nhận thông báo.</string>
+    <string name="places_alerts_empty_members">Chưa có thành viên đủ điều kiện nhận thông báo. Hãy cấp quyền xem vị trí cho họ ở màn Nhà và chia sẻ địa điểm này cho họ.</string>
     <string name="avatar_preview_content_desc">Ảnh đại diện hiện tại</string>
 </resources>

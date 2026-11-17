@@ -1,6 +1,7 @@
 package com.anve.app.ui.places
 
 import com.anve.app.R
+import com.anve.app.data.api.IncomingPlaceMonitorDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.PlaceInputDto
@@ -153,22 +154,51 @@ class PlacesViewModelTest {
         assertEquals(listOf("p3"), vm.state.value.places.map { it.id })
     }
 
+    @Test fun `selecting a loaded place fetches detail only and populates incoming monitors`() {
+        source.incoming = listOf(IncomingPlaceMonitorDto("b", "Thanh Ngọc"))
+        vm.activate("a")
+        val initialListCalls = source.listCalls
+        vm.select("p")
+        assertEquals(initialListCalls, source.listCalls)
+        assertEquals(1, source.incomingCalls)
+        assertEquals(listOf("Thanh Ngọc"), vm.state.value.incomingMonitors.map { it.ownerName })
+        vm.select(null)
+        assertEquals(initialListCalls, source.listCalls)
+        assertTrue(vm.state.value.incomingMonitors.isEmpty())
+    }
+
+    @Test fun `resume keeps cached places for same owner and refreshes silently`() {
+        vm.activate("a")
+        assertEquals(listOf("p"), vm.state.value.places.map { it.id })
+        val refreshGate = CompletableDeferred<List<PlaceDto>>()
+        source.list = { refreshGate.await() }
+        vm.resume("a")
+        assertEquals(listOf("p"), vm.state.value.places.map { it.id })
+        assertFalse(vm.state.value.loading)
+        refreshGate.complete(listOf(place("p2", "a")))
+        assertEquals(listOf("p2"), vm.state.value.places.map { it.id })
+    }
+
     private fun place(id: String, owner: String) = PlaceDto(id, owner, "circle", "Nhà", 10.0, 106.0, 150.0, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z")
     private fun event() = PlaceEventDto("e", "p", "Nhà", "a", "A", "ENTER", "2026-01-01T00:00:00Z", "2026-01-01T00:05:00Z", true, "OBSERVED")
 
     private inner class FakePlaces : PlacesDataSource {
         var list: suspend (String) -> List<PlaceDto> = { owner -> if (owner == "a") listOf(place("p", owner)) else emptyList() }
         var eventList = emptyList<PlaceEventDto>()
+        var incoming = emptyList<IncomingPlaceMonitorDto>()
+        var listCalls = 0
+        var incomingCalls = 0
         var failRead = false
         var failMutation = false
         var mutations = 0
         var mutation: suspend () -> Unit = {}
-        override suspend fun places(owner: String): List<PlaceDto> { if (failRead) error("offline"); return list(owner) }
+        override suspend fun places(owner: String): List<PlaceDto> { listCalls++; if (failRead) error("offline"); return list(owner) }
         override suspend fun events(owner: String) = eventList
         override suspend fun members(owner: String) = SharingManagementSnapshot()
         override suspend fun access(owner: String, place: String) = emptyList<String>()
         override suspend fun eligibleRecipients(owner: String, place: String) = emptyList<String>()
         override suspend fun monitor(owner: String, place: String): PlaceMonitorDto? = null
+        override suspend fun incomingMonitors(owner: String, place: String): List<IncomingPlaceMonitorDto> { incomingCalls++; return incoming }
         override suspend fun create(owner: String, input: PlaceInputDto): PlaceDto { mutate(); return place("new", owner) }
         override suspend fun update(owner: String, place: String, input: PlaceInputDto): PlaceDto { mutate(); return this@PlacesViewModelTest.place(place, owner) }
         override suspend fun delete(owner: String, place: String) = mutate()

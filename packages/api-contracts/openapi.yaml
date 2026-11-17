@@ -1125,6 +1125,31 @@ paths:
         "401": {description: Invalid session or account mismatch.}
         "404": {description: Place unavailable.}
 
+  /api/v1/places/{placeId}/incoming-monitors:
+    get:
+      operationId: listIncomingPlaceMonitors
+      summary: List Circle members currently authorizing place alerts to the caller
+      description: Read-only view of active monitors at this place where the caller is an authorized recipient and both location grants and place access remain valid.
+      tags: [places]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: path, name: placeId, required: true, schema: {type: string, format: uuid}}
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Authorized incoming monitors at this place.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [monitors]
+                properties:
+                  monitors:
+                    type: array
+                    items: {$ref: "#/components/schemas/IncomingPlaceMonitor"}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Place unavailable.}
+
   /api/v1/places/{placeId}/eligible-recipients:
     get:
       operationId: listEligiblePlaceRecipients
@@ -2655,6 +2680,12 @@ components:
         ownerId: {type: string, format: uuid}
         recipientIds: {type: array, items: {type: string, format: uuid}}
         active: {type: boolean}
+    IncomingPlaceMonitor:
+      type: object
+      required: [ownerId, ownerName]
+      properties:
+        ownerId: {type: string, format: uuid}
+        ownerName: {type: string}
     PlaceEvent:
       type: object
       required: [id, placeId, placeName, ownerId, ownerName, type, recordedAt, processedAt, delayed, confidence]

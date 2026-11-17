@@ -262,6 +262,17 @@ data class PlaceMonitorDto(
 )
 
 @JsonClass(generateAdapter = false)
+data class IncomingPlaceMonitorDto(
+    @Json(name = "ownerId") val ownerId: String,
+    @Json(name = "ownerName") val ownerName: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class IncomingPlaceMonitorListDto(
+    @Json(name = "monitors") val monitors: List<IncomingPlaceMonitorDto>,
+)
+
+@JsonClass(generateAdapter = false)
 data class PlaceEventDto(
     @Json(name = "id") val id: String,
     @Json(name = "placeId") val placeId: String,

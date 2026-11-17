@@ -236,6 +236,9 @@ interface AnveApi {
     @GET("api/v1/places/{placeId}/monitor")
     suspend fun placeMonitor(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<PlaceMonitorDto>
 
+    @GET("api/v1/places/{placeId}/incoming-monitors")
+    suspend fun incomingPlaceMonitors(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<IncomingPlaceMonitorListDto>
+
     @GET("api/v1/places/{placeId}/eligible-recipients")
     suspend fun eligiblePlaceRecipients(@Header("X-Anve-Expected-Owner") owner: String, @Path("placeId") id: String): Response<PlaceAccessDto>
 

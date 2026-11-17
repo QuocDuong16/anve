@@ -247,6 +247,7 @@ func NewRouter(deps Deps) chi.Router {
 				private.With(RateLimit(placeLimiter)).Put("/places/{placeId}/access/{memberId}", placeAccessHandler(deps.Places, true))
 				private.With(RateLimit(placeLimiter)).Delete("/places/{placeId}/access/{memberId}", placeAccessHandler(deps.Places, false))
 				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/monitor", getPlaceMonitorHandler(deps.Places))
+				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/incoming-monitors", incomingPlaceMonitorsHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Get("/places/{placeId}/eligible-recipients", eligiblePlaceRecipientsHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Put("/places/{placeId}/monitor", setPlaceMonitorHandler(deps.Places))
 				private.With(RateLimit(placeLimiter)).Delete("/places/{placeId}/monitor", stopPlaceMonitorHandler(deps.Places))

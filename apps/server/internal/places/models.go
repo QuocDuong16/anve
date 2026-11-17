@@ -53,6 +53,12 @@ type Monitor struct {
 	Active       bool        `json:"active"`
 }
 
+// IncomingMonitor identifies a Circle member actively authorizing place alerts to the caller.
+type IncomingMonitor struct {
+	OwnerID   uuid.UUID `json:"ownerId"`
+	OwnerName string    `json:"ownerName"`
+}
+
 // Event is the minimal authorized in-app transition metadata.
 type Event struct {
 	ID          uuid.UUID `json:"id"`

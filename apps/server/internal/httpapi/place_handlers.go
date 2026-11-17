@@ -227,6 +227,28 @@ func getPlaceMonitorHandler(store *places.Store) http.HandlerFunc {
 	}
 }
 
+func incomingPlaceMonitorsHandler(store *places.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actor, ok := placeActor(w, r)
+		if !ok {
+			return
+		}
+		id, ok := placePath(w, r, "placeId")
+		if !ok {
+			return
+		}
+		monitors, err := store.IncomingMonitors(r.Context(), actor, id)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
+		writeJSON(w, http.StatusOK, struct {
+			Monitors []places.IncomingMonitor `json:"monitors"`
+		}{monitors})
+	}
+}
+
 func setPlaceMonitorHandler(store *places.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		actor, ok := placeActor(w, r)

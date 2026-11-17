@@ -5,8 +5,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -170,39 +172,28 @@ class VisibleLocationRepositoryTest {
 
     @Test
     fun `audience controls use owner scoped authenticated endpoints and server responses`() = runBlocking {
-        server.enqueue(
-            MockResponse().setBody(
-                """{"id":"owner-1","email":"owner@example.com","displayName":"Mai",
-                    "avatarUrl":null,"locationSharingEnabled":true,"createdAt":"2026-10-27T00:00:00Z",
-                    "locationSharingVersion":2}""".replace("\n", ""),
-            ),
-        )
-        server.enqueue(
-            MockResponse().setBody(
-                """{"circle":{"id":"circle-1","name":"Gia đình","createdBy":"owner-1",
-                    "createdAt":"2026-10-27T00:00:00Z"},"membership":{"circleId":"circle-1",
-                    "userId":"owner-1","role":"owner","joinedAt":"2026-10-27T00:00:00Z"}}"""
-                    .replace("\n", ""),
-            ),
-        )
-        server.enqueue(
-            MockResponse().setBody(
-                """{"members":[{"userId":"owner-1","displayName":"Mai","role":"owner",
-                    "joinedAt":"2026-10-27T00:00:00Z"},{"userId":"viewer-1","displayName":"Bố",
-                    "role":"member","joinedAt":"2026-10-27T00:00:00Z"}]}""".replace("\n", ""),
-            ),
-        )
-        server.enqueue(MockResponse().setBody("""{"grants":[]}"""))
-        server.enqueue(
-            MockResponse().setBody(
-                """{"id":"grant-1","viewerId":"viewer-1","displayName":"Bố","circleId":"circle-1",
-                    "generation":1,"visibleFrom":"2026-10-27T00:00:00Z","createdAt":"2026-10-27T00:00:00Z"}"""
-                    .replace("\n", ""),
-            ),
-        )
-        enqueueSharingSnapshot(granted = true)
-        server.enqueue(MockResponse().setResponseCode(204))
-        enqueueSharingSnapshot(granted = false)
+        var granted = false
+        val requests = mutableListOf<RecordedRequest>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                synchronized(requests) { requests += request }
+                return when (request.method to request.path) {
+                    "PUT" to "/api/v1/location-sharing/audience/viewer-1" -> {
+                        granted = true
+                        MockResponse().setBody(
+                            """{"id":"grant-1","viewerId":"viewer-1","displayName":"Bố","circleId":"circle-1",
+                                "generation":1,"visibleFrom":"2026-10-27T00:00:00Z","createdAt":"2026-10-27T00:00:00Z"}"""
+                                .replace("\n", ""),
+                        )
+                    }
+                    "DELETE" to "/api/v1/location-sharing/audience/viewer-1" -> {
+                        granted = false
+                        MockResponse().setResponseCode(204)
+                    }
+                    else -> sharingResponse(request.path, granted)
+                }
+            }
+        }
 
         val management = repository.sharingManagement("owner-1")
         assertTrue(management.consentEnabled)
@@ -211,76 +202,85 @@ class VisibleLocationRepositoryTest {
         assertTrue(repository.setViewerGrant("owner-1", "viewer-1", false) is AudienceMutationOutcome.Confirmed)
         assertEquals(listOf("owner-1"), checkpointRefreshes)
 
-        listOf(
-            "/api/v1/me",
-            "/api/v1/circles/mine",
-            "/api/v1/circles/circle-1/members",
-            "/api/v1/location-sharing/audience",
-        ).forEach { path ->
-            val request = server.takeRequest()
-            assertEquals(path, request.path)
-            assertEquals("owner-1", request.getHeader("X-Anve-Expected-Owner"))
-        }
-        val grant = server.takeRequest()
-        assertEquals("PUT", grant.method)
-        assertEquals("/api/v1/location-sharing/audience/viewer-1", grant.path)
-        assertEquals("owner-1", grant.getHeader("X-Anve-Expected-Owner"))
-        repeat(4) {
-            assertEquals("owner-1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
-        }
-        val revoke = server.takeRequest()
-        assertEquals("DELETE", revoke.method)
-        assertEquals("/api/v1/location-sharing/audience/viewer-1", revoke.path)
-        assertEquals("owner-1", revoke.getHeader("X-Anve-Expected-Owner"))
-        repeat(4) {
-            assertEquals("owner-1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
-        }
+        assertEquals(14, requests.size)
+        requests.forEach { assertEquals("owner-1", it.getHeader("X-Anve-Expected-Owner")) }
+        assertEquals(
+            setOf(
+                "/api/v1/me",
+                "/api/v1/circles/mine",
+                "/api/v1/circles/circle-1/members",
+                "/api/v1/location-sharing/audience",
+            ),
+            requests.take(4).map { it.path }.toSet(),
+        )
+        assertEquals("PUT", requests[4].method)
+        assertEquals("/api/v1/location-sharing/audience/viewer-1", requests[4].path)
+        assertEquals("DELETE", requests[9].method)
+        assertEquals("/api/v1/location-sharing/audience/viewer-1", requests[9].path)
     }
 
     @Test
     fun `grant committed but response lost reconciles as confirmed without replay`() = runBlocking {
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
-        enqueueSharingSnapshot(granted = true)
+        val requests = mutableListOf<RecordedRequest>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                synchronized(requests) { requests += request }
+                if (request.method == "PUT" && request.path == "/api/v1/location-sharing/audience/viewer-1") {
+                    return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+                }
+                return sharingResponse(request.path, granted = true)
+            }
+        }
 
         val outcome = repository.setViewerGrant("owner-1", "viewer-1", true)
 
         assertTrue(outcome is AudienceMutationOutcome.Confirmed)
-        assertEquals(5, server.requestCount)
-        assertEquals("PUT", server.takeRequest().method)
-        repeat(4) {
-            assertEquals("owner-1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
-        }
+        assertEquals(5, requests.size)
+        assertEquals("PUT", requests[0].method)
+        requests.drop(1).forEach { assertEquals("owner-1", it.getHeader("X-Anve-Expected-Owner")) }
     }
 
     @Test
     fun `revoke committed but response lost reconciles as confirmed without replay`() = runBlocking {
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
-        enqueueSharingSnapshot(granted = false)
+        val requests = mutableListOf<RecordedRequest>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                synchronized(requests) { requests += request }
+                if (request.method == "DELETE" && request.path == "/api/v1/location-sharing/audience/viewer-1") {
+                    return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+                }
+                return sharingResponse(request.path, granted = false)
+            }
+        }
 
         val outcome = repository.setViewerGrant("owner-1", "viewer-1", false)
 
         assertTrue(outcome is AudienceMutationOutcome.Confirmed)
-        assertEquals(5, server.requestCount)
-        assertEquals("DELETE", server.takeRequest().method)
-        repeat(4) {
-            assertEquals("owner-1", server.takeRequest().getHeader("X-Anve-Expected-Owner"))
-        }
+        assertEquals(5, requests.size)
+        assertEquals("DELETE", requests[0].method)
+        requests.drop(1).forEach { assertEquals("owner-1", it.getHeader("X-Anve-Expected-Owner")) }
     }
 
     @Test
     fun `clear client rejection is rejected and current audience is reconciled`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(403)
-                .setBody("""{"code":"FORBIDDEN","message":"not allowed"}"""),
-        )
-        enqueueSharingSnapshot(granted = false)
+        val requests = mutableListOf<RecordedRequest>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                synchronized(requests) { requests += request }
+                if (request.method == "PUT" && request.path == "/api/v1/location-sharing/audience/viewer-1") {
+                    return MockResponse().setResponseCode(403)
+                        .setBody("""{"code":"FORBIDDEN","message":"not allowed"}""")
+                }
+                return sharingResponse(request.path, granted = false)
+            }
+        }
 
         val outcome = repository.setViewerGrant("owner-1", "viewer-1", true)
 
         assertTrue(outcome is AudienceMutationOutcome.Rejected)
-        assertEquals(5, server.requestCount)
-        assertEquals("PUT", server.takeRequest().method)
-        repeat(4) { server.takeRequest() }
+        assertEquals(5, requests.size)
+        assertEquals("PUT", requests[0].method)
+        requests.drop(1).forEach { assertEquals("owner-1", it.getHeader("X-Anve-Expected-Owner")) }
     }
 
     @Test
@@ -325,36 +325,33 @@ class VisibleLocationRepositoryTest {
         assertEquals("owner-1", reconciliation.getHeader("X-Anve-Expected-Owner"))
     }
 
-    private fun enqueueSharingSnapshot(granted: Boolean) {
-        server.enqueue(
-            MockResponse().setBody(
-                """{"id":"owner-1","email":"owner@example.com","displayName":"Mai",
-                    "avatarUrl":null,"locationSharingEnabled":true,"createdAt":"2026-10-27T00:00:00Z"}"""
-                    .replace("\n", ""),
-            ),
+    private fun sharingResponse(path: String?, granted: Boolean): MockResponse = when (path) {
+        "/api/v1/me" -> MockResponse().setBody(
+            """{"id":"owner-1","email":"owner@example.com","displayName":"Mai",
+                "avatarUrl":null,"locationSharingEnabled":true,"createdAt":"2026-10-27T00:00:00Z",
+                "locationSharingVersion":2}""".replace("\n", ""),
         )
-        server.enqueue(
-            MockResponse().setBody(
-                """{"circle":{"id":"circle-1","name":"Gia đình","createdBy":"owner-1",
-                    "createdAt":"2026-10-27T00:00:00Z"},"membership":{"circleId":"circle-1",
-                    "userId":"owner-1","role":"owner","joinedAt":"2026-10-27T00:00:00Z"}}"""
-                    .replace("\n", ""),
-            ),
+        "/api/v1/circles/mine" -> MockResponse().setBody(
+            """{"circle":{"id":"circle-1","name":"Gia đình","createdBy":"owner-1",
+                "createdAt":"2026-10-27T00:00:00Z"},"membership":{"circleId":"circle-1",
+                "userId":"owner-1","role":"owner","joinedAt":"2026-10-27T00:00:00Z"}}"""
+                .replace("\n", ""),
         )
-        server.enqueue(
-            MockResponse().setBody(
-                """{"members":[{"userId":"owner-1","displayName":"Mai","role":"owner",
-                    "joinedAt":"2026-10-27T00:00:00Z"},{"userId":"viewer-1","displayName":"Bố",
-                    "role":"member","joinedAt":"2026-10-27T00:00:00Z"}]}""".replace("\n", ""),
-            ),
+        "/api/v1/circles/circle-1/members" -> MockResponse().setBody(
+            """{"members":[{"userId":"owner-1","displayName":"Mai","role":"owner",
+                "joinedAt":"2026-10-27T00:00:00Z"},{"userId":"viewer-1","displayName":"Bố",
+                "role":"member","joinedAt":"2026-10-27T00:00:00Z"}]}""".replace("\n", ""),
         )
-        val grants = if (granted) {
-            """{"grants":[{"id":"grant-1","viewerId":"viewer-1","displayName":"Bố",
-                "circleId":"circle-1","generation":1,"visibleFrom":"2026-10-27T00:00:00Z",
-                "createdAt":"2026-10-27T00:00:00Z"}]}""".replace("\n", "")
-        } else {
-            """{"grants":[]}"""
+        "/api/v1/location-sharing/audience" -> {
+            val grants = if (granted) {
+                """{"grants":[{"id":"grant-1","viewerId":"viewer-1","displayName":"Bố",
+                    "circleId":"circle-1","generation":1,"visibleFrom":"2026-10-27T00:00:00Z",
+                    "createdAt":"2026-10-27T00:00:00Z"}]}""".replace("\n", "")
+            } else {
+                """{"grants":[]}"""
+            }
+            MockResponse().setBody(grants)
         }
-        server.enqueue(MockResponse().setBody(grants))
+        else -> MockResponse().setResponseCode(404)
     }
 }

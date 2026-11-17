@@ -379,6 +379,49 @@ func (s *Store) Monitor(ctx context.Context, actor, placeID uuid.UUID) (Monitor,
 	return result, rows.Err()
 }
 
+// IncomingMonitors lists members currently authorizing place notifications to actor.
+func (s *Store) IncomingMonitors(ctx context.Context, actor, placeID uuid.UUID) ([]IncomingMonitor, error) {
+	var found uuid.UUID
+	err := s.pool.QueryRow(ctx, `SELECT p.id `+available+` AND p.id=$2`, actor, placeID).Scan(&found)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("check place availability: %w", err)
+	}
+	rows, err := s.pool.Query(ctx, `SELECT pm.owner_user_id,u.display_name
+ FROM place_monitors pm
+ JOIN places p ON p.id=pm.place_id AND p.revision=pm.place_revision
+ JOIN users u ON u.id=pm.owner_user_id AND u.location_sharing_enabled
+ JOIN location_sharing_epochs se ON se.id=pm.sharing_epoch_id AND se.ended_at IS NULL
+ JOIN circle_membership_periods mp ON mp.id=pm.owner_period_id AND mp.ended_at IS NULL
+ JOIN memberships m ON m.id=mp.membership_id AND m.user_id=pm.owner_user_id AND m.circle_id=p.circle_id
+ JOIN circle_membership_periods pp ON pp.id=p.owner_membership_period_id AND pp.ended_at IS NULL
+ JOIN memberships po ON po.id=pp.membership_id AND po.user_id=p.owner_user_id AND po.circle_id=p.circle_id
+ JOIN place_monitor_recipients r ON r.monitor_id=pm.id AND r.recipient_user_id=$1
+ JOIN active_location_audience g ON g.id=r.audience_grant_id AND g.owner_user_id=pm.owner_user_id AND g.viewer_user_id=$1 AND g.sharing_epoch_id=pm.sharing_epoch_id
+ LEFT JOIN place_access ra ON ra.id=r.place_access_id AND ra.place_id=p.id AND ra.member_user_id=$1 AND ra.revoked_at IS NULL
+ LEFT JOIN circle_membership_periods rp ON rp.id=ra.member_period_id AND rp.ended_at IS NULL
+ LEFT JOIN memberships rm ON rm.id=rp.membership_id AND rm.user_id=$1 AND rm.circle_id=p.circle_id
+ WHERE pm.place_id=$2 AND pm.revoked_at IS NULL AND pm.owner_user_id<>$1
+ AND (pm.owner_user_id=p.owner_user_id OR EXISTS (SELECT 1 FROM place_access pa WHERE pa.place_id=p.id AND pa.member_user_id=pm.owner_user_id AND pa.member_period_id=pm.owner_period_id AND pa.revoked_at IS NULL))
+ AND ($1=p.owner_user_id OR rm.id IS NOT NULL)
+ ORDER BY u.display_name,pm.owner_user_id`, actor, placeID)
+	if err != nil {
+		return nil, fmt.Errorf("read incoming place monitors: %w", err)
+	}
+	defer rows.Close()
+	result := []IncomingMonitor{}
+	for rows.Next() {
+		var item IncomingMonitor
+		if err := rows.Scan(&item.OwnerID, &item.OwnerName); err != nil {
+			return nil, fmt.Errorf("scan incoming place monitor: %w", err)
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
+}
+
 // ConfigureMonitor records the subject's consent and explicit recipients.
 func (s *Store) ConfigureMonitor(ctx context.Context, actor, placeID uuid.UUID, recipients []uuid.UUID) (Monitor, error) {
 	if len(recipients) > 30 {

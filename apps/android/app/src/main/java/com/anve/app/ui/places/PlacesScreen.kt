@@ -179,16 +179,17 @@ fun PlacesScreen(
     val vm: PlacesViewModel = viewModel(factory = PlacesViewModel.factory(container.placesRepository))
     val state by vm.state.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(owner) {
+        vm.resume(owner)
+    }
     DisposableEffect(owner, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> vm.activate(owner)
-                Lifecycle.Event.ON_STOP -> vm.activate(null)
-                else -> Unit
+            if (event == Lifecycle.Event.ON_START) {
+                vm.resume(owner)
             }
         }
         lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer); vm.activate(null) }
+        onDispose { lifecycle.removeObserver(observer) }
     }
     LaunchedEffect(owner, lifecycle) {
         if (owner != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -277,6 +278,7 @@ internal fun PlacesContent(
             editingPlace = null
         } else {
             showDetails = false
+            vm.select(null)
         }
     }
     if (editing && editorAuthorized) {
@@ -306,7 +308,7 @@ internal fun PlacesContent(
                 },
                 navigationIcon = {
                     if (showDetails) {
-                        IconButton(onClick = { showDetails = false }) {
+                        IconButton(onClick = { showDetails = false; vm.select(null) }) {
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.places_back_content_desc))
                         }
                     }
@@ -560,14 +562,72 @@ internal fun PlacesContent(
                     }
                     state.noticeRes?.let { res -> item { AnveErrorNotice(stringResource(res)) } }
                     state.errorRes?.let { res -> item { AnveErrorNotice(stringResource(res), onRetry = vm::refresh) } }
-                    if (state.loading || state.pending) item {
+                    if (state.loading || state.detailLoading || state.pending) item {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(Modifier.size(24.dp))
                             Text(
-                                stringResource(if (state.loading) R.string.action_loading else R.string.action_processing),
+                                stringResource(if (state.loading || state.detailLoading) R.string.action_loading else R.string.action_processing),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
                             )
+                        }
+                    }
+                    item(key = "incoming-monitors-${selected.id}") {
+                        OutlinedCard(
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, stitch.hairline),
+                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    stringResource(R.string.places_incoming_monitors_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.semantics { heading() },
+                                )
+                                Text(
+                                    stringResource(R.string.places_incoming_monitors_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
+                                when {
+                                    state.detailLoading && state.incomingMonitors.isEmpty() -> {
+                                        Text(
+                                            text = stringResource(R.string.action_loading),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                    }
+                                    state.incomingMonitors.isEmpty() -> {
+                                        Text(
+                                            text = stringResource(R.string.places_incoming_monitors_empty),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                    }
+                                    else -> {
+                                        state.incomingMonitors.forEach { incoming ->
+                                            ListItem(
+                                                leadingContent = {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Notifications,
+                                                        contentDescription = null,
+                                                        tint = colors.primary,
+                                                    )
+                                                },
+                                                headlineContent = { Text(incoming.ownerName) },
+                                                supportingContent = {
+                                                    Text(stringResource(R.string.places_incoming_monitor_active, incoming.ownerName))
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     if (selected.ownerId == owner) {
@@ -677,10 +737,29 @@ internal fun PlacesContent(
                                     modifier = Modifier.semantics { heading() },
                                 )
                                 Text(
-                                    stringResource(R.string.places_alerts_section_title),
+                                    stringResource(R.string.places_monitor_mine_subtitle),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (selected.ownerId != owner) {
+                                    val selectedOwnerName = state.sharing.members
+                                        .firstOrNull { it.userId == selected.ownerId }
+                                        ?.displayName
+                                        ?: stringResource(R.string.places_member_fallback)
+                                    Surface(
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = colors.surfaceContainerLow,
+                                        border = BorderStroke(1.dp, stitch.hairline),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.places_monitor_other_place_hint, selectedOwnerName),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                            modifier = Modifier.padding(12.dp),
+                                        )
+                                    }
+                                }
                                 if (eligibleMembers.isEmpty()) {
                                     Text(
                                         text = stringResource(R.string.places_alerts_empty_members),
@@ -694,7 +773,7 @@ internal fun PlacesContent(
                                     ListItem(
                                         modifier = Modifier.toggleable(
                                             value = person.userId in recipients,
-                                            enabled = !state.pending,
+                                            enabled = !state.pending && !state.detailLoading,
                                             role = Role.Checkbox,
                                             onValueChange = { checked ->
                                                 recipients = if (checked) recipients + person.userId else recipients - person.userId
@@ -705,7 +784,7 @@ internal fun PlacesContent(
                                         trailingContent = {
                                             Checkbox(
                                                 checked = person.userId in recipients,
-                                                enabled = !state.pending,
+                                                enabled = !state.pending && !state.detailLoading,
                                                 onCheckedChange = null,
                                             )
                                         },
@@ -728,7 +807,7 @@ internal fun PlacesContent(
                                             vm.configure(selected.id, recipients.intersect(state.eligibleRecipients))
                                         },
                                         shape = CircleShape,
-                                        enabled = !state.pending && state.sharing.consentEnabled,
+                                        enabled = !state.pending && !state.detailLoading && state.sharing.consentEnabled,
                                         modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
                                         Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))

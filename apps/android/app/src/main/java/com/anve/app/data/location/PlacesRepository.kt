@@ -1,6 +1,7 @@
 package com.anve.app.data.location
 
 import com.anve.app.data.api.AnveApi
+import com.anve.app.data.api.IncomingPlaceMonitorDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.PlaceInputDto
@@ -14,6 +15,7 @@ interface PlacesDataSource {
     suspend fun members(owner: String): SharingManagementSnapshot
     suspend fun access(owner: String, place: String): List<String>
     suspend fun monitor(owner: String, place: String): PlaceMonitorDto?
+    suspend fun incomingMonitors(owner: String, place: String): List<IncomingPlaceMonitorDto> = emptyList()
     suspend fun eligibleRecipients(owner: String, place: String): List<String>
     suspend fun create(owner: String, input: PlaceInputDto): PlaceDto
     suspend fun update(owner: String, place: String, input: PlaceInputDto): PlaceDto
@@ -37,6 +39,8 @@ class PlacesRepository(
         val response = api.placeMonitor(owner, place)
         return if (response.code() == 404) null else response.orThrow()
     }
+    override suspend fun incomingMonitors(owner: String, place: String) =
+        api.incomingPlaceMonitors(owner, place).orThrow().monitors
     override suspend fun create(owner: String, input: PlaceInputDto) = api.createPlace(owner, input).orThrow()
     override suspend fun update(owner: String, place: String, input: PlaceInputDto) = api.updatePlace(owner, place, input).orThrow()
     override suspend fun delete(owner: String, place: String) { api.deletePlace(owner, place).orThrow() }

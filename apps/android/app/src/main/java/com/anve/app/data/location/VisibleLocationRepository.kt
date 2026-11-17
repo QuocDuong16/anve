@@ -6,6 +6,8 @@ import com.anve.app.data.api.MemberDto
 import com.anve.app.data.api.VisibleLocationDto
 import com.anve.app.data.api.orThrow
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -158,6 +160,11 @@ class VisibleLocationRepository(
         }
     }
 
+    suspend fun hasAudienceGrants(expectedOwnerId: String): Boolean {
+        val response = api.locationAudience(expectedOwnerId).orThrow()
+        return response.grants.any { it.viewerId != expectedOwnerId }
+    }
+
     override suspend fun sharingManagement(expectedOwnerId: String): SharingManagementSnapshot {
         val account = api.me(expectedOwnerId).orThrow()
         if (account.id != expectedOwnerId) throw OwnerSessionChangedException()
@@ -165,16 +172,19 @@ class VisibleLocationRepository(
         val circle = current.circle ?: return SharingManagementSnapshot(
             consentEnabled = account.locationSharingEnabled,
         )
-        val members = api.members(circle.id, expectedOwnerId).orThrow().members
-        val granted = api.locationAudience(expectedOwnerId).orThrow().grants.mapTo(mutableSetOf()) { it.viewerId }
-        return SharingManagementSnapshot(
-            hasCircle = true,
-            circleName = circle.name,
-            consentEnabled = account.locationSharingEnabled,
-            members = members.map { it.toAudienceMember() }.map { member ->
-                member.copy(canViewLocation = account.locationSharingEnabled && member.userId in granted)
-            },
-        )
+        return coroutineScope {
+            val membersDeferred = async { api.members(circle.id, expectedOwnerId).orThrow().members }
+            val audienceDeferred = async { api.locationAudience(expectedOwnerId).orThrow() }
+            val granted = audienceDeferred.await().grants.mapTo(mutableSetOf()) { it.viewerId }
+            SharingManagementSnapshot(
+                hasCircle = true,
+                circleName = circle.name,
+                consentEnabled = account.locationSharingEnabled,
+                members = membersDeferred.await().map { it.toAudienceMember() }.map { member ->
+                    member.copy(canViewLocation = account.locationSharingEnabled && member.userId in granted)
+                },
+            )
+        }
     }
 
     override suspend fun setViewerGrant(

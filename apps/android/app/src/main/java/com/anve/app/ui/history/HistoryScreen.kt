@@ -712,7 +712,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     item {
                         StitchEmptyStateCard(
                             title = stringResource(R.string.history_empty_warm_title),
-                            body = "${stringResource(R.string.history_empty_day)}\n${stringResource(R.string.history_empty_warm_body)}",
+                            body = stringResource(R.string.history_empty_warm_body),
                             illustration = {
                                 AnVeHistorySceneIllustration(
                                     modifier = Modifier.fillMaxWidth().height(112.dp),

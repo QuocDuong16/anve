@@ -9,6 +9,7 @@ import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.CircleMembershipDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.MemberDto
+import com.anve.app.data.circles.CircleOnboardingStorage
 import com.anve.app.data.circles.CircleRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -32,6 +33,9 @@ data class CircleUiState(
     /** True once the member list of the current circle has been fetched (or its fetch failed);
      *  the activation checklist waits for it so its progress reflects the actual membership. */
     val membersLoaded: Boolean = false,
+    val audienceConfigured: Boolean = false,
+    val audienceLoaded: Boolean = true,
+    val checklistDismissed: Boolean = false,
     val busy: Boolean = false,
     val messageRes: Int? = null,
     val errorRes: Int? = null,
@@ -42,12 +46,26 @@ data class CircleUiState(
 class CircleViewModel internal constructor(
     private val repository: CircleRepository,
     externalScope: CoroutineScope? = null,
+    private val ownerId: String? = null,
+    private val onboardingStore: CircleOnboardingStorage? = null,
+    private val checkHasAudienceGrants: (suspend () -> Boolean)? = null,
 ) : ViewModel() {
 
     /** Production uses `viewModelScope`; tests inject a disposable scope. */
     private val scope: CoroutineScope = externalScope ?: viewModelScope
 
-    private val _state = MutableStateFlow(CircleUiState())
+    private val initialAudienceConfigured =
+        if (ownerId != null) onboardingStore?.isAudienceConfigured(ownerId) == true else false
+    private val initialChecklistDismissed =
+        if (ownerId != null) onboardingStore?.isChecklistDismissed(ownerId) == true else false
+
+    private val _state = MutableStateFlow(
+        CircleUiState(
+            audienceConfigured = initialAudienceConfigured,
+            audienceLoaded = checkHasAudienceGrants == null || initialAudienceConfigured || initialChecklistDismissed,
+            checklistDismissed = initialChecklistDismissed,
+        ),
+    )
     val state: StateFlow<CircleUiState> = _state.asStateFlow()
     private var revision = 0L
 
@@ -68,7 +86,7 @@ class CircleViewModel internal constructor(
                 if (mine.circle == null || mine.membership == null) {
                     // A fresh state also resets refreshing: with no circle there
                     // is nothing to keep spinning for.
-                    _state.update { CircleUiState(loading = false) }
+                    _state.update { it.resetCircle() }
                     return@launch
                 }
                 _state.update {
@@ -100,11 +118,49 @@ class CircleViewModel internal constructor(
         val membership = joined.membership ?: return
         if (membership.userId != owner || membership.circleId != circle.id) return
         val expected = ++revision
-        _state.value = CircleUiState(loading = false, circle = circle, myRole = membership.role, messageRes = R.string.circle_joined)
+        _state.update {
+            it.resetCircle(messageRes = R.string.circle_joined).copy(
+                circle = circle,
+                myRole = membership.role,
+            )
+        }
         loadDetails(circle.id, expected)
     }
 
+    fun refreshAudience() {
+        refreshAudienceInternal(revision)
+    }
+
+    fun dismissChecklist() {
+        if (ownerId != null) {
+            onboardingStore?.setChecklistDismissed(ownerId, true)
+        }
+        _state.update { it.copy(checklistDismissed = true) }
+    }
+
+    private fun refreshAudienceInternal(expected: Long) {
+        val checker = checkHasAudienceGrants ?: return
+        scope.launch {
+            val configured = try {
+                checker()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            if (expected != revision) return@launch
+            _state.update { current ->
+                val resolved = configured ?: current.audienceConfigured
+                if (configured != null && ownerId != null) {
+                    onboardingStore?.setAudienceConfigured(ownerId, resolved)
+                }
+                current.copy(audienceConfigured = resolved, audienceLoaded = true)
+            }
+        }
+    }
+
     private fun loadDetails(circleId: String, expected: Long = revision) {
+        refreshAudienceInternal(expected)
         scope.launch {
             try {
                 val members = repository.members(circleId)
@@ -135,7 +191,7 @@ class CircleViewModel internal constructor(
             setBusy(messageRes = null, errorRes = null)
             try {
                 repository.create(name.trim())
-                _state.update { CircleUiState(loading = false, messageRes = R.string.circle_created) }
+                _state.update { it.resetCircle(messageRes = R.string.circle_created) }
                 refresh()
             } catch (e: Exception) {
                 _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_create_failed)) }
@@ -149,7 +205,7 @@ class CircleViewModel internal constructor(
             setBusy(messageRes = null, errorRes = null)
             try {
                 repository.joinWithCode(code.trim().uppercase())
-                _state.update { CircleUiState(loading = false, messageRes = R.string.circle_joined) }
+                _state.update { it.resetCircle(messageRes = R.string.circle_joined) }
                 refresh()
             } catch (e: Exception) {
                 _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_join_failed)) }
@@ -209,7 +265,7 @@ class CircleViewModel internal constructor(
             setBusy(messageRes = null, errorRes = null)
             try {
                 repository.leave(circle.id, dissolve)
-                _state.update { CircleUiState(loading = false, messageRes = R.string.circle_left) }
+                _state.update { it.resetCircle(messageRes = R.string.circle_left) }
             } catch (e: Exception) {
                 _state.update { it.copy(busy = false, errorRes = circleError(e, R.string.circle_error_leave_failed)) }
             }
@@ -225,6 +281,14 @@ class CircleViewModel internal constructor(
     fun consumeMessage() {
         _state.update { it.copy(messageRes = null) }
     }
+
+    private fun CircleUiState.resetCircle(messageRes: Int? = null): CircleUiState = CircleUiState(
+        loading = false,
+        audienceConfigured = audienceConfigured,
+        audienceLoaded = audienceLoaded,
+        checklistDismissed = checklistDismissed,
+        messageRes = messageRes,
+    )
 
     private fun setBusy(messageRes: Int?, errorRes: Int?) {
         _state.update { it.copy(busy = true, messageRes = messageRes, errorRes = errorRes) }
@@ -243,11 +307,21 @@ class CircleViewModel internal constructor(
     }
 
     companion object {
-        fun factory(repository: CircleRepository): ViewModelProvider.Factory =
+        fun factory(
+            repository: CircleRepository,
+            ownerId: String? = null,
+            onboardingStore: CircleOnboardingStorage? = null,
+            checkHasAudienceGrants: (suspend () -> Boolean)? = null,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    CircleViewModel(repository) as T
+                    CircleViewModel(
+                        repository = repository,
+                        ownerId = ownerId,
+                        onboardingStore = onboardingStore,
+                        checkHasAudienceGrants = checkHasAudienceGrants,
+                    ) as T
             }
     }
 }

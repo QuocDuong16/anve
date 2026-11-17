@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -88,6 +89,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -255,7 +257,7 @@ private fun LiveMapContent(
     val permissions = remember(context) { AndroidLocationPermissions(context) }
     var myLocationLayerEnabled by remember { mutableStateOf(false) }
     var selectedOwner by rememberSaveable(ownerId) { mutableStateOf<String?>(null) }
-    var sheetDetent by rememberSaveable(ownerId) { mutableStateOf(SheetDetent.HALF) }
+    var sheetDetent by rememberSaveable(ownerId) { mutableStateOf(SheetDetent.COLLAPSED) }
     var quickSheetOpen by rememberSaveable(ownerId) { mutableStateOf(false) }
     var showSosHoldHint by remember { mutableStateOf(false) }
     var cameraInitialized by remember(ownerId) { mutableStateOf(false) }
@@ -310,8 +312,21 @@ private fun LiveMapContent(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val collapsedHeight = 132.dp
-        val halfHeight = (maxHeight * 0.40f).coerceIn(220.dp, 340.dp)
+        var headerHeightPx by remember { mutableIntStateOf(0) }
+        val measuredHeaderDp = with(density) { headerHeightPx.toDp() }
+        val collapsedHeight = if (headerHeightPx > 0) measuredHeaderDp else 78.dp
+        val fontScale = density.fontScale.coerceAtLeast(1f)
+        val halfCap = (maxHeight * 0.36f).coerceIn(220.dp, 310.dp)
+        val halfHeight = when {
+            snapshot == null || snapshot.loading ->
+                (collapsedHeight + 108.dp).coerceAtMost(halfCap)
+            locations.isEmpty() ->
+                (collapsedHeight + 132.dp * fontScale).coerceAtMost(halfCap)
+            locations.size == 1 ->
+                (collapsedHeight + 92.dp * fontScale + 14.dp)
+                    .coerceAtMost(maxOf(collapsedHeight + 96.dp, maxHeight * 0.45f))
+            else -> halfCap
+        }
         val expandedHeight = (maxHeight * 0.78f).coerceAtLeast(320.dp)
         val targetSheetHeight = when (sheetDetent) {
             SheetDetent.COLLAPSED -> collapsedHeight
@@ -319,10 +334,11 @@ private fun LiveMapContent(
             SheetDetent.EXPANDED -> expandedHeight
         }
         var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+        var isDragging by remember { mutableStateOf(false) }
         val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
         val animatedSheetHeight by animateDpAsState(
             targetValue = (targetSheetHeight - dragOffsetDp).coerceIn(collapsedHeight, expandedHeight),
-            animationSpec = tween(durationMillis = 200),
+            animationSpec = if (isDragging) snap() else tween(durationMillis = 200),
             label = "sheetHeight",
         )
         val colors = MaterialTheme.colorScheme
@@ -333,6 +349,7 @@ private fun LiveMapContent(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraState,
                 properties = mapProperties,
+                contentPadding = PaddingValues(bottom = animatedSheetHeight),
                 uiSettings = MapUiSettings(
                     compassEnabled = false,
                     zoomControlsEnabled = false,
@@ -429,7 +446,7 @@ private fun LiveMapContent(
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .anveContentWidth()
-                    .padding(top = 74.dp, start = 16.dp, end = 16.dp, bottom = 148.dp),
+                    .padding(top = 74.dp, start = 16.dp, end = 16.dp, bottom = collapsedHeight + 16.dp),
             )
         }
 
@@ -552,9 +569,13 @@ private fun LiveMapContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .onSizeChanged { headerHeightPx = it.height }
                         .pointerInput(collapsedHeight, halfHeight, expandedHeight) {
                             detectVerticalDragGestures(
-                                onDragStart = { dragOffsetPx = 0f },
+                                onDragStart = {
+                                    isDragging = true
+                                    dragOffsetPx = 0f
+                                },
                                 onDragEnd = {
                                     val draggedDp = with(density) { dragOffsetPx.toDp() }
                                     val current = targetSheetHeight - draggedDp
@@ -566,47 +587,50 @@ private fun LiveMapContent(
                                         else -> SheetDetent.EXPANDED
                                     }
                                     dragOffsetPx = 0f
+                                    isDragging = false
                                 },
-                                onDragCancel = { dragOffsetPx = 0f },
+                                onDragCancel = {
+                                    dragOffsetPx = 0f
+                                    isDragging = false
+                                },
                                 onVerticalDrag = { _, dragAmount ->
                                     dragOffsetPx += dragAmount
                                 },
                             )
                         }
-                        .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = handleDesc,
+                        ) {
+                            sheetDetent = when (sheetDetent) {
+                                SheetDetent.COLLAPSED -> SheetDetent.HALF
+                                SheetDetent.HALF -> SheetDetent.EXPANDED
+                                SheetDetent.EXPANDED -> SheetDetent.COLLAPSED
+                            }
+                        }
+                        .semantics {
+                            contentDescription = handleDesc
+                            stateDescription = detentDesc
+                            if (sheetDetent != SheetDetent.EXPANDED) {
+                                onClick(label = expandActionLabel) {
+                                    sheetDetent = SheetDetent.EXPANDED
+                                    true
+                                }
+                            }
+                            if (sheetDetent != SheetDetent.COLLAPSED) {
+                                onClick(label = collapseActionLabel) {
+                                    sheetDetent = SheetDetent.COLLAPSED
+                                    true
+                                }
+                            }
+                        }
+                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 32.dp)
-                            .clip(CircleShape)
-                            .clickable(
-                                role = Role.Button,
-                                onClickLabel = handleDesc,
-                            ) {
-                                sheetDetent = when (sheetDetent) {
-                                    SheetDetent.COLLAPSED -> SheetDetent.HALF
-                                    SheetDetent.HALF -> SheetDetent.EXPANDED
-                                    SheetDetent.EXPANDED -> SheetDetent.COLLAPSED
-                                }
-                            }
-                            .semantics {
-                                contentDescription = handleDesc
-                                stateDescription = detentDesc
-                                if (sheetDetent != SheetDetent.EXPANDED) {
-                                    onClick(label = expandActionLabel) {
-                                        sheetDetent = SheetDetent.EXPANDED
-                                        true
-                                    }
-                                }
-                                if (sheetDetent != SheetDetent.COLLAPSED) {
-                                    onClick(label = collapseActionLabel) {
-                                        sheetDetent = SheetDetent.COLLAPSED
-                                        true
-                                    }
-                                }
-                            },
+                            .padding(top = 2.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Box(
@@ -650,7 +674,7 @@ private fun LiveMapContent(
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = colors.primaryContainer,
-                                contentColor = colors.onPrimary,
+                                contentColor = colors.onPrimaryContainer,
                             ),
                             modifier = Modifier.heightIn(min = 48.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
@@ -711,7 +735,7 @@ private fun LiveMapContent(
                         }
                         else -> LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             items(locations, key = VisibleLocationDto::ownerId) { location ->

@@ -99,11 +99,12 @@ import kotlinx.coroutines.launch
  * members, invites (owner) and leaving. All authorization is server-side;
  * the UI only offers what the role allows.
  *
- * While the user is the circle's only member, [CircleContent] shows an
- * activation checklist: [onOpenLocation] opens the location screen (consent),
- * [onOpenMap] opens the map (viewer grants live there). Viewer grants are not
- * readable from this screen's state, so the audience step hides once the user
- * has gone through it ([audienceStepHidden]).
+ * While onboarding is incomplete, [CircleContent] shows an activation
+ * checklist: [onOpenLocation] opens the location screen (consent), [onOpenMap]
+ * opens the map (viewer grants live there). The audience step stays hidden once
+ * server audience grants are observed, cached per account, or the user
+ * explicitly dismisses the checklist ([audienceStepHidden] also hides it
+ * immediately within the current session when navigating to the map).
  */
 @Composable
 fun CircleScreen(
@@ -127,9 +128,19 @@ fun CircleScreen(
     }
     val viewModel: CircleViewModel = viewModel(
         key = "circle-$owner",
-        factory = CircleViewModel.factory(container.circleRepository),
+        factory = CircleViewModel.factory(
+            repository = container.circleRepository,
+            ownerId = owner,
+            onboardingStore = container.circleOnboardingStore,
+            checkHasAudienceGrants = { container.visibleLocationRepository.hasAudienceGrants(owner) },
+        ),
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(owner) {
+        if (state.circle != null && !state.loading) {
+            viewModel.refreshAudience()
+        }
+    }
 
     var showDissolveDialog by remember(owner) { mutableStateOf(false) }
     var showLeaveDialog by remember(owner) { mutableStateOf(false) }
@@ -170,6 +181,10 @@ fun CircleScreen(
         }
     }
 
+    val showReceivedInbox = state.circle == null ||
+        privateInvites.received.isNotEmpty() ||
+        privateInvites.inboxErrorRes != null
+
     CircleContent(
         state = state,
         // A failed share is not a data-load failure: it gets its own notice
@@ -192,16 +207,32 @@ fun CircleScreen(
             }
         } },
         onCreateInvite = invitationsController::open,
-        receivedContent = { ReceivedInvitations(privateInvites, invitationsController::refresh,
-            { invitationsController.review(it) }, { invitationsController.review(it, hide = true) }) },
+        receivedContent = if (showReceivedInbox) {
+            {
+                ReceivedInvitations(
+                    privateInvites,
+                    invitationsController::refresh,
+                    { invitationsController.review(it) },
+                    { invitationsController.review(it, hide = true) },
+                )
+            }
+        } else {
+            null
+        },
         onRevokeInvite = viewModel::revokeInvite,
         onRemoveMember = { removeTarget = it },
         onLeave = {
             if (state.isOwner) showDissolveDialog = true else showLeaveDialog = true
         },
-        onRetry = viewModel::refresh,
+        onRetry = {
+            viewModel.refresh()
+            invitationsController.refresh()
+        },
         isRefreshing = state.refreshing,
-        onRefresh = viewModel::refresh,
+        onRefresh = {
+            viewModel.refresh()
+            invitationsController.refresh()
+        },
         onShareInvite = { invite -> scope.launch {
             try {
                 if (container.sessionStore.current()?.userId != owner) return@launch
@@ -217,6 +248,7 @@ fun CircleScreen(
         audienceStepHidden = audienceStepHidden,
         onOpenLocation = onOpenLocation,
         onOpenMap = onOpenMap,
+        onDismissChecklist = viewModel::dismissChecklist,
         snackbarHostState = snackbarHostState,
         // Consuming the message must not touch errorRes: the failure notice
         // stays until its own retry/dismiss acts on it.
@@ -351,6 +383,7 @@ fun CircleContent(
     audienceStepHidden: Boolean = false,
     onOpenLocation: () -> Unit = {},
     onOpenMap: () -> Unit = {},
+    onDismissChecklist: () -> Unit = {},
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -398,12 +431,15 @@ fun CircleContent(
                 onMessageConsumed()
             }
         }
-        // Keep activation steps visible after a 2nd member joins until the user
-        // has actually turned on sharing consent and visited viewer grants; only
-        // Step 1 ("invite") collapses once another member is present.
+        // Keep activation steps visible until each step is actually satisfied
+        // (another member joined, sharing consent enabled, server audience
+        // grants exist) or the user explicitly dismisses the checklist.
+        val effectiveAudienceHidden = audienceStepHidden || state.audienceConfigured
         val showInviteStep = state.isOwner && !hasOtherMembers
         val checklistVisible = state.membersLoaded &&
-            (showInviteStep || !consentEnabled || !audienceStepHidden)
+            state.audienceLoaded &&
+            !state.checklistDismissed &&
+            (showInviteStep || !consentEnabled || !effectiveAudienceHidden)
         LaunchedEffect(checklistVisible) { onChecklistVisibleChange(checklistVisible) }
 
         // Revoking an invite code closes a join path a relative could still
@@ -456,10 +492,11 @@ fun CircleContent(
                         CircleActivationChecklist(
                             showInvite = showInviteStep,
                             showSharing = !consentEnabled,
-                            showAudience = !audienceStepHidden,
+                            showAudience = !effectiveAudienceHidden,
                             onInvite = onCreateInvite,
                             onOpenLocation = onOpenLocation,
                             onOpenMap = onOpenMap,
+                            onDismiss = onDismissChecklist,
                         )
                     }
                 }
@@ -758,7 +795,7 @@ private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, o
                             )
                         }
                         Text(
-                            text = stringResource(R.string.circle_hearth_subtitle),
+                            text = stringResource(R.string.circle_header_warm_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.onSurfaceVariant,
                         )
@@ -816,6 +853,7 @@ private fun CircleActivationChecklist(
     onInvite: () -> Unit,
     onOpenLocation: () -> Unit,
     onOpenMap: () -> Unit,
+    onDismiss: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
@@ -851,15 +889,21 @@ private fun CircleActivationChecklist(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnVeIllustratedBanner(
-                overlayBadge = {
-                    StitchSemanticBadge(
-                        text = stringResource(R.string.circle_activation_badge),
-                        kind = StitchBadgeKind.IN_TRANSIT,
-                    )
-                },
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                AnVeFamilySceneIllustration(modifier = Modifier.fillMaxWidth().height(120.dp))
+                StitchSemanticBadge(
+                    text = stringResource(R.string.circle_activation_badge),
+                    kind = StitchBadgeKind.IN_TRANSIT,
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.circle_activation_dismiss))
+                }
             }
             Text(
                 stringResource(R.string.circle_activation_warm_title),

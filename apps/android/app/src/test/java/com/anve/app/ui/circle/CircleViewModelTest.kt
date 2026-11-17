@@ -5,6 +5,7 @@ import com.anve.app.data.api.ApiFactory
 import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.CircleMembershipDto
 import com.anve.app.data.api.MembershipDto
+import com.anve.app.data.circles.CircleOnboardingStorage
 import com.anve.app.data.circles.CircleRepository
 import com.anve.app.ui.awaitUntil
 import kotlinx.coroutines.CoroutineScope
@@ -400,5 +401,92 @@ class CircleViewModelTest {
 
         assertEquals(R.string.circle_error_remove_member_failed, vm.state.value.errorRes)
         assertFalse(vm.state.value.busy)
+    }
+
+    @Test
+    fun `server audience grant persists across launches and offline fallback`() = runBlocking {
+        val store = InMemoryOnboardingStore()
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val firstVm = CircleViewModel(
+            repository = repository,
+            externalScope = scope,
+            ownerId = "u2",
+            onboardingStore = store,
+            checkHasAudienceGrants = { true },
+        )
+        awaitUntil { firstVm.state.value.membersLoaded && firstVm.state.value.audienceLoaded }
+        assertTrue(firstVm.state.value.audienceConfigured)
+        assertTrue(store.isAudienceConfigured("u2"))
+
+        // Subsequent launch starts with cached truth immediately even if the
+        // server audience check fails (e.g. offline on cold start).
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val secondVm = CircleViewModel(
+            repository = repository,
+            externalScope = scope,
+            ownerId = "u2",
+            onboardingStore = store,
+            checkHasAudienceGrants = { error("offline") },
+        )
+        assertTrue(secondVm.state.value.audienceConfigured)
+        assertTrue(secondVm.state.value.audienceLoaded)
+        awaitUntil { secondVm.state.value.membersLoaded }
+        assertTrue(secondVm.state.value.audienceConfigured)
+    }
+
+    @Test
+    fun `dismissChecklist persists per account`() = runBlocking {
+        val store = InMemoryOnboardingStore()
+        enqueueMyCircle()
+        server.enqueue(
+            MockResponse().setBody(
+                """{"members":[{"userId":"u2","displayName":"Mai","role":"owner","joinedAt":"2026-10-25T00:00:00Z"}]}""",
+            ),
+        )
+        server.enqueue(MockResponse().setBody("""{"invites":[]}"""))
+
+        val vm = CircleViewModel(
+            repository = repository,
+            externalScope = scope,
+            ownerId = "u2",
+            onboardingStore = store,
+            checkHasAudienceGrants = { false },
+        )
+        awaitUntil { vm.state.value.membersLoaded && vm.state.value.audienceLoaded }
+        assertFalse(vm.state.value.checklistDismissed)
+
+        vm.dismissChecklist()
+        assertTrue(vm.state.value.checklistDismissed)
+        assertTrue(store.isChecklistDismissed("u2"))
+        assertFalse(store.isChecklistDismissed("other"))
+    }
+
+    private class InMemoryOnboardingStore : CircleOnboardingStorage {
+        private val audience = mutableMapOf<String, Boolean>()
+        private val dismissed = mutableMapOf<String, Boolean>()
+
+        override fun isAudienceConfigured(ownerId: String): Boolean = audience[ownerId] == true
+        override fun setAudienceConfigured(ownerId: String, configured: Boolean) {
+            audience[ownerId] = configured
+        }
+
+        override fun isChecklistDismissed(ownerId: String): Boolean = dismissed[ownerId] == true
+        override fun setChecklistDismissed(ownerId: String, dismissed: Boolean) {
+            this.dismissed[ownerId] = dismissed
+        }
     }
 }
