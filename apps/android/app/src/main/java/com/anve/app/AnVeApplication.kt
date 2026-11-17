@@ -254,6 +254,7 @@ class AnVeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        com.anve.app.data.analytics.AnalyticsTracker.initialize(this)
         // Finishes every sign-out whose server revocation could not be
         // delivered (offline sign-out). Best-effort and bounded: each queue
         // record expires independently after PENDING_REVOCATION_TTL_MILLIS.

@@ -18,6 +18,7 @@ import com.anve.app.data.api.orThrow
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -28,12 +29,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Missing Firebase configuration disables registration instead of crashing CI. */
+/** Missing Firebase configuration disables registration and analytics instead of crashing CI. */
 object FirebaseSetup {
     @Synchronized fun initialize(context: Context): Boolean {
-        if (FirebaseApp.getApps(context).isNotEmpty()) return true
+        val appContext = context.applicationContext
         if (listOf(BuildConfig.ANVE_FIREBASE_APP_ID, BuildConfig.ANVE_FIREBASE_PROJECT_ID,
                 BuildConfig.ANVE_FIREBASE_API_KEY, BuildConfig.ANVE_FIREBASE_SENDER_ID).any { it.isBlank() }) return false
+        if (FirebaseApp.getApps(appContext).isNotEmpty()) return true
         return runCatching {
             val options = FirebaseOptions.Builder()
                 .setApplicationId(BuildConfig.ANVE_FIREBASE_APP_ID)
@@ -41,7 +43,8 @@ object FirebaseSetup {
                 .setApiKey(BuildConfig.ANVE_FIREBASE_API_KEY)
                 .setGcmSenderId(BuildConfig.ANVE_FIREBASE_SENDER_ID)
                 .build()
-            FirebaseApp.initializeApp(context.applicationContext, options)
+            FirebaseApp.initializeApp(appContext, options)
+            FirebaseAnalytics.getInstance(appContext).setAnalyticsCollectionEnabled(true)
             true
         }.getOrDefault(false)
     }

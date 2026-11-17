@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -110,6 +111,7 @@ import com.anve.app.data.api.DeviceDto
 import com.anve.app.data.api.DeviceSessionDto
 import com.anve.app.data.api.UserDto
 import com.anve.app.data.avatar.AvatarGateway
+import com.anve.app.data.analytics.AnalyticsTracker
 import com.anve.app.data.sos.IncomingPush
 import com.anve.app.data.sos.pushDestination
 import com.anve.app.ui.avatar.AccountAvatarButton
@@ -226,6 +228,10 @@ internal val HOME_FAB_CLEARANCE = 64.dp
 @Composable
 fun HomeScreen(container: AppContainer, incomingPush: IncomingPush? = null, onPushConsumed: () -> Unit = {}) {
     var tab by rememberSaveable(stateSaver = homeTabSaver) { mutableStateOf(HomeTab.CIRCLE) }
+    val context = LocalContext.current
+    LaunchedEffect(tab) {
+        AnalyticsTracker.logTabViewed(context, tab.name.lowercase())
+    }
     var secondaryPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
     var sosReturnPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }
     var sharingReturnPage: HomeSecondaryPage? by rememberSaveable(stateSaver = homeSecondaryPageSaver) { mutableStateOf<HomeSecondaryPage?>(null) }

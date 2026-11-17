@@ -8,10 +8,14 @@
       "metadataNames": [
         "com.google.android.geo.API_KEY",
         "com.google.android.gms.version",
-        "firebase_messaging_auto_init_enabled"
+        "firebase_analytics_collection_enabled",
+        "firebase_messaging_auto_init_enabled",
+        "google_analytics_adid_collection_enabled",
+        "google_analytics_default_allow_ad_personalization_signals"
       ],
       "networkSecurityConfigPresent": true,
       "sdkFlags": {
+        "firebase_analytics_collection_enabled": "false",
         "firebase_messaging_auto_init_enabled": "false"
       },
       "usesCleartextTraffic": null
@@ -176,6 +180,16 @@
         "name": "com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
       },
       {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "enabled": "true",
+        "exported": "false",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "com.google.android.gms.measurement.AppMeasurementReceiver"
+      },
+      {
         "actions": [
           "com.google.android.c2dm.intent.RECEIVE"
         ],
@@ -290,11 +304,33 @@
         "actions": [],
         "categories": [],
         "dataFilters": [],
+        "enabled": "true",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.google.android.gms.measurement.AppMeasurementJobService",
+        "permission": "android.permission.BIND_JOB_SERVICE"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
+        "enabled": "true",
+        "exported": "false",
+        "kind": "service",
+        "metadataNames": [],
+        "name": "com.google.android.gms.measurement.AppMeasurementService"
+      },
+      {
+        "actions": [],
+        "categories": [],
+        "dataFilters": [],
         "directBootAware": "true",
         "exported": "false",
         "kind": "service",
         "metadataNames": [
           "com.google.firebase.components:com.google.firebase.FirebaseCommonKtxRegistrar",
+          "com.google.firebase.components:com.google.firebase.analytics.connector.internal.AnalyticsConnectorRegistrar",
           "com.google.firebase.components:com.google.firebase.datatransport.TransportRegistrar",
           "com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsKtxRegistrar",
           "com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar",
@@ -379,6 +415,10 @@
       {
         "kind": "uses-permission",
         "name": "com.google.android.c2dm.permission.RECEIVE"
+      },
+      {
+        "kind": "uses-permission",
+        "name": "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"
       }
     ]
   },
@@ -501,6 +541,8 @@
     "androidx.navigationevent:navigationevent-compose:1.1.2",
     "androidx.navigationevent:navigationevent:1.1.2",
     "androidx.print:print:1.0.0",
+    "androidx.privacysandbox.ads:ads-adservices-java:1.1.0-beta11",
+    "androidx.privacysandbox.ads:ads-adservices:1.1.0-beta11",
     "androidx.profileinstaller:profileinstaller:1.4.0",
     "androidx.resourceinspection:resourceinspection-annotation:1.0.1",
     "androidx.room:room-common-jvm:2.8.5",
@@ -533,6 +575,7 @@
     "com.google.android.datatransport:transport-api:5.0.0",
     "com.google.android.datatransport:transport-backend-cct:5.0.0",
     "com.google.android.datatransport:transport-runtime:5.0.0",
+    "com.google.android.gms:play-services-ads-identifier:18.0.0",
     "com.google.android.gms:play-services-auth-api-phone:18.0.2",
     "com.google.android.gms:play-services-auth-base:18.0.10",
     "com.google.android.gms:play-services-auth-blockstore:16.4.0",
@@ -544,13 +587,21 @@
     "com.google.android.gms:play-services-identity-credentials:16.0.0-alpha08",
     "com.google.android.gms:play-services-location:21.4.0",
     "com.google.android.gms:play-services-maps:20.0.0",
+    "com.google.android.gms:play-services-measurement-api:24.0.0",
+    "com.google.android.gms:play-services-measurement-base:24.0.0",
+    "com.google.android.gms:play-services-measurement-impl:24.0.0",
+    "com.google.android.gms:play-services-measurement-sdk-api:24.0.0",
+    "com.google.android.gms:play-services-measurement-sdk:24.0.0",
+    "com.google.android.gms:play-services-measurement:24.0.0",
     "com.google.android.gms:play-services-stats:17.0.2",
     "com.google.android.gms:play-services-tasks:18.4.0",
     "com.google.android.libraries.identity.googleid:googleid:1.2.1",
     "com.google.android.play:app-update-ktx:2.1.0",
     "com.google.android.play:app-update:2.1.0",
     "com.google.android.play:core-common:2.0.3",
+    "com.google.code.findbugs:jsr305:3.0.2",
     "com.google.errorprone:error_prone_annotations:2.26.0",
+    "com.google.firebase:firebase-analytics:24.0.0",
     "com.google.firebase:firebase-annotations:18.0.0",
     "com.google.firebase:firebase-bom:35.2.0",
     "com.google.firebase:firebase-common:23.0.0",
@@ -564,7 +615,10 @@
     "com.google.firebase:firebase-installations:20.0.0",
     "com.google.firebase:firebase-measurement-connector:19.0.0",
     "com.google.firebase:firebase-messaging:26.0.2",
-    "com.google.guava:listenablefuture:1.0",
+    "com.google.guava:failureaccess:1.0.1",
+    "com.google.guava:guava:31.1-android",
+    "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava",
+    "com.google.j2objc:j2objc-annotations:1.3",
     "com.google.maps.android:android-maps-utils-core:6.0.0",
     "com.google.maps.android:maps-compose:9.0.1",
     "com.squareup.moshi:moshi-kotlin:1.15.2",
@@ -576,6 +630,7 @@
     "com.squareup.retrofit2:converter-moshi:3.0.0",
     "com.squareup.retrofit2:retrofit:3.0.0",
     "javax.inject:javax.inject:1",
+    "org.checkerframework:checker-qual:3.12.0",
     "org.jetbrains.kotlin:kotlin-reflect:1.8.21",
     "org.jetbrains.kotlin:kotlin-stdlib-common:2.4.21",
     "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.20",
@@ -596,7 +651,7 @@
   ],
   "schemaVersion": 1,
   "sourcePolicies": {
-    "apps/android/app/src/main/AndroidManifest.xml": "7055824fe16dd832fb4e60d0fe3e8b2ab38f3aac4a80b2d0b5bbc010d7752301",
+    "apps/android/app/src/main/AndroidManifest.xml": "2852cad3523409be8b173f9b70fba3667b7dca002ba4c880aeb44c0a0336bdf8",
     "apps/android/app/src/main/res/xml/backup_rules.xml": "bab9f708acc805a3b6bf536a6401488cef5f7e91580d4d744f87881e4d7a122a",
     "apps/android/app/src/main/res/xml/data_extraction_rules.xml": "144681400e8ab3d4303178cc0c0c4534d607492d2d837a0911548c2d9237b653",
     "apps/android/app/src/main/res/xml/network_security_config.xml": "b3f61bf098d093c46deb038573bc2376b59f15263385835f6561c65eea27c8f2"

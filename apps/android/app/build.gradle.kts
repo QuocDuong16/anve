@@ -84,6 +84,15 @@ android {
         listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->
             buildConfigField("String", name, "\"${firebaseSetting(name)}\"")
         }
+        mapOf(
+            "ANVE_FIREBASE_APP_ID" to "google_app_id",
+            "ANVE_FIREBASE_API_KEY" to "google_api_key",
+            "ANVE_FIREBASE_SENDER_ID" to "gcm_defaultSenderId",
+            "ANVE_FIREBASE_PROJECT_ID" to "project_id",
+        ).forEach { (envName, resName) ->
+            val raw = releaseSetting(envName)
+            if (raw.isNotBlank()) resValue("string", resName, raw)
+        }
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
@@ -112,6 +121,10 @@ android {
             listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->
                 buildConfigField("String", name, ReleaseInputs.javaString(releaseSettings.getValue(name)))
             }
+            resValue("string", "google_app_id", releaseSettings.getValue("ANVE_FIREBASE_APP_ID"))
+            resValue("string", "google_api_key", releaseSettings.getValue("ANVE_FIREBASE_API_KEY"))
+            resValue("string", "gcm_defaultSenderId", releaseSettings.getValue("ANVE_FIREBASE_SENDER_ID"))
+            resValue("string", "project_id", releaseSettings.getValue("ANVE_FIREBASE_PROJECT_ID"))
             manifestPlaceholders["MAPS_API_KEY"] = releaseSettings.getValue("ANVE_MAPS_API_KEY")
             if (signingComplete) signingConfig = signingConfigs.getByName("upload")
             isMinifyEnabled = true
@@ -188,6 +201,7 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.maps.compose)
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
     implementation(libs.play.app.update.ktx)
 

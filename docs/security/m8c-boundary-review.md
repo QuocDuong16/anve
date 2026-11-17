@@ -30,7 +30,7 @@ remain distinct from the current PR's exact-change CI.
 
 | Gap | Missing evidence and completion path |
 | --- | --- |
-| SDK data handling exceeds first-party DTOs | Maps metadata/pseudonymous IDs and Firebase Installations must be covered by the Data Safety review. The 207-module graph includes support/platform modules and a measurement connector, not evidence that Firebase Analytics runs. Observe the exact configured SDKs and reconcile their provider disclosures. |
+| SDK data handling exceeds first-party DTOs | Maps metadata/pseudonymous IDs, Firebase Installations and Firebase Analytics (`firebase-analytics` 24.0.0, enabled programmatically only when `ANVE_FIREBASE_*` build inputs are present, with `AD_ID` and `ACCESS_ADSERVICES_*` permissions stripped) must be covered by the Data Safety review. Observe the exact configured SDKs and reconcile their provider disclosures. |
 | Audit/backup/provider deletion semantics | Account cascade preserves audit actor UUIDs. Owner must define justified audit/log/backup retention, restores and the public deletion process, and verify provider identity deletion separately. Do not state “all data immediately deleted.” |
 | Effective installed-app and external component behavior | The merged package includes SDK boot/biometric/wake permissions and permission-guarded exported components. Source flags do not establish OEM behavior or Google/OS permission ownership. Test the signed installed app and legitimate provider paths. |
 | Deployment transport and access | Release requires an explicit HTTPS DNS URL; source cannot prove ingress TLS, trusted proxy policy, metrics isolation, DB/backup access, collector retention or actual log sinks. Owner-operated deployment checks are still required. |
@@ -44,8 +44,8 @@ actual source/runtime/operator evidence.
 
 ## Inventory check contract
 
-`make android-release-config-check` compares 207 resolved production/fixture
-coordinates (including versions), 14 permission declarations, the reviewed
+`make android-release-config-check` compares 225 resolved production/fixture
+coordinates (including versions), 15 permission declarations, the reviewed
 component/intent-action fields, application security flags and non-debug source
 manifest/XML policy hashes against the tracked baseline. New or missing SDKs,
 permissions/components, lost component permissions and policy edits fail the
