@@ -1,5 +1,6 @@
 package com.anve.app.ui
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isSelectable
@@ -7,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.anve.app.AnVeApplication
 import com.anve.app.ui.home.HomeScreen
@@ -35,7 +37,7 @@ class HomeNavigationInstrumentedTest {
         compose.onNodeWithContentDescription("Tài khoản").performClick()
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
-        compose.onNodeWithContentDescription("SOS").performClick()
+        compose.onNodeWithContentDescription("SOS").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithContentDescription("Quay lại").performClick()
         compose.onNodeWithText("AnVề").assertIsDisplayed()
         compose.onNodeWithText("Nhà").performClick()

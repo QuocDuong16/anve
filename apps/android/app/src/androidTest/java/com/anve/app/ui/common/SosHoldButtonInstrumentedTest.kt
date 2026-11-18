@@ -1,11 +1,12 @@
 package com.anve.app.ui.common
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -56,7 +57,7 @@ class SosHoldButtonInstrumentedTest {
                 AnVeSosHoldButton(onTriggered = { triggered++ })
             }
         }
-        compose.onNodeWithContentDescription("SOS").performClick()
+        compose.onNodeWithContentDescription("SOS").performSemanticsAction(SemanticsActions.OnClick)
         compose.runOnIdle { assertEquals(1, triggered) }
     }
 }
