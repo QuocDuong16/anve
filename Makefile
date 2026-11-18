@@ -12,7 +12,7 @@
 	compose-lint up down logs up-dev down-dev logs-dev \
 	migrate-up-dev migrate-down-dev \
 	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
-	android-sdk-check android-build android-test android-lint android-check android-release android-release-config-check android-release-check android-signed-smoke android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
+	android-sdk-check android-build android-test android-lint android-ui-rules-check android-check android-release android-release-config-check android-release-check android-signed-smoke android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint release-tooling-check \
 	quality-check
 
@@ -187,7 +187,12 @@ tracking-validation: android-check android-test-build ## Check tracking diagnost
 android-lint: android-sdk-check ## Run the Android lint checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug
 
-android-check: android-sdk-check ## Run the Android lint, unit test and debug build checks
+android-ui-rules-check: ## Verify Android UI/UX, accessibility, and 3-mode @Preview rules
+	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate Android UI rules." >&2; exit 1; }
+	python3 -m unittest discover -s scripts -p 'test_android_ui_rules.py'
+	python3 scripts/check_android_ui_rules.py
+
+android-check: android-sdk-check android-ui-rules-check ## Run the Android lint, UI rules, unit test and debug build checks
 	cd $(ANDROID_DIR) && ./gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 
 android-release: android-sdk-check ## Build the guarded signed production release APK

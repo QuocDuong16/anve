@@ -94,6 +94,10 @@ jobs:
         working-directory: .
         run: bash scripts/check_toolchain_versions.sh
 
+      - name: Verify Android UI rules and tests
+        working-directory: .
+        run: make android-ui-rules-check
+
       - name: Point Gradle at the JDK pinned in mise.toml
         run: echo "JAVA_HOME=$(mise where java)" >> "$GITHUB_ENV"
 

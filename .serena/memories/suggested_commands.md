@@ -27,7 +27,8 @@ Everything goes through the Makefile from the repo root; `make help` is the defa
 
 ## Android checks
 
-- `make android-check` — `lintDebug` + `testDebugUnitTest` + `assembleDebug`.
+- `make android-ui-rules-check` — run `scripts/test_android_ui_rules.py` and `scripts/check_android_ui_rules.py` (enforces AI Slop, Play/Insets/keyed-Lazy-items, Accessibility/200% font scale, and 3-mode `@Preview` rules; also runs in `android.yml`).
+- `make android-check` — `android-ui-rules-check` + `lintDebug` + `testDebugUnitTest` + `assembleDebug`.
 - `make android-clean`; `make clean` also removes `apps/server/bin`.
 
 ## Contracts & dependency config
