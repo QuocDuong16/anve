@@ -1,7 +1,9 @@
 package com.anve.app.ui.common
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,13 +23,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -61,53 +66,78 @@ fun AnveErrorNotice(
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
+    embedded: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
-    Card(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, colors.error.copy(alpha = 0.30f)),
-        colors = CardDefaults.cardColors(
-            containerColor = colors.errorContainer,
-            contentColor = colors.onErrorContainer,
-        ),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    if (embedded) {
+        // Embedded inside a parent card: avoid card-in-card nesting while keeping errorContainer contrast.
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(colors.errorContainer),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top,
+            CompositionLocalProvider(LocalContentColor provides colors.onErrorContainer) {
+                AnveErrorNoticeBody(text = text, onRetry = onRetry, onDismiss = onDismiss)
+            }
+        }
+    } else {
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            border = BorderStroke(1.dp, colors.error.copy(alpha = 0.30f)),
+            colors = CardDefaults.cardColors(
+                containerColor = colors.errorContainer,
+                contentColor = colors.onErrorContainer,
+            ),
+            modifier = modifier.fillMaxWidth(),
+        ) {
+            AnveErrorNoticeBody(text = text, onRetry = onRetry, onDismiss = onDismiss)
+        }
+    }
+}
+
+@Composable
+private fun AnveErrorNoticeBody(
+    text: String,
+    onRetry: (() -> Unit)?,
+    onDismiss: (() -> Unit)?,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(20.dp),
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (onRetry != null || onDismiss != null) {
+            HorizontalDivider(color = colors.error.copy(alpha = 0.14f))
+        }
+        when {
+            onRetry != null && onDismiss != null -> Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.ErrorOutline,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .size(20.dp),
-                )
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { liveRegion = LiveRegionMode.Polite },
-                )
+                RetryAction(stringResource(R.string.action_retry), onRetry)
+                NoticeAction(stringResource(R.string.action_dismiss), onDismiss)
             }
-            if (onRetry != null || onDismiss != null) {
-                HorizontalDivider(color = colors.error.copy(alpha = 0.14f))
-            }
-            when {
-                onRetry != null && onDismiss != null -> Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    RetryAction(stringResource(R.string.action_retry), onRetry)
-                    NoticeAction(stringResource(R.string.action_dismiss), onDismiss)
-                }
-                onRetry != null -> RetryAction(stringResource(R.string.action_retry), onRetry)
-                onDismiss != null -> NoticeAction(stringResource(R.string.action_dismiss), onDismiss)
-            }
+            onRetry != null -> RetryAction(stringResource(R.string.action_retry), onRetry)
+            onDismiss != null -> NoticeAction(stringResource(R.string.action_dismiss), onDismiss)
         }
     }
 }

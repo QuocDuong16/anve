@@ -796,7 +796,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                 color = colors.onSurfaceVariant,
                             )
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(listOf(1, 7, 30)) { days ->
+                                items(listOf(1, 7, 30), key = { it }) { days ->
                                     FilterChip(
                                         selected = state.retentionDays == days,
                                         onClick = {

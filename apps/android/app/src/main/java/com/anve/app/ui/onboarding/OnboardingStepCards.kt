@@ -281,6 +281,7 @@ internal fun FamilyStepContent(
                             AnveErrorNotice(
                                 text = stringResource(err),
                                 onRetry = if (state.inviteUnknown) onCheckInviteAgain else onCreateAndShareInvite,
+                                embedded = true,
                             )
                         }
                         val createdInvite = state.createdInvite
@@ -413,6 +414,7 @@ internal fun FamilyStepContent(
                             AnveErrorNotice(
                                 text = stringResource(err),
                                 onRetry = if (state.circleUnknown) onCheckCircleAgain else onCreateCircle,
+                                embedded = true,
                             )
                         }
                         Button(
@@ -507,10 +509,11 @@ internal fun FamilyStepContent(
                             fontWeight = FontWeight.SemiBold,
                         )
                         when {
-                            state.receivedLoading -> StitchLoadingSkeletonCard(rows = 1)
+                            state.receivedLoading -> StitchLoadingSkeletonCard(rows = 1, embedded = true)
                             state.receivedErrorRes != null -> AnveErrorNotice(
                                 text = stringResource(state.receivedErrorRes),
                                 onRetry = onRefreshFamily,
+                                embedded = true,
                             )
                             state.receivedInvites.isEmpty() -> Text(
                                 text = stringResource(R.string.onboarding_family_received_empty),
@@ -905,10 +908,11 @@ internal fun AudienceAndPlaceStepContent(
                     title = stringResource(R.string.onboarding_audience_title),
                 )
                 when {
-                    state.audienceLoading -> StitchLoadingSkeletonCard(rows = 2)
+                    state.audienceLoading -> StitchLoadingSkeletonCard(rows = 2, embedded = true)
                     state.audienceErrorRes != null -> AnveErrorNotice(
                         text = stringResource(state.audienceErrorRes),
                         onRetry = onRetryAudience,
+                        embedded = true,
                     )
                     state.otherMembers.isEmpty() -> {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1219,7 +1223,7 @@ internal fun AudienceAndPlaceStepContent(
                     }
 
                     state.placeErrorRes?.let { err ->
-                        AnveErrorNotice(text = stringResource(err))
+                        AnveErrorNotice(text = stringResource(err), embedded = true)
                     }
                 }
             }

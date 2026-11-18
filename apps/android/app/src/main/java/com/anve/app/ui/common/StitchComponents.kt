@@ -460,58 +460,74 @@ fun StitchEmptyStateCard(
 fun StitchLoadingSkeletonCard(
     modifier: Modifier = Modifier,
     rows: Int = 2,
+    embedded: Boolean = false,
+) {
+    val stitch = LocalStitchColors.current
+    if (embedded) {
+        StitchLoadingSkeletonBody(rows = rows, modifier = modifier.fillMaxWidth())
+    } else {
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = stitch.cardTactile,
+            border = BorderStroke(1.dp, stitch.hairline),
+            modifier = modifier.fillMaxWidth(),
+        ) {
+            StitchLoadingSkeletonBody(
+                rows = rows,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun StitchLoadingSkeletonBody(
+    rows: Int,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
-    Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = stitch.cardTactile,
-        border = BorderStroke(1.dp, stitch.hairline),
-        modifier = modifier.fillMaxWidth(),
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceContainerHigh),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .fillMaxWidth(0.55f)
+                        .height(14.dp)
                         .clip(CircleShape)
                         .background(colors.surfaceContainerHigh),
                 )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.55f)
-                            .height(14.dp)
-                            .clip(CircleShape)
-                            .background(colors.surfaceContainerHigh),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.35f)
-                            .height(10.dp)
-                            .clip(CircleShape)
-                            .background(colors.surfaceContainerLow),
-                    )
-                }
-            }
-            repeat(rows) { index ->
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(if (index % 2 == 0) 0.92f else 0.72f)
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .fillMaxWidth(0.35f)
+                        .height(10.dp)
+                        .clip(CircleShape)
                         .background(colors.surfaceContainerLow),
                 )
             }
+        }
+        repeat(rows) { index ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(if (index % 2 == 0) 0.92f else 0.72f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.surfaceContainerLow),
+            )
         }
     }
 }
