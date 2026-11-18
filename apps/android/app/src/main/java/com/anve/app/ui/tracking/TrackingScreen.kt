@@ -1362,7 +1362,7 @@ private fun problemText(problem: TrackingProblem?): String? = when (problem) {
 
 fun formatTime(millis: Long?, fallback: String): String = AnveTime.full(millis, fallback)
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun TrackingContentPreview() {
     AnVeTheme {
@@ -1399,7 +1399,7 @@ private fun TrackingContentPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun TrackingContentDarkPreview() {
     AnVeTheme(darkTheme = true) {
@@ -1421,6 +1421,43 @@ private fun TrackingContentDarkPreview() {
                     lastAccuracyMeters = 10.0,
                     lastUploadAtMillis = System.currentTimeMillis(),
                     pendingQueueCount = 0,
+                ),
+            ),
+            onStartFlow = {},
+            onStop = {},
+            onToggleConsent = {},
+            onRetrySync = {},
+            onRequestBackground = {},
+            onRequestNotifications = {},
+            onOpenAppSettings = {},
+            onOpenLocationSettings = {},
+            onDismissMessage = {},
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun TrackingContentElderlyFontPreview() {
+    AnVeTheme {
+        TrackingContent(
+            state = TrackingUiState(
+                status = TrackingStatus(
+                    consentEnabled = true,
+                    consentConfirmedByServer = true,
+                    trackingRequested = true,
+                    serviceRunning = true,
+                    providerActive = true,
+                    running = true,
+                    motion = MotionState.STATIONARY,
+                    operational = OperationalState.ACTIVE,
+                    permission = LocationPermissionState.GRANTED_PRECISE,
+                    backgroundPermissionGranted = false,
+                    notificationsGranted = true,
+                    lastFixAtMillis = System.currentTimeMillis(),
+                    lastAccuracyMeters = 12.0,
+                    lastUploadAtMillis = System.currentTimeMillis(),
+                    pendingQueueCount = 3,
                 ),
             ),
             onStartFlow = {},

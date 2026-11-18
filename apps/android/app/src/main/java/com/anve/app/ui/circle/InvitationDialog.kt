@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -164,7 +165,9 @@ fun InvitationDialog(
     )
 }
 
-@Preview
+@Preview(name = "1. Standard Light", showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
 @Composable
 private fun InvitationPreview() {
     AnVeTheme { InvitationDialog(InvitationUiState(loading = false, preview = InvitePreviewDto("example", "Nhà mình", "2026-11-14T13:00:00Z"), accountLabel = "Dương · duong@example.test"), true, {}, {}, {}, {}) }

@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -1195,7 +1196,7 @@ private fun CircleSetupPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun CircleActivePreview() {
     AnVeTheme {
@@ -1225,7 +1226,7 @@ private fun CircleActivePreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun CircleActiveDarkPreview() {
     AnVeTheme(darkTheme = true) {
@@ -1237,6 +1238,36 @@ private fun CircleActiveDarkPreview() {
                 members = listOf(
                     MemberDto("u1", "Mai", "owner", "2026-10-25T00:00:00Z"),
                     MemberDto("u2", "Bố", "member", "2026-10-25T01:00:00Z"),
+                ),
+            ),
+            onCreate = {},
+            onJoin = {},
+            onCreateInvite = {},
+            onRevokeInvite = {},
+            onRemoveMember = {},
+            onLeave = {},
+            onRetry = {},
+            hasOtherMembers = true,
+            currentUserId = "u1",
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun CircleActiveElderlyFontPreview() {
+    AnVeTheme {
+        CircleContent(
+            state = CircleUiState(
+                loading = false,
+                circle = CircleDto("c1", "Gia đình mình", "u1", "2026-10-25T00:00:00Z"),
+                myRole = "owner",
+                members = listOf(
+                    MemberDto("u1", "Mai", "owner", "2026-10-25T00:00:00Z"),
+                    MemberDto("u2", "Bố", "member", "2026-10-25T01:00:00Z"),
+                ),
+                invites = listOf(
+                    InviteDto("i1", "c1", "ABCD234567", "u1", "2026-10-27T00:00:00Z", "2026-10-25T00:00:00Z"),
                 ),
             ),
             onCreate = {},

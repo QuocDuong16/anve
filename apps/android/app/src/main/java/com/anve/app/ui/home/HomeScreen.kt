@@ -1,5 +1,6 @@
 package com.anve.app.ui.home
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -1503,7 +1504,7 @@ private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun HomeContentPreview() {
     val user = UserDto(
@@ -1542,7 +1543,7 @@ private fun HomeContentPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun HomeContentDarkPreview() {
     val user = UserDto(
@@ -1556,6 +1557,45 @@ private fun HomeContentDarkPreview() {
     AnVeTheme(darkTheme = true) {
         HomeContent(
             state = HomeUiState(loading = false, user = user, devices = emptyList()),
+            onToggleSharing = {},
+            onRename = {},
+            onRevokeDevice = {},
+            onSignOut = {},
+            onDeleteAccount = {},
+            onRetry = {},
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun HomeContentElderlyFontPreview() {
+    val user = UserDto(
+        id = "u1",
+        email = "me@example.com",
+        displayName = "Mai",
+        avatarUrl = null,
+        locationSharingEnabled = true,
+        createdAt = "2026-10-25T10:00:00Z",
+    )
+    val device = DeviceDto(
+        id = "d1",
+        name = "Pixel 8",
+        platform = "android",
+        appVersion = "0.2.0-debug",
+        createdAt = "2026-10-25T10:00:00Z",
+        lastSeenAt = "2026-10-25T12:00:00Z",
+        session = DeviceSessionDto(
+            id = "s1",
+            createdAt = "2026-10-25T10:00:00Z",
+            lastUsedAt = "2026-10-25T12:00:00Z",
+            expiresAt = "2026-11-24T10:00:00Z",
+            current = true,
+        ),
+    )
+    AnVeTheme {
+        HomeContent(
+            state = HomeUiState(loading = false, user = user, devices = listOf(device)),
             onToggleSharing = {},
             onRename = {},
             onRevokeDevice = {},

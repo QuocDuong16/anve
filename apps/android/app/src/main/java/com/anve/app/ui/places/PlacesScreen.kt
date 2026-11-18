@@ -1,6 +1,7 @@
 package com.anve.app.ui.places
 
 import android.Manifest
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -102,6 +103,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -115,7 +117,11 @@ import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
 import com.anve.app.R
 import com.anve.app.data.api.PlaceDto
+import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.PlaceInputDto
+import com.anve.app.data.api.PlaceMonitorDto
+import com.anve.app.data.location.PlacesDataSource
+import com.anve.app.data.location.SharingManagementSnapshot
 import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.LocationPermissionState
@@ -134,6 +140,7 @@ import com.anve.app.ui.home.HOME_FAB_CLEARANCE
 import com.anve.app.ui.map.MapOverlayPillButton
 import com.anve.app.ui.map.rememberAnVeMapProperties
 import com.anve.app.ui.map.rememberPlaceMarkerIcon
+import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.isDarkSurface
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -1945,4 +1952,42 @@ private fun SearchNote(res: Int) {
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
+}
+
+private object PreviewPlacesDataSource : PlacesDataSource {
+    override suspend fun places(owner: String): List<PlaceDto> = emptyList()
+    override suspend fun events(owner: String): List<PlaceEventDto> = emptyList()
+    override suspend fun members(owner: String): SharingManagementSnapshot = SharingManagementSnapshot()
+    override suspend fun access(owner: String, place: String): List<String> = emptyList()
+    override suspend fun eligibleRecipients(owner: String, place: String): List<String> = emptyList()
+    override suspend fun monitor(owner: String, place: String): PlaceMonitorDto? = null
+    override suspend fun create(owner: String, input: PlaceInputDto): PlaceDto = error("preview")
+    override suspend fun update(owner: String, place: String, input: PlaceInputDto): PlaceDto = error("preview")
+    override suspend fun delete(owner: String, place: String) = Unit
+    override suspend fun share(owner: String, place: String, member: String, enabled: Boolean) = Unit
+    override suspend fun configure(owner: String, place: String, recipients: List<String>): PlaceMonitorDto = error("preview")
+    override suspend fun stop(owner: String, place: String) = Unit
+}
+
+@Preview(name = "1. Standard Light", showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun PlacesContentPreview() {
+    val vm = remember { PlacesViewModel(PreviewPlacesDataSource) }
+    AnVeTheme {
+        PlacesContent(
+            state = PlacesState(
+                owner = "owner",
+                places = listOf(
+                    PlaceDto("p1", "owner", "c1", "Nhà", 21.0285, 105.8542, 150.0, "2026-11-16T00:00:00Z", "2026-11-16T00:00:00Z", true),
+                    PlaceDto("p2", "m1", "c1", "Trường học", 21.031, 105.849, 200.0, "2026-11-16T00:00:00Z", "2026-11-16T00:00:00Z", false),
+                ),
+                events = listOf(
+                    PlaceEventDto("e1", "p1", "Nhà", "owner", "Mẹ Lan", "ENTER", "2026-11-16T08:00:00Z", "2026-11-16T08:01:00Z", false, "OBSERVED"),
+                ),
+            ),
+            vm = vm,
+        )
+    }
 }

@@ -157,10 +157,14 @@ private fun OptionRow(title: String, helper: String, checked: Boolean, onChecked
     }
 }
 
-@Preview
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun OptionsPreview() { AnVeTheme { JourneyOptionsSheet(false, 10, {}, { _, _ -> }) } }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun OptionsDarkPreview() { AnVeTheme(darkTheme = true) { JourneyOptionsSheet(true, 15, {}, { _, _ -> }) } }
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun OptionsElderlyFontPreview() { AnVeTheme { JourneyOptionsSheet(true, 10, {}, { _, _ -> }) } }

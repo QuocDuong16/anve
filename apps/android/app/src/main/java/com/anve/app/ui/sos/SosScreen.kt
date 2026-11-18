@@ -1113,7 +1113,7 @@ private fun sosState(value: String): String = when (value) {
     else -> stringResource(R.string.sos_event_unknown)
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun SosContentPreview() {
     AnVeTheme {
@@ -1141,10 +1141,38 @@ private fun SosContentPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun SosContentDarkPreview() {
     AnVeTheme(darkTheme = true) {
+        SosContentBody(
+            state = previewSosState(),
+            queuedEventId = null,
+            notificationPermission = false,
+            settingsMessage = null,
+            onNotifications = {},
+            onSystemSettings = {},
+            canRequestNotificationPermission = true,
+            pushConfiguredOnBuild = true,
+            onRefresh = {},
+            onSend = {},
+            onCancel = {},
+            onResolve = {},
+            onAcknowledge = {},
+            onRecheckCancel = {},
+            onRecheckUnknown = {},
+            onClearFinished = {},
+            onSelectEvent = {},
+            onRevokeRecipient = { _, _ -> },
+            onConsumeQueuedEventId = {},
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun SosContentElderlyFontPreview() {
+    AnVeTheme {
         SosContentBody(
             state = previewSosState(),
             queuedEventId = null,

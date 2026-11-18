@@ -1,5 +1,6 @@
 package com.anve.app.ui.circle
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,13 +38,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anve.app.R
+import com.anve.app.data.api.ReceivedInvitationDto
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchSemanticBadge
+import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.anve.app.ui.theme.rememberInkOnSurface
 
@@ -184,6 +188,32 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
                     Text(stringResource(R.string.action_cancel))
                 }
             },
+        )
+    }
+}
+
+@Preview(name = "1. Standard Light", showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun ReceivedInvitationsPreview() {
+    AnVeTheme {
+        ReceivedInvitations(
+            state = PrivateInvitationsState(
+                loading = false,
+                received = listOf(
+                    ReceivedInvitationDto(
+                        id = "inv-1",
+                        circleId = "c-1",
+                        circleName = "Gia đình mình",
+                        inviterDisplayName = "Mẹ Lan",
+                        expiresAt = "2026-11-20T12:00:00Z",
+                    ),
+                ),
+            ),
+            onRefresh = {},
+            onReview = {},
+            onHide = {},
         )
     }
 }

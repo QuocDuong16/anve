@@ -394,7 +394,7 @@ fun Context.findActivity(): Activity? {
     return null
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun SignInContentGooglePreview() {
     AnVeTheme {
@@ -411,7 +411,7 @@ private fun SignInContentGooglePreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun SignInContentGoogleDarkPreview() {
     AnVeTheme(darkTheme = true) {
@@ -424,6 +424,24 @@ private fun SignInContentGoogleDarkPreview() {
             onGoogleSignIn = {},
             onDevSignIn = {},
             onRetry = {},
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun SignInContentGoogleElderlyFontPreview() {
+    AnVeTheme {
+        SignInContent(
+            state = SignInUiState.Ready(googleSignIn = true, devLogin = false),
+            error = null,
+            busy = false,
+            notice = null,
+            onDismissNotice = {},
+            onGoogleSignIn = {},
+            onDevSignIn = {},
+            onRetry = {},
+            invitationPending = true,
         )
     }
 }

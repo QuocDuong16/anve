@@ -1,5 +1,6 @@
 package com.anve.app.ui.update
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -136,7 +137,7 @@ fun ForceUpdateDialog(
     )
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun ForceUpdateDialogLightPreview() {
     AnVeTheme(darkTheme = false) {
@@ -149,10 +150,23 @@ private fun ForceUpdateDialogLightPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun ForceUpdateDialogDarkPreview() {
     AnVeTheme(darkTheme = true) {
+        ForceUpdateDialog(
+            state = AppUpdateUiState(modalVisible = true, availableVersionCode = 12),
+            onConfirmUpdate = {},
+            onOpenPlayStore = {},
+            onExitApp = {},
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun ForceUpdateDialogElderlyFontPreview() {
+    AnVeTheme(darkTheme = false) {
         ForceUpdateDialog(
             state = AppUpdateUiState(modalVisible = true, availableVersionCode = 12),
             onConfirmUpdate = {},

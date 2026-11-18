@@ -1,5 +1,6 @@
 package com.anve.app.ui.brand
 
+import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -753,10 +754,12 @@ fun AnVeIllustratedBanner(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
 @Composable
 private fun IllustrationsLightPreview() {
-    AnVeTheme(darkTheme = false) {
+    AnVeTheme {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

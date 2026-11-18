@@ -1,5 +1,6 @@
 package com.anve.app.ui.common
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -272,7 +273,7 @@ private fun NoticeAction(label: String, onClick: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun AnveErrorNoticePreview() {
     AnVeTheme {
@@ -282,12 +283,22 @@ private fun AnveErrorNoticePreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun AnveErrorNoticeDarkPreview() {
     AnVeTheme(darkTheme = true) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AnveErrorNotice("Không thể tải dữ liệu. Vui lòng thử lại.", onRetry = {})
+        }
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun AnveErrorNoticeElderlyFontPreview() {
+    AnVeTheme {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AnveErrorNotice("Không thể tải dữ liệu. Vui lòng thử lại.", onRetry = {}, onDismiss = {})
         }
     }
 }

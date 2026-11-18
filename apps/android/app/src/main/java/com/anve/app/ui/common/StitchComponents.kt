@@ -1,5 +1,6 @@
 package com.anve.app.ui.common
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -785,7 +786,7 @@ fun AnVeSosHoldButton(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun StitchComponentsLightPreview() {
     AnVeTheme(darkTheme = false) {
@@ -822,7 +823,7 @@ private fun StitchComponentsLightPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun StitchComponentsDarkPreview() {
     AnVeTheme(darkTheme = true) {
@@ -838,6 +839,25 @@ private fun StitchComponentsDarkPreview() {
                 title = stringResource(R.string.history_empty_warm_title),
                 body = stringResource(R.string.history_empty_warm_body),
             )
+        }
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun StitchComponentsElderlyFontPreview() {
+    AnVeTheme(darkTheme = false) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            StitchLiveSharingPill(
+                text = stringResource(R.string.home_privacy_live_pill),
+                active = true,
+                actionLabel = stringResource(R.string.tracking_start),
+                onClick = {},
+            )
+            AnVeSosHoldButton(onTriggered = {})
         }
     }
 }

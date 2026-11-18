@@ -1,5 +1,6 @@
 package com.anve.app.ui.map
 
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -1582,7 +1583,7 @@ private fun String?.toVietnameseTime(fallback: String): String = AnveTime.full(t
 private val DEFAULT_CAMERA_TARGET = LatLng(16.0, 107.5)
 private const val DEFAULT_CAMERA_ZOOM = 5.0f
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun LiveMapContentPreview() {
     val sample = listOf(
@@ -1632,7 +1633,7 @@ private fun LiveMapContentPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun LiveMapContentDarkPreview() {
     AnVeTheme(darkTheme = true) {
@@ -1647,6 +1648,45 @@ private fun LiveMapContentDarkPreview() {
                 ),
             ),
             ownerId = "me",
+            mapsConfigured = false,
+            onOpenSharing = {},
+            onCloseSharing = {},
+            onToggleViewer = { _, _ -> },
+            onRetrySharing = {},
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun LiveMapContentElderlyFontPreview() {
+    val sample = listOf(
+        VisibleLocationDto(
+            ownerId = "u1",
+            displayName = "Mẹ Lan",
+            latitude = 21.033,
+            longitude = 105.834,
+            horizontalAccuracyMeters = 8.0,
+            recordedAt = "2026-10-25T10:15:00Z",
+            receivedAt = "2026-10-25T10:15:02Z",
+            ageMillis = 20_000L,
+            confidence = "FRESH",
+        ),
+    )
+    AnVeTheme {
+        LiveMapContent(
+            state = LiveMapUiState(
+                ownerId = "me",
+                snapshot = VisibleLocationSnapshot(
+                    ownerId = "me",
+                    connected = true,
+                    loading = false,
+                    locations = sample,
+                ),
+            ),
+            ownerId = "me",
+            trackingStatus = TrackingStatus(consentEnabled = true, running = true, serviceRunning = true, providerActive = true),
+            userDisplayName = "Minh",
             mapsConfigured = false,
             onOpenSharing = {},
             onCloseSharing = {},

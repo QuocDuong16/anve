@@ -238,7 +238,7 @@ fun AvatarSheet(
     }
 }
 
-@Preview
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun AvatarSheetPreview() {
     AnVeTheme { AvatarSheet(AvatarUiState(open = true, loading = false, metadata = AvatarStateDto(0)), true, {}, {}, {}, {}, {}, {}) {
@@ -246,10 +246,18 @@ private fun AvatarSheetPreview() {
     } }
 }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun AvatarSheetDarkPreview() {
     AnVeTheme(darkTheme = true) { AvatarSheet(AvatarUiState(open = true, loading = false, metadata = AvatarStateDto(0)), true, {}, {}, {}, {}, {}, {}) {
+        AvatarFrame("An", null, Modifier.size(160.dp))
+    } }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun AvatarSheetElderlyFontPreview() {
+    AnVeTheme { AvatarSheet(AvatarUiState(open = true, loading = false, metadata = AvatarStateDto(0)), true, {}, {}, {}, {}, {}, {}) {
         AvatarFrame("An", null, Modifier.size(160.dp))
     } }
 }

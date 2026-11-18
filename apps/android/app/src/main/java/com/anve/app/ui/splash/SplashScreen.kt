@@ -115,7 +115,7 @@ fun SplashScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun SplashScreenPreview() {
     AnVeTheme {
@@ -123,10 +123,18 @@ private fun SplashScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun SplashScreenDarkPreview() {
     AnVeTheme(darkTheme = true) {
+        SplashScreen(version = "0.1.0")
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun SplashScreenElderlyFontPreview() {
+    AnVeTheme {
         SplashScreen(version = "0.1.0")
     }
 }

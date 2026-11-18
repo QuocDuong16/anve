@@ -896,11 +896,11 @@ private fun journeyStateLabel(state: String): String = when (state) {
     else -> stringResource(R.string.journey_state_unknown)
 }
 
-@Preview
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun JourneyEmptyPreview() { AnVeTheme { JourneyContent(JourneyUiState(owner = "preview", loading = false), TrackingStatus()) } }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun JourneyActiveDarkPreview() {
     val activeJourney = JourneyDto(
@@ -915,6 +915,28 @@ private fun JourneyActiveDarkPreview() {
         progress = JourneyProgressDto("2026-11-16T01:05:00Z", 2400.0, 15.0, false),
     )
     AnVeTheme(darkTheme = true) {
+        JourneyContent(
+            JourneyUiState(owner = "preview", loading = false, journeys = listOf(activeJourney), selectedId = activeJourney.id, consentEnabled = true),
+            TrackingStatus(ownerUserId = "preview", running = true, serviceRunning = true, providerActive = true, online = true, motion = MotionState.JOURNEY),
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun JourneyActiveElderlyFontPreview() {
+    val activeJourney = JourneyDto(
+        id = "j-1",
+        ownerId = "preview",
+        ownerName = "Minh",
+        state = "ACTIVE",
+        startedAt = "2026-11-16T00:45:00Z",
+        expiresAt = "2026-11-16T02:45:00Z",
+        destination = JourneyDestinationDto("Nhà", 21.0285, 105.8542),
+        recipients = listOf(JourneyRecipientDto("m1", "Mẹ Lan")),
+        progress = JourneyProgressDto("2026-11-16T01:05:00Z", 2400.0, 15.0, false),
+    )
+    AnVeTheme {
         JourneyContent(
             JourneyUiState(owner = "preview", loading = false, journeys = listOf(activeJourney), selectedId = activeJourney.id, consentEnabled = true),
             TrackingStatus(ownerUserId = "preview", running = true, serviceRunning = true, providerActive = true, online = true, motion = MotionState.JOURNEY),

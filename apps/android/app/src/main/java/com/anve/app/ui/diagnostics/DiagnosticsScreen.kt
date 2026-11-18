@@ -647,7 +647,7 @@ private fun ageLabel(timestamp: Long?, now: Long): String {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun DiagnosticsPreview() {
     AnVeTheme {
@@ -655,10 +655,18 @@ private fun DiagnosticsPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun DiagnosticsDarkPreview() {
     AnVeTheme(darkTheme = true) {
+        DiagnosticsContent(DiagnosticsUiState(owner = "preview", status = TrackingStatus(ownerUserId = "preview", sessionReady = true)), 1_000_000, {}, {}, {}, {})
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun DiagnosticsElderlyFontPreview() {
+    AnVeTheme {
         DiagnosticsContent(DiagnosticsUiState(owner = "preview", status = TrackingStatus(ownerUserId = "preview", sessionReady = true)), 1_000_000, {}, {}, {}, {})
     }
 }

@@ -570,7 +570,7 @@ fun OnboardingContent(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun OnboardingWelcomePreview() {
     AnVeTheme {
@@ -578,10 +578,29 @@ private fun OnboardingWelcomePreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "2. Dark Mode", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun OnboardingPermissionsDarkPreview() {
     AnVeTheme(darkTheme = true) {
+        OnboardingContent(
+            state = OnboardingUiState(
+                step = OnboardingStep.PERMISSIONS,
+                permissions = PermissionSnapshot(
+                    location = LocationPermissionState.GRANTED_PRECISE,
+                    backgroundLocation = false,
+                    notifications = true,
+                    locationServicesEnabled = true,
+                ),
+                consentEnabled = true,
+            ),
+        )
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun OnboardingPermissionsElderlyFontPreview() {
+    AnVeTheme {
         OnboardingContent(
             state = OnboardingUiState(
                 step = OnboardingStep.PERMISSIONS,

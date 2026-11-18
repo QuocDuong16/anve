@@ -1,5 +1,6 @@
 package com.anve.app.ui.history
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -111,8 +112,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.BuildConfig
 import com.anve.app.R
+import com.anve.app.data.api.HistoryPageDto
 import com.anve.app.data.api.HistoryPointDto
+import com.anve.app.data.api.HistoryRetentionDto
 import com.anve.app.data.api.PlaceDto
+import com.anve.app.data.location.HistoryDataSource
+import com.anve.app.data.location.HistoryMember
 import com.anve.app.ui.brand.AnVeHistorySceneIllustration
 import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
@@ -1442,7 +1447,7 @@ private fun HistoryStatItem(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "1. Standard Light", showBackground = true)
 @Composable
 private fun HistorySummaryCardPreview() {
     AnVeTheme {
@@ -1454,7 +1459,7 @@ private fun HistorySummaryCardPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "2. Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 private fun HistorySummaryCardDarkPreview() {
     AnVeTheme(darkTheme = true) {
@@ -1463,5 +1468,49 @@ private fun HistorySummaryCardDarkPreview() {
                 HistorySummaryCard(pointCount = 12, delayedCount = 1, retentionDaysLabel = "7")
             }
         }
+    }
+}
+
+@Preview(name = "3. Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun HistorySummaryCardElderlyFontPreview() {
+    AnVeTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.padding(16.dp)) {
+                HistorySummaryCard(pointCount = 12, delayedCount = 1, retentionDaysLabel = "7")
+            }
+        }
+    }
+}
+
+private object PreviewHistoryDataSource : HistoryDataSource {
+    override suspend fun members(owner: String): List<HistoryMember> = emptyList()
+    override suspend fun page(owner: String, member: String, from: String, to: String, cursor: String?) = HistoryPageDto(points = emptyList())
+    override suspend fun retention(owner: String) = HistoryRetentionDto(7, 7)
+    override suspend fun setRetention(owner: String, days: Int) = HistoryRetentionDto(days, days)
+    override suspend fun delete(owner: String, from: String?, to: String) = Unit
+}
+
+@Preview(name = "1. Content Light", showBackground = true)
+@Preview(name = "2. Content Dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(name = "3. Content Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun HistoryContentPreview() {
+    val vm = remember { HistoryViewModel(PreviewHistoryDataSource) }
+    AnVeTheme {
+        HistoryContent(
+            state = HistoryState(
+                owner = "owner",
+                member = "owner",
+                date = LocalDate.of(2026, 11, 16),
+                members = listOf(HistoryMember("m1", "Mẹ Lan")),
+                points = listOf(
+                    HistoryPointDto("p1", 21.0285, 105.8542, 12.0, "2026-11-16T01:00:00Z", "2026-11-16T01:00:05Z", "fused", false, false, "seg1"),
+                ),
+                retentionDays = 7,
+                effectiveRetentionDays = 7,
+            ),
+            vm = vm,
+        )
     }
 }
