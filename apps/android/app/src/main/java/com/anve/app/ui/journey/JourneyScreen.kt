@@ -116,7 +116,7 @@ import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.common.AnVeMetricColumn
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeSosPillButton
+import com.anve.app.ui.common.AnVeSosHoldButton
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
@@ -237,7 +237,7 @@ fun JourneyContent(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                AnVeSosPillButton(onClick = onOpenSos)
+                AnVeSosHoldButton(onTriggered = onOpenSos)
             }
         },
     ) { padding ->

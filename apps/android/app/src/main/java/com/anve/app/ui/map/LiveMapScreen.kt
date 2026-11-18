@@ -13,13 +13,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,7 +49,6 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.ShareLocation
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -85,14 +80,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -129,6 +120,7 @@ import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeSafeRadarScene
 import com.anve.app.ui.brand.AnVeSharingHeroIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
+import com.anve.app.ui.common.AnVeSosHoldButton
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
@@ -259,7 +251,6 @@ private fun LiveMapContent(
     var selectedOwner by rememberSaveable(ownerId) { mutableStateOf<String?>(null) }
     var sheetDetent by rememberSaveable(ownerId) { mutableStateOf(SheetDetent.COLLAPSED) }
     var quickSheetOpen by rememberSaveable(ownerId) { mutableStateOf(false) }
-    var showSosHoldHint by remember { mutableStateOf(false) }
     var cameraInitialized by remember(ownerId) { mutableStateOf(false) }
     var mapLoaded by remember(ownerId) { mutableStateOf(false) }
     var mapTimedOut by remember(ownerId) { mutableStateOf(false) }
@@ -279,12 +270,6 @@ private fun LiveMapContent(
         }
         delay(10_000)
         if (!mapLoaded) mapTimedOut = true
-    }
-
-    LaunchedEffect(showSosHoldHint) {
-        if (!showSosHoldHint) return@LaunchedEffect
-        delay(2_200)
-        showSosHoldHint = false
     }
 
     LaunchedEffect(lifecycleOwner) {
@@ -517,30 +502,7 @@ private fun LiveMapContent(
                         }
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AnimatedVisibility(visible = showSosHoldHint) {
-                        Surface(
-                            shape = CircleShape,
-                            color = stitch.cardTactile.copy(alpha = 0.96f),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            shadowElevation = 3.dp,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.map_sos_hold_hint),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colors.onSurface,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            )
-                        }
-                    }
-                    SosHoldButton(
-                        onTriggered = onOpenSos,
-                        onShortTap = { showSosHoldHint = true },
-                    )
-                }
+                AnVeSosHoldButton(onTriggered = onOpenSos)
             }
         }
 
@@ -1026,121 +988,6 @@ private fun QuickSharingSheet(
                         tint = colors.onSurfaceVariant,
                     )
                 }
-            }
-        }
-    }
-}
-
-/**
- * Safety-guarded SOS trigger placed on the right map edge above the sheet.
- * Requires a 3-second continuous hold to open the SOS confirmation flow so
- * thumb swipes over the bottom sheet never trigger it accidentally; also
- * exposes an accessibility click action for screen-reader and switch users.
- */
-@Composable
-private fun SosHoldButton(
-    onTriggered: () -> Unit,
-    onShortTap: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val emergency = LocalEmergencyColors.current
-    val haptic = LocalHapticFeedback.current
-    val label = stringResource(R.string.tab_sos)
-    val holdDesc = stringResource(R.string.map_sos_hold_content_desc)
-    val openActionLabel = stringResource(R.string.map_sos_open_action)
-    var holdProgress by remember { mutableFloatStateOf(0f) }
-
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = emergency.emergencyContainer,
-        contentColor = emergency.onEmergencyContainer,
-        border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.34f)),
-        shadowElevation = 4.dp,
-        modifier = modifier
-            .heightIn(min = 52.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = holdDesc
-                onClick(label = openActionLabel) {
-                    onTriggered()
-                    true
-                }
-            }
-            .pointerInput(onTriggered, onShortTap) {
-                coroutineScope {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        val startTime = System.nanoTime()
-                        var completed = false
-                        val ticker = launch {
-                            while (true) {
-                                val elapsedMs = (System.nanoTime() - startTime) / 1_000_000L
-                                val fraction = (elapsedMs.toFloat() / SOS_HOLD_DURATION_MS).coerceIn(0f, 1f)
-                                holdProgress = fraction
-                                if (fraction >= 1f) {
-                                    completed = true
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onTriggered()
-                                    break
-                                }
-                                delay(16)
-                            }
-                        }
-                        waitForUpOrCancellation()
-                        ticker.cancel()
-                        if (!completed) {
-                            onShortTap()
-                        }
-                        holdProgress = 0f
-                    }
-                }
-            },
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            if (holdProgress > 0f) {
-                ComposeCanvas(modifier = Modifier.matchParentSize()) {
-                    val strokePx = 3.dp.toPx()
-                    val inset = strokePx / 2f
-                    drawRoundRect(
-                        color = emergency.emergency.copy(alpha = 0.22f * holdProgress + 0.12f),
-                        topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                        size = androidx.compose.ui.geometry.Size(
-                            width = size.width - strokePx,
-                            height = size.height - strokePx,
-                        ),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(18.dp.toPx(), 18.dp.toPx()),
-                        style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                    )
-                    drawArc(
-                        color = emergency.emergency,
-                        startAngle = -90f,
-                        sweepAngle = 360f * holdProgress,
-                        useCenter = false,
-                        topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                        size = androidx.compose.ui.geometry.Size(
-                            width = size.width - strokePx,
-                            height = size.height - strokePx,
-                        ),
-                        style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.WarningAmber,
-                    contentDescription = null,
-                    tint = emergency.emergency,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
             }
         }
     }
@@ -1736,7 +1583,6 @@ private fun memberMarkerIcon(
     return BitmapDescriptorFactory.fromBitmap(bitmap) to anchorY
 }
 
-private const val SOS_HOLD_DURATION_MS = 3_000L
 private val MEMBER_MARKER_GREEN = 0xFF3D602F.toInt()
 private val MEMBER_MARKER_AMBER = 0xFFC87A28.toInt()
 private val MEMBER_MARKER_SLATE = 0xFF695B60.toInt()

@@ -26,12 +26,15 @@ import com.anve.app.data.location.VisibleLocationRepository
 import com.anve.app.data.location.WorkManagerLocationSyncScheduler
 import com.anve.app.data.sos.ApiSosGateway
 import com.anve.app.data.sos.EncryptedSosOutbox
+import com.anve.app.data.sos.FirebaseSetup
+import com.anve.app.data.sos.PushRegistrationCoordinator
 import com.anve.app.data.sos.SosSyncEngine
 import com.anve.app.data.sos.WorkManagerSosSyncScheduler
 import com.anve.app.data.sos.PushRegistration
 import com.anve.app.data.sos.PushRegistrationScheduler
 import com.anve.app.data.sos.PushEventRepository
 import com.anve.app.data.sos.SosRepository
+import com.anve.app.data.sos.areAppNotificationsEnabled
 import com.anve.app.tracking.AndroidConnectivityMonitor
 import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.AndroidTrackingServiceController
@@ -130,6 +133,13 @@ class AppContainer(application: Application) {
     val sosSyncEngine by lazy { SosSyncEngine(sosOutbox, sessionStore, ApiSosGateway(authApi)) }
     val pushRegistration by lazy { PushRegistration(authApi) }
     val pushRegistrationScheduler by lazy { PushRegistrationScheduler(application) }
+    val pushRegistrationCoordinator by lazy {
+        PushRegistrationCoordinator(
+            notificationsEnabled = { areAppNotificationsEnabled(application) },
+            isFirebaseConfigured = { FirebaseSetup.isConfigured() },
+            scheduler = pushRegistrationScheduler,
+        )
+    }
     val pushEventRepository by lazy { PushEventRepository(authApi) }
     val sosRepository by lazy { SosRepository(authApi) }
 
@@ -286,8 +296,10 @@ class AnVeApplication : Application() {
         }
         applicationScope.launch {
             container.sessionStore.session.collectLatest { session ->
-                container.invitationInbox.accountChanged(session?.userId)
-                val owner = session?.userId ?: return@collectLatest
+                val owner = session?.userId
+                container.invitationInbox.accountChanged(owner)
+                container.pushRegistrationCoordinator.onSessionChanged(owner)
+                if (owner == null) return@collectLatest
                 try {
                     if (container.journeyOutbox.read(owner).isNotEmpty()) container.journeySyncScheduler.schedule(owner)
                 } catch (e: CancellationException) {

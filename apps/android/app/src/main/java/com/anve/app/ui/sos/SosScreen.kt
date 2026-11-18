@@ -71,6 +71,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +87,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -100,6 +101,7 @@ import com.anve.app.data.sos.FirebaseSetup
 import com.anve.app.data.sos.SosCachedMember
 import com.anve.app.data.sos.SosLocalState
 import com.anve.app.data.sos.SosOutboxItem
+import com.anve.app.data.sos.areAppNotificationsEnabled
 import com.anve.app.ui.brand.AnVeSosCareIllustration
 import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
@@ -111,6 +113,7 @@ import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
 import com.anve.app.ui.common.anveContentWidth
+import com.anve.app.ui.signin.findActivity
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.LocalStitchColors
@@ -126,25 +129,38 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
     val state by vm.state.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
-    var permission by remember(owner) { mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled()) }
-    var explainPermission by remember(owner) { mutableStateOf(false) }
-    var pushMessage by remember(owner) { mutableStateOf<String?>(null) }
-    // Callbacks cannot resolve resources themselves, so the messages they
-    // write are resolved once here.
-    val pushRegisteringMessage = stringResource(R.string.sos_push_registering)
-    val pushUnavailableMessage = stringResource(R.string.sos_push_not_configured)
+    val activity = remember(context) { context.findActivity() }
+    var permission by remember(owner) { mutableStateOf(areAppNotificationsEnabled(context)) }
+    var notificationPermissionRequested by rememberSaveable(owner) { mutableStateOf(false) }
+    var notificationPermissionPermanentlyDenied by rememberSaveable(owner) { mutableStateOf(false) }
+    var autoRetriedRegistration by remember(owner) { mutableStateOf(false) }
+    var settingsMessage by remember(owner) { mutableStateOf<String?>(null) }
     val openSettingsFailedMessage = stringResource(R.string.sos_open_settings_failed)
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        permission = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        permission = areAppNotificationsEnabled(context)
         if (permission && owner != null) {
-            if (FirebaseSetup.initialize(context)) { container.pushRegistrationScheduler.schedule(owner); pushMessage = pushRegisteringMessage }
-            else pushMessage = pushUnavailableMessage
+            notificationPermissionPermanentlyDenied = false
+            container.pushRegistrationCoordinator.onPermissionGranted(owner)
+            vm.refresh(keepError = true)
+        } else if (!permission && notificationPermissionRequested && activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionPermanentlyDenied = !ActivityCompat.shouldShowRequestPermissionRationale(
+                activity,
+                Manifest.permission.POST_NOTIFICATIONS,
+            )
         }
+        notificationPermissionRequested = false
     }
     DisposableEffect(owner, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> { vm.activate(owner); permission = NotificationManagerCompat.from(context).areNotificationsEnabled() }
+                Lifecycle.Event.ON_START -> {
+                    vm.activate(owner)
+                    permission = areAppNotificationsEnabled(context)
+                    if (permission && owner != null) {
+                        notificationPermissionPermanentlyDenied = false
+                        container.pushRegistrationCoordinator.syncIfPermitted(owner)
+                    }
+                }
                 Lifecycle.Event.ON_STOP -> vm.activate(null)
                 else -> Unit
             }
@@ -157,6 +173,12 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
             while (true) { delay(10_000); vm.poll() }
         }
     }
+    LaunchedEffect(owner, permission, state.pushRegistered) {
+        if (owner != null && permission && state.pushRegistered == false && !autoRetriedRegistration && FirebaseSetup.isConfigured()) {
+            autoRetriedRegistration = true
+            container.pushRegistrationCoordinator.syncIfPermitted(owner, force = true)
+        }
+    }
     LaunchedEffect(owner, eventId, state.owner) { if (owner != null && state.owner == owner && eventId != null) vm.select(eventId) }
     if (owner == null || state.owner != owner) {
         // Session not re-emitted yet (fresh process or account switch): state
@@ -164,38 +186,27 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
         AnVeCheckingState(stringResource(R.string.home_checking_account))
         return
     }
-    SosContent(state, vm, permission, pushMessage, onNotifications = { explainPermission = true }, onSystemSettings = {
-        val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-        else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-        runCatching { context.startActivity(intent) }.onFailure { pushMessage = openSettingsFailedMessage }
-    })
-    if (explainPermission) AlertDialog(
-        onDismissRequest = { explainPermission = false },
-        title = { Text(stringResource(R.string.sos_notifications_dialog_title)) },
-        text = {
-            Text(
-                stringResource(R.string.sos_notifications_dialog_body),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            )
+    val canRequestNotificationPermission =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationPermissionPermanentlyDenied
+    SosContent(
+        state = state,
+        vm = vm,
+        notificationPermission = permission,
+        settingsMessage = settingsMessage,
+        onNotifications = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermissionRequested = true
+                permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    explainPermission = false
-                    if (Build.VERSION.SDK_INT >= 33 && !permission) permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    else if (FirebaseSetup.initialize(context)) { container.pushRegistrationScheduler.schedule(owner); pushMessage = pushRegisteringMessage }
-                    else pushMessage = pushUnavailableMessage
-                },
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.sos_notifications_continue)) }
+        onSystemSettings = {
+            val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+            runCatching { context.startActivity(intent) }.onFailure { settingsMessage = openSettingsFailedMessage }
         },
-        dismissButton = {
-            TextButton(
-                onClick = { explainPermission = false },
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.sos_notifications_later)) }
-        },
+        canRequestNotificationPermission = canRequestNotificationPermission,
+        pushConfiguredOnBuild = FirebaseSetup.isConfigured(),
     )
 }
 
@@ -267,18 +278,22 @@ internal fun SosContent(
     state: SosState,
     vm: SosViewModel,
     notificationPermission: Boolean,
-    pushMessage: String?,
+    settingsMessage: String? = null,
     onNotifications: () -> Unit,
     onSystemSettings: () -> Unit = {},
+    canRequestNotificationPermission: Boolean = true,
+    pushConfiguredOnBuild: Boolean = true,
 ) {
     val queuedEventId by vm.queuedEventId.collectAsStateWithLifecycle()
     SosContentBody(
         state = state,
         queuedEventId = queuedEventId,
         notificationPermission = notificationPermission,
-        pushMessage = pushMessage,
+        settingsMessage = settingsMessage,
         onNotifications = onNotifications,
         onSystemSettings = onSystemSettings,
+        canRequestNotificationPermission = canRequestNotificationPermission,
+        pushConfiguredOnBuild = pushConfiguredOnBuild,
         onRefresh = { vm.refresh() },
         onSend = { vm.send(it) },
         onCancel = { vm.cancel(it) },
@@ -298,9 +313,11 @@ private fun SosContentBody(
     state: SosState,
     queuedEventId: String?,
     notificationPermission: Boolean,
-    pushMessage: String?,
+    settingsMessage: String?,
     onNotifications: () -> Unit,
     onSystemSettings: () -> Unit,
+    canRequestNotificationPermission: Boolean,
+    pushConfiguredOnBuild: Boolean,
     onRefresh: () -> Unit,
     onSend: (Set<String>) -> Unit,
     onCancel: (String) -> Unit,
@@ -768,9 +785,8 @@ private fun SosContentBody(
         })
         add(SosRow("notifications-card") {
             SosCard(stringResource(R.string.sos_notifications_section), Icons.Outlined.Notifications) {
-                // Server-side push configuration lives here, next to the
-                // device registration it enables; the top of the screen keeps
-                // its focus on picking who receives the request.
+                // Push registration runs automatically when OS notifications are allowed;
+                // the card reports readiness without exposing a manual registration step.
                 Text(
                     text = when (state.pushConfigured) {
                         true -> stringResource(R.string.sos_push_configured)
@@ -780,9 +796,15 @@ private fun SosContentBody(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    text = if (!notificationPermission) stringResource(R.string.sos_notifications_disabled) else when (state.pushRegistered) {
+                    text = if (!notificationPermission) {
+                        stringResource(R.string.sos_notifications_disabled)
+                    } else when (state.pushRegistered) {
                         true -> stringResource(R.string.sos_push_registered)
-                        false -> stringResource(R.string.sos_push_not_registered)
+                        false -> if (pushConfiguredOnBuild) {
+                            stringResource(R.string.sos_push_auto_connecting)
+                        } else {
+                            stringResource(R.string.sos_push_not_configured)
+                        }
                         null -> stringResource(R.string.sos_push_check_unknown)
                     },
                     style = MaterialTheme.typography.bodyMedium,
@@ -796,14 +818,20 @@ private fun SosContentBody(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                 )
-                pushMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = colors.primary) }
-                OutlinedButton(
-                    onClick = onNotifications,
-                    shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.sos_notifications_setup)) }
-                if (!notificationPermission) TextButton(onClick = onSystemSettings, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.sos_open_notification_settings))
+                settingsMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = colors.error) }
+                if (!notificationPermission) {
+                    OutlinedButton(
+                        onClick = if (canRequestNotificationPermission) onNotifications else onSystemSettings,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(
+                            stringResource(
+                                if (canRequestNotificationPermission) R.string.sos_notifications_enable
+                                else R.string.sos_open_notification_settings,
+                            ),
+                        )
+                    }
                 }
             }
         })
@@ -1181,9 +1209,11 @@ private fun SosContentPreview() {
             state = previewSosState(),
             queuedEventId = null,
             notificationPermission = true,
-            pushMessage = null,
+            settingsMessage = null,
             onNotifications = {},
             onSystemSettings = {},
+            canRequestNotificationPermission = true,
+            pushConfiguredOnBuild = true,
             onRefresh = {},
             onSend = {},
             onCancel = {},
@@ -1207,9 +1237,11 @@ private fun SosContentDarkPreview() {
             state = previewSosState(),
             queuedEventId = null,
             notificationPermission = false,
-            pushMessage = null,
+            settingsMessage = null,
             onNotifications = {},
             onSystemSettings = {},
+            canRequestNotificationPermission = true,
+            pushConfiguredOnBuild = true,
             onRefresh = {},
             onSend = {},
             onCancel = {},

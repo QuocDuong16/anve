@@ -81,9 +81,9 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
         return try {
             if (!app.container.pushEventRepository.authorized(owner, kind, eventId, episode)) return Result.success()
             if (app.container.sessionStore.current()?.userId != owner) return Result.success()
-            val manager = NotificationManagerCompat.from(applicationContext)
-            if (!manager.areNotificationsEnabled()) return Result.success()
+            if (!areAppNotificationsEnabled(applicationContext)) return Result.success()
             if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(applicationContext, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return Result.success()
+            val manager = NotificationManagerCompat.from(applicationContext)
             val hash = MessageDigest.getInstance("SHA-256").digest("$owner:${pushSignalIdentity(kind, eventId, episode)}".toByteArray())
             val key = hash.joinToString("") { "%02x".format(it) }
             val prefs = applicationContext.getSharedPreferences("anve_push_dedup", Context.MODE_PRIVATE)

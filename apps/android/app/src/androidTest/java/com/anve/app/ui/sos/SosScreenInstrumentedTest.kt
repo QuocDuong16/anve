@@ -46,7 +46,7 @@ class SosScreenInstrumentedTest {
         val vm = SosViewModel(source, box, SosSyncEngine(box, DataStoreSessionStorage(ApplicationProvider.getApplicationContext()), gateway),
             object : SosSyncScheduler { override fun schedule(owner: String) = Unit })
         val state = mutableStateOf(SosState(owner = "owner", members = listOf(SosCachedMember("owner", "member", "An", 0))))
-        compose.setContent { SosContent(state.value, vm, false, null, {}) }
+        compose.setContent { SosContent(state.value, vm, notificationPermission = false, onNotifications = {}) }
         compose.onNodeWithText("Gửi yêu cầu SOS").assertIsNotEnabled()
         compose.onNodeWithText("An").assertIsDisplayed()
         compose.onAllNodes(isToggleable())[0].performClick()
@@ -74,7 +74,7 @@ class SosScreenInstrumentedTest {
         // refresh() reads the owner from the view model's own state, so the
         // model is activated once and its initial load is drained before the
         // retry click is counted.
-        compose.setContent { SosContent(SosState(owner = "owner", errorRes = R.string.sos_error_read_failed), vm, false, null, {}) }
+        compose.setContent { SosContent(SosState(owner = "owner", errorRes = R.string.sos_error_read_failed), vm, notificationPermission = false, onNotifications = {}) }
         compose.runOnIdle { vm.activate("owner") }
         compose.waitUntil(5_000) { refreshes > 0 }
         compose.runOnIdle { refreshes = 0 }
@@ -90,7 +90,7 @@ class SosScreenInstrumentedTest {
     @Test fun unparseableRecordedAtFallsBackToUnknownTimeNotRawIso() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val event = SosEventDto("event-iso", "owner", "not-a-timestamp", "not-a-timestamp", "ACTIVE")
-        compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event)), vmFor(FakeSource()), false, null, {}) }
+        compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event)), vmFor(FakeSource()), notificationPermission = false, onNotifications = {}) }
         compose.onNode(hasScrollAction()).performScrollToNode(
             hasText(context.getString(R.string.journey_time_unknown), substring = true),
         )
@@ -110,7 +110,7 @@ class SosScreenInstrumentedTest {
         }
         val vm = vmFor(source)
         val event = SosEventDto("event-1", "opener", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ACTIVE")
-        compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event), selected = event), vm, false, null, {}) }
+        compose.setContent { SosContent(SosState(owner = "viewer", events = listOf(event), selected = event), vm, notificationPermission = false, onNotifications = {}) }
         compose.runOnIdle { vm.activate("viewer") }
         // Scrolling to the button itself aligns its bottom edge with the
         // viewport bottom, where the pinned send bar covers it: the click
@@ -140,7 +140,7 @@ class SosScreenInstrumentedTest {
         }
         val vm = vmFor(source)
         val event = SosEventDto("event-1", "owner", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "ACTIVE")
-        compose.setContent { SosContent(SosState(owner = "owner", selected = event), vm, false, null, {}) }
+        compose.setContent { SosContent(SosState(owner = "owner", selected = event), vm, notificationPermission = false, onNotifications = {}) }
         compose.runOnIdle { vm.activate("owner") }
         // Same pinned-bar clearance as the acknowledge test.
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_check_again)))
@@ -154,6 +154,48 @@ class SosScreenInstrumentedTest {
         compose.onNodeWithText(context.getString(R.string.sos_confirm)).assertIsDisplayed().performClick()
         compose.waitUntil(5_000) { cancelled > 0 }
         compose.runOnIdle { assertEquals(1, cancelled) }
+    }
+
+    @Test fun permittedNotificationsHideManualSetupActionAndShowAutoStatus() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        compose.setContent {
+            SosContent(
+                state = SosState(owner = "owner", pushRegistered = false, pushConfigured = true),
+                vm = vmFor(FakeSource()),
+                notificationPermission = true,
+                onNotifications = {},
+                pushConfiguredOnBuild = true,
+            )
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_push_auto_connecting)))
+        compose.onNodeWithText(context.getString(R.string.sos_push_auto_connecting)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.sos_notifications_enable)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.sos_open_notification_settings)).assertDoesNotExist()
+    }
+
+    @Test fun disabledNotificationsRouteDirectlyToPermissionOrSystemSettings() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        var requested = 0
+        var openedSettings = 0
+        val canRequest = mutableStateOf(true)
+        compose.setContent {
+            SosContent(
+                state = SosState(owner = "owner"),
+                vm = vmFor(FakeSource()),
+                notificationPermission = false,
+                onNotifications = { requested++ },
+                onSystemSettings = { openedSettings++ },
+                canRequestNotificationPermission = canRequest.value,
+            )
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_notifications_enable)))
+        compose.onNodeWithText(context.getString(R.string.sos_notifications_enable)).performClick()
+        compose.runOnIdle {
+            assertEquals(1, requested)
+            canRequest.value = false
+        }
+        compose.onNodeWithText(context.getString(R.string.sos_open_notification_settings)).performClick()
+        compose.runOnIdle { assertEquals(1, openedSettings) }
     }
 
     private fun vmFor(source: SosDataSource): SosViewModel {

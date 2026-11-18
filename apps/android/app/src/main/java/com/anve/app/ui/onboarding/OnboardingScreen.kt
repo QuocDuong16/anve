@@ -59,6 +59,7 @@ import com.anve.app.data.api.CircleDto
 import com.anve.app.data.api.InviteDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.circles.InviteLink
+import com.anve.app.data.sos.areAppNotificationsEnabled
 import com.anve.app.tracking.AndroidLocationPermissions
 import com.anve.app.tracking.BackgroundPermissionAction
 import com.anve.app.tracking.ForegroundPermissionGrant
@@ -205,7 +206,12 @@ fun OnboardingScreen(
 
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { viewModel.refreshPermissions() }
+    ) {
+        viewModel.refreshPermissions()
+        if (areAppNotificationsEnabled(context)) {
+            container.pushRegistrationCoordinator.onPermissionGranted(owner)
+        }
+    }
 
     val foregroundLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -312,6 +318,9 @@ fun OnboardingScreen(
                 notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 viewModel.refreshPermissions()
+                if (areAppNotificationsEnabled(context)) {
+                    container.pushRegistrationCoordinator.syncIfPermitted(owner)
+                }
             }
         },
         onToggleConsent = viewModel::setConsent,

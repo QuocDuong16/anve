@@ -1,12 +1,20 @@
 package com.anve.app.ui.common
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -37,20 +46,37 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +88,10 @@ import com.anve.app.R
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.LocalStitchColors
+import kotlin.math.min
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Single-column reading/form max width for large screens and tablets (DESIGN.md). */
 internal val ANVE_MAX_CONTENT_WIDTH = 600.dp
@@ -508,50 +538,225 @@ fun StitchLoadingSkeletonCard(
     }
 }
 
+const val SOS_HOLD_DURATION_MS = 1_500L
+
 /**
- * Compact pill-shaped emergency trigger matching AnVề's calm SOS styling
- * (soft blush surface + urgency dot, 48dp touch target via Material 3).
+ * Safety-guarded SOS trigger shared across Home tabs, Live Map and Journey.
+ * Requires a 1.5-second continuous hold to open the SOS confirmation screen,
+ * tracing progress around the rounded-rectangle contour and filling smoothly
+ * from left to right. Exposes an accessibility click action for screen-reader
+ * and switch users.
  */
 @Composable
-fun AnVeSosPillButton(
-    onClick: () -> Unit,
+fun AnVeSosHoldButton(
+    onTriggered: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val emergency = LocalEmergencyColors.current
+    val stitch = LocalStitchColors.current
+    val colors = MaterialTheme.colorScheme
+    val haptic = LocalHapticFeedback.current
     val label = stringResource(R.string.tab_sos)
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = emergency.emergencyContainer,
-        contentColor = emergency.onEmergencyContainer,
-        border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.28f)),
-        shadowElevation = 3.dp,
-        tonalElevation = 2.dp,
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .clearAndSetSemantics {
-                contentDescription = label
-                role = Role.Button
-            },
+    val holdStateDesc = stringResource(R.string.map_sos_hold_content_desc)
+    val openActionLabel = stringResource(R.string.map_sos_open_action)
+    val cornerRadius = 18.dp
+    val shape = RoundedCornerShape(cornerRadius)
+
+    var holdProgress by remember { mutableFloatStateOf(0f) }
+    var holding by remember { mutableStateOf(false) }
+    var showHoldHint by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (holding) 0.97f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "sos-hold-scale",
+    )
+
+    LaunchedEffect(showHoldHint) {
+        if (!showHoldHint) return@LaunchedEffect
+        delay(2_200)
+        showHoldHint = false
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        AnimatedVisibility(
+            visible = showHoldHint,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = stitch.cardTactile.copy(alpha = 0.96f),
+                border = BorderStroke(1.dp, stitch.hairline),
+                shadowElevation = 3.dp,
+            ) {
+                Text(
+                    text = stringResource(R.string.map_sos_hold_hint),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurface,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
+        }
+        Surface(
+            shape = shape,
+            color = emergency.emergencyContainer,
+            contentColor = emergency.onEmergencyContainer,
+            border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.34f)),
+            shadowElevation = 4.dp,
+            modifier = Modifier
+                .heightIn(min = 52.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clearAndSetSemantics {
+                    contentDescription = label
+                    stateDescription = holdStateDesc
+                    role = Role.Button
+                    onClick(label = openActionLabel) {
+                        onTriggered()
+                        true
+                    }
+                }
+                .pointerInput(onTriggered) {
+                    coroutineScope {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            showHoldHint = false
+                            holding = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            val startTime = System.nanoTime()
+                            var completed = false
+                            val ticker = launch {
+                                while (true) {
+                                    val elapsedMs = (System.nanoTime() - startTime) / 1_000_000L
+                                    val fraction = (elapsedMs.toFloat() / SOS_HOLD_DURATION_MS).coerceIn(0f, 1f)
+                                    holdProgress = fraction
+                                    if (fraction >= 1f) {
+                                        completed = true
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onTriggered()
+                                        break
+                                    }
+                                    delay(16)
+                                }
+                            }
+                            val up = waitForUpOrCancellation()
+                            ticker.cancel()
+                            holding = false
+                            holdProgress = 0f
+                            if (!completed && up != null) {
+                                showHoldHint = true
+                            }
+                        }
+                    }
+                },
         ) {
             Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(emergency.emergency),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.6.sp,
-                maxLines = 1,
-            )
+                modifier = Modifier.clip(shape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (holdProgress > 0f) {
+                    val perimeterPath = remember { Path() }
+                    val progressPath = remember { Path() }
+                    val pathMeasure = remember { PathMeasure() }
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        drawRect(
+                            color = emergency.emergency.copy(alpha = 0.16f),
+                            size = Size(width = size.width * holdProgress, height = size.height),
+                        )
+                        val strokePx = 3.dp.toPx()
+                        val inset = strokePx / 2f
+                        val w = size.width
+                        val h = size.height
+                        val maxRadius = min(w, h) / 2f - inset
+                        val r = min(cornerRadius.toPx() - inset, maxRadius).coerceAtLeast(0f)
+
+                        perimeterPath.reset()
+                        perimeterPath.moveTo(w / 2f, inset)
+                        perimeterPath.lineTo(w - inset - r, inset)
+                        if (r > 0f) {
+                            perimeterPath.arcTo(
+                                rect = Rect(w - inset - 2f * r, inset, w - inset, inset + 2f * r),
+                                startAngleDegrees = -90f,
+                                sweepAngleDegrees = 90f,
+                                forceMoveTo = false,
+                            )
+                        }
+                        perimeterPath.lineTo(w - inset, h - inset - r)
+                        if (r > 0f) {
+                            perimeterPath.arcTo(
+                                rect = Rect(w - inset - 2f * r, h - inset - 2f * r, w - inset, h - inset),
+                                startAngleDegrees = 0f,
+                                sweepAngleDegrees = 90f,
+                                forceMoveTo = false,
+                            )
+                        }
+                        perimeterPath.lineTo(inset + r, h - inset)
+                        if (r > 0f) {
+                            perimeterPath.arcTo(
+                                rect = Rect(inset, h - inset - 2f * r, inset + 2f * r, h - inset),
+                                startAngleDegrees = 90f,
+                                sweepAngleDegrees = 90f,
+                                forceMoveTo = false,
+                            )
+                        }
+                        perimeterPath.lineTo(inset, inset + r)
+                        if (r > 0f) {
+                            perimeterPath.arcTo(
+                                rect = Rect(inset, inset, inset + 2f * r, inset + 2f * r),
+                                startAngleDegrees = 180f,
+                                sweepAngleDegrees = 90f,
+                                forceMoveTo = false,
+                            )
+                        }
+                        perimeterPath.close()
+
+                        drawPath(
+                            path = perimeterPath,
+                            color = emergency.emergency.copy(alpha = 0.22f),
+                            style = Stroke(width = strokePx, cap = StrokeCap.Round),
+                        )
+
+                        pathMeasure.setPath(perimeterPath, forceClosed = false)
+                        progressPath.reset()
+                        pathMeasure.getSegment(
+                            startDistance = 0f,
+                            stopDistance = pathMeasure.length * holdProgress,
+                            destination = progressPath,
+                            startWithMoveTo = true,
+                        )
+                        drawPath(
+                            path = progressPath,
+                            color = emergency.emergency,
+                            style = Stroke(width = strokePx, cap = StrokeCap.Round),
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.WarningAmber,
+                        contentDescription = null,
+                        tint = emergency.emergency,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.6.sp,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
@@ -588,6 +793,7 @@ private fun StitchComponentsLightPreview() {
                 )
             }
             StitchLoadingSkeletonCard()
+            AnVeSosHoldButton(onTriggered = {})
         }
     }
 }

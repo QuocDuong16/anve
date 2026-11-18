@@ -386,13 +386,8 @@
     <string name="history_retention_saved">Đã lưu thời hạn lưu %1$d ngày.</string>
 
     <!-- SOS (M5) -->
-    <string name="sos_push_registering">Đang đăng ký nhận thông báo cho thiết bị này…</string>
     <string name="sos_push_not_configured">Dịch vụ thông báo chưa được cấu hình trên bản cài đặt này.</string>
     <string name="sos_open_settings_failed">Không thể mở cài đặt; hãy bật thông báo trong cài đặt ứng dụng.</string>
-    <string name="sos_notifications_dialog_title">Thông báo sự kiện</string>
-    <string name="sos_notifications_dialog_body">Cho phép thông báo để thiết bị có thể nhận tín hiệu SOS và sự kiện địa điểm. AnVề không gọi dịch vụ cấp cứu thay bạn.</string>
-    <string name="sos_notifications_continue">Tiếp tục</string>
-    <string name="sos_notifications_later">Để sau</string>
     <string name="sos_title">Yêu cầu hỗ trợ</string>
     <string name="sos_emergency_disclaimer">AnVề không tự gọi 113, 114 hoặc 115. Hãy gọi dịch vụ cấp cứu nếu cần.</string>
     <string name="sos_call_number">Gọi %1$d</string>
@@ -419,15 +414,15 @@
     <string name="sos_recheck">Kiểm tra lại yêu cầu</string>
     <string name="sos_clear_finished">Xóa khỏi thiết bị</string>
     <string name="sos_notifications_section">Thông báo</string>
-    <string name="sos_notifications_disabled">Thông báo đang tắt hoặc chưa được cấp quyền.</string>
-    <string name="sos_push_registered">Thiết bị đã đăng ký nhận thông báo.</string>
-    <string name="sos_push_not_registered">Thiết bị chưa đăng ký nhận thông báo.</string>
-    <string name="sos_push_check_unknown">Chưa kiểm tra được trạng thái đăng ký nhận thông báo của thiết bị.</string>
+    <string name="sos_notifications_disabled">Thông báo đang tắt. Hãy bật thông báo để nhận tín hiệu SOS và cập nhật từ gia đình.</string>
+    <string name="sos_push_registered">Thiết bị đã sẵn sàng nhận thông báo.</string>
+    <string name="sos_push_auto_connecting">Thông báo đang bật. Đang tự động kết nối nhận thông báo cho thiết bị này…</string>
+    <string name="sos_push_check_unknown">Chưa kiểm tra được trạng thái nhận thông báo của thiết bị.</string>
     <!-- Technical annotation for the notification section: "push" jargon is
          kept out of the status rows, but the acceptance-vs-delivery
          distinction must stay explicit. -->
-    <string name="sos_notifications_technical_note">Kỹ thuật: thông báo gửi qua dịch vụ thông báo của Google (FCM). Máy chủ chỉ xác nhận việc dịch vụ đã chấp nhận gửi; chưa chứng minh thiết bị người nhận đã nhận hay đã đọc thông báo.</string>
-    <string name="sos_notifications_setup">Thiết lập thông báo</string>
+    <string name="sos_notifications_technical_note">Thông báo được gửi qua dịch vụ của Google (FCM). Máy chủ chỉ xác nhận dịch vụ đã tiếp nhận yêu cầu gửi; không chứng minh thiết bị người nhận đã nhận hay đã đọc.</string>
+    <string name="sos_notifications_enable">Bật thông báo</string>
     <string name="sos_open_notification_settings">Mở cài đặt thông báo</string>
     <string name="sos_events_title">Sự kiện</string>
     <string name="sos_events_empty">Chưa có sự kiện có thể xem.</string>
@@ -977,8 +972,8 @@
     <string name="map_sheet_handle_desc">Vuốt lên hoặc xuống để mở rộng bảng nhịp sống gia đình</string>
     <string name="map_sheet_expand_action">Mở rộng bảng gia đình</string>
     <string name="map_sheet_collapse_action">Thu gọn bảng gia đình</string>
-    <string name="map_sos_hold_hint">Giữ 3 giây để mở SOS</string>
-    <string name="map_sos_hold_content_desc">SOS. Nhấn giữ 3 giây để mở màn hình chọn người nhận hỗ trợ khẩn cấp</string>
+    <string name="map_sos_hold_hint">Giữ 1,5 giây để mở SOS</string>
+    <string name="map_sos_hold_content_desc">Nhấn giữ 1,5 giây để mở màn hình chọn người nhận hỗ trợ khẩn cấp</string>
     <string name="map_sos_open_action">Mở màn hình SOS</string>
     <string name="sharing_compact_on">Đang chia sẻ vị trí · Quản lý</string>
     <string name="sharing_compact_off">Chia sẻ đang tắt · Chạm để bật</string>

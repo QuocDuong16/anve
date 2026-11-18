@@ -86,6 +86,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.R
+import com.anve.app.data.sos.areAppNotificationsEnabled
 import com.anve.app.tracking.BackgroundPermissionAction
 import com.anve.app.tracking.LocationPermissionState
 import com.anve.app.tracking.MotionState
@@ -128,6 +129,7 @@ fun TrackingScreen(
         factory = TrackingViewModel.factory(container.trackingManager),
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val session by container.sessionStore.session.collectAsStateWithLifecycle(initialValue = null)
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -180,7 +182,12 @@ fun TrackingScreen(
     ) { viewModel.refresh() }
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { viewModel.refresh() }
+    ) {
+        viewModel.refresh()
+        if (areAppNotificationsEnabled(context)) {
+            session?.userId?.let { container.pushRegistrationCoordinator.onPermissionGranted(it) }
+        }
+    }
 
     LaunchedEffect(state.status.permission) {
         if (state.status.permission != LocationPermissionState.DENIED) {

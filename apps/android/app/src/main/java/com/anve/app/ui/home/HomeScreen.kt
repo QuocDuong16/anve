@@ -122,7 +122,7 @@ import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.circle.CircleScreen
 import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
-import com.anve.app.ui.common.AnVeSosPillButton
+import com.anve.app.ui.common.AnVeSosHoldButton
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchEmptyStateCard
@@ -529,8 +529,8 @@ fun HomeScreen(
                 },
                 floatingActionButton = {
                     if (secondaryPage != HomeSecondaryPage.SOS && !editingPlaceFullScreen && !isMapEdgeToEdge) {
-                        AnVeSosPillButton(
-                            onClick = {
+                        AnVeSosHoldButton(
+                            onTriggered = {
                                 sosReturnPage = secondaryPage
                                 selectedSos = null
                                 secondaryPage = HomeSecondaryPage.SOS
