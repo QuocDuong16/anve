@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -299,9 +300,9 @@ private fun LiveMapContent(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         var headerHeightPx by remember { mutableIntStateOf(0) }
         val measuredHeaderDp = with(density) { headerHeightPx.toDp() }
-        val collapsedHeight = if (headerHeightPx > 0) measuredHeaderDp else 78.dp
         val fontScale = density.fontScale.coerceAtLeast(1f)
         val largeFont = fontScale >= 1.3f
+        val collapsedHeight = if (headerHeightPx > 0) measuredHeaderDp else if (largeFont) 144.dp else 78.dp
         val halfCap = if (largeFont) {
             (maxHeight * 0.52f).coerceIn(260.dp, 420.dp)
         } else {
@@ -520,6 +521,16 @@ private fun LiveMapContent(
             if (sheetDetent == SheetDetent.COLLAPSED) R.string.action_state_collapsed else R.string.action_state_expanded,
         )
 
+        val sheetHeightModifier = if (
+            sheetDetent == SheetDetent.COLLAPSED &&
+            !isDragging &&
+            (headerHeightPx == 0 || animatedSheetHeight < collapsedHeight)
+        ) {
+            Modifier.wrapContentHeight()
+        } else {
+            Modifier.height(animatedSheetHeight)
+        }
+
         Surface(
             shape = sheetShape,
             color = stitch.cardTactile,
@@ -528,7 +539,7 @@ private fun LiveMapContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .anveContentWidth()
-                .height(animatedSheetHeight)
+                .then(sheetHeightModifier)
                 .align(Alignment.BottomCenter),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -536,6 +547,8 @@ private fun LiveMapContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        // Measure true header height without outer sheet height clamping (needed when stacked at large font scales).
+                        .wrapContentHeight(align = Alignment.Top, unbounded = true)
                         .onSizeChanged { headerHeightPx = it.height }
                         .pointerInput(collapsedHeight, halfHeight, expandedHeight) {
                             detectVerticalDragGestures(
