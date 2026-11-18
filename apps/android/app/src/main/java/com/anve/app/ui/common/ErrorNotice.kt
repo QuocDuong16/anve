@@ -2,14 +2,13 @@ package com.anve.app.ui.common
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,29 +77,21 @@ fun AnveErrorNotice(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.error.copy(alpha = 0.14f),
-                    contentColor = colors.onErrorContainer,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.ErrorOutline,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .size(20.dp),
+                )
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(top = 4.dp)
                         .semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }

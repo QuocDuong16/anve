@@ -114,7 +114,6 @@ import com.anve.app.BuildConfig
 import com.anve.app.R
 import com.anve.app.data.api.HistoryPointDto
 import com.anve.app.data.api.PlaceDto
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeHistorySceneIllustration
 import com.anve.app.ui.common.AnVeCheckingState
 import com.anve.app.ui.common.AnVeSectionHeader
@@ -443,70 +442,63 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     }
                 }
                 item {
-                    OutlinedCard(
-                        shape = RoundedCornerShape(22.dp),
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(
+                                onClick = { vm.select(member, state.date.minusDays(1)) },
+                                enabled = !state.mutationPending,
+                            ) { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = stringResource(R.string.history_prev_day_content_desc)) }
+                            FilledTonalButton(
+                                onClick = { showDatePicker = true },
+                                enabled = !state.mutationPending,
+                                shape = CircleShape,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                             ) {
-                                IconButton(
-                                    onClick = { vm.select(member, state.date.minusDays(1)) },
-                                    enabled = !state.mutationPending,
-                                ) { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = stringResource(R.string.history_prev_day_content_desc)) }
-                                FilledTonalButton(
-                                    onClick = { showDatePicker = true },
+                                Icon(Icons.Outlined.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(historyDateFormatter.format(state.date))
+                            }
+                            IconButton(
+                                onClick = { vm.select(member, state.date.plusDays(1)) },
+                                enabled = !state.mutationPending && state.date < LocalDate.now(),
+                            ) { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.history_next_day_content_desc)) }
+                        }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            item {
+                                OutlinedButton(
+                                    onClick = { showStartTimePicker = true },
                                     enabled = !state.mutationPending,
                                     shape = CircleShape,
-                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                    modifier = Modifier.heightIn(min = 48.dp),
                                 ) {
-                                    Icon(Icons.Outlined.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(historyDateFormatter.format(state.date))
+                                    Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.history_time_from, formatMinute(state.startMinute)))
                                 }
-                                IconButton(
-                                    onClick = { vm.select(member, state.date.plusDays(1)) },
-                                    enabled = !state.mutationPending && state.date < LocalDate.now(),
-                                ) { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.history_next_day_content_desc)) }
                             }
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                item {
-                                    OutlinedButton(
-                                        onClick = { showStartTimePicker = true },
-                                        enabled = !state.mutationPending,
-                                        shape = CircleShape,
-                                        modifier = Modifier.heightIn(min = 48.dp),
-                                    ) {
-                                        Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(stringResource(R.string.history_time_from, formatMinute(state.startMinute)))
-                                    }
+                            item {
+                                OutlinedButton(
+                                    onClick = { showEndTimePicker = true },
+                                    enabled = !state.mutationPending,
+                                    shape = CircleShape,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) {
+                                    Text(stringResource(R.string.history_time_to, formatMinute(state.endMinute)))
                                 }
-                                item {
-                                    OutlinedButton(
-                                        onClick = { showEndTimePicker = true },
-                                        enabled = !state.mutationPending,
-                                        shape = CircleShape,
-                                        modifier = Modifier.heightIn(min = 48.dp),
-                                    ) {
-                                        Text(stringResource(R.string.history_time_to, formatMinute(state.endMinute)))
-                                    }
-                                }
-                                item {
-                                    TextButton(
-                                        onClick = { vm.selectTimes(0, 1440) },
-                                        enabled = !state.mutationPending,
-                                        modifier = Modifier.heightIn(min = 48.dp),
-                                    ) {
-                                        Text(stringResource(R.string.history_time_all_day))
-                                    }
+                            }
+                            item {
+                                TextButton(
+                                    onClick = { vm.selectTimes(0, 1440) },
+                                    enabled = !state.mutationPending,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) {
+                                    Text(stringResource(R.string.history_time_all_day))
                                 }
                             }
                         }
@@ -592,7 +584,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                             shape = CircleShape,
                                             color = stitch.cardTactile.copy(alpha = 0.94f),
                                             border = BorderStroke(1.dp, stitch.hairline),
-                                            shadowElevation = 3.dp,
+                                            shadowElevation = 1.dp,
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
                                                 .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -659,27 +651,21 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     }
                 } else {
                     item {
-                        OutlinedCard(
-                            shape = RoundedCornerShape(22.dp),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                AnVeIllustratedBanner {
-                                    AnVeHistorySceneIllustration(
-                                        modifier = Modifier.fillMaxWidth().height(92.dp),
-                                    )
-                                }
-                                Text(
-                                    text = stringResource(R.string.history_map_unconfigured),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.onSurfaceVariant,
-                                )
-                            }
+                            AnVeHistorySceneIllustration(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(92.dp)
+                                    .clip(RoundedCornerShape(18.dp)),
+                            )
+                            Text(
+                                text = stringResource(R.string.history_map_unconfigured),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -752,65 +738,42 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         nodeContentColor = if (isSelected) colors.onPrimary else colors.onSurfaceVariant,
                         isLast = index == state.points.lastIndex,
                     ) {
-                        OutlinedCard(
-                            shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, if (isSelected) colors.primary else stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(
-                                containerColor = if (isSelected) colors.primaryContainer.copy(alpha = 0.28f) else stitch.cardTactile,
-                            ),
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) colors.primaryContainer.copy(alpha = 0.28f) else colors.surface,
+                            border = if (isSelected) BorderStroke(1.dp, colors.primary) else null,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .defaultMinSize(minHeight = 48.dp)
+                                    .heightIn(min = 48.dp)
                                     // Selection must not depend on text color alone:
                                     // selectable() carries the state in semantics for
-                                    // accessibility services, and card border + container
-                                    // highlight keep it visible regardless of hue.
+                                    // accessibility services, and container highlight +
+                                    // border keep it visible regardless of hue.
                                     .selectable(selected = isSelected, onClick = { selectedId = point.eventId })
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.size(20.dp),
-                                ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = if (isSelected) colors.primaryContainer else colors.surfaceVariant,
-                                        modifier = Modifier.size(20.dp),
-                                    ) {}
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = if (isSelected) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(8.dp),
-                                    ) {}
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            R.string.history_point_row,
-                                            gap,
-                                            time,
-                                            point.horizontalAccuracyMeters.toInt(),
-                                            delayed,
-                                            mock,
-                                        ),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (isSelected) colors.primary else colors.onSurface,
+                                Text(
+                                    text = stringResource(
+                                        R.string.history_point_row,
+                                        gap,
+                                        time,
+                                        point.horizontalAccuracyMeters.toInt(),
+                                        delayed,
+                                        mock,
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isSelected) colors.primary else colors.onSurface,
+                                )
+                                if (placeMatch?.isInside == true) {
+                                    StitchSemanticBadge(
+                                        text = stringResource(R.string.history_at_place_badge, placeMatch.place.name),
+                                        kind = StitchBadgeKind.AT_PLACE,
+                                        icon = Icons.Outlined.Place,
                                     )
-                                    if (placeMatch?.isInside == true) {
-                                        StitchSemanticBadge(
-                                            text = stringResource(R.string.history_at_place_badge, placeMatch.place.name),
-                                            kind = StitchBadgeKind.AT_PLACE,
-                                            icon = Icons.Outlined.Place,
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -818,45 +781,42 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                 }
                 if (state.member == state.owner) {
                     item {
-                        OutlinedCard(
-                            shape = RoundedCornerShape(22.dp),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                AnVeSectionHeader(
-                                    title = stringResource(R.string.history_retention_title),
-                                )
-                                val currentDays = state.effectiveRetentionDays ?: state.retentionDays
-                                Text(
-                                    stringResource(R.string.history_retention_days_value, currentDays?.toString() ?: "—"),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.onSurfaceVariant,
-                                )
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(listOf(1, 7, 30)) { days ->
-                                        FilterChip(
-                                            selected = state.retentionDays == days,
-                                            onClick = {
-                                                // Shortening the horizon
-                                                // permanently deletes older
-                                                // history on the server — the
-                                                // same destructive class as the
-                                                // delete actions, which always
-                                                // confirm. Raising it deletes
-                                                // nothing, so it commits in one
-                                                // tap without added friction.
-                                                if (days < (currentDays ?: Int.MAX_VALUE)) {
-                                                    pendingRetentionDays = days
-                                                } else {
-                                                    vm.changeRetention(days)
-                                                }
-                                            },
-                                            enabled = !state.mutationPending && state.retentionDays != null,
-                                            label = { Text(stringResource(R.string.history_retention_chip_days, days)) },
-                                        )
-                                    }
+                            HorizontalDivider(color = stitch.hairline)
+                            AnVeSectionHeader(
+                                title = stringResource(R.string.history_retention_title),
+                            )
+                            val currentDays = state.effectiveRetentionDays ?: state.retentionDays
+                            Text(
+                                stringResource(R.string.history_retention_days_value, currentDays?.toString() ?: "—"),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant,
+                            )
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(listOf(1, 7, 30)) { days ->
+                                    FilterChip(
+                                        selected = state.retentionDays == days,
+                                        onClick = {
+                                            // Shortening the horizon
+                                            // permanently deletes older
+                                            // history on the server — the
+                                            // same destructive class as the
+                                            // delete actions, which always
+                                            // confirm. Raising it deletes
+                                            // nothing, so it commits in one
+                                            // tap without added friction.
+                                            if (days < (currentDays ?: Int.MAX_VALUE)) {
+                                                pendingRetentionDays = days
+                                            } else {
+                                                vm.changeRetention(days)
+                                            }
+                                        },
+                                        enabled = !state.mutationPending && state.retentionDays != null,
+                                        label = { Text(stringResource(R.string.history_retention_chip_days, days)) },
+                                    )
                                 }
                             }
                         }
@@ -1194,7 +1154,7 @@ private fun HistoryFullScreenMapDialog(
                     shape = CircleShape,
                     color = stitch.cardTactile.copy(alpha = 0.94f),
                     border = BorderStroke(1.dp, stitch.hairline),
-                    shadowElevation = 4.dp,
+                    shadowElevation = 2.dp,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
@@ -1251,7 +1211,7 @@ private fun HistoryFullScreenMapDialog(
                             color = stitch.cardTactile.copy(alpha = 0.94f),
                             contentColor = colors.onSurface,
                             border = BorderStroke(1.dp, stitch.hairline),
-                            shadowElevation = 4.dp,
+                            shadowElevation = 2.dp,
                             modifier = Modifier.size(48.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -1270,7 +1230,7 @@ private fun HistoryFullScreenMapDialog(
                             color = stitch.cardTactile.copy(alpha = 0.94f),
                             contentColor = colors.primary,
                             border = BorderStroke(1.dp, stitch.hairline),
-                            shadowElevation = 4.dp,
+                            shadowElevation = 2.dp,
                             modifier = Modifier.size(48.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -1295,7 +1255,7 @@ private fun HistoryFullScreenMapDialog(
                         shape = RoundedCornerShape(24.dp),
                         color = stitch.cardTactile,
                         border = BorderStroke(1.dp, stitch.hairline),
-                        shadowElevation = 8.dp,
+                        shadowElevation = 2.dp,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .navigationBarsPadding()

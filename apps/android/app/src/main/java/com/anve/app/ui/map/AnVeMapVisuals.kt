@@ -228,7 +228,7 @@ fun MapOverlayPillButton(
         color = if (active) colors.primaryContainer.copy(alpha = 0.95f) else stitch.cardTactile.copy(alpha = 0.92f),
         contentColor = if (active) colors.onPrimaryContainer else colors.onSurface,
         border = BorderStroke(1.dp, if (active) colors.primary else stitch.hairline),
-        shadowElevation = 3.dp,
+        shadowElevation = 1.dp,
         modifier = modifier.heightIn(min = 48.dp),
     ) {
         Row(

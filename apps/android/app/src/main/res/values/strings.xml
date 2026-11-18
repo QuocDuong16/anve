@@ -193,7 +193,6 @@
          user dismissed the card). -->
     <string name="circle_activation_progress">Bước %1$d/%2$d</string>
     <string name="circle_activation_dismiss">Ẩn</string>
-    <string name="circle_activation_intro">Vài bước nhỏ để cả nhà luôn an tâm.</string>
     <string name="circle_activation_invite_title">Mời người thân</string>
     <string name="circle_activation_invite_body">Gửi lời mời qua tin nhắn hoặc mã. Người thân tự xác nhận tham gia.</string>
     <string name="circle_activation_invite_action">Gửi lời mời</string>
@@ -214,7 +213,7 @@
 
     <!-- Tracking screen -->
     <string name="tracking_title">Vị trí &amp; chia sẻ</string>
-    <string name="tracking_subtitle">Bạn quyết định khi nào chia sẻ và ai được xem. Chưa đồng ý thì AnVề không ghi vị trí của bạn.</string>
+    <string name="tracking_subtitle">Bạn quyết định khi nào chia sẻ và ai được xem.</string>
     <string name="tracking_consent_title">Đồng ý chia sẻ vị trí</string>
     <string name="tracking_consent_subtitle">Đây là sự đồng ý của bạn trên máy chủ, chưa phải điện thoại đang ghi vị trí. Việc ghi vị trí chỉ bắt đầu khi bạn bật theo dõi và cấp quyền.</string>
     <string name="tracking_consent_on">Đã cho phép</string>
@@ -629,7 +628,6 @@
     <string name="journey_state_unknown">Cần đọc lại trạng thái</string>
     <string name="journey_time_unknown">chưa rõ thời điểm</string>
     <string name="journey_options_title">Cho hành trình này</string>
-    <string name="journey_options_subtitle">Thiết lập riêng cho hành trình này.</string>
     <string name="journey_options_auto_title">Tự nhận diện đến nơi</string>
     <string name="journey_options_auto_helper">GPS chỉ cho kết quả ước tính. Khi đủ dữ liệu, hành trình tự kết thúc và báo người xem. Bạn vẫn có thể xác nhận thủ công.</string>
     <string name="journey_options_stale_title">Nhắc khi ngừng cập nhật</string>
@@ -893,13 +891,12 @@
     <string name="tracking_hero_active_title">Đang chia sẻ vị trí</string>
     <string name="tracking_hero_active_body">Gia đình được chọn có thể xem vị trí mới nhất của bạn khi đang di chuyển.</string>
     <string name="tracking_hero_idle_title">Chia sẻ vị trí đang tạm nghỉ</string>
-    <string name="tracking_hero_idle_body">Bật chia sẻ khi bạn muốn báo bình an cho người thân.</string>
-    <string name="tracking_hero_paused_body">Bạn đã cho phép chia sẻ. Bấm Bắt đầu chia sẻ và chọn người được xem ở màn Nhà để gia đình thấy vị trí của bạn.</string>
+    <string name="tracking_hero_idle_body">Bật chia sẻ khi bạn muốn gửi vị trí cho người thân.</string>
+    <string name="tracking_hero_paused_body">Bạn đã đồng ý chia sẻ. Chọn người được xem ở màn Nhà để gia đình thấy vị trí.</string>
     <string name="tracking_step_audience_action">Chọn ai được xem vị trí của bạn</string>
     <string name="tracking_journey_card_title">Hành trình về nhà</string>
     <string name="tracking_journey_card_body">Chia sẻ điểm đến với người thân khi di chuyển.</string>
     <string name="tracking_journey_card_cta">Bắt đầu hành trình</string>
-    <string name="circle_header_warm_subtitle">Kết nối thành viên và quyền xem vị trí.</string>
     <string name="circle_activation_warm_title">Thiết lập nhóm gia đình</string>
     <string name="places_quick_name_title">Chọn nhanh tên địa điểm</string>
     <string name="places_search_label">Tìm địa chỉ</string>
@@ -916,7 +913,6 @@
     <string name="places_preset_grandparents">Nhà ông bà</string>
     <string name="places_manual_coords_toggle">Nâng cao: nhập tọa độ</string>
     <string name="places_map_cta_hint">Chạm trên bản đồ hoặc dùng vị trí hiện tại để đặt tâm vùng an toàn.</string>
-    <string name="places_share_section_title">Chia sẻ địa điểm với người thân</string>
     <string name="history_empty_warm_title">Chưa có dữ liệu</string>
     <string name="history_empty_warm_body">Chưa có vị trí nào được chia sẻ trong ngày này.</string>
     <string name="journey_intro_warm_title">Chia sẻ đường về nhà</string>
@@ -925,7 +921,6 @@
     <string name="home_sharing_state_off">Đang tắt</string>
     <string name="home_sharing_state_syncing">Đang chờ mạng</string>
     <string name="home_account_security_title">Tài khoản &amp; bảo mật</string>
-    <string name="home_account_security_subtitle">Quản lý phiên đăng nhập và tài khoản.</string>
     <string name="tracking_state_active_pill">Đang theo dõi</string>
     <string name="tracking_state_paused_pill">Đã dừng</string>
     <string name="tracking_permissions_need_attention">Cần bật thêm</string>
@@ -939,7 +934,6 @@
 
     <string name="home_privacy_live_pill">Chia sẻ vị trí tự nguyện · Quyền kiểm soát thuộc về bạn</string>
     <string name="home_group_devices_title">Thiết bị &amp; phiên đăng nhập</string>
-    <string name="home_group_devices_subtitle">Các thiết bị đang đăng nhập tài khoản của bạn.</string>
     <string name="home_device_count_badge">%1$d thiết bị</string>
 
     <string name="map_pulse_title">Nhịp sống gia đình</string>
@@ -1016,7 +1010,6 @@
     <string name="places_list_section_title">Danh sách địa điểm</string>
     <string name="places_filter_all">Tất cả</string>
     <string name="places_filter_mine">Của tôi</string>
-    <string name="places_radius_bar_label">Bán kính vùng: %1$d m</string>
 
     <string name="history_journal_subtitle">Lịch sử vị trí đã chia sẻ theo ngày.</string>
     <string name="history_metric_points">Điểm ghi nhận</string>
@@ -1025,8 +1018,6 @@
 
     <string name="sos_status_ready">Sẵn sàng</string>
     <string name="sos_status_sending">Đang gửi</string>
-    <string name="sos_banner_subtitle">Gửi cảnh báo cần hỗ trợ tới người thân bạn chọn.</string>
-    <string name="sos_hero_subtitle">Không tự đính kèm tọa độ. Hãy gọi trực tiếp khi thật sự khẩn cấp.</string>
     <string name="sos_primary_recipient_badge">Tin cậy</string>
     <string name="sos_service_police">Cảnh sát</string>
     <string name="sos_service_fire">Cứu nạn</string>
@@ -1065,7 +1056,7 @@
 
     <!-- Step 1: Welcome -->
     <string name="onboarding_welcome_title">Chào mừng bạn đến với AnVề</string>
-    <string name="onboarding_welcome_subtitle">Đường về nhà, gần hơn mỗi ngày. Hãy dành 2 phút thiết lập để kết nối cùng người thân một cách minh bạch và tự nguyện.</string>
+    <string name="onboarding_welcome_subtitle">Thiết lập trong 2 phút để chia sẻ vị trí minh bạch và tự nguyện cùng gia đình.</string>
     <string name="onboarding_welcome_start">Thiết lập từng bước (~2 phút)</string>
     <string name="onboarding_welcome_skip">Tự khám phá ứng dụng</string>
 
@@ -1144,7 +1135,7 @@
     <string name="onboarding_place_skip">Để sau</string>
 
     <!-- Step 5: Complete -->
-    <string name="onboarding_done_title">Thiết lập hoàn tất!</string>
+    <string name="onboarding_done_title">Đã thiết lập xong</string>
     <string name="onboarding_done_summary_circle">Gia đình</string>
     <string name="onboarding_done_summary_no_circle">Chưa tham gia gia đình</string>
     <string name="onboarding_done_summary_invite">Đã tạo mã mời (chờ người thân tham gia)</string>

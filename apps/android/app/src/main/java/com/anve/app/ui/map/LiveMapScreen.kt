@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -35,6 +36,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -42,13 +44,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.ShareLocation
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -56,6 +55,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -490,7 +490,7 @@ private fun LiveMapContent(
                         color = stitch.cardTactile.copy(alpha = 0.94f),
                         contentColor = colors.primary,
                         border = BorderStroke(1.dp, stitch.hairline),
-                        shadowElevation = 4.dp,
+                        shadowElevation = 2.dp,
                         modifier = Modifier.size(48.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -519,7 +519,7 @@ private fun LiveMapContent(
             shape = sheetShape,
             color = stitch.cardTactile,
             border = BorderStroke(1.dp, stitch.hairline),
-            shadowElevation = 8.dp,
+            shadowElevation = 2.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .anveContentWidth()
@@ -800,7 +800,7 @@ private fun FloatingMapHeader(
             shape = CircleShape,
             color = stitch.cardTactile.copy(alpha = 0.90f),
             border = BorderStroke(1.dp, stitch.hairline),
-            shadowElevation = 4.dp,
+            shadowElevation = 2.dp,
             modifier = Modifier
                 .weight(1f, fill = false)
                 .heightIn(min = 48.dp)
@@ -890,104 +890,74 @@ private fun QuickSharingSheet(
                 )
             }
 
-            OutlinedCard(
-                onClick = onOpenLocation,
-                shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, stitch.hairline),
-                colors = CardDefaults.outlinedCardColors(containerColor = colors.surfaceContainerLow),
-                modifier = Modifier.fillMaxWidth(),
+            HorizontalDivider(color = stitch.hairline)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .clickable(onClick = onOpenLocation)
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = if (trackingStatus.activelyTracking) stitch.liveContainer else colors.surfaceContainerHigh,
-                        contentColor = if (trackingStatus.activelyTracking) stitch.onLiveContainer else colors.onSurfaceVariant,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.ShareLocation, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = stringResource(R.string.map_quick_manage_sharing_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = stringResource(
-                                if (trackingStatus.activelyTracking) {
-                                    R.string.map_quick_manage_sharing_subtitle_on
-                                } else {
-                                    R.string.map_quick_manage_sharing_subtitle_off
-                                },
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = colors.onSurfaceVariant,
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(R.string.map_quick_manage_sharing_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(
+                            if (trackingStatus.activelyTracking) {
+                                R.string.map_quick_manage_sharing_subtitle_on
+                            } else {
+                                R.string.map_quick_manage_sharing_subtitle_off
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
                     )
                 }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant,
+                )
             }
 
-            OutlinedCard(
-                onClick = onOpenAudience,
-                shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, stitch.hairline),
-                colors = CardDefaults.outlinedCardColors(containerColor = colors.surfaceContainerLow),
-                modifier = Modifier.fillMaxWidth(),
+            HorizontalDivider(color = stitch.hairline)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .clickable(onClick = onOpenAudience)
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.secondaryContainer,
-                        contentColor = colors.onSecondaryContainer,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Group, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = stringResource(R.string.map_quick_audience_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = if (viewerCount > 0) {
-                                stringResource(R.string.map_quick_audience_subtitle_count, viewerCount)
-                            } else {
-                                stringResource(R.string.map_quick_audience_subtitle_empty)
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = colors.onSurfaceVariant,
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(R.string.map_quick_audience_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = if (viewerCount > 0) {
+                            stringResource(R.string.map_quick_audience_subtitle_count, viewerCount)
+                        } else {
+                            stringResource(R.string.map_quick_audience_subtitle_empty)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
                     )
                 }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant,
+                )
             }
         }
     }
@@ -1141,16 +1111,9 @@ private fun MemberLocationCard(
                         .align(Alignment.BottomEnd)
                         .size(14.dp)
                         .clip(CircleShape)
-                        .background(cardBackground)
-                        .padding(2.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(statusDotColor),
-                    )
-                }
+                        .background(statusDotColor)
+                        .border(2.dp, cardBackground, CircleShape),
+                )
             }
 
             Column(
@@ -1267,24 +1230,17 @@ private fun AudienceSheet(
                 }
                 item {
                     AnVeSectionHeader(
-                        icon = Icons.Outlined.Group,
                         title = stringResource(R.string.map_audience_title),
                     )
                 }
                 item {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = colors.surfaceVariant.copy(alpha = 0.42f),
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text(stringResource(R.string.map_audience_explainer_consent), style = MaterialTheme.typography.bodySmall)
-                            Text(stringResource(R.string.map_audience_explainer_timing), style = MaterialTheme.typography.bodySmall)
-                            Text(stringResource(R.string.map_audience_explainer_offline), style = MaterialTheme.typography.bodySmall)
-                        }
+                        Text(stringResource(R.string.map_audience_explainer_consent), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                        Text(stringResource(R.string.map_audience_explainer_timing), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                        Text(stringResource(R.string.map_audience_explainer_offline), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     }
                 }
                 if (state.sharingLoading && state.sharing == null) {
@@ -1333,83 +1289,80 @@ private fun AudienceSheet(
                         )
                     }
                     else -> {
-                        items(sharing.members.filter { it.userId != ownerId }, key = AudienceMember::userId) { member ->
-                            OutlinedCard(
-                                shape = RoundedCornerShape(16.dp),
-                                border = BorderStroke(1.dp, colors.outlineVariant),
-                                modifier = Modifier.fillMaxWidth(),
+                        val otherMembers = sharing.members.filter { it.userId != ownerId }
+                        itemsIndexed(otherMembers, key = { _, it -> it.userId }) { index, member ->
+                            if (index > 0) {
+                                HorizontalDivider(color = stitch.hairline)
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 56.dp)
+                                    .then(
+                                        if (member.userId in state.unresolvedViewerIds) {
+                                            Modifier
+                                        } else {
+                                            Modifier.toggleable(
+                                                value = member.canViewLocation,
+                                                enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                                role = Role.Switch,
+                                                onValueChange = { onToggle(member, it) },
+                                            )
+                                        },
+                                    )
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(
+                                Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(min = 48.dp)
-                                        .then(
-                                            if (member.userId in state.unresolvedViewerIds) {
-                                                Modifier
-                                            } else {
-                                                Modifier.toggleable(
-                                                    value = member.canViewLocation,
-                                                    enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
-                                                    role = Role.Switch,
-                                                    onValueChange = { onToggle(member, it) },
-                                                )
-                                            },
-                                        )
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.secondaryContainer),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = colors.secondaryContainer,
-                                        contentColor = colors.onSecondaryContainer,
-                                        modifier = Modifier.size(38.dp),
+                                    Text(
+                                        text = member.displayName.take(1).uppercase().ifBlank { "?" },
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colors.onSecondaryContainer,
+                                    )
+                                }
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                text = member.displayName.take(1).uppercase().ifBlank { "?" },
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                        }
-                                    }
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text(member.displayName, style = MaterialTheme.typography.bodyLarge)
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                        ) {
-                                            Text(
-                                                text = if (member.role == "owner") {
-                                                    stringResource(R.string.circle_role_owner)
-                                                } else {
-                                                    stringResource(R.string.circle_role_member)
-                                                },
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = colors.onSurfaceVariant,
-                                            )
-                                            StitchSemanticBadge(
-                                                text = stringResource(
-                                                    if (member.canViewLocation) R.string.map_audience_verified_chip
-                                                    else R.string.map_audience_paused_chip,
-                                                ),
-                                                kind = if (member.canViewLocation) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
-                                                icon = if (member.canViewLocation) Icons.Outlined.Visibility else null,
-                                            )
-                                        }
-                                    }
-                                    if (member.userId in state.unresolvedViewerIds) {
-                                        Text(stringResource(R.string.map_viewer_unresolved), style = MaterialTheme.typography.bodySmall)
-                                    } else {
-                                        Switch(
-                                            checked = member.canViewLocation,
-                                            enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
-                                            onCheckedChange = null,
+                                        Text(
+                                            text = if (member.role == "owner") {
+                                                stringResource(R.string.circle_role_owner)
+                                            } else {
+                                                stringResource(R.string.circle_role_member)
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                        StitchSemanticBadge(
+                                            text = stringResource(
+                                                if (member.canViewLocation) R.string.map_audience_verified_chip
+                                                else R.string.map_audience_paused_chip,
+                                            ),
+                                            kind = if (member.canViewLocation) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
                                         )
                                     }
-                                    if (member.userId in state.pendingViewerIds) {
-                                        CircularProgressIndicator(Modifier.size(18.dp))
-                                    }
+                                }
+                                if (member.userId in state.unresolvedViewerIds) {
+                                    Text(stringResource(R.string.map_viewer_unresolved), style = MaterialTheme.typography.bodySmall)
+                                } else {
+                                    Switch(
+                                        checked = member.canViewLocation,
+                                        enabled = sharing.consentEnabled && member.userId !in state.pendingViewerIds,
+                                        onCheckedChange = null,
+                                    )
+                                }
+                                if (member.userId in state.pendingViewerIds) {
+                                    CircularProgressIndicator(Modifier.size(18.dp))
                                 }
                             }
                         }

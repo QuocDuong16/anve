@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,15 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -63,7 +63,6 @@ import com.anve.app.data.auth.SessionNotice
 import com.anve.app.data.auth.SessionNoticeKind
 import com.anve.app.ui.brand.AnVeBrandMark
 import com.anve.app.ui.brand.AnVeFamilySceneIllustration
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.UiMessage
@@ -177,122 +176,104 @@ fun SignInContent(
                             .fillMaxWidth()
                             .anveContentWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                    OutlinedCard(
-                        shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            // Keep the hero compact so primary action / retry buttons stay visible above the fold even with error banners.
-                            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                                AnVeFamilySceneIllustration(
-                                    modifier = Modifier.fillMaxWidth().height(84.dp),
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = stitch.secondaryFixed,
-                                    border = BorderStroke(1.5.dp, stitch.hairline),
-                                ) {
-                                    AnVeBrandMark(Modifier.padding(6.dp).size(44.dp))
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.app_name),
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.primary,
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.splash_tagline),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = colors.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (invitationPending) {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = stitch.transitContainer,
-                            contentColor = stitch.onTransitContainer,
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(14.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.MailOutline,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(top = 2.dp).size(20.dp),
-                                )
-                                Text(
-                                    text = stringResource(R.string.signin_invitation_prompt),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                        }
-                    }
-
-                    if (notice != null) {
-                        SignOutNoticeCard(notice = notice, onDismiss = onDismissNotice)
-                    }
-
-                    if (error != null) {
-                        // No retry inside the notice: the main button below already
-                        // relabels to "Thử lại" while an error shows, so a second
-                        // retry control would duplicate the recovery action.
-                        // Live region lives inside AnveErrorNotice now; declaring it
-                        // here too would double-announce the same failure.
-                        AnveErrorNotice(
-                            text = stringResource(error.id, *error.args.toTypedArray()),
+                        AnVeFamilySceneIllustration(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(104.dp)
+                                .clip(RoundedCornerShape(18.dp)),
                         )
-                    }
-
-                    if (busy) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
-                            Text(
-                                text = stringResource(R.string.signin_in_progress),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            AnVeBrandMark(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(stitch.secondaryFixed)
+                                    .border(BorderStroke(1.5.dp, stitch.hairline), CircleShape)
+                                    .padding(6.dp),
+                            )
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.app_name),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.primary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.splash_tagline),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        if (invitationPending) {
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = stitch.transitContainer,
+                                contentColor = stitch.onTransitContainer,
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.MailOutline,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(top = 2.dp).size(20.dp),
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.signin_invitation_prompt),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
+                        }
+
+                        if (notice != null) {
+                            SignOutNoticeCard(notice = notice, onDismiss = onDismissNotice)
+                        }
+
+                        if (error != null) {
+                            // No retry inside the notice: the main button below already
+                            // relabels to "Thử lại" while an error shows, so a second
+                            // retry control would duplicate the recovery action.
+                            // Live region lives inside AnveErrorNotice now; declaring it
+                            // here too would double-announce the same failure.
+                            AnveErrorNotice(
+                                text = stringResource(error.id, *error.args.toTypedArray()),
                             )
                         }
-                    }
 
-                    OutlinedCard(
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                        if (busy) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
+                                Text(
+                                    text = stringResource(R.string.signin_in_progress),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                )
+                            }
+                        }
+
                         Column(
-                            modifier = Modifier.padding(18.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -305,22 +286,12 @@ fun SignInContent(
                                 ) {
                                     Text(stringResource(if (error == null) R.string.signin_google else R.string.signin_retry))
                                 }
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Lock,
-                                        contentDescription = null,
-                                        tint = colors.primary,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.signin_google_caption),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant,
-                                    )
-                                }
+                                Text(
+                                    text = stringResource(R.string.signin_google_caption),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
                             } else {
                                 Text(
                                     text = stringResource(R.string.signin_google_unavailable),
@@ -332,12 +303,11 @@ fun SignInContent(
                                 }
                             }
                         }
-                    }
 
-                    if (state.devLogin && BuildConfig.DEBUG) {
-                        HorizontalDivider(color = stitch.hairline)
-                        DevLoginForm(enabled = !busy, onSignIn = onDevSignIn)
-                    }
+                        if (state.devLogin && BuildConfig.DEBUG) {
+                            HorizontalDivider(color = stitch.hairline)
+                            DevLoginForm(enabled = !busy, onSignIn = onDevSignIn)
+                        }
                     }
                 }
             }
@@ -378,41 +348,33 @@ private fun SignOutNoticeCard(notice: SessionNotice, onDismiss: () -> Unit) {
 @Composable
 private fun DevLoginForm(enabled: Boolean, onSignIn: (String) -> Unit) {
     var email by remember { mutableStateOf("") }
-    val stitch = LocalStitchColors.current
-    OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+    Column(
         modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Text(
+            text = stringResource(R.string.signin_dev_title),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text(stringResource(R.string.signin_dev_email)) },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Button(
+            onClick = { onSignIn(email) },
+            enabled = enabled && email.isNotBlank(),
+            shape = CircleShape,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         ) {
-            Text(
-                text = stringResource(R.string.signin_dev_title),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text(stringResource(R.string.signin_dev_email)) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(
-                onClick = { onSignIn(email) },
-                enabled = enabled && email.isNotBlank(),
-                shape = CircleShape,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.signin_dev_button))
-            }
+            Text(stringResource(R.string.signin_dev_button))
         }
     }
 }

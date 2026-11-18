@@ -1,17 +1,14 @@
 package com.anve.app.ui.common
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -132,8 +129,8 @@ enum class StitchBadgeKind {
 }
 
 /**
- * Concentric status indicator dot with a soft outer halo representing live or
- * paused location sharing without relying on jarring bright neon accents.
+ * Static concentric status indicator dot representing live or paused location
+ * sharing without continuous distracting animation.
  */
 @Composable
 fun StitchLivePulseDot(
@@ -142,35 +139,16 @@ fun StitchLivePulseDot(
     color: Color = if (active) LocalStitchColors.current.livePulse else MaterialTheme.colorScheme.outline,
     haloSize: Dp = 18.dp,
     coreSize: Dp = 8.dp,
-    breathing: Boolean = active,
+    @Suppress("UNUSED_PARAMETER") breathing: Boolean = active,
 ) {
-    val haloAlpha = if (active && breathing) {
-        val transition = rememberInfiniteTransition(label = "pulseDot")
-        val alpha by transition.animateFloat(
-            initialValue = 0.16f,
-            targetValue = 0.40f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1600),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "pulseAlpha",
-        )
-        alpha
-    } else if (active) {
-        0.24f
-    } else {
-        0.14f
-    }
+    val haloAlpha = if (active) 0.24f else 0.14f
     Box(
-        modifier = modifier.size(haloSize),
+        modifier = modifier
+            .size(haloSize)
+            .clip(CircleShape)
+            .background(color.copy(alpha = haloAlpha)),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(haloSize)
-                .clip(CircleShape)
-                .background(color.copy(alpha = haloAlpha)),
-        )
         Box(
             modifier = Modifier
                 .size(coreSize)
@@ -375,20 +353,20 @@ fun StitchTimelineItem(
                 .fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Surface(
-                shape = CircleShape,
-                color = nodeContainerColor,
-                contentColor = nodeContentColor,
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface),
-                modifier = Modifier.size(30.dp),
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(nodeContainerColor)
+                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = nodeContentColor,
+                    modifier = Modifier.size(16.dp),
+                )
             }
             if (!isLast) {
                 Box(
@@ -589,9 +567,9 @@ fun AnVeSosHoldButton(
         ) {
             Surface(
                 shape = CircleShape,
-                color = stitch.cardTactile.copy(alpha = 0.96f),
+                color = stitch.cardTactile,
                 border = BorderStroke(1.dp, stitch.hairline),
-                shadowElevation = 3.dp,
+                shadowElevation = 1.dp,
             ) {
                 Text(
                     text = stringResource(R.string.map_sos_hold_hint),
@@ -606,7 +584,7 @@ fun AnVeSosHoldButton(
             color = emergency.emergencyContainer,
             contentColor = emergency.onEmergencyContainer,
             border = BorderStroke(1.dp, emergency.emergency.copy(alpha = 0.34f)),
-            shadowElevation = 4.dp,
+            shadowElevation = 2.dp,
             modifier = Modifier
                 .heightIn(min = 52.dp)
                 .graphicsLayer {

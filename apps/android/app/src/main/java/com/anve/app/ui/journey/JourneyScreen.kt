@@ -3,6 +3,7 @@ package com.anve.app.ui.journey
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -37,16 +39,12 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -83,6 +81,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -112,7 +111,6 @@ import com.anve.app.data.journey.JourneyAction
 import com.anve.app.data.sos.authorizedJourneySignal
 import com.anve.app.tracking.MotionState
 import com.anve.app.tracking.TrackingStatus
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.common.AnVeMetricColumn
 import com.anve.app.ui.common.AnVeSectionHeader
@@ -310,11 +308,12 @@ fun JourneyContent(
                             modifier = Modifier.padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                                AnVeJourneySceneIllustration(
-                                    modifier = Modifier.fillMaxWidth().height(128.dp),
-                                )
-                            }
+                            AnVeJourneySceneIllustration(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(128.dp)
+                                    .clip(RoundedCornerShape(16.dp)),
+                            )
                             Text(
                                 stringResource(R.string.journey_intro_title),
                                 style = MaterialTheme.typography.headlineSmall,
@@ -337,50 +336,41 @@ fun JourneyContent(
             }
             val remaining = state.journeys.filter { it.id != selected?.id }
             if (remaining.isNotEmpty()) item { Text(stringResource(R.string.journey_viewable_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) }
-            items(remaining, key = { it.id }) { journey ->
-                OutlinedCard(
-                    onClick = { onSelect(journey.id) },
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            itemsIndexed(remaining, key = { _, it -> it.id }) { index, journey ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (index > 0) {
+                        HorizontalDivider(color = stitch.hairline)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(journey.id) }
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Route,
-                            contentDescription = null,
-                            tint = if (journey.state == "ACTIVE") stitch.onTransitContainer else colors.primary,
-                            modifier = Modifier.size(22.dp),
+                        Text(
+                            stringResource(
+                                R.string.journey_card_title,
+                                if (journey.ownerId == state.owner) stringResource(R.string.journey_card_owner_you) else journey.ownerName,
+                                journey.destination.label,
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
                         )
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                stringResource(
-                                    R.string.journey_card_title,
-                                    if (journey.ownerId == state.owner) stringResource(R.string.journey_card_owner_you) else journey.ownerName,
-                                    journey.destination.label,
-                                ),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            StitchSemanticBadge(
-                                text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
-                                kind = when (journey.state) {
-                                    "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
-                                    "ARRIVED" -> StitchBadgeKind.SAFE_HOME
-                                    else -> StitchBadgeKind.NEUTRAL
-                                },
-                                showDot = journey.state == "ACTIVE",
-                            )
-                            Text(
-                                stringResource(R.string.journey_started_at, journeyTime(journey.startedAt, stringResource(R.string.journey_time_unknown))),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                            )
-                        }
+                        StitchSemanticBadge(
+                            text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
+                            kind = when (journey.state) {
+                                "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
+                                "ARRIVED" -> StitchBadgeKind.SAFE_HOME
+                                else -> StitchBadgeKind.NEUTRAL
+                            },
+                            showDot = journey.state == "ACTIVE",
+                        )
+                        Text(
+                            stringResource(R.string.journey_started_at, journeyTime(journey.startedAt, stringResource(R.string.journey_time_unknown))),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -471,11 +461,12 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
         ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (active) {
-                    AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                        AnVeJourneySceneIllustration(
-                            modifier = Modifier.fillMaxWidth().height(92.dp),
-                        )
-                    }
+                    AnVeJourneySceneIllustration(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(92.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                    )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     StitchSemanticBadge(
@@ -656,16 +647,14 @@ private fun JourneyStep(title: String, current: Boolean = false, completed: Bool
             )
             if (!last) VerticalDivider(Modifier.weight(1f), color = if (completed) stitch.livePulse else stitch.hairline)
         }
-        Surface(
-            Modifier.weight(1f).padding(bottom = if (last) 0.dp else 20.dp),
-            color = if (current) stitch.cardTactile else colors.surfaceContainerLow,
-            border = BorderStroke(1.dp, if (current) colors.primary.copy(alpha = 0.35f) else stitch.hairline),
-            shape = RoundedCornerShape(18.dp),
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = if (last) 0.dp else 18.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                content()
-            }
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+            content()
         }
     }
 }
@@ -691,45 +680,30 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
     val ready = !state.busy && state.pending.isEmpty() && state.consentEnabled && tracking.ownerUserId == state.owner && tracking.activelyTracking && tracking.online
     val stitch = LocalStitchColors.current
     val colors = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        OutlinedCard(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                    AnVeJourneySceneIllustration(
-                        modifier = Modifier.fillMaxWidth().height(116.dp),
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.journey_intro_warm_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = stringResource(R.string.journey_intro_warm_body),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                )
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnVeJourneySceneIllustration(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(116.dp)
+                    .clip(RoundedCornerShape(18.dp)),
+            )
+            Text(
+                text = stringResource(R.string.journey_intro_warm_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                text = stringResource(R.string.journey_intro_warm_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
         }
-        OutlinedCard(
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        HorizontalDivider(color = stitch.hairline)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Outlined.Home,
                 title = stringResource(R.string.journey_step_destination),
-                iconContainerColor = stitch.liveContainer,
-                iconContentColor = stitch.onLiveContainer,
             )
             if (state.places.isEmpty()) Text(stringResource(R.string.journey_no_places), color = colors.onSurfaceVariant)
             state.places.forEach { place ->
@@ -739,18 +713,11 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                 }
             }
             JourneyTextAction(stringResource(R.string.journey_manage_places), onPlaces)
-        } }
-        OutlinedCard(
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        }
+        HorizontalDivider(color = stitch.hairline)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Outlined.Schedule,
                 title = stringResource(R.string.journey_step_expiry),
-                iconContainerColor = stitch.transitContainer,
-                iconContentColor = stitch.onTransitContainer,
             )
             // Every other single-choice group in the app offers at most four
             // options (retention, invitation expiry); 30 minutes sits below
@@ -774,19 +741,12 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                 }
             }
             Text(stringResource(R.string.journey_expiry_note), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-        } }
-        OutlinedCard(
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        }
+        HorizontalDivider(color = stitch.hairline)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Outlined.Groups,
                 title = stringResource(R.string.journey_step_viewers),
                 subtitle = stringResource(R.string.journey_viewers_note),
-                iconContainerColor = stitch.liveContainer,
-                iconContentColor = stitch.onLiveContainer,
             )
             // The audience grants live on the map tab (Quyền xem), not on the
             // location screen the old copy pointed at — send the reader there
@@ -801,32 +761,27 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                     Text(member.displayName, Modifier.padding(start = 8.dp))
                 }
             }
-        } }
-        OutlinedCard(
-            onClick = { optionsOpen = true },
-            enabled = !state.busy,
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth().testTag("journey-options"),
+        }
+        HorizontalDivider(color = stitch.hairline)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .clickable(enabled = !state.busy) { optionsOpen = true }
+                .padding(vertical = 8.dp)
+                .testTag("journey-options"),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(20.dp),
-                )
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.journey_options_entry), style = MaterialTheme.typography.titleMedium)
-                    Text(if (!automatic && staleMinutes == 0) stringResource(R.string.journey_option_off) else stringResource(
-                        R.string.journey_option_summary,
-                        if (automatic) stringResource(R.string.journey_option_auto_summary) else stringResource(R.string.journey_option_manual_summary),
-                        if (staleMinutes > 0) stringResource(R.string.journey_option_stale_summary, staleMinutes) else "",
-                    ), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-                }
-                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null)
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.journey_options_entry), style = MaterialTheme.typography.titleMedium)
+                Text(if (!automatic && staleMinutes == 0) stringResource(R.string.journey_option_off) else stringResource(
+                    R.string.journey_option_summary,
+                    if (automatic) stringResource(R.string.journey_option_auto_summary) else stringResource(R.string.journey_option_manual_summary),
+                    if (staleMinutes > 0) stringResource(R.string.journey_option_stale_summary, staleMinutes) else "",
+                ), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null)
         }
         // One blocking condition at a time, highest priority first: capture
         // stopped, then offline, then the missing viewer, then the missing

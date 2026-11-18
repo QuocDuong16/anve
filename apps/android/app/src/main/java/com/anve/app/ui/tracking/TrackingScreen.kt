@@ -39,9 +39,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -94,7 +91,6 @@ import com.anve.app.tracking.OperationalState
 import com.anve.app.tracking.TrackingProblem
 import com.anve.app.tracking.TrackingStatus
 import com.anve.app.tracking.backgroundPermissionAction
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.brand.AnVeJourneySceneIllustration
 import com.anve.app.ui.brand.AnVeSharingHeroIllustration
 import com.anve.app.ui.common.AnVeMetricColumn
@@ -454,32 +450,22 @@ fun TrackingContent(
             // title, so the list opens with a compact live-status pill and
             // calm subtitle instead of repeating the page heading.
             item {
-                OutlinedCard(
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        StitchLiveSharingPill(
-                            text = stringResource(
-                                if (status.activelyTracking) {
-                                    R.string.tracking_state_active_pill
-                                } else {
-                                    R.string.tracking_state_paused_pill
-                                },
-                            ),
-                            active = status.activelyTracking,
-                        )
-                        Text(
-                            stringResource(R.string.tracking_subtitle),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StitchLiveSharingPill(
+                        text = stringResource(
+                            if (status.activelyTracking) {
+                                R.string.tracking_state_active_pill
+                            } else {
+                                R.string.tracking_state_paused_pill
+                            },
+                        ),
+                        active = status.activelyTracking,
+                    )
+                    Text(
+                        stringResource(R.string.tracking_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -574,36 +560,30 @@ fun TrackingContent(
                     if (showDetails) R.string.action_state_expanded else R.string.action_state_collapsed,
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    OutlinedCard(
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                        modifier = Modifier.fillMaxWidth(),
+                    HorizontalDivider(color = stitch.hairline)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = showDetails,
+                                role = Role.Button,
+                                onValueChange = { showDetails = it },
+                            )
+                            .padding(vertical = 8.dp)
+                            .semantics { stateDescription = detailsState },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 52.dp)
-                                .toggleable(
-                                    value = showDetails,
-                                    role = Role.Button,
-                                    onValueChange = { showDetails = it },
-                                )
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .semantics { stateDescription = detailsState },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                stringResource(R.string.tracking_details_toggle),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Icon(
-                                imageVector = if (showDetails) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                                contentDescription = null,
-                            )
-                        }
+                        Text(
+                            stringResource(R.string.tracking_details_toggle),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Icon(
+                            imageVector = if (showDetails) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                            contentDescription = null,
+                        )
                     }
                     AnimatedVisibility(visible = showDetails) {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -687,56 +667,54 @@ private fun TrackingControlCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                val largeFont = LocalDensity.current.fontScale > 1.25f
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(6.dp)) {
-                    val stackVertical = maxWidth < 320.dp || largeFont
-                    val bannerText: @Composable (Modifier) -> Unit = { colMod ->
-                        Column(
-                            modifier = colMod,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            StitchSemanticBadge(
-                                text = stateLabel,
-                                kind = when {
-                                    status.activelyTracking -> StitchBadgeKind.SAFE_HOME
-                                    status.recoveryRequired -> StitchBadgeKind.DELAYED_OFFLINE
-                                    else -> StitchBadgeKind.NEUTRAL
-                                },
-                                showDot = status.activelyTracking,
-                            )
-                            Text(
-                                text = heroTitle,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = heroBody,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                            )
-                        }
+            val largeFont = LocalDensity.current.fontScale > 1.25f
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val stackVertical = maxWidth < 320.dp || largeFont
+                val bannerText: @Composable (Modifier) -> Unit = { colMod ->
+                    Column(
+                        modifier = colMod,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        StitchSemanticBadge(
+                            text = stateLabel,
+                            kind = when {
+                                status.activelyTracking -> StitchBadgeKind.SAFE_HOME
+                                status.recoveryRequired -> StitchBadgeKind.DELAYED_OFFLINE
+                                else -> StitchBadgeKind.NEUTRAL
+                            },
+                            showDot = status.activelyTracking,
+                        )
+                        Text(
+                            text = heroTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = heroBody,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
                     }
-                    if (stackVertical) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            AnVeSharingHeroIllustration(
-                                active = status.activelyTracking,
-                                modifier = Modifier.fillMaxWidth().height(88.dp),
-                            )
-                            bannerText(Modifier.fillMaxWidth())
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            AnVeSharingHeroIllustration(
-                                active = status.activelyTracking,
-                                modifier = Modifier.width(114.dp).height(88.dp),
-                            )
-                            bannerText(Modifier.weight(1f))
-                        }
+                }
+                if (stackVertical) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        AnVeSharingHeroIllustration(
+                            active = status.activelyTracking,
+                            modifier = Modifier.fillMaxWidth().height(88.dp),
+                        )
+                        bannerText(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AnVeSharingHeroIllustration(
+                            active = status.activelyTracking,
+                            modifier = Modifier.width(114.dp).height(88.dp),
+                        )
+                        bannerText(Modifier.weight(1f))
                     }
                 }
             }
@@ -908,11 +886,9 @@ private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
             }
             if (stackVertical) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                        AnVeJourneySceneIllustration(
-                            modifier = Modifier.fillMaxWidth().height(92.dp),
-                        )
-                    }
+                    AnVeJourneySceneIllustration(
+                        modifier = Modifier.fillMaxWidth().height(92.dp),
+                    )
                     details(Modifier.fillMaxWidth())
                 }
             } else {
@@ -921,13 +897,9 @@ private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AnVeIllustratedBanner(
-                        modifier = Modifier.width(108.dp),
-                    ) {
-                        AnVeJourneySceneIllustration(
-                            modifier = Modifier.fillMaxWidth().height(92.dp),
-                        )
-                    }
+                    AnVeJourneySceneIllustration(
+                        modifier = Modifier.width(108.dp).height(92.dp),
+                    )
                     details(Modifier.weight(1f))
                 }
             }
@@ -1004,15 +976,13 @@ private fun PermissionsCard(
             colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Box(Modifier.padding(16.dp)) {
-                AnVeSectionHeader(
-                    icon = Icons.Outlined.Security,
-                    title = stringResource(R.string.tracking_permissions_title),
-                    badgeText = stringResource(R.string.tracking_permissions_ok),
-                    badgeContainerColor = stitch.liveContainer,
-                    badgeContentColor = stitch.onLiveContainer,
-                )
-            }
+            AnVeSectionHeader(
+                title = stringResource(R.string.tracking_permissions_title),
+                badgeText = stringResource(R.string.tracking_permissions_ok),
+                badgeContainerColor = stitch.liveContainer,
+                badgeContentColor = stitch.onLiveContainer,
+                modifier = Modifier.padding(16.dp),
+            )
         }
         return
     }
@@ -1024,118 +994,93 @@ private fun PermissionsCard(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Outlined.Security,
                 title = stringResource(R.string.tracking_permissions_title),
                 badgeText = stringResource(R.string.tracking_permissions_need_attention),
                 badgeContainerColor = stitch.transitContainer,
                 badgeContentColor = stitch.onTransitContainer,
             )
             if (!status.locationServicesEnabled) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.errorContainer.copy(alpha = 0.55f),
-                    border = BorderStroke(1.dp, colors.error.copy(alpha = 0.25f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            stringResource(R.string.tracking_location_services_off),
-                            color = colors.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        FilledTonalButton(
-                            onClick = onOpenLocationSettings,
-                            shape = CircleShape,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Text(stringResource(R.string.tracking_location_services_settings))
-                        }
+                HorizontalDivider(color = stitch.hairline)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        stringResource(R.string.tracking_location_services_off),
+                        color = colors.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    FilledTonalButton(
+                        onClick = onOpenLocationSettings,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.tracking_location_services_settings))
                     }
                 }
             }
             if (!locationGranted) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.surfaceContainerLowest,
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InfoRow(
-                            label = stringResource(R.string.tracking_permission_location),
-                            value = permissionLabel(status.permission),
+                HorizontalDivider(color = stitch.hairline)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoRow(
+                        label = stringResource(R.string.tracking_permission_location),
+                        value = permissionLabel(status.permission),
+                    )
+                    if (permissionPermanentlyDenied) {
+                        Text(
+                            stringResource(R.string.tracking_permission_permanently_denied),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.error,
                         )
-                        if (permissionPermanentlyDenied) {
-                            Text(
-                                stringResource(R.string.tracking_permission_permanently_denied),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.error,
-                            )
-                            OutlinedButton(
-                                onClick = onOpenAppSettings,
-                                shape = CircleShape,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            ) {
-                                Text(stringResource(R.string.tracking_permission_settings))
-                            }
-                        } else {
-                            FilledTonalButton(
-                                onClick = onStartFlow,
-                                shape = CircleShape,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            ) {
-                                Text(stringResource(R.string.tracking_permission_grant))
-                            }
+                        OutlinedButton(
+                            onClick = onOpenAppSettings,
+                            shape = CircleShape,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.tracking_permission_settings))
+                        }
+                    } else {
+                        FilledTonalButton(
+                            onClick = onStartFlow,
+                            shape = CircleShape,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.tracking_permission_grant))
                         }
                     }
                 }
             }
             if (!status.backgroundPermissionGranted) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.surfaceContainerLowest,
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InfoRow(
-                            label = stringResource(R.string.tracking_permission_background),
-                            value = stringResource(R.string.tracking_permission_background_missing),
-                        )
-                        Text(
-                            stringResource(R.string.tracking_permission_background_explainer),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                        FilledTonalButton(
-                            onClick = onRequestBackground,
-                            shape = CircleShape,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Text(stringResource(R.string.tracking_permission_background_grant))
-                        }
+                HorizontalDivider(color = stitch.hairline)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoRow(
+                        label = stringResource(R.string.tracking_permission_background),
+                        value = stringResource(R.string.tracking_permission_background_missing),
+                    )
+                    Text(
+                        stringResource(R.string.tracking_permission_background_explainer),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    FilledTonalButton(
+                        onClick = onRequestBackground,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.tracking_permission_background_grant))
                     }
                 }
             }
             if (!status.notificationsGranted) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.surfaceContainerLowest,
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InfoRow(
-                            label = stringResource(R.string.tracking_permission_notifications),
-                            value = stringResource(R.string.tracking_permission_notifications_missing),
-                        )
-                        FilledTonalButton(
-                            onClick = onRequestNotifications,
-                            shape = CircleShape,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Text(stringResource(R.string.tracking_permission_notifications_grant))
-                        }
+                HorizontalDivider(color = stitch.hairline)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoRow(
+                        label = stringResource(R.string.tracking_permission_notifications),
+                        value = stringResource(R.string.tracking_permission_notifications_missing),
+                    )
+                    FilledTonalButton(
+                        onClick = onRequestNotifications,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.tracking_permission_notifications_grant))
                     }
                 }
             }
@@ -1162,9 +1107,8 @@ private fun StatusCard(
         colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AnVeSectionHeader(
-                icon = Icons.Outlined.Sync,
                 title = stringResource(R.string.tracking_status_title),
                 badgeText = stringResource(
                     if (status.activelyTracking) {
@@ -1176,59 +1120,51 @@ private fun StatusCard(
                 badgeContainerColor = if (status.activelyTracking) stitch.liveContainer else colors.surfaceContainerHigh,
                 badgeContentColor = if (status.activelyTracking) stitch.onLiveContainer else colors.onSurfaceVariant,
             )
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = colors.surfaceContainerLowest,
-                border = BorderStroke(1.dp, stitch.hairline),
+            HorizontalDivider(color = stitch.hairline)
+            InfoRow(
+                label = stringResource(R.string.tracking_last_fix),
+                value = formatTime(
+                    status.lastFixAtMillis,
+                    stringResource(R.string.tracking_never),
+                ),
+            )
+            HorizontalDivider(color = stitch.hairline)
+            InfoRow(
+                label = stringResource(R.string.tracking_last_upload),
+                value = formatTime(
+                    status.lastUploadAtMillis,
+                    stringResource(R.string.tracking_never),
+                ),
+            )
+            HorizontalDivider(color = stitch.hairline)
+            InfoRow(
+                label = stringResource(R.string.tracking_pending_count),
+                value = pluralStringResource(
+                    R.plurals.tracking_pending_value,
+                    status.pendingQueueCount,
+                    status.pendingQueueCount,
+                ),
+            )
+            HorizontalDivider(color = stitch.hairline)
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    InfoRow(
-                        label = stringResource(R.string.tracking_last_fix),
-                        value = formatTime(
-                            status.lastFixAtMillis,
-                            stringResource(R.string.tracking_never),
-                        ),
-                    )
-                    HorizontalDivider(color = stitch.hairline)
-                    InfoRow(
-                        label = stringResource(R.string.tracking_last_upload),
-                        value = formatTime(
-                            status.lastUploadAtMillis,
-                            stringResource(R.string.tracking_never),
-                        ),
-                    )
-                    HorizontalDivider(color = stitch.hairline)
-                    InfoRow(
-                        label = stringResource(R.string.tracking_pending_count),
-                        value = pluralStringResource(
-                            R.plurals.tracking_pending_value,
-                            status.pendingQueueCount,
-                            status.pendingQueueCount,
-                        ),
-                    )
-                    HorizontalDivider(color = stitch.hairline)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.tracking_connection),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                        )
-                        StitchSemanticBadge(
-                            text = if (status.online) {
-                                stringResource(R.string.tracking_connection_online)
-                            } else {
-                                stringResource(R.string.tracking_connection_offline)
-                            },
-                            kind = if (status.online) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
-                            showDot = status.online,
-                        )
-                    }
-                }
+                Text(
+                    text = stringResource(R.string.tracking_connection),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                StitchSemanticBadge(
+                    text = if (status.online) {
+                        stringResource(R.string.tracking_connection_online)
+                    } else {
+                        stringResource(R.string.tracking_connection_offline)
+                    },
+                    kind = if (status.online) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.DELAYED_OFFLINE,
+                    showDot = status.online,
+                )
             }
             if (status.privacyDiscardedPoints) {
                 Surface(
@@ -1259,8 +1195,8 @@ private fun StatusCard(
 @Composable
 private fun DiagnosticsCard(status: TrackingStatus) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
     OutlinedCard(
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, stitch.hairline),
@@ -1268,66 +1204,60 @@ private fun DiagnosticsCard(status: TrackingStatus) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AnVeSectionHeader(
-                icon = Icons.Outlined.Tune,
-                title = stringResource(R.string.tracking_diagnostics),
-                iconContainerColor = colors.surfaceContainerLow,
-                iconContentColor = colors.primary,
-            )
-            // TalkBack announces the disclosure state instead of only the icon
-            // swap; same treatment as the Places notes toggle.
-            val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
-            OutlinedButton(
-                onClick = { expanded = !expanded },
-                shape = CircleShape,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
+                    .toggleable(
+                        value = expanded,
+                        role = Role.Button,
+                        onValueChange = { expanded = it },
+                    )
                     .semantics { stateDescription = disclosureState },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.tracking_diagnostics), modifier = Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.tracking_diagnostics),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = null,
                 )
             }
             AnimatedVisibility(visible = expanded) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.surfaceContainerLowest,
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        InfoRow(
-                            stringResource(R.string.tracking_diagnostics_motion),
-                            motionLabel(status.motion),
-                        )
-                        InfoRow(
-                            stringResource(R.string.tracking_diagnostics_operational),
-                            operationalLabel(status.operational),
-                        )
-                        InfoRow(
-                            stringResource(R.string.tracking_diagnostics_service),
-                            stringResource(
-                                if (status.serviceRunning) {
-                                    R.string.tracking_diagnostics_yes
-                                } else {
-                                    R.string.tracking_diagnostics_no
-                                },
-                            ),
-                        )
-                        InfoRow(
-                            stringResource(R.string.tracking_diagnostics_provider),
-                            stringResource(
-                                if (status.providerActive) {
-                                    R.string.tracking_diagnostics_yes
-                                } else {
-                                    R.string.tracking_diagnostics_no
-                                },
-                            ),
-                        )
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HorizontalDivider(color = stitch.hairline)
+                    InfoRow(
+                        stringResource(R.string.tracking_diagnostics_motion),
+                        motionLabel(status.motion),
+                    )
+                    InfoRow(
+                        stringResource(R.string.tracking_diagnostics_operational),
+                        operationalLabel(status.operational),
+                    )
+                    InfoRow(
+                        stringResource(R.string.tracking_diagnostics_service),
+                        stringResource(
+                            if (status.serviceRunning) {
+                                R.string.tracking_diagnostics_yes
+                            } else {
+                                R.string.tracking_diagnostics_no
+                            },
+                        ),
+                    )
+                    InfoRow(
+                        stringResource(R.string.tracking_diagnostics_provider),
+                        stringResource(
+                            if (status.providerActive) {
+                                R.string.tracking_diagnostics_yes
+                            } else {
+                                R.string.tracking_diagnostics_no
+                            },
+                        ),
+                    )
                 }
             }
         }

@@ -19,9 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -88,11 +86,8 @@ fun AvatarSheet(
             ) {
                 item {
                     AnVeSectionHeader(
-                        icon = Icons.Outlined.AccountCircle,
                         title = stringResource(R.string.avatar_title),
                         subtitle = stringResource(R.string.avatar_subtitle),
-                        iconContainerColor = stitch.liveContainer,
-                        iconContentColor = stitch.onLiveContainer,
                     )
                 }
                 item {
@@ -164,30 +159,12 @@ fun AvatarSheet(
                     }
                 }
                 item {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = colors.surfaceContainerLow,
-                        border = BorderStroke(1.dp, stitch.hairline),
+                    Text(
+                        text = stringResource(R.string.avatar_privacy_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Lock,
-                                contentDescription = null,
-                                tint = colors.primary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.avatar_privacy_note),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    )
                 }
                 if (state.removeDraft) {
                     item {

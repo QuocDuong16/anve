@@ -49,13 +49,10 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.PanToolAlt
 import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material.icons.outlined.Radar
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -69,7 +66,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
@@ -442,30 +438,26 @@ internal fun PlacesContent(
                             )
                         }
                     }
-                    items(displayedPlaces, key = { it.id }) { place ->
+                    itemsIndexed(displayedPlaces, key = { _, it -> it.id }) { index, place ->
                         val isMine = place.ownerId == owner
                         val label = if (isMine) {
                             stringResource(R.string.places_owner_you)
                         } else {
                             state.sharing.members.firstOrNull { it.userId == place.ownerId }?.displayName ?: stringResource(R.string.places_member_fallback)
                         }
-                        OutlinedCard(
-                            onClick = {
-                                if (!state.pending) {
-                                    vm.select(place.id)
-                                    showDetails = true
-                                }
-                            },
-                            enabled = !state.pending,
-                            shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (index > 0) {
+                                HorizontalDivider(color = stitch.hairline)
+                            }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(14.dp),
+                                    .heightIn(min = 56.dp)
+                                    .clickable(enabled = !state.pending) {
+                                        vm.select(place.id)
+                                        showDetails = true
+                                    }
+                                    .padding(vertical = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -527,36 +519,11 @@ internal fun PlacesContent(
                     }
                 } else {
                     item {
-                        OutlinedCard(
-                            shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(14.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Radar,
-                                    contentDescription = null,
-                                    tint = colors.primary,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        stringResource(R.string.places_radius, selected.radiusMeters.toInt()),
-                                        style = MaterialTheme.typography.titleMedium,
-                                    )
-                                    Text(
-                                        stringResource(R.string.places_radius_bar_label, selected.radiusMeters.toInt()),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            stringResource(R.string.places_radius, selected.radiusMeters.toInt()),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                     if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
                         item(key = "preview-${selected.id}") { PlacePreview(selected) }
@@ -574,145 +541,122 @@ internal fun PlacesContent(
                         }
                     }
                     item(key = "incoming-monitors-${selected.id}") {
-                        OutlinedCard(
-                            shape = RoundedCornerShape(22.dp),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    stringResource(R.string.places_incoming_monitors_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.semantics { heading() },
-                                )
-                                Text(
-                                    stringResource(R.string.places_incoming_monitors_subtitle),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.onSurfaceVariant,
-                                )
-                                when {
-                                    state.detailLoading && state.incomingMonitors.isEmpty() -> {
-                                        Text(
-                                            text = stringResource(R.string.action_loading),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colors.onSurfaceVariant,
+                            Text(
+                                stringResource(R.string.places_incoming_monitors_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                stringResource(R.string.places_incoming_monitors_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                            when {
+                                state.detailLoading && state.incomingMonitors.isEmpty() -> {
+                                    Text(
+                                        text = stringResource(R.string.action_loading),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                                state.incomingMonitors.isEmpty() -> {
+                                    Text(
+                                        text = stringResource(R.string.places_incoming_monitors_empty),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant,
+                                    )
+                                }
+                                else -> {
+                                    state.incomingMonitors.forEach { incoming ->
+                                        ListItem(
+                                            headlineContent = { Text(incoming.ownerName) },
+                                            supportingContent = {
+                                                Text(stringResource(R.string.places_incoming_monitor_active, incoming.ownerName))
+                                            },
                                         )
-                                    }
-                                    state.incomingMonitors.isEmpty() -> {
-                                        Text(
-                                            text = stringResource(R.string.places_incoming_monitors_empty),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colors.onSurfaceVariant,
-                                        )
-                                    }
-                                    else -> {
-                                        state.incomingMonitors.forEach { incoming ->
-                                            ListItem(
-                                                leadingContent = {
-                                                    Icon(
-                                                        imageVector = Icons.Outlined.Notifications,
-                                                        contentDescription = null,
-                                                        tint = colors.primary,
-                                                    )
-                                                },
-                                                headlineContent = { Text(incoming.ownerName) },
-                                                supportingContent = {
-                                                    Text(stringResource(R.string.places_incoming_monitor_active, incoming.ownerName))
-                                                },
-                                            )
-                                        }
                                     }
                                 }
                             }
+                            HorizontalDivider(color = stitch.hairline)
                         }
                     }
                     if (selected.ownerId == owner) {
                         val otherMembers = state.sharing.members.filter { it.userId != owner }
                         item {
-                            OutlinedCard(
-                                shape = RoundedCornerShape(22.dp),
-                                border = BorderStroke(1.dp, stitch.hairline),
-                                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
+                                Text(
+                                    stringResource(R.string.places_share_with),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.semantics { heading() },
+                                )
+                                // The share notice sits inline above the toggles it
+                                // explains: the rebuttal of the most dangerous
+                                // misreading (sharing a place does not grant
+                                // event-viewing rights) must be readable where the
+                                // sharing decision happens, not behind the notes
+                                // toggle further down the list.
+                                Text(
+                                    stringResource(R.string.places_share_notice),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
+                                ListItem(
+                                    modifier = Modifier.toggleable(
+                                        value = selected.sharedWithCircle,
+                                        enabled = !state.pending && !state.loading,
+                                        role = Role.Switch,
+                                        onValueChange = { vm.setSharedWithCircle(selected, it) },
+                                    ),
+                                    headlineContent = { Text(stringResource(R.string.places_family_share_detail_title)) },
+                                    supportingContent = { Text(stringResource(R.string.places_family_share_detail_subtitle)) },
+                                    trailingContent = {
+                                        Switch(
+                                            checked = selected.sharedWithCircle,
+                                            enabled = !state.pending && !state.loading,
+                                            onCheckedChange = null,
+                                        )
+                                    },
+                                )
+                                HorizontalDivider(color = stitch.hairline)
+                                if (otherMembers.isEmpty()) {
                                     Text(
-                                        stringResource(R.string.places_share_with),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.semantics { heading() },
-                                    )
-                                    Text(
-                                        stringResource(R.string.places_share_section_title),
+                                        text = stringResource(R.string.places_share_empty_members),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = colors.onSurfaceVariant,
                                     )
-                                    // The share notice sits inline above the toggles it
-                                    // explains: the rebuttal of the most dangerous
-                                    // misreading (sharing a place does not grant
-                                    // event-viewing rights) must be readable where the
-                                    // sharing decision happens, not behind the notes
-                                    // toggle further down the list.
-                                    Text(
-                                        stringResource(R.string.places_share_notice),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
+                                }
+                                otherMembers.forEach { person ->
+                                    // The whole row toggles so TalkBack announces the member's
+                                    // name together with the switch state; the switch itself
+                                    // stays indicative (same pattern as SosScreen's rows).
                                     ListItem(
                                         modifier = Modifier.toggleable(
-                                            value = selected.sharedWithCircle,
+                                            value = person.userId in state.access,
                                             enabled = !state.pending && !state.loading,
                                             role = Role.Switch,
-                                            onValueChange = { vm.setSharedWithCircle(selected, it) },
+                                            onValueChange = { vm.share(selected.id, person.userId, it) },
                                         ),
-                                        headlineContent = { Text(stringResource(R.string.places_family_share_detail_title)) },
-                                        supportingContent = { Text(stringResource(R.string.places_family_share_detail_subtitle)) },
+                                        headlineContent = { Text(person.displayName) },
+                                        supportingContent = { Text(stringResource(R.string.places_access_supporting)) },
                                         trailingContent = {
                                             Switch(
-                                                checked = selected.sharedWithCircle,
+                                                checked = person.userId in state.access,
                                                 enabled = !state.pending && !state.loading,
                                                 onCheckedChange = null,
                                             )
                                         },
                                     )
-                                    HorizontalDivider(color = stitch.hairline)
-                                    if (otherMembers.isEmpty()) {
-                                        Text(
-                                            text = stringResource(R.string.places_share_empty_members),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colors.onSurfaceVariant,
-                                        )
-                                    }
-                                    otherMembers.forEach { person ->
-                                        // The whole row toggles so TalkBack announces the member's
-                                        // name together with the switch state; the switch itself
-                                        // stays indicative (same pattern as SosScreen's rows).
-                                        ListItem(
-                                            modifier = Modifier.toggleable(
-                                                value = person.userId in state.access,
-                                                enabled = !state.pending && !state.loading,
-                                                role = Role.Switch,
-                                                onValueChange = { vm.share(selected.id, person.userId, it) },
-                                            ),
-                                            headlineContent = { Text(person.displayName) },
-                                            supportingContent = { Text(stringResource(R.string.places_access_supporting)) },
-                                            trailingContent = {
-                                                Switch(
-                                                    checked = person.userId in state.access,
-                                                    enabled = !state.pending && !state.loading,
-                                                    onCheckedChange = null,
-                                                )
-                                            },
-                                        )
-                                    }
                                 }
+                                HorizontalDivider(color = stitch.hairline)
                             }
                         }
                     }
@@ -720,108 +664,94 @@ internal fun PlacesContent(
                         it.userId != owner && it.userId in state.eligibleRecipients
                     }
                     item {
-                        OutlinedCard(
-                            shape = RoundedCornerShape(22.dp),
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
+                            // Same TalkBack heading treatment as the share title.
+                            Text(
+                                stringResource(R.string.places_monitor_mine_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                stringResource(R.string.places_monitor_mine_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (selected.ownerId != owner) {
+                                val selectedOwnerName = state.sharing.members
+                                    .firstOrNull { it.userId == selected.ownerId }
+                                    ?.displayName
+                                    ?: stringResource(R.string.places_member_fallback)
+                                Text(
+                                    text = stringResource(R.string.places_monitor_other_place_hint, selectedOwnerName),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
+                            }
+                            if (eligibleMembers.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.places_alerts_empty_members),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
+                            }
+                            eligibleMembers.forEach { person ->
+                                // Row-level checkbox for the same TalkBack reason as the
+                                // share rows above; the inner checkbox stays indicative.
+                                ListItem(
+                                    modifier = Modifier.toggleable(
+                                        value = person.userId in recipients,
+                                        enabled = !state.pending && !state.detailLoading,
+                                        role = Role.Checkbox,
+                                        onValueChange = { checked ->
+                                            recipients = if (checked) recipients + person.userId else recipients - person.userId
+                                        },
+                                    ),
+                                    headlineContent = { Text(person.displayName) },
+                                    supportingContent = { Text(stringResource(R.string.places_recipient_supporting)) },
+                                    trailingContent = {
+                                        Checkbox(
+                                            checked = person.userId in recipients,
+                                            enabled = !state.pending && !state.detailLoading,
+                                            onCheckedChange = null,
+                                        )
+                                    },
+                                )
+                            }
+                            // The enable button below is locked while consent is off; the
+                            // notice next to it keeps the way out visible instead of a
+                            // silent dead end for first-time users (consent defaults to
+                            // off). Same pattern as JourneyScreen's requires-capture notice.
+                            if (!state.sharing.consentEnabled) {
+                                ConsentNotice(onOpenLocation)
+                            }
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                // Same TalkBack heading treatment as the share title.
-                                Text(
-                                    stringResource(R.string.places_monitor_mine_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.semantics { heading() },
-                                )
-                                Text(
-                                    stringResource(R.string.places_monitor_mine_subtitle),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (selected.ownerId != owner) {
-                                    val selectedOwnerName = state.sharing.members
-                                        .firstOrNull { it.userId == selected.ownerId }
-                                        ?.displayName
-                                        ?: stringResource(R.string.places_member_fallback)
-                                    Surface(
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = colors.surfaceContainerLow,
-                                        border = BorderStroke(1.dp, stitch.hairline),
-                                        modifier = Modifier.fillMaxWidth(),
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.places_monitor_other_place_hint, selectedOwnerName),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colors.onSurfaceVariant,
-                                            modifier = Modifier.padding(12.dp),
-                                        )
-                                    }
-                                }
-                                if (eligibleMembers.isEmpty()) {
-                                    Text(
-                                        text = stringResource(R.string.places_alerts_empty_members),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant,
-                                    )
-                                }
-                                eligibleMembers.forEach { person ->
-                                    // Row-level checkbox for the same TalkBack reason as the
-                                    // share rows above; the inner checkbox stays indicative.
-                                    ListItem(
-                                        modifier = Modifier.toggleable(
-                                            value = person.userId in recipients,
-                                            enabled = !state.pending && !state.detailLoading,
-                                            role = Role.Checkbox,
-                                            onValueChange = { checked ->
-                                                recipients = if (checked) recipients + person.userId else recipients - person.userId
-                                            },
-                                        ),
-                                        headlineContent = { Text(person.displayName) },
-                                        supportingContent = { Text(stringResource(R.string.places_recipient_supporting)) },
-                                        trailingContent = {
-                                            Checkbox(
-                                                checked = person.userId in recipients,
-                                                enabled = !state.pending && !state.detailLoading,
-                                                onCheckedChange = null,
-                                            )
-                                        },
-                                    )
-                                }
-                                // The enable button below is locked while consent is off; the
-                                // notice next to it keeps the way out visible instead of a
-                                // silent dead end for first-time users (consent defaults to
-                                // off). Same pattern as JourneyScreen's requires-capture notice.
-                                if (!state.sharing.consentEnabled) {
-                                    ConsentNotice(onOpenLocation)
-                                }
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                Button(
+                                    onClick = {
+                                        configureBaseline = state.confirmation
+                                        vm.configure(selected.id, recipients.intersect(state.eligibleRecipients))
+                                    },
+                                    shape = CircleShape,
+                                    enabled = !state.pending && !state.detailLoading && state.sharing.consentEnabled,
+                                    modifier = Modifier.heightIn(min = 48.dp),
                                 ) {
-                                    Button(
-                                        onClick = {
-                                            configureBaseline = state.confirmation
-                                            vm.configure(selected.id, recipients.intersect(state.eligibleRecipients))
-                                        },
-                                        shape = CircleShape,
-                                        enabled = !state.pending && !state.detailLoading && state.sharing.consentEnabled,
+                                    Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))
+                                }
+                                if (state.monitor != null) {
+                                    TextButton(
+                                        onClick = { vm.stop(selected.id) },
+                                        enabled = !state.pending,
                                         modifier = Modifier.heightIn(min = 48.dp),
-                                    ) {
-                                        Text(if (state.monitor == null) stringResource(R.string.places_monitor_enable) else stringResource(R.string.places_monitor_save))
-                                    }
-                                    if (state.monitor != null) {
-                                        TextButton(
-                                            onClick = { vm.stop(selected.id) },
-                                            enabled = !state.pending,
-                                            modifier = Modifier.heightIn(min = 48.dp),
-                                        ) { Text(stringResource(R.string.places_monitor_stop)) }
-                                    }
+                                    ) { Text(stringResource(R.string.places_monitor_stop)) }
                                 }
                             }
+                            HorizontalDivider(color = stitch.hairline)
                         }
                     }
                     item(key = "places-notes") {
@@ -841,19 +771,11 @@ internal fun PlacesContent(
                     }
                     if (visibleEvents.isEmpty() && !state.loading && state.errorRes == null) {
                         item {
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = stitch.cardTactile,
-                                border = BorderStroke(1.dp, stitch.hairline),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    stringResource(R.string.places_events_empty),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.onSurfaceVariant,
-                                    modifier = Modifier.padding(16.dp),
-                                )
-                            }
+                            Text(
+                                stringResource(R.string.places_events_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant,
+                            )
                         }
                     }
                     itemsIndexed(visibleEvents, key = { _, it -> "event-${it.id}" }) { index, event ->
@@ -875,26 +797,19 @@ internal fun PlacesContent(
                             nodeContentColor = if (isEnter) colors.onPrimaryContainer else colors.onSecondaryContainer,
                             isLast = index == visibleEvents.lastIndex,
                         ) {
-                            OutlinedCard(
-                                shape = RoundedCornerShape(18.dp),
-                                border = BorderStroke(1.dp, stitch.hairline),
-                                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                                modifier = Modifier.fillMaxWidth(),
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Text(
-                                        stringResource(R.string.places_event_title, event.ownerName, transition, event.placeName),
-                                        style = MaterialTheme.typography.titleSmall,
-                                    )
-                                    Text(
-                                        "$at$delayed$confidence",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant,
-                                    )
-                                }
+                                Text(
+                                    stringResource(R.string.places_event_title, event.ownerName, transition, event.placeName),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    "$at$delayed$confidence",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant,
+                                )
                             }
                         }
                     }
@@ -979,28 +894,30 @@ private fun ConsentNotice(onOpenLocation: () -> Unit) {
  */
 @Composable
 private fun PlacesNotesCard(expanded: Boolean, onToggle: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            // TalkBack announces the disclosure state instead of only the icon
-            // swap; same treatment as the Tracking technical-details toggle.
-            val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
-            TextButton(
-                onClick = onToggle,
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .semantics { stateDescription = disclosureState },
+    val colors = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // TalkBack announces the disclosure state instead of only the icon
+        // swap; same treatment as the Tracking technical-details toggle.
+        val disclosureState = stringResource(if (expanded) R.string.action_state_expanded else R.string.action_state_collapsed)
+        TextButton(
+            onClick = onToggle,
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .semantics { stateDescription = disclosureState },
+        ) {
+            Icon(
+                imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = null,
+            )
+            Text(stringResource(R.string.places_notes_toggle))
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier.padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = null,
-                )
-                Text(stringResource(R.string.places_notes_toggle))
-            }
-            AnimatedVisibility(visible = expanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.places_monitor_mine_notice))
-                    Text(stringResource(R.string.places_offline_notice))
-                }
+                Text(stringResource(R.string.places_monitor_mine_notice), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                Text(stringResource(R.string.places_offline_notice), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
         }
     }
@@ -1015,18 +932,12 @@ private fun PlacePreview(place: PlaceDto) {
     val placeIcon = rememberPlaceMarkerIcon(place.name)
     var fullScreenOpen by rememberSaveable(place.id) { mutableStateOf(false) }
 
-    OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-        modifier = Modifier.fillMaxWidth(),
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(216.dp)
+            .clip(RoundedCornerShape(18.dp)),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(216.dp)
-                .clip(RoundedCornerShape(22.dp)),
-        ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = camera,
@@ -1062,7 +973,6 @@ private fun PlacePreview(place: PlaceDto) {
                     .padding(10.dp),
             )
         }
-    }
 
     if (fullScreenOpen) {
         Dialog(
@@ -1109,7 +1019,7 @@ private fun PlacePreview(place: PlaceDto) {
                         shape = CircleShape,
                         color = stitch.cardTactile.copy(alpha = 0.94f),
                         border = BorderStroke(1.dp, stitch.hairline),
-                        shadowElevation = 4.dp,
+                        shadowElevation = 2.dp,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
@@ -1154,7 +1064,7 @@ private fun PlacePreview(place: PlaceDto) {
                         color = stitch.cardTactile.copy(alpha = 0.94f),
                         contentColor = colors.primary,
                         border = BorderStroke(1.dp, stitch.hairline),
-                        shadowElevation = 4.dp,
+                        shadowElevation = 2.dp,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
@@ -1394,263 +1304,240 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                     },
                 )
                 val stitch = LocalStitchColors.current
-                OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                HorizontalDivider(color = stitch.hairline)
+                Column(
                     modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.places_quick_name_title),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            presetNames.forEach { preset ->
-                                FilterChip(
-                                    selected = name.trim() == preset,
-                                    onClick = { if (!pending) name = preset },
-                                    enabled = !pending,
-                                    label = { Text(preset) },
-                                )
-                            }
-                        }
-                        OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            shape = RoundedCornerShape(14.dp),
-                            label = { Text(stringResource(R.string.places_editor_name_label)) },
-                            enabled = !pending,
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
-                            val mapProperties = rememberAnVeMapProperties()
-                            val placeIcon = rememberPlaceMarkerIcon(name.ifBlank { stringResource(R.string.places_title) })
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(248.dp)
-                                    .clip(RoundedCornerShape(18.dp)),
-                            ) {
-                                GoogleMap(
-                                    modifier = Modifier.fillMaxSize(),
-                                    cameraPositionState = camera,
-                                    properties = mapProperties,
-                                    uiSettings = MapUiSettings(
-                                        scrollGesturesEnabled = inlineMapPanEnabled,
-                                        zoomGesturesEnabled = true,
-                                        myLocationButtonEnabled = false,
-                                        mapToolbarEnabled = false,
-                                        compassEnabled = false,
-                                    ),
-                                    onMapClick = {
-                                        if (!pending) {
-                                            latitude = it.latitude.toString()
-                                            longitude = it.longitude.toString()
-                                        }
-                                    },
-                                ) {
-                                    point?.let {
-                                        val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
-                                        Circle(
-                                            center = it,
-                                            radius = radius,
-                                            strokeColor = MaterialTheme.colorScheme.primary,
-                                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                                        )
-                                        Marker(
-                                            state = marker,
-                                            title = name.ifBlank { stringResource(R.string.places_title) },
-                                            icon = placeIcon,
-                                            anchor = Offset(0.5f, 0.5f),
-                                        )
-                                    }
-                                }
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.TopCenter)
-                                        .padding(10.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    MapOverlayPillButton(
-                                        text = stringResource(
-                                            if (inlineMapPanEnabled) R.string.map_pan_lock else R.string.map_pan_unlock,
-                                        ),
-                                        icon = if (inlineMapPanEnabled) Icons.Outlined.Lock else Icons.Outlined.PanToolAlt,
-                                        active = inlineMapPanEnabled,
-                                        onClick = { inlineMapPanEnabled = !inlineMapPanEnabled },
-                                    )
-                                    MapOverlayPillButton(
-                                        text = stringResource(R.string.map_fullscreen_open),
-                                        icon = Icons.Outlined.OpenInFull,
-                                        onClick = {
-                                            inlineMapPanEnabled = false
-                                            fullScreenPickerOpen = true
-                                        },
-                                    )
-                                }
-                                if (inlineMapPanEnabled) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = stitch.cardTactile.copy(alpha = 0.94f),
-                                        border = BorderStroke(1.dp, stitch.hairline),
-                                        shadowElevation = 3.dp,
-                                        modifier = Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.map_pan_unlocked_hint),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                stringResource(R.string.places_editor_map_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            AnVePlacesSceneIllustration(
-                                modifier = Modifier.fillMaxWidth().height(128.dp),
-                            )
-                            Text(
-                                stringResource(R.string.places_editor_no_map),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Text(
-                                stringResource(R.string.places_map_cta_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        OutlinedButton(
-                            onClick = { useCurrentLocation() },
-                            enabled = !pending && !locating,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Text(stringResource(R.string.places_editor_use_current_location))
-                        }
-                        locationNote?.let { res ->
-                            Text(
-                                stringResource(res),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
-                        if (locating) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                CircularProgressIndicator(Modifier.size(24.dp))
-                                Text(
-                                    stringResource(R.string.action_processing),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-                OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
+                    Text(
+                        stringResource(R.string.places_quick_name_title),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        presetNames.forEach { preset ->
+                            FilterChip(
+                                selected = name.trim() == preset,
+                                onClick = { if (!pending) name = preset },
+                                enabled = !pending,
+                                label = { Text(preset) },
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        shape = RoundedCornerShape(14.dp),
+                        label = { Text(stringResource(R.string.places_editor_name_label)) },
+                        enabled = !pending,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                HorizontalDivider(color = stitch.hairline)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
+                        val mapProperties = rememberAnVeMapProperties()
+                        val placeIcon = rememberPlaceMarkerIcon(name.ifBlank { stringResource(R.string.places_title) })
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(248.dp)
+                                .clip(RoundedCornerShape(18.dp)),
+                        ) {
+                            GoogleMap(
+                                modifier = Modifier.fillMaxSize(),
+                                cameraPositionState = camera,
+                                properties = mapProperties,
+                                uiSettings = MapUiSettings(
+                                    scrollGesturesEnabled = inlineMapPanEnabled,
+                                    zoomGesturesEnabled = true,
+                                    myLocationButtonEnabled = false,
+                                    mapToolbarEnabled = false,
+                                    compassEnabled = false,
+                                ),
+                                onMapClick = {
+                                    if (!pending) {
+                                        latitude = it.latitude.toString()
+                                        longitude = it.longitude.toString()
+                                    }
+                                },
+                            ) {
+                                point?.let {
+                                    val marker = remember(it.latitude, it.longitude) { MarkerState(position = it) }
+                                    Circle(
+                                        center = it,
+                                        radius = radius,
+                                        strokeColor = MaterialTheme.colorScheme.primary,
+                                        fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                    )
+                                    Marker(
+                                        state = marker,
+                                        title = name.ifBlank { stringResource(R.string.places_title) },
+                                        icon = placeIcon,
+                                        anchor = Offset(0.5f, 0.5f),
+                                    )
+                                }
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.TopCenter)
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                MapOverlayPillButton(
+                                    text = stringResource(
+                                        if (inlineMapPanEnabled) R.string.map_pan_lock else R.string.map_pan_unlock,
+                                    ),
+                                    icon = if (inlineMapPanEnabled) Icons.Outlined.Lock else Icons.Outlined.PanToolAlt,
+                                    active = inlineMapPanEnabled,
+                                    onClick = { inlineMapPanEnabled = !inlineMapPanEnabled },
+                                )
+                                MapOverlayPillButton(
+                                    text = stringResource(R.string.map_fullscreen_open),
+                                    icon = Icons.Outlined.OpenInFull,
+                                    onClick = {
+                                        inlineMapPanEnabled = false
+                                        fullScreenPickerOpen = true
+                                    },
+                                )
+                            }
+                            if (inlineMapPanEnabled) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = stitch.cardTactile.copy(alpha = 0.94f),
+                                    border = BorderStroke(1.dp, stitch.hairline),
+                                    shadowElevation = 1.dp,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.map_pan_unlocked_hint),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                }
+                            }
+                        }
                         Text(
-                            // About 80 m per minute at an ordinary walking pace, so the
-                            // radius reads as something a family member can picture.
-                            stringResource(R.string.places_radius_walk, radius.toInt(), maxOf(1, (radius / 80.0).roundToInt())),
-                            style = MaterialTheme.typography.titleSmall,
+                            stringResource(R.string.places_editor_map_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Slider(
-                            value = radius.toFloat(),
-                            onValueChange = { radius = it.toDouble() },
-                            valueRange = 50f..5000f,
-                            enabled = !pending,
+                    } else {
+                        AnVePlacesSceneIllustration(
+                            modifier = Modifier.fillMaxWidth().height(128.dp),
                         )
-                        if (place != null) {
+                        Text(
+                            stringResource(R.string.places_editor_no_map),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            stringResource(R.string.places_map_cta_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { useCurrentLocation() },
+                        enabled = !pending && !locating,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(R.string.places_editor_use_current_location))
+                    }
+                    locationNote?.let { res ->
+                        Text(
+                            stringResource(res),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    locationError?.let { res -> AnveErrorNotice(stringResource(res)) }
+                    if (locating) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(Modifier.size(24.dp))
                             Text(
-                                stringResource(R.string.places_editor_radius_note),
+                                stringResource(R.string.action_processing),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                 }
-                OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                HorizontalDivider(color = stitch.hairline)
+                Column(
                     modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .toggleable(
-                                value = sharedWithCircle,
-                                enabled = !pending,
-                                role = Role.Switch,
-                                onValueChange = { sharedWithCircle = it },
-                            )
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.places_family_share_toggle_title),
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            Text(
-                                text = stringResource(R.string.places_family_share_toggle_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = sharedWithCircle,
-                            enabled = !pending,
-                            onCheckedChange = null,
+                    Text(
+                        // About 80 m per minute at an ordinary walking pace, so the
+                        // radius reads as something a family member can picture.
+                        stringResource(R.string.places_radius_walk, radius.toInt(), maxOf(1, (radius / 80.0).roundToInt())),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Slider(
+                        value = radius.toFloat(),
+                        onValueChange = { radius = it.toDouble() },
+                        valueRange = 50f..5000f,
+                        enabled = !pending,
+                    )
+                    if (place != null) {
+                        Text(
+                            stringResource(R.string.places_editor_radius_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+                HorizontalDivider(color = stitch.hairline)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .toggleable(
+                            value = sharedWithCircle,
+                            enabled = !pending,
+                            role = Role.Switch,
+                            onValueChange = { sharedWithCircle = it },
+                        )
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.places_family_share_toggle_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = stringResource(R.string.places_family_share_toggle_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = sharedWithCircle,
+                        enabled = !pending,
+                        onCheckedChange = null,
+                    )
                 }
                 val coordsToggleState = stringResource(
                     if (showManualCoords) R.string.action_state_expanded else R.string.action_state_collapsed,
@@ -1847,7 +1734,7 @@ private fun PlaceFullScreenPickerDialog(
                     shape = CircleShape,
                     color = stitch.cardTactile.copy(alpha = 0.94f),
                     border = BorderStroke(1.dp, stitch.hairline),
-                    shadowElevation = 4.dp,
+                    shadowElevation = 2.dp,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
@@ -1902,7 +1789,7 @@ private fun PlaceFullScreenPickerDialog(
                         color = stitch.cardTactile.copy(alpha = 0.94f),
                         contentColor = colors.primary,
                         border = BorderStroke(1.dp, stitch.hairline),
-                        shadowElevation = 4.dp,
+                        shadowElevation = 2.dp,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
@@ -1919,7 +1806,7 @@ private fun PlaceFullScreenPickerDialog(
                     shape = RoundedCornerShape(24.dp),
                     color = stitch.cardTactile,
                     border = BorderStroke(1.dp, stitch.hairline),
-                    shadowElevation = 8.dp,
+                    shadowElevation = 2.dp,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
@@ -1963,59 +1850,58 @@ private fun PlaceSearchCard(
     enabled: Boolean,
     onPick: (PlaceSuggestion) -> Unit,
 ) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                enabled = enabled,
-                singleLine = true,
-                label = { Text(stringResource(R.string.places_search_label)) },
-                placeholder = { Text(stringResource(R.string.places_search_hint)) },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.places_search_clear))
-                        }
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            enabled = enabled,
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            label = { Text(stringResource(R.string.places_search_label)) },
+            placeholder = { Text(stringResource(R.string.places_search_hint)) },
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.places_search_clear))
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (searching) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Text(
-                        stringResource(R.string.places_search_loading),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (searching) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text(
+                    stringResource(R.string.places_search_loading),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        when (outcome) {
+            is PlaceSearchOutcome.Found -> if (!searching) {
+                outcome.suggestions.forEach { suggestion ->
+                    ListItem(
+                        headlineContent = { Text(suggestion.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        supportingContent = {
+                            Text(suggestion.subtitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        },
+                        leadingContent = { Icon(Icons.Outlined.Place, contentDescription = null) },
+                        modifier = Modifier.heightIn(min = 56.dp).clickable(enabled = enabled) { onPick(suggestion) },
                     )
                 }
             }
-            when (outcome) {
-                is PlaceSearchOutcome.Found -> if (!searching) {
-                    outcome.suggestions.forEach { suggestion ->
-                        ListItem(
-                            headlineContent = { Text(suggestion.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            supportingContent = {
-                                Text(suggestion.subtitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            },
-                            leadingContent = { Icon(Icons.Outlined.Place, contentDescription = null) },
-                            modifier = Modifier.heightIn(min = 56.dp).clickable(enabled = enabled) { onPick(suggestion) },
-                        )
-                    }
-                }
-                PlaceSearchOutcome.NoResult -> if (!searching) SearchNote(R.string.places_search_none)
-                PlaceSearchOutcome.Failed -> if (!searching) SearchNote(R.string.places_search_failed)
-                PlaceSearchOutcome.Unavailable -> if (!searching) SearchNote(R.string.places_search_unavailable)
-                null -> Unit
-            }
-            Text(
-                stringResource(R.string.places_search_privacy),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            PlaceSearchOutcome.NoResult -> if (!searching) SearchNote(R.string.places_search_none)
+            PlaceSearchOutcome.Failed -> if (!searching) SearchNote(R.string.places_search_failed)
+            PlaceSearchOutcome.Unavailable -> if (!searching) SearchNote(R.string.places_search_unavailable)
+            null -> Unit
         }
+        Text(
+            stringResource(R.string.places_search_privacy),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

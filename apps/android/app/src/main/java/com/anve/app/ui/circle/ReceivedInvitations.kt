@@ -14,9 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,7 +70,6 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
             ) {
                 androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
                     AnVeSectionHeader(
-                        icon = Icons.Outlined.MailOutline,
                         title = stringResource(R.string.invite_received_title),
                     )
                 }
@@ -156,7 +153,6 @@ fun ReceivedInvitations(state: PrivateInvitationsState, onRefresh: () -> Unit, o
         AlertDialog(
             onDismissRequest = { hideTarget = null },
             shape = RoundedCornerShape(24.dp),
-            icon = { Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = colors.error) },
             title = { Text(stringResource(R.string.invite_hide_title)) },
             text = {
                 Text(

@@ -21,23 +21,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -518,14 +515,19 @@ fun CircleContent(
                         )
                     }
                 }
-                items(state.members, key = { it.userId }) { member ->
-                    MemberRow(
-                        member = member,
-                        isSelf = currentUserId != null && member.userId == currentUserId,
-                        avatar = memberAvatar?.let { { it(member) } },
-                        canRemove = state.isOwner && member.role != "owner",
-                        onRemove = { onRemoveMember(member) },
-                    )
+                itemsIndexed(state.members, key = { _, it -> it.userId }) { index, member ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (index > 0) {
+                            HorizontalDivider(color = stitch.hairline)
+                        }
+                        MemberRow(
+                            member = member,
+                            isSelf = currentUserId != null && member.userId == currentUserId,
+                            avatar = memberAvatar?.let { { it(member) } },
+                            canRemove = state.isOwner && member.role != "owner",
+                            onRemove = { onRemoveMember(member) },
+                        )
+                    }
                 }
                 if (state.isOwner) {
                     shareErrorRes?.let { res ->
@@ -555,8 +557,13 @@ fun CircleContent(
                             )
                         }
                     }
-                    items(state.invites, key = { it.id }) { invite ->
-                        InviteRow(invite = invite, busy = state.busy, onRevoke = { revokeInviteId = invite.id }, onShare = { onShareInvite(invite) })
+                    itemsIndexed(state.invites, key = { _, it -> it.id }) { index, invite ->
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (index > 0) {
+                                HorizontalDivider(color = stitch.hairline)
+                            }
+                            InviteRow(invite = invite, busy = state.busy, onRevoke = { revokeInviteId = invite.id }, onShare = { onShareInvite(invite) })
+                        }
                     }
                     item {
                         Button(
@@ -672,7 +679,6 @@ private fun CircleSetup(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AnVeSectionHeader(
-                        icon = Icons.Outlined.Home,
                         title = stringResource(R.string.circle_create_title),
                     )
                     OutlinedTextField(
@@ -704,10 +710,7 @@ private fun CircleSetup(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AnVeSectionHeader(
-                        icon = Icons.Outlined.Groups,
                         title = stringResource(R.string.circle_join_title),
-                        iconContainerColor = colors.secondaryContainer,
-                        iconContentColor = colors.onSecondaryContainer,
                     )
                     OutlinedTextField(
                         value = code,
@@ -795,11 +798,6 @@ private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, o
                                 kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.NEUTRAL,
                             )
                         }
-                        Text(
-                            text = stringResource(R.string.circle_header_warm_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
                     }
                 }
                 val leaveButton: @Composable (Modifier) -> Unit = { btnMod ->
@@ -913,11 +911,6 @@ private fun CircleActivationChecklist(
                 modifier = Modifier.semantics { heading() },
             )
             Text(
-                stringResource(R.string.circle_activation_intro),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceVariant,
-            )
-            Text(
                 stringResource(R.string.circle_activation_progress, currentStep.coerceAtMost(total), total),
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.primary,
@@ -927,6 +920,7 @@ private fun CircleActivationChecklist(
                 modifier = Modifier.fillMaxWidth(),
             )
             steps.forEachIndexed { index, step ->
+                HorizontalDivider(color = stitch.hairline)
                 CircleActivationStepRow(
                     stepNumber = total - steps.size + index + 1,
                     title = step.title,
@@ -952,70 +946,46 @@ private fun CircleActivationStepRow(
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val largeFont = LocalDensity.current.fontScale > 1.25f
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = colors.surfaceContainerLow,
-        border = BorderStroke(1.dp, stitch.hairline),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-            val stackCta = maxWidth < 340.dp || largeFont
-            val stepBadge: @Composable () -> Unit = {
-                Surface(
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        val stackCta = maxWidth < 340.dp || largeFont
+        val stepBadge: @Composable () -> Unit = {
+            Surface(
+                shape = CircleShape,
+                color = if (primary) colors.primaryContainer else colors.surface,
+                contentColor = if (primary) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                border = if (primary) null else BorderStroke(1.dp, stitch.hairline),
+                modifier = Modifier.defaultMinSize(minWidth = 32.dp, minHeight = 32.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                    Text(
+                        text = stepNumber.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+        val stepAction: @Composable (Modifier) -> Unit = { btnMod ->
+            if (primary) {
+                Button(
+                    onClick = action,
                     shape = CircleShape,
-                    color = if (primary) colors.primaryContainer else colors.surface,
-                    contentColor = if (primary) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                    border = if (primary) null else BorderStroke(1.dp, stitch.hairline),
-                    modifier = Modifier.defaultMinSize(minWidth = 32.dp, minHeight = 32.dp),
+                    modifier = btnMod.heightIn(min = 48.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
-                        Text(
-                            text = stepNumber.toString(),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-            val stepAction: @Composable (Modifier) -> Unit = { btnMod ->
-                if (primary) {
-                    Button(
-                        onClick = action,
-                        shape = CircleShape,
-                        modifier = btnMod.heightIn(min = 48.dp),
-                    ) {
-                        Text(actionLabel)
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = action,
-                        shape = CircleShape,
-                        modifier = btnMod.heightIn(min = 48.dp),
-                    ) {
-                        Text(actionLabel)
-                    }
-                }
-            }
-            if (stackCta) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        stepBadge()
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(title, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                supporting,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    stepAction(Modifier.fillMaxWidth())
+                    Text(actionLabel)
                 }
             } else {
+                OutlinedButton(
+                    onClick = action,
+                    shape = CircleShape,
+                    modifier = btnMod.heightIn(min = 48.dp),
+                ) {
+                    Text(actionLabel)
+                }
+            }
+        }
+        if (stackCta) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1030,8 +1000,25 @@ private fun CircleActivationStepRow(
                             color = colors.onSurfaceVariant,
                         )
                     }
-                    stepAction(Modifier)
                 }
+                stepAction(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                stepBadge()
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        supporting,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+                stepAction(Modifier)
             }
         }
     }
@@ -1046,99 +1033,90 @@ private fun MemberRow(
     avatar: (@Composable () -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
     val isOwner = member.role == "owner"
     val largeFont = LocalDensity.current.fontScale > 1.25f
-    OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        BoxWithConstraints(modifier = Modifier.padding(14.dp).fillMaxWidth()) {
-            val stackRemove = canRemove && (maxWidth < 320.dp || largeFont)
-            val memberDetails: @Composable (Modifier) -> Unit = { rowMod ->
-                Row(
-                    modifier = rowMod,
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (avatar != null) {
-                        avatar()
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(46.dp)
-                                .background(
-                                    color = colors.secondaryContainer,
-                                    shape = CircleShape,
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                member.displayName.take(1).uppercase().ifBlank { "?" },
-                                style = MaterialTheme.typography.titleMedium,
-                                color = colors.onSecondaryContainer,
-                            )
-                        }
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+    BoxWithConstraints(modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth()) {
+        val stackRemove = canRemove && (maxWidth < 320.dp || largeFont)
+        val memberDetails: @Composable (Modifier) -> Unit = { rowMod ->
+            Row(
+                modifier = rowMod,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (avatar != null) {
+                    avatar()
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .background(
+                                color = colors.secondaryContainer,
+                                shape = CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                member.displayName,
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
-                            if (isSelf) {
-                                StitchSemanticBadge(
-                                    text = stringResource(R.string.circle_self_badge),
-                                    kind = StitchBadgeKind.NEUTRAL,
-                                )
-                            }
-                        }
-                        StitchSemanticBadge(
-                            text = if (isOwner) {
-                                stringResource(R.string.circle_role_owner)
-                            } else {
-                                stringResource(R.string.circle_role_member)
-                            },
-                            kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.SAFE_HOME,
-                            icon = Icons.Outlined.CheckCircle,
+                        Text(
+                            member.displayName.take(1).uppercase().ifBlank { "?" },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.onSecondaryContainer,
                         )
                     }
                 }
-            }
-            val removeButton: @Composable (Modifier) -> Unit = { btnMod ->
-                OutlinedButton(
-                    onClick = onRemove,
-                    shape = CircleShape,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
-                    modifier = btnMod.heightIn(min = 48.dp),
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(stringResource(R.string.circle_remove_short))
-                }
-            }
-            if (stackRemove) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    memberDetails(Modifier.fillMaxWidth())
-                    removeButton(Modifier.fillMaxWidth())
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    memberDetails(Modifier.weight(1f))
-                    if (canRemove) {
-                        removeButton(Modifier)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            member.displayName,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (isSelf) {
+                            StitchSemanticBadge(
+                                text = stringResource(R.string.circle_self_badge),
+                                kind = StitchBadgeKind.NEUTRAL,
+                            )
+                        }
                     }
+                    StitchSemanticBadge(
+                        text = if (isOwner) {
+                            stringResource(R.string.circle_role_owner)
+                        } else {
+                            stringResource(R.string.circle_role_member)
+                        },
+                        kind = if (isOwner) StitchBadgeKind.AT_PLACE else StitchBadgeKind.SAFE_HOME,
+                    )
+                }
+            }
+        }
+        val removeButton: @Composable (Modifier) -> Unit = { btnMod ->
+            OutlinedButton(
+                onClick = onRemove,
+                shape = CircleShape,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                modifier = btnMod.heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.circle_remove_short))
+            }
+        }
+        if (stackRemove) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                memberDetails(Modifier.fillMaxWidth())
+                removeButton(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                memberDetails(Modifier.weight(1f))
+                if (canRemove) {
+                    removeButton(Modifier)
                 }
             }
         }
@@ -1148,54 +1126,36 @@ private fun MemberRow(
 @Composable
 private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, onShare: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
-    OutlinedCard(
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-        modifier = Modifier.fillMaxWidth(),
+    Column(
+        modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = colors.primaryContainer,
+                contentColor = colors.onPrimaryContainer,
             ) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = colors.primaryContainer,
-                    contentColor = colors.onPrimaryContainer,
-                ) {
-                    Text(
-                        text = invite.code,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        tint = colors.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.invite_expiry_prefix,
-                            AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unreadable)),
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = invite.code,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                )
             }
+            Text(
+                text = stringResource(
+                    R.string.invite_expiry_prefix,
+                    AnveTime.full(invite.expiresAt, stringResource(R.string.invite_expiry_unreadable)),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+        }
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1224,7 +1184,6 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
                     )
                 }
             }
-        }
     }
 }
 

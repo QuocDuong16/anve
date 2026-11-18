@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -727,7 +726,8 @@ fun AnVeSafeRadarScene(
 }
 
 /**
- * Tactile Stitch framing wrapper for scene illustrations with optional floating corner badge.
+ * Flat framing container for scene illustrations with optional floating corner badge,
+ * avoiding nested card borders when placed inside a section card.
  */
 @Composable
 fun AnVeIllustratedBanner(
@@ -735,16 +735,18 @@ fun AnVeIllustratedBanner(
     overlayBadge: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val stitch = LocalStitchColors.current
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = stitch.cardTactile,
-        border = BorderStroke(1.dp, stitch.hairline),
-        modifier = modifier.fillMaxWidth(),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp)),
     ) {
-        Box(modifier = Modifier.padding(6.dp)) {
-            content()
-            if (overlayBadge != null) {
+        content()
+        if (overlayBadge != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+            ) {
                 overlayBadge()
             }
         }

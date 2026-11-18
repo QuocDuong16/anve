@@ -144,9 +144,8 @@ fun AccountAvatarButton(
     ) {
         Surface(
             shape = CircleShape,
-            color = stitch.cardTactile.copy(alpha = if (elevated) 0.94f else 1f),
+            color = if (elevated) stitch.cardTactile.copy(alpha = 0.94f) else stitch.cardTactile,
             border = BorderStroke(1.dp, stitch.hairline),
-            shadowElevation = if (elevated) 4.dp else 0.dp,
             modifier = Modifier.size(avatarSize),
         ) {
             if (ownerId != null && gateway != null && (imageId != null || displayName.isNotBlank())) {

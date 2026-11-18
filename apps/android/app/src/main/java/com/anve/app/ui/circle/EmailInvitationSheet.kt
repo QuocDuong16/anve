@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
@@ -89,7 +88,6 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item {
                     AnVeSectionHeader(
-                        icon = Icons.Outlined.MailOutline,
                         title = stringResource(R.string.invite_sheet_title),
                     )
                 }

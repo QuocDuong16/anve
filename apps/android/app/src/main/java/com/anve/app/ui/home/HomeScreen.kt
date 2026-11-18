@@ -25,9 +25,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -35,19 +34,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -90,6 +83,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -678,16 +672,13 @@ private fun AnVeShellHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = colors.primaryContainer.copy(alpha = 0.55f),
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        modifier = Modifier.size(38.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            AnVeBrandMark(Modifier.size(30.dp))
-                        }
-                    }
+                    AnVeBrandMark(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.primaryContainer.copy(alpha = 0.45f))
+                            .padding(4.dp),
+                    )
                     Text(
                         text = stringResource(R.string.home_brand_name),
                         style = MaterialTheme.typography.titleMedium,
@@ -860,8 +851,7 @@ fun HomeContent(
             ) {
                 StitchEmptyStateCard(
                     title = stringResource(R.string.home_load_failed),
-                    body = stringResource(R.string.home_account_security_subtitle),
-                    icon = Icons.Outlined.Security,
+                    body = stringResource(R.string.home_load_failed_retry),
                     actionLabel = stringResource(R.string.action_retry),
                     onAction = onRetry,
                     modifier = Modifier.anveContentWidth(),
@@ -935,15 +925,13 @@ fun HomeContent(
             }
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.weight(1f)) {
                         AnVeSectionHeader(
-                            icon = Icons.Outlined.Devices,
                             title = stringResource(R.string.home_group_devices_title),
-                            subtitle = stringResource(R.string.home_group_devices_subtitle),
                         )
                     }
                     StitchSemanticBadge(
@@ -954,49 +942,36 @@ fun HomeContent(
             }
             if (state.devices.isEmpty()) {
                 item {
-                    OutlinedCard(
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.home_devices_empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.home_devices_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
             }
-            items(state.devices, key = { it.id }) { device ->
-                DeviceRow(
-                    device = device,
-                    onRevoke = { revokeDeviceId = device.id },
-                )
+            itemsIndexed(state.devices, key = { _, it -> it.id }) { index, device ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (index > 0) {
+                        HorizontalDivider(color = stitch.hairline)
+                    }
+                    DeviceRow(
+                        device = device,
+                        onRevoke = { revokeDeviceId = device.id },
+                    )
+                }
             }
             item {
-                OutlinedCard(
-                    onClick = onOpenDiagnostics,
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    HorizontalDivider(color = stitch.hairline)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 56.dp)
-                            .padding(16.dp),
+                            .clickable(onClick = onOpenDiagnostics)
+                            .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Security,
-                            contentDescription = null,
-                            tint = colors.primary,
-                            modifier = Modifier.size(22.dp),
-                        )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.titleSmall)
                             Text(
@@ -1011,30 +986,16 @@ fun HomeContent(
                             tint = colors.onSurfaceVariant,
                         )
                     }
-                }
-            }
-            item {
-                OutlinedCard(
-                    onClick = onOpenOnboarding,
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                    HorizontalDivider(color = stitch.hairline)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 56.dp)
-                            .padding(16.dp),
+                            .clickable(onClick = onOpenOnboarding)
+                            .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Groups,
-                            contentDescription = null,
-                            tint = colors.primary,
-                            modifier = Modifier.size(22.dp),
-                        )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(stringResource(R.string.home_reopen_onboarding_title), style = MaterialTheme.typography.titleSmall)
                             Text(
@@ -1049,52 +1010,34 @@ fun HomeContent(
                             tint = colors.onSurfaceVariant,
                         )
                     }
+                    HorizontalDivider(color = stitch.hairline)
                 }
             }
             item {
-                OutlinedCard(
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, stitch.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                Column(
                     modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    AnVeSectionHeader(
+                        title = stringResource(R.string.home_account_security_title),
+                    )
+                    OutlinedButton(
+                        onClick = onSignOut,
+                        enabled = !state.busy,
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) {
-                        AnVeSectionHeader(
-                            icon = Icons.Outlined.Lock,
-                            title = stringResource(R.string.home_account_security_title),
-                            subtitle = stringResource(R.string.home_account_security_subtitle),
-                            iconContentColor = colors.onSurfaceVariant,
+                        Text(stringResource(R.string.home_sign_out))
+                    }
+                    TextButton(
+                        onClick = onDeleteAccount,
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.home_delete_account),
+                            color = colors.error,
                         )
-                        OutlinedButton(
-                            onClick = onSignOut,
-                            enabled = !state.busy,
-                            shape = CircleShape,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Icon(Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.home_sign_out))
-                        }
-                        TextButton(
-                            onClick = onDeleteAccount,
-                            enabled = !state.busy,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Delete,
-                                contentDescription = null,
-                                tint = colors.error,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.home_delete_account),
-                                color = colors.error,
-                            )
-                        }
                     }
                 }
             }
@@ -1136,35 +1079,13 @@ private fun ResultNoticeCard(text: String, onDismiss: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = colors.primaryContainer,
-                    contentColor = colors.onPrimaryContainer,
-                    modifier = Modifier.size(34.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    // Same polite live region as AnveErrorNotice: a one-shot result
-                    // is announced instead of sitting silent for TalkBack users.
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(top = 4.dp)
-                        .semantics { liveRegion = LiveRegionMode.Polite },
-                )
-            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                // Same polite live region as AnveErrorNotice: a one-shot result
+                // is announced instead of sitting silent for TalkBack users.
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.heightIn(min = 48.dp),
@@ -1236,8 +1157,6 @@ private fun ProfileCard(user: UserDto, onRename: () -> Unit, avatarContent: (@Co
                         shape = CircleShape,
                         modifier = btnMod.heightIn(min = 48.dp),
                     ) {
-                        Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.action_rename))
                     }
                 }
@@ -1395,90 +1314,70 @@ private fun ConsentCard(
 @Composable
 private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
     val isCurrent = device.session?.current == true
     val largeFont = LocalDensity.current.fontScale > 1.25f
-    OutlinedCard(
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        BoxWithConstraints(modifier = Modifier.padding(14.dp).fillMaxWidth()) {
-            val stackAction = maxWidth < 320.dp || largeFont
-            val detailsRow: @Composable (Modifier) -> Unit = { rowMod ->
-                Row(
-                    modifier = rowMod,
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    BoxWithConstraints(modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth()) {
+        val stackAction = maxWidth < 320.dp || largeFont
+        val detailsColumn: @Composable (Modifier) -> Unit = { colMod ->
+            Column(
+                modifier = colMod,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Devices,
-                        contentDescription = null,
-                        tint = if (isCurrent) colors.primary else colors.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
+                    Text(
+                        device.name.ifBlank { stringResource(R.string.home_device_fallback_name) },
+                        style = MaterialTheme.typography.titleSmall,
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                device.name.ifBlank { stringResource(R.string.home_device_fallback_name) },
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            if (isCurrent) {
-                                // A read-only label, not a chip: the device name is
-                                // informational and has no action behind it.
-                                StitchSemanticBadge(
-                                    text = stringResource(R.string.home_device_this),
-                                    kind = StitchBadgeKind.SAFE_HOME,
-                                )
-                            }
-                        }
-                        Text(
-                            text = listOfNotNull(
-                                device.platform,
-                                device.appVersion?.takeIf { it.isNotBlank() },
-                            ).joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
+                    if (isCurrent) {
+                        // A read-only label, not a chip: the device name is
+                        // informational and has no action behind it.
+                        StitchSemanticBadge(
+                            text = stringResource(R.string.home_device_this),
+                            kind = StitchBadgeKind.SAFE_HOME,
                         )
                     }
                 }
+                Text(
+                    text = listOfNotNull(
+                        device.platform,
+                        device.appVersion?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
             }
-            // The session in use cannot revoke itself: confirming it would
-            // sign this very device out and throw the user out of the app
-            // mid-settings. Other devices revoke, and only via the dialog.
-            val revokeButton: @Composable (Modifier) -> Unit = { btnMod ->
-                OutlinedButton(
-                    onClick = onRevoke,
-                    enabled = !isCurrent,
-                    shape = CircleShape,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
-                    modifier = btnMod.heightIn(min = 48.dp),
-                ) {
-                    Text(stringResource(R.string.home_device_revoke))
-                }
+        }
+        // The session in use cannot revoke itself: confirming it would
+        // sign this very device out and throw the user out of the app
+        // mid-settings. Other devices revoke, and only via the dialog.
+        val revokeButton: @Composable (Modifier) -> Unit = { btnMod ->
+            OutlinedButton(
+                onClick = onRevoke,
+                enabled = !isCurrent,
+                shape = CircleShape,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                modifier = btnMod.heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.home_device_revoke))
             }
-            if (stackAction) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    detailsRow(Modifier.fillMaxWidth())
-                    revokeButton(Modifier.fillMaxWidth())
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    detailsRow(Modifier.weight(1f))
-                    revokeButton(Modifier)
-                }
+        }
+        if (stackAction) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                detailsColumn(Modifier.fillMaxWidth())
+                revokeButton(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                detailsColumn(Modifier.weight(1f))
+                revokeButton(Modifier)
             }
         }
     }
@@ -1490,7 +1389,6 @@ private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
         title = { Text(stringResource(R.string.home_rename_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -1525,7 +1423,6 @@ private fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = null) },
         title = { Text(stringResource(R.string.home_sign_out_title)) },
         text = {
             Text(
@@ -1587,7 +1484,6 @@ private fun RevokeSessionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        icon = { Icon(Icons.Outlined.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = { Text(stringResource(R.string.home_device_revoke_title)) },
         text = {
             Text(

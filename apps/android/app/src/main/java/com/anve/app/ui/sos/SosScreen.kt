@@ -38,14 +38,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Outbox
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -77,7 +71,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -104,11 +97,9 @@ import com.anve.app.data.sos.SosOutboxItem
 import com.anve.app.data.sos.areAppNotificationsEnabled
 import com.anve.app.ui.brand.AnVeSosCareIllustration
 import com.anve.app.ui.common.AnVeCheckingState
-import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnveErrorNotice
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
-import com.anve.app.ui.common.StitchLivePulseDot
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
 import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.StitchTimelineItem
@@ -228,12 +219,10 @@ private const val DETAIL_CARD_KEY = "detail-card"
 @Composable
 private fun SosCard(
     title: String,
-    icon: ImageVector? = null,
     trailing: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val stitch = LocalStitchColors.current
-    val colors = MaterialTheme.colorScheme
     OutlinedCard(
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, stitch.hairline),
@@ -246,20 +235,12 @@ private fun SosCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.weight(1f)) {
-                    if (icon != null) {
-                        AnVeSectionHeader(
-                            icon = icon,
-                            title = title,
-                            iconContainerColor = colors.surfaceContainerLow,
-                            iconContentColor = colors.primary,
-                        )
-                    } else {
-                        // TalkBack heading navigation; same treatment as the other
-                        // screens' section titles (Journey, Places, History, Diagnostics).
-                        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                    }
-                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
                 trailing()
             }
             content()
@@ -345,50 +326,24 @@ private fun SosContentBody(
 
     val rows = buildList {
         add(SosRow("title") {
-            // Stitch Screen 58 readiness banner: compact header keeping error/recipient cards visible above the pinned send bar.
-            OutlinedCard(
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, stitch.hairline),
-                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        itemVerticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f, fill = false),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            StitchLivePulseDot(active = !state.pending && !state.offline)
-                            Text(
-                                text = stringResource(R.string.sos_title),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.semantics { heading() },
-                            )
-                        }
-                        StitchSemanticBadge(
-                            text = stringResource(
-                                if (state.pending) R.string.sos_status_sending else R.string.sos_status_ready,
-                            ),
-                            kind = if (state.pending) StitchBadgeKind.EMERGENCY else StitchBadgeKind.SAFE_HOME,
-                            showDot = true,
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.sos_banner_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.sos_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { heading() },
+                )
+                StitchSemanticBadge(
+                    text = stringResource(
+                        if (state.pending) R.string.sos_status_sending else R.string.sos_status_ready,
+                    ),
+                    kind = if (state.pending) StitchBadgeKind.EMERGENCY else StitchBadgeKind.SAFE_HOME,
+                )
             }
         })
         if (state.loading || state.pending) add(SosRow("progress") {
@@ -463,27 +418,9 @@ private fun SosContentBody(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = Modifier.size(84.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            // Concentric soothing warm halos (Stitch Screen 58 focal ring without harsh flashing).
-                            Box(
-                                modifier = Modifier
-                                    .size(84.dp)
-                                    .clip(CircleShape)
-                                    .background(emergency.emergencyContainer.copy(alpha = 0.30f)),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .clip(CircleShape)
-                                    .background(stitch.secondaryFixedDim.copy(alpha = 0.35f)),
-                            )
-                            AnVeSosCareIllustration(
-                                modifier = Modifier.size(62.dp),
-                            )
-                        }
+                        AnVeSosCareIllustration(
+                            modifier = Modifier.size(64.dp),
+                        )
                         Column(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -494,18 +431,13 @@ private fun SosContentBody(
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
-                                text = stringResource(R.string.sos_hero_subtitle),
+                                text = stringResource(R.string.sos_emergency_disclaimer),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
                             )
                         }
                     }
                     HorizontalDivider(color = stitch.hairline)
-                    Text(
-                        text = stringResource(R.string.sos_emergency_disclaimer),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
                     Text(
                         text = stringResource(R.string.sos_emergency_calls_label),
                         style = MaterialTheme.typography.labelLarge,
@@ -518,82 +450,49 @@ private fun SosContentBody(
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                         val stackHotlines = maxWidth < 340.dp || largeFont
                         val hotlines = listOf(
-                            Triple(113, R.string.sos_service_police, Icons.Outlined.Shield),
-                            Triple(114, R.string.sos_service_fire, Icons.Outlined.Warning),
-                            Triple(115, R.string.sos_service_ambulance, Icons.Outlined.Phone),
+                            113 to R.string.sos_service_police,
+                            114 to R.string.sos_service_fire,
+                            115 to R.string.sos_service_ambulance,
                         )
-                        val hotlineCard: @Composable (Int, Int, ImageVector, Modifier) -> Unit = { number, serviceRes, icon, cardMod ->
-                            val iconFg = when (number) {
-                                113 -> colors.onPrimaryContainer
-                                114 -> stitch.onTransitContainer
-                                else -> emergency.onEmergencyContainer
-                            }
-                            Surface(
+                        val hotlineButton: @Composable (Int, Int, Modifier) -> Unit = { number, serviceRes, btnMod ->
+                            OutlinedButton(
                                 onClick = { runCatching { dialer.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))) } },
-                                shape = RoundedCornerShape(16.dp),
-                                color = colors.surfaceContainerLowest,
+                                shape = RoundedCornerShape(14.dp),
                                 border = BorderStroke(1.dp, stitch.hairline),
-                                modifier = cardMod.heightIn(min = 64.dp),
+                                modifier = btnMod.heightIn(min = 52.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
                             ) {
                                 if (stackHotlines) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            tint = iconFg,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                        Text(
-                                            text = "$number · ${stringResource(serviceRes)}",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.onSurface,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.sos_call_number, number),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = iconFg,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Outlined.Phone,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = "$number · ${stringResource(serviceRes)}",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.sos_call_number, number),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
                                 } else {
                                     Column(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 6.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.spacedBy(2.dp),
                                     ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Icon(
-                                                imageVector = icon,
-                                                contentDescription = null,
-                                                tint = iconFg,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                            Text(
-                                                text = number.toString(),
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.onSurface,
-                                            )
-                                        }
+                                        Text(
+                                            text = number.toString(),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                        )
                                         Text(
                                             text = stringResource(serviceRes),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = colors.onSurfaceVariant,
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.sos_call_number, number),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = iconFg,
-                                            fontWeight = FontWeight.Medium,
                                         )
                                     }
                                 }
@@ -604,8 +503,8 @@ private fun SosContentBody(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                hotlines.forEach { (number, serviceRes, icon) ->
-                                    hotlineCard(number, serviceRes, icon, Modifier.fillMaxWidth())
+                                hotlines.forEach { (number, serviceRes) ->
+                                    hotlineButton(number, serviceRes, Modifier.fillMaxWidth())
                                 }
                             }
                         } else {
@@ -613,8 +512,8 @@ private fun SosContentBody(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                hotlines.forEach { (number, serviceRes, icon) ->
-                                    hotlineCard(number, serviceRes, icon, Modifier.weight(1f))
+                                hotlines.forEach { (number, serviceRes) ->
+                                    hotlineButton(number, serviceRes, Modifier.weight(1f))
                                 }
                             }
                         }
@@ -625,7 +524,6 @@ private fun SosContentBody(
         add(SosRow("recipients-card") {
             SosCard(
                 title = stringResource(R.string.sos_recipients_title),
-                icon = Icons.Outlined.Groups,
                 trailing = {
                     if (state.members.isNotEmpty()) {
                         StitchSemanticBadge(
@@ -639,71 +537,72 @@ private fun SosContentBody(
                     Text(stringResource(R.string.sos_recipients_empty), color = colors.onSurfaceVariant)
                 }
                 state.members.forEachIndexed { index, member ->
+                    if (index > 0) {
+                        HorizontalDivider(color = stitch.hairline)
+                    }
                     val checked = member.userId in selected
                     // The whole row toggles so the checkbox target is not the only
                     // touchable point; the checkbox itself stays indicative.
                     // Recipient rows remain the first toggleables in SosContent for tests.
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (checked) emergency.emergencyContainer.copy(alpha = 0.42f) else colors.surfaceContainerLow,
-                        border = BorderStroke(
-                            1.dp,
-                            if (checked) emergency.emergency.copy(alpha = 0.55f) else stitch.hairline,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 52.dp)
+                            .toggleable(
+                                value = checked,
+                                enabled = !state.pending,
+                                role = Role.Checkbox,
+                                onValueChange = { isChecked -> selected = if (isChecked) selected + member.userId else selected - member.userId },
+                            )
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .toggleable(
-                                    value = checked,
-                                    enabled = !state.pending,
-                                    role = Role.Checkbox,
-                                    onValueChange = { isChecked -> selected = if (isChecked) selected + member.userId else selected - member.userId },
-                                )
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(if (checked) emergency.emergencyContainer else stitch.primaryFixed),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (checked) emergency.emergencyContainer else stitch.primaryFixed,
-                                contentColor = if (checked) emergency.onEmergencyContainer else stitch.onPrimaryFixed,
-                                modifier = Modifier.size(40.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        member.displayName.take(1).uppercase().ifBlank { "?" },
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                Text(
-                                    text = member.displayName,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                                if (index == 0) {
-                                    StitchSemanticBadge(
-                                        text = stringResource(R.string.sos_primary_recipient_badge),
-                                        kind = StitchBadgeKind.SAFE_HOME,
-                                    )
-                                }
-                            }
-                            Checkbox(checked = checked, enabled = !state.pending, onCheckedChange = null)
+                            Text(
+                                member.displayName.take(1).uppercase().ifBlank { "?" },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (checked) emergency.onEmergencyContainer else stitch.onPrimaryFixed,
+                            )
                         }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                text = member.displayName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            if (index == 0) {
+                                StitchSemanticBadge(
+                                    text = stringResource(R.string.sos_primary_recipient_badge),
+                                    kind = StitchBadgeKind.SAFE_HOME,
+                                )
+                            }
+                        }
+                        Checkbox(checked = checked, enabled = !state.pending, onCheckedChange = null)
                     }
                 }
             }
         })
         add(SosRow(OUTBOX_TITLE_KEY) {
-            SosCard(stringResource(R.string.sos_outbox_title), Icons.Outlined.Outbox) {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.sos_outbox_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics { heading() },
+                )
                 if (state.outbox.isEmpty()) {
-                    Text(stringResource(R.string.sos_outbox_empty), color = colors.onSurfaceVariant)
+                    Text(stringResource(R.string.sos_outbox_empty), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
                 state.outbox.forEachIndexed { index, item ->
                     val (badgeKind, nodeBg, nodeFg) = when (item.state) {
@@ -724,8 +623,8 @@ private fun SosContentBody(
                         isLast = index == state.outbox.lastIndex,
                     ) {
                         Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             // Time and audience separate the attempts from each
                             // other; two "Đang chờ mạng" rows must stay
@@ -748,7 +647,6 @@ private fun SosContentBody(
                                     SosLocalState.SERVER_EXPIRED -> stringResource(R.string.sos_state_server_expired)
                                 },
                                 kind = badgeKind,
-                                showDot = item.state == SosLocalState.CONFIRMED || item.state == SosLocalState.SENDING,
                             )
                             if (item.state in setOf(SosLocalState.QUEUED, SosLocalState.SENDING, SosLocalState.UNKNOWN, SosLocalState.CONFIRMED)) {
                                 TextButton(
@@ -784,7 +682,7 @@ private fun SosContentBody(
             }
         })
         add(SosRow("notifications-card") {
-            SosCard(stringResource(R.string.sos_notifications_section), Icons.Outlined.Notifications) {
+            SosCard(stringResource(R.string.sos_notifications_section)) {
                 // Push registration runs automatically when OS notifications are allowed;
                 // the card reports readiness without exposing a manual registration step.
                 Text(
@@ -836,9 +734,15 @@ private fun SosContentBody(
             }
         })
         add(SosRow("events-card") {
-            SosCard(stringResource(R.string.sos_events_title), Icons.Outlined.History) {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.sos_events_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics { heading() },
+                )
                 if (state.events.isEmpty() && !state.loading) {
-                    Text(stringResource(R.string.sos_events_empty), color = colors.onSurfaceVariant)
+                    Text(stringResource(R.string.sos_events_empty), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
                 state.events.forEachIndexed { index, event ->
                     val person = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member)
@@ -863,10 +767,9 @@ private fun SosContentBody(
                                 StitchSemanticBadge(
                                     text = sosState(event.state),
                                     kind = if (active) StitchBadgeKind.EMERGENCY else StitchBadgeKind.NEUTRAL,
-                                    showDot = active,
                                 )
                                 Text(
-                                    text = "$person · ${sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown))} · ${sosState(event.state)}",
+                                    text = "$person · ${sosTime(event.recordedAt, stringResource(R.string.journey_time_unknown))}",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
@@ -877,7 +780,7 @@ private fun SosContentBody(
         })
         state.selected?.let { event ->
             add(SosRow(DETAIL_CARD_KEY) {
-                SosCard(stringResource(R.string.sos_detail_title), Icons.Outlined.Info) {
+                SosCard(stringResource(R.string.sos_detail_title)) {
                     val sender = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member_unnamed)
                     Text(stringResource(R.string.sos_detail_sender, sender), fontWeight = FontWeight.Medium)
                     Text(

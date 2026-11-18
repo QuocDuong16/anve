@@ -21,16 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
@@ -59,7 +52,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -147,21 +139,13 @@ internal fun WelcomeStepContent(
     onSkipToHome: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val stitch = LocalStitchColors.current
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        OutlinedCard(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            AnVeIllustratedBanner {
-                AnVeFamilySceneIllustration(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(190.dp),
-                )
-            }
+        AnVeIllustratedBanner {
+            AnVeFamilySceneIllustration(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(190.dp),
+            )
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
@@ -271,7 +255,6 @@ internal fun FamilyStepContent(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AnVeSectionHeader(
-                            icon = Icons.Outlined.Home,
                             title = state.circle.name,
                             subtitle = stringResource(
                                 if (state.isOwner) R.string.circle_role_owner else R.string.circle_role_member,
@@ -281,7 +264,6 @@ internal fun FamilyStepContent(
                     StitchSemanticBadge(
                         text = stringResource(R.string.onboarding_circle_created_badge, state.circle.name),
                         kind = StitchBadgeKind.SAFE_HOME,
-                        icon = Icons.Outlined.CheckCircle,
                     )
                     if (state.isOwner) {
                         HorizontalDivider(color = stitch.hairline)
@@ -326,32 +308,24 @@ internal fun FamilyStepContent(
                                 )
                             }
                         } else {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = colors.surfaceContainerLowest,
-                                border = BorderStroke(1.dp, stitch.hairline),
+                            HorizontalDivider(color = stitch.hairline)
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                Text(
+                                    text = createdInvite.code,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                TextButton(
+                                    onClick = { onCopyInviteCode(createdInvite.code) },
+                                    modifier = Modifier.heightIn(min = 48.dp),
                                 ) {
-                                    Text(
-                                        text = createdInvite.code,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    TextButton(
-                                        onClick = { onCopyInviteCode(createdInvite.code) },
-                                        modifier = Modifier.heightIn(min = 48.dp),
-                                    ) {
-                                        Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(stringResource(R.string.onboarding_invite_copy_code))
-                                    }
+                                    Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.onboarding_invite_copy_code))
                                 }
                             }
                             Text(
@@ -543,39 +517,35 @@ internal fun FamilyStepContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
                             )
-                            else -> state.receivedInvites.forEach { invite ->
-                                Surface(
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = colors.surfaceContainerLow,
-                                    border = BorderStroke(1.dp, stitch.hairline),
-                                    modifier = Modifier.fillMaxWidth(),
+                            else -> state.receivedInvites.forEachIndexed { idx, invite ->
+                                if (idx > 0) {
+                                    HorizontalDivider(color = stitch.hairline)
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            text = invite.circleName,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.invite_received_intro, invite.inviterDisplayName),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.onSurfaceVariant,
+                                        )
+                                    }
+                                    TextButton(
+                                        onClick = { onReviewReceivedInvite(invite.id) },
+                                        enabled = !state.receivedBusy && state.online,
+                                        modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
-                                        Column(Modifier.weight(1f)) {
-                                            Text(
-                                                text = invite.circleName,
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.invite_received_intro, invite.inviterDisplayName),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = colors.onSurfaceVariant,
-                                            )
-                                        }
-                                        TextButton(
-                                            onClick = { onReviewReceivedInvite(invite.id) },
-                                            enabled = !state.receivedBusy && state.online,
-                                            modifier = Modifier.heightIn(min = 48.dp),
-                                        ) {
-                                            Text(stringResource(R.string.invite_view))
-                                        }
+                                        Text(stringResource(R.string.invite_view))
                                     }
                                 }
                             }
@@ -661,17 +631,11 @@ internal fun PermissionsStepContent(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Text(
-                        text = stringResource(R.string.onboarding_disclosure_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.onboarding_disclosure_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Text(
                     text = stringResource(R.string.onboarding_disclosure_body),
                     style = MaterialTheme.typography.bodyMedium,
@@ -681,7 +645,6 @@ internal fun PermissionsStepContent(
 
         // Card 1: Notifications
         PermissionCard(
-            icon = Icons.Outlined.Notifications,
             title = stringResource(R.string.onboarding_perm_notif_title),
             body = stringResource(R.string.onboarding_perm_notif_body),
             badgeText = stringResource(if (notifGranted) R.string.onboarding_perm_granted else R.string.onboarding_perm_pending),
@@ -706,18 +669,12 @@ internal fun PermissionsStepContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = colors.primary)
-                        Text(
-                            text = stringResource(R.string.onboarding_perm_fg_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.onboarding_perm_fg_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
                     StitchSemanticBadge(
                         text = stringResource(
                             when (state.permissions.location) {
@@ -736,43 +693,38 @@ internal fun PermissionsStepContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                 )
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.surfaceContainerLow,
+                HorizontalDivider(color = stitch.hairline)
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 48.dp)
                         .toggleable(
                             value = state.consentEnabled,
                             enabled = !state.consentBusy,
                             role = Role.Switch,
                             onValueChange = onToggleConsent,
-                        ),
+                        )
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(
-                                text = stringResource(R.string.onboarding_perm_consent_label),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = stringResource(R.string.onboarding_perm_consent_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = state.consentEnabled,
-                            onCheckedChange = null,
-                            enabled = !state.consentBusy,
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(
+                            text = stringResource(R.string.onboarding_perm_consent_label),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = stringResource(R.string.onboarding_perm_consent_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
                         )
                     }
+                    Switch(
+                        checked = state.consentEnabled,
+                        onCheckedChange = null,
+                        enabled = !state.consentBusy,
+                    )
                 }
                 state.consentNotice?.let { notice ->
                     Text(
@@ -799,7 +751,6 @@ internal fun PermissionsStepContent(
         // Card 3: Background Location
         if (backgroundRequired) {
             PermissionCard(
-                icon = Icons.Outlined.MyLocation,
                 title = stringResource(R.string.onboarding_perm_bg_title),
                 body = stringResource(R.string.onboarding_perm_bg_body, backgroundOptionLabel),
                 badgeText = stringResource(if (bgGranted) R.string.onboarding_perm_granted else R.string.onboarding_perm_pending),
@@ -841,7 +792,6 @@ internal fun PermissionsStepContent(
 
 @Composable
 private fun PermissionCard(
-    icon: ImageVector,
     title: String,
     body: String,
     badgeText: String,
@@ -866,18 +816,12 @@ private fun PermissionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(icon, contentDescription = null, tint = colors.primary)
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
                 StitchSemanticBadge(
                     text = badgeText,
                     kind = if (granted) StitchBadgeKind.SAFE_HOME else StitchBadgeKind.NEUTRAL,
@@ -958,7 +902,6 @@ internal fun AudienceAndPlaceStepContent(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 AnVeSectionHeader(
-                    icon = Icons.Outlined.Groups,
                     title = stringResource(R.string.onboarding_audience_title),
                 )
                 when {
@@ -968,25 +911,16 @@ internal fun AudienceAndPlaceStepContent(
                         onRetry = onRetryAudience,
                     )
                     state.otherMembers.isEmpty() -> {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = colors.secondaryContainer,
-                            contentColor = colors.onSecondaryContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.onboarding_audience_waiting),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                StitchSemanticBadge(
-                                    text = stringResource(R.string.onboarding_audience_default_off),
-                                    kind = StitchBadgeKind.NEUTRAL,
-                                )
-                            }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = stringResource(R.string.onboarding_audience_waiting),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant,
+                            )
+                            StitchSemanticBadge(
+                                text = stringResource(R.string.onboarding_audience_default_off),
+                                kind = StitchBadgeKind.NEUTRAL,
+                            )
                         }
                     }
                     else -> {
@@ -1053,7 +987,6 @@ internal fun AudienceAndPlaceStepContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AnVeSectionHeader(
-                    icon = Icons.Outlined.Place,
                     title = stringResource(R.string.onboarding_place_title),
                 )
                 if (state.circle == null) {
@@ -1184,7 +1117,7 @@ internal fun AudienceAndPlaceStepContent(
                                 value = state.placeLatitude,
                                 onValueChange = { onPlaceCoordinatesChange(it, state.placeLongitude) },
                                 singleLine = true,
-                                label = { Text("Vĩ độ") },
+                                label = { Text(stringResource(R.string.places_editor_lat_label)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f),
                             )
@@ -1192,7 +1125,7 @@ internal fun AudienceAndPlaceStepContent(
                                 value = state.placeLongitude,
                                 onValueChange = { onPlaceCoordinatesChange(state.placeLatitude, it) },
                                 singleLine = true,
-                                label = { Text("Kinh độ") },
+                                label = { Text(stringResource(R.string.places_editor_lon_label)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f),
                             )
@@ -1364,20 +1297,13 @@ internal fun CompleteStepContent(
         ?: stringResource(R.string.onboarding_done_place_none)
 
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        OutlinedCard(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, stitch.hairline),
-            colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-            modifier = Modifier.fillMaxWidth(),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                AnVeHomeEmblem(Modifier.size(88.dp))
-            }
+            AnVeHomeEmblem(Modifier.size(88.dp))
         }
 
         Text(
@@ -1398,39 +1324,27 @@ internal fun CompleteStepContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SummaryRow(
-                    icon = Icons.Outlined.Groups,
                     label = stringResource(R.string.onboarding_done_summary_circle),
                     value = circleSummary,
-                    active = state.circle != null,
                 )
                 HorizontalDivider(color = stitch.hairline)
                 SummaryRow(
-                    icon = Icons.Outlined.LocationOn,
                     label = stringResource(R.string.onboarding_done_summary_location),
                     value = "$permSummary · $consentSummary",
-                    active = state.permissions.canTrack && state.consentEnabled,
                 )
                 HorizontalDivider(color = stitch.hairline)
                 SummaryRow(
-                    icon = Icons.Outlined.Place,
                     label = stringResource(R.string.onboarding_done_summary_place),
                     value = placeSummary,
-                    active = state.createdPlace != null,
                 )
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Outlined.Lock, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
-            Text(
-                text = stringResource(R.string.onboarding_done_privacy_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(R.string.onboarding_done_privacy_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+        )
 
         Button(
             onClick = onEnterApp,
@@ -1447,34 +1361,15 @@ internal fun CompleteStepContent(
 
 @Composable
 private fun SummaryRow(
-    icon: ImageVector,
     label: String,
     value: String,
-    active: Boolean,
 ) {
     val colors = MaterialTheme.colorScheme
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (active) colors.primary else colors.onSurfaceVariant,
-            modifier = Modifier.size(22.dp),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-        }
-        if (active) {
-            Icon(
-                imageVector = Icons.Outlined.CheckCircle,
-                contentDescription = null,
-                tint = colors.primary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
+        Text(label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
 }

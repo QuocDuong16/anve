@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,11 +36,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -75,9 +71,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -106,12 +102,9 @@ import com.anve.app.tracking.diagnostics.SyncWorkStatus
 import com.anve.app.tracking.diagnostics.diagnoseTracking
 import com.anve.app.tracking.diagnostics.diagnosticAgeSeconds
 import com.anve.app.ui.brand.AnVeDiagnosticsIllustration
-import com.anve.app.ui.brand.AnVeIllustratedBanner
 import com.anve.app.ui.common.AnVeMetricColumn
 import com.anve.app.ui.common.AnveErrorNotice
-import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLoadingSkeletonCard
-import com.anve.app.ui.common.StitchSemanticBadge
 import com.anve.app.ui.common.anveContentWidth
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
@@ -334,12 +327,13 @@ fun DiagnosticsContent(
                         modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        AnVeIllustratedBanner(modifier = Modifier.fillMaxWidth()) {
-                            AnVeDiagnosticsIllustration(
-                                attention = diagnosis.attention,
-                                modifier = Modifier.fillMaxWidth().height(92.dp),
-                            )
-                        }
+                        AnVeDiagnosticsIllustration(
+                            attention = diagnosis.attention,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(92.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                        )
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 diagnosis.title,
@@ -439,15 +433,15 @@ fun DiagnosticsContent(
             if (actionError != null) item { AnveErrorNotice(actionError) }
             if (state.readFailed) item { AnveErrorNotice(stringResource(R.string.diag_details_failed), onRetry = onRefresh) }
             if (!showDetails) {
-                item { DiagnosticsSection(stringResource(R.string.diag_section_capture), Icons.Outlined.LocationOn) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_capture)) {
                     DiagnosticRow(stringResource(R.string.diag_row_service), if (status.activelyTracking) stringResource(R.string.diag_value_running) else if (status.serviceRunning) stringResource(R.string.diag_value_capture_unconfirmed) else stringResource(R.string.diag_value_stopped))
                     DiagnosticRow(stringResource(R.string.diag_row_last_fix), ageLabel(status.lastFixAtMillis, nowMillis))
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_sync), Icons.Outlined.Sync) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_sync)) {
                     DiagnosticRow(stringResource(R.string.diag_row_queued), details?.queue?.queuedPoints?.let { stringResource(R.string.diag_points_count, it) } ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_last_upload), ageLabel(status.lastUploadAtMillis, nowMillis))
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_permissions), Icons.Outlined.Security) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_permissions)) {
                     DiagnosticRow(stringResource(R.string.diag_row_location_permission), when (status.permission) {
                         LocationPermissionState.GRANTED_PRECISE -> stringResource(R.string.diag_value_precise)
                         LocationPermissionState.GRANTED_APPROXIMATE -> stringResource(R.string.diag_value_approximate)
@@ -457,10 +451,10 @@ fun DiagnosticsContent(
                     DiagnosticRow(stringResource(R.string.diag_row_background_permission), yesNo(status.backgroundPermissionGranted, stringResource(R.string.diag_value_granted), stringResource(R.string.diag_value_not_granted)))
                     DiagnosticRow(stringResource(R.string.diag_row_location_services), yesNo(status.locationServicesEnabled, stringResource(R.string.diag_value_enabled), stringResource(R.string.diag_value_disabled)))
                     DiagnosticRow(stringResource(R.string.diag_row_battery_saver), yesNo(status.batterySaver, stringResource(R.string.diag_value_on), stringResource(R.string.diag_value_off)))
-                    if (status.batterySaver || !status.backgroundPermissionGranted) Text(stringResource(R.string.diag_battery_limit_notice), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                    if (status.batterySaver || !status.backgroundPermissionGranted) Text(stringResource(R.string.diag_battery_limit_notice), Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 } }
             } else {
-                item { DiagnosticsSection(stringResource(R.string.diag_section_queue), Icons.Outlined.Sync) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_queue)) {
                     DiagnosticRow(stringResource(R.string.diag_row_queued), details?.queue?.queuedPoints?.toString() ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_oldest), ageLabel(details?.queue?.oldestCreatedAtMillis, nowMillis))
                     DiagnosticRow(stringResource(R.string.diag_row_attempts), details?.queue?.attempts?.toString() ?: unknownLabel(state.loading))
@@ -468,52 +462,47 @@ fun DiagnosticsContent(
                     DiagnosticRow(stringResource(R.string.diag_row_checkpoint), details?.captureCheckpoint?.let { yesNo(it, stringResource(R.string.diag_value_saved), stringResource(R.string.diag_value_absent)) } ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_recovery), yesNo(status.recoveryRequired, stringResource(R.string.diag_value_yes), stringResource(R.string.diag_value_no)))
                     DiagnosticRow(stringResource(R.string.diag_row_sync_work), details?.syncWork?.let { work -> if (work.isEmpty()) stringResource(R.string.diag_value_no_pending_work) else work.map { workLabel(it) }.joinToString() } ?: unknownLabel(state.loading))
-                    if (status.privacyDiscardedPoints) Text(stringResource(R.string.diag_privacy_discarded), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                    if (status.privacyDiscardedPoints) Text(stringResource(R.string.diag_privacy_discarded), Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     OutlinedButton(
                         onClick = { onAction(DiagnosticsAction.RETRY_SYNC) },
                         enabled = !state.loading && status.online && status.consentEnabled && (details?.queue?.queuedPoints ?: 0) > 0,
                         shape = CircleShape,
-                        modifier = Modifier.padding(16.dp).heightIn(min = 48.dp),
+                        modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
                     ) { Text(stringResource(R.string.diag_retry_sync)) }
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_notifications), Icons.Outlined.Security) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_notifications)) {
                     DiagnosticRow(stringResource(R.string.diag_row_notification_permission), yesNo(status.notificationsGranted, stringResource(R.string.diag_value_granted), stringResource(R.string.diag_value_not_granted)))
                     DiagnosticRow(stringResource(R.string.diag_row_push_registered), details?.pushRegistered?.let { yesNo(it, stringResource(R.string.diag_value_registered), stringResource(R.string.diag_value_not_registered)) } ?: unknownLabel(state.loading || state.checkingPush))
                     DiagnosticRow(stringResource(R.string.diag_row_push_configured), details?.pushConfigured?.let { yesNo(it, stringResource(R.string.diag_value_configured), stringResource(R.string.diag_value_not_configured)) } ?: unknownLabel(state.loading || state.checkingPush))
                     DiagnosticRow(stringResource(R.string.diag_row_sos_pending), details?.sosPending?.toString() ?: unknownLabel(state.loading))
-                    Text(stringResource(R.string.diag_push_notice), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.diag_push_notice), Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 } }
-                item { DiagnosticsSection(stringResource(R.string.diag_section_device), Icons.Outlined.Security) {
+                item { DiagnosticsSection(stringResource(R.string.diag_section_device)) {
                     DiagnosticRow(stringResource(R.string.diag_row_battery_optimization), details?.batteryOptimizationExempt?.let { yesNo(it, stringResource(R.string.diag_value_yes), stringResource(R.string.diag_value_no)) } ?: unknownLabel(state.loading))
                     DiagnosticRow(stringResource(R.string.diag_row_version), BuildConfig.VERSION_NAME)
                     DiagnosticRow(stringResource(R.string.diag_row_api), Build.VERSION.SDK_INT.toString())
-                    Text(stringResource(R.string.diag_battery_not_measured), Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.diag_battery_not_measured), Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 } }
             }
             item {
-                OutlinedCard(
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, LocalStitchColors.current.hairline),
-                    colors = CardDefaults.outlinedCardColors(containerColor = LocalStitchColors.current.cardTactile),
-                    modifier = Modifier.fillMaxWidth(),
+                OutlinedButton(
+                    onClick = onExport,
+                    enabled = !state.loading,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, stitch.hairline),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = actionColor),
                 ) {
-                    TextButton(
-                        onClick = onExport,
-                        enabled = !state.loading,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 4.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.textButtonColors(contentColor = actionColor),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Description,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                            Text(stringResource(R.string.diag_export_title), style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.diag_export_subtitle), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-                        }
+                    Icon(
+                        imageVector = Icons.Outlined.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                        Text(stringResource(R.string.diag_export_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.diag_export_subtitle), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     }
                 }
             }
@@ -565,38 +554,21 @@ private fun DiagnosticsNotice(title: String, actionLabel: String, networkIssue: 
 }
 
 @Composable
-private fun DiagnosticsSection(title: String, icon: ImageVector, content: @Composable () -> Unit) {
+private fun DiagnosticsSection(title: String, content: @Composable () -> Unit) {
     val stitch = LocalStitchColors.current
-    val colors = MaterialTheme.colorScheme
-    OutlinedCard(
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, stitch.hairline),
-        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
-    ) {
-        Column(Modifier.fillMaxWidth()) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .background(colors.surfaceContainerLow)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-                // TalkBack's heading navigation is the fastest way through
-                // this, the app's longest screen: marking each section title
-                // lets users jump by section instead of swiping every row.
-                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            }
-            HorizontalDivider(color = stitch.hairline)
-            Column(Modifier.padding(vertical = 4.dp)) {
-                content()
-            }
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // TalkBack's heading navigation is the fastest way through
+        // this, the app's longest screen: marking each section title
+        // lets users jump by section instead of swiping every row.
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 4.dp).semantics { heading() },
+        )
+        HorizontalDivider(color = stitch.hairline)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            content()
         }
     }
 }
@@ -608,26 +580,20 @@ private fun DiagnosticRow(label: String, value: String) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 9.dp),
+            .padding(vertical = 7.dp),
     ) {
         if (maxWidth < 300.dp || largeFont) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text(label, style = MaterialTheme.typography.bodyMedium)
-                if (value.length <= 22) {
-                    StitchSemanticBadge(
-                        text = value,
-                        kind = StitchBadgeKind.NEUTRAL,
-                    )
-                } else {
-                    Text(
-                        value,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
+                Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Text(
+                    value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.onSurface,
+                )
             }
         } else {
             Row(
@@ -635,21 +601,15 @@ private fun DiagnosticRow(label: String, value: String) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                if (value.length <= 22) {
-                    StitchSemanticBadge(
-                        text = value,
-                        kind = StitchBadgeKind.NEUTRAL,
-                    )
-                } else {
-                    Text(
-                        value,
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.End,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
+                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Text(
+                    value,
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.End,
+                    color = colors.onSurface,
+                )
             }
         }
     }
