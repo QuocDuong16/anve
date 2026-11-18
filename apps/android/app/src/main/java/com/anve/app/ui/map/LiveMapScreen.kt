@@ -93,7 +93,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -301,7 +300,12 @@ private fun LiveMapContent(
         val measuredHeaderDp = with(density) { headerHeightPx.toDp() }
         val collapsedHeight = if (headerHeightPx > 0) measuredHeaderDp else 78.dp
         val fontScale = density.fontScale.coerceAtLeast(1f)
-        val halfCap = (maxHeight * 0.36f).coerceIn(220.dp, 310.dp)
+        val largeFont = fontScale >= 1.3f
+        val halfCap = if (largeFont) {
+            (maxHeight * 0.52f).coerceIn(260.dp, 420.dp)
+        } else {
+            (maxHeight * 0.36f).coerceIn(220.dp, 310.dp)
+        }
         val halfHeight = when {
             snapshot == null || snapshot.loading ->
                 (collapsedHeight + 108.dp).coerceAtMost(halfCap)
@@ -602,21 +606,16 @@ private fun LiveMapContent(
                         )
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    val titleBlock: @Composable (Modifier) -> Unit = { blockMod ->
                         Column(
-                            modifier = Modifier.weight(1f),
+                            modifier = blockMod,
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.map_pulse_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                                 modifier = Modifier.semantics { heading() },
                             )
                             Text(
@@ -627,10 +626,11 @@ private fun LiveMapContent(
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                         }
+                    }
+                    val journeyButton: @Composable (Modifier) -> Unit = { btnMod ->
                         Button(
                             onClick = onOpenJourney,
                             shape = CircleShape,
@@ -638,7 +638,7 @@ private fun LiveMapContent(
                                 containerColor = colors.primaryContainer,
                                 contentColor = colors.onPrimaryContainer,
                             ),
-                            modifier = Modifier.heightIn(min = 48.dp),
+                            modifier = btnMod.heightIn(min = 48.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                         ) {
                             Icon(Icons.Outlined.Home, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -646,8 +646,26 @@ private fun LiveMapContent(
                             Text(
                                 text = stringResource(R.string.map_start_journey_short),
                                 style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1,
+                                maxLines = 2,
                             )
+                        }
+                    }
+                    if (largeFont) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            titleBlock(Modifier.fillMaxWidth())
+                            journeyButton(Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            titleBlock(Modifier.weight(1f))
+                            journeyButton(Modifier)
                         }
                     }
                 }
@@ -797,7 +815,7 @@ private fun FloatingMapHeader(
     ) {
         Surface(
             onClick = onOpenSharingMenu,
-            shape = CircleShape,
+            shape = RoundedCornerShape(24.dp),
             color = stitch.cardTactile.copy(alpha = 0.90f),
             border = BorderStroke(1.dp, stitch.hairline),
             shadowElevation = 2.dp,
@@ -821,8 +839,7 @@ private fun FloatingMapHeader(
                     text = statusText,
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 2,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Icon(
@@ -862,6 +879,7 @@ private fun QuickSharingSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -999,7 +1017,11 @@ private fun MapUnavailableCard(
                     modifier = Modifier.fillMaxWidth().height(152.dp),
                 )
             }
-            Text(stringResource(R.string.map_unavailable_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.map_unavailable_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1082,6 +1104,7 @@ private fun MemberLocationCard(
         border = BorderStroke(if (selected) 1.5.dp else 1.dp, borderColor),
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .semantics { this.selected = selected },
     ) {
         Row(
@@ -1120,23 +1143,22 @@ private fun MemberLocationCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = location.displayName,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 2,
                     )
                     Text(
                         text = "· $statusText",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (confidence == "FRESH") statusDotColor else colors.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                     )
                 }
                 Row(
@@ -1155,16 +1177,15 @@ private fun MemberLocationCard(
                         text = contextLine,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 3,
+                        modifier = Modifier.weight(1f),
                     )
                 }
                 Text(
                     text = timeLine,
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 2,
                 )
             }
 

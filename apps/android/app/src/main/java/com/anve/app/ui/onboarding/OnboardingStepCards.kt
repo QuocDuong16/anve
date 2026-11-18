@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,10 +53,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -310,10 +314,11 @@ internal fun FamilyStepContent(
                             }
                         } else {
                             HorizontalDivider(color = stitch.hairline)
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
                                     text = createdInvite.code,
@@ -358,7 +363,12 @@ internal fun FamilyStepContent(
                 colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = !state.circleBusy) { onSelectMode(OnboardingFamilyMode.CREATE) },
+                    .selectable(
+                        selected = createSelected,
+                        enabled = !state.circleBusy,
+                        role = Role.RadioButton,
+                        onClick = { onSelectMode(OnboardingFamilyMode.CREATE) },
+                    ),
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -370,9 +380,9 @@ internal fun FamilyStepContent(
                     ) {
                         RadioButton(
                             selected = createSelected,
-                            onClick = { onSelectMode(OnboardingFamilyMode.CREATE) },
+                            onClick = null,
                         )
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.onboarding_family_create_title),
                                 style = MaterialTheme.typography.titleMedium,
@@ -399,7 +409,7 @@ internal fun FamilyStepContent(
                         )
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             suggestions.forEach { preset ->
                                 FilterChip(
@@ -452,7 +462,12 @@ internal fun FamilyStepContent(
                 colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = !state.circleBusy) { onSelectMode(OnboardingFamilyMode.JOIN) },
+                    .selectable(
+                        selected = joinSelected,
+                        enabled = !state.circleBusy,
+                        role = Role.RadioButton,
+                        onClick = { onSelectMode(OnboardingFamilyMode.JOIN) },
+                    ),
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -464,9 +479,9 @@ internal fun FamilyStepContent(
                     ) {
                         RadioButton(
                             selected = joinSelected,
-                            onClick = { onSelectMode(OnboardingFamilyMode.JOIN) },
+                            onClick = null,
                         )
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.onboarding_family_join_title),
                                 style = MaterialTheme.typography.titleMedium,
@@ -524,12 +539,13 @@ internal fun FamilyStepContent(
                                 if (idx > 0) {
                                     HorizontalDivider(color = stitch.hairline)
                                 }
-                                Row(
+                                FlowRow(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    itemVerticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(Modifier.weight(1f)) {
                                         Text(
@@ -667,16 +683,17 @@ internal fun PermissionsStepContent(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = stringResource(R.string.onboarding_perm_fg_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        modifier = Modifier.padding(end = 8.dp),
                     )
                     StitchSemanticBadge(
                         text = stringResource(
@@ -814,16 +831,17 @@ private fun PermissionCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    modifier = Modifier.padding(end = 8.dp),
                 )
                 StitchSemanticBadge(
                     text = badgeText,
@@ -940,6 +958,7 @@ internal fun AudienceAndPlaceStepContent(
                                 text = msg,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.error,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                             )
                         }
                         state.otherMembers.forEach { member ->
@@ -1002,7 +1021,7 @@ internal fun AudienceAndPlaceStepContent(
                 } else {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         placePresets.forEach { preset ->
                             FilterChip(
@@ -1060,6 +1079,7 @@ internal fun AudienceAndPlaceStepContent(
                                     border = BorderStroke(1.dp, stitch.hairline),
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .heightIn(min = 48.dp)
                                         .clickable { onSelectSearchSuggestion(suggestion) },
                                 ) {
                                     Column(Modifier.padding(12.dp)) {
@@ -1106,6 +1126,7 @@ internal fun AudienceAndPlaceStepContent(
                             text = stringResource(errRes),
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.error,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
 
@@ -1116,23 +1137,37 @@ internal fun AudienceAndPlaceStepContent(
                         Text(stringResource(R.string.places_manual_coords_toggle))
                     }
                     if (showManualCoords) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val stackCoords = LocalDensity.current.fontScale >= 1.3f
+                        val latField: @Composable (Modifier) -> Unit = { mod ->
                             OutlinedTextField(
                                 value = state.placeLatitude,
                                 onValueChange = { onPlaceCoordinatesChange(it, state.placeLongitude) },
                                 singleLine = true,
                                 label = { Text(stringResource(R.string.places_editor_lat_label)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.weight(1f),
+                                modifier = mod,
                             )
+                        }
+                        val lonField: @Composable (Modifier) -> Unit = { mod ->
                             OutlinedTextField(
                                 value = state.placeLongitude,
                                 onValueChange = { onPlaceCoordinatesChange(state.placeLatitude, it) },
                                 singleLine = true,
                                 label = { Text(stringResource(R.string.places_editor_lon_label)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.weight(1f),
+                                modifier = mod,
                             )
+                        }
+                        if (stackCoords) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                latField(Modifier.fillMaxWidth())
+                                lonField(Modifier.fillMaxWidth())
+                            }
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                latField(Modifier.weight(1f))
+                                lonField(Modifier.weight(1f))
+                            }
                         }
                     }
 
@@ -1143,7 +1178,7 @@ internal fun AudienceAndPlaceStepContent(
                     )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         radiusOptions.forEach { radius ->
                             FilterChip(
@@ -1208,7 +1243,11 @@ internal fun AudienceAndPlaceStepContent(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .heightIn(min = 48.dp)
-                                        .clickable { onTogglePlaceRecipient(viewer.userId) },
+                                        .toggleable(
+                                            value = viewer.userId in state.selectedPlaceRecipients,
+                                            role = Role.Checkbox,
+                                            onValueChange = { onTogglePlaceRecipient(viewer.userId) },
+                                        ),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Checkbox(
@@ -1216,7 +1255,11 @@ internal fun AudienceAndPlaceStepContent(
                                         onCheckedChange = null,
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    Text(viewer.displayName, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        text = viewer.displayName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             }
                         }

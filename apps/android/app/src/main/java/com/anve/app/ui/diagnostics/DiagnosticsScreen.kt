@@ -218,7 +218,10 @@ internal fun DiagnosticsExportReview(report: String, onDismiss: () -> Unit, onSh
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.diag_export_review_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(stringResource(R.string.diag_export_review_body))
                 SelectionContainer {
                     Text(report, Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)

@@ -102,7 +102,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = state.mode == mode, onClick = null, enabled = editable,
                                     colors = RadioButtonDefaults.colors(selectedColor = stitch.onLiveContainer))
-                                Text(label, Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
+                                Text(label, Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -137,29 +137,32 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                     // is a different visual signal than info, and merging it here
                     // would hide that distinction.
                     if (state.mode == "EMAIL") {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(stringResource(R.string.invite_email_info), style = MaterialTheme.typography.bodyMedium)
                             Text(stringResource(R.string.invite_email_note), style = MaterialTheme.typography.bodyMedium)
                         }
                     } else {
-                        Text(stringResource(R.string.invite_link_info), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.invite_link_info), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }
                 } }
                 item { Surface(Modifier.fillMaxWidth(), color = if (dark) colors.surfaceVariant else colors.secondaryContainer,
                     contentColor = if (dark) colors.onSurfaceVariant else colors.onSecondaryContainer, shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.WarningAmber, null)
-                        Text(stringResource(R.string.invite_privacy_warning), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.invite_privacy_warning), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }
                 } }
                 item { Box {
                     TextButton(onClick = { showExpiry = true }, enabled = editable,
                         colors = ButtonDefaults.textButtonColors(contentColor = rememberInkOnSurface()), modifier = Modifier.heightIn(min = 48.dp)) {
                         Icon(Icons.Outlined.Schedule, null, Modifier.size(20.dp))
-                        Text(stringResource(
-                            R.string.invite_uses_summary,
-                            if (state.hours == 168) stringResource(R.string.invite_expiry_week) else stringResource(R.string.invite_expiry_hours, state.hours),
-                        ), Modifier.padding(horizontal = 8.dp))
+                        Text(
+                            stringResource(
+                                R.string.invite_uses_summary,
+                                if (state.hours == 168) stringResource(R.string.invite_expiry_week) else stringResource(R.string.invite_expiry_hours, state.hours),
+                            ),
+                            Modifier.weight(1f, fill = false).padding(horizontal = 8.dp),
+                        )
                         Icon(Icons.Outlined.ArrowDropDown, null)
                     }
                     DropdownMenu(expanded = showExpiry && editable, onDismissRequest = { showExpiry = false }) {
@@ -187,7 +190,7 @@ fun EmailInvitationSheet(state: PrivateInvitationsState, online: Boolean, onDism
                     containerColor = if (dark) colors.primaryContainer else colors.primary,
                     contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
                 ),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("invite-submit"),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("invite-submit"),
             ) {
                 Text(if (state.unknown) stringResource(R.string.invite_check_result) else stringResource(R.string.invite_create))
             }

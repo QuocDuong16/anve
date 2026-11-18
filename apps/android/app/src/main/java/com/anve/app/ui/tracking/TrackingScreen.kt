@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -69,6 +70,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -579,6 +581,7 @@ fun TrackingContent(
                             stringResource(R.string.tracking_details_toggle),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
                         )
                         Icon(
                             imageVector = if (showDetails) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
@@ -688,6 +691,7 @@ private fun TrackingControlCard(
                             text = heroTitle,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.semantics { heading() },
                         )
                         Text(
                             text = heroBody,
@@ -747,10 +751,11 @@ private fun TrackingControlCard(
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = stringResource(R.string.tracking_consent_card_title),
@@ -806,7 +811,7 @@ private fun TrackingControlCard(
                     onClick = onStop,
                     enabled = enabled,
                     shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
                 ) {
                     Text(stringResource(R.string.tracking_stop))
                 }
@@ -815,7 +820,7 @@ private fun TrackingControlCard(
                     onClick = onStart,
                     enabled = enabled && status.sessionReady,
                     shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp),
                 ) {
                     Text(
                         when {
@@ -870,6 +875,7 @@ private fun JourneyFeatureCard(onOpenJourney: () -> Unit) {
                         text = stringResource(R.string.tracking_journey_card_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.semantics { heading() },
                     )
                     Text(
                         text = stringResource(R.string.tracking_journey_card_body),
@@ -1146,10 +1152,11 @@ private fun StatusCard(
                 ),
             )
             HorizontalDivider(color = stitch.hairline)
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = stringResource(R.string.tracking_connection),
@@ -1221,6 +1228,7 @@ private fun DiagnosticsCard(status: TrackingStatus) {
                     stringResource(R.string.tracking_diagnostics),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
                 )
                 Icon(
                     imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
@@ -1266,23 +1274,42 @@ private fun DiagnosticsCard(status: TrackingStatus) {
 
 @Composable
 private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Text(
-            label,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            value,
-            modifier = Modifier.weight(1f, fill = false),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+    if (LocalDensity.current.fontScale >= 1.3f) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    } else {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                label,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                value,
+                modifier = Modifier.weight(1f, fill = false),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
 

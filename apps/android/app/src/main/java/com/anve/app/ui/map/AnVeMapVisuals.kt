@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -224,7 +224,7 @@ fun MapOverlayPillButton(
     val stitch = LocalStitchColors.current
     Surface(
         onClick = onClick,
-        shape = CircleShape,
+        shape = RoundedCornerShape(24.dp),
         color = if (active) colors.primaryContainer.copy(alpha = 0.95f) else stitch.cardTactile.copy(alpha = 0.92f),
         contentColor = if (active) colors.onPrimaryContainer else colors.onSurface,
         border = BorderStroke(1.dp, if (active) colors.primary else stitch.hairline),
@@ -240,7 +240,7 @@ fun MapOverlayPillButton(
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
+                maxLines = 2,
             )
         }
     }

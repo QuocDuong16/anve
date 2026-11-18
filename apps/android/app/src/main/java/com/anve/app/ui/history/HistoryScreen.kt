@@ -98,7 +98,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -581,7 +580,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     }
                                     if (inlineMapPanEnabled) {
                                         Surface(
-                                            shape = CircleShape,
+                                            shape = RoundedCornerShape(20.dp),
                                             color = stitch.cardTactile.copy(alpha = 0.94f),
                                             border = BorderStroke(1.dp, stitch.hairline),
                                             shadowElevation = 1.dp,
@@ -593,20 +592,19 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                                 text = stringResource(R.string.map_pan_unlocked_hint),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = colors.onSurface,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
+                                                maxLines = 2,
                                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                             )
                                         }
                                     }
                                 }
                                 HorizontalDivider(color = stitch.hairline)
-                                Row(
+                                FlowRow(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     TextButton(
                                         onClick = {
@@ -619,14 +617,13 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                             }
                                         },
                                         enabled = mapLoaded && validPoints.isNotEmpty(),
-                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                        modifier = Modifier.heightIn(min = 48.dp),
                                     ) {
                                         Icon(Icons.Outlined.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text(
                                             text = stringResource(R.string.history_center_map),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
+                                            maxLines = 2,
                                         )
                                     }
                                     TextButton(
@@ -643,7 +640,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     ) {
                                         Icon(Icons.Outlined.ZoomOutMap, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
-                                        Text(stringResource(R.string.map_fit_route), maxLines = 1)
+                                        Text(stringResource(R.string.map_fit_route), maxLines = 2)
                                     }
                                 }
                             }
@@ -1151,7 +1148,7 @@ private fun HistoryFullScreenMapDialog(
 
                 // Floating top bar with member + date context and close action.
                 Surface(
-                    shape = CircleShape,
+                    shape = RoundedCornerShape(24.dp),
                     color = stitch.cardTactile.copy(alpha = 0.94f),
                     border = BorderStroke(1.dp, stitch.hairline),
                     shadowElevation = 2.dp,
@@ -1177,15 +1174,13 @@ private fun HistoryFullScreenMapDialog(
                                 text = stringResource(R.string.history_map_explorer_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                             Text(
                                 text = "$memberLabel · $dateLabel",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                         }
                     }
@@ -1263,16 +1258,13 @@ private fun HistoryFullScreenMapDialog(
                             .fillMaxWidth()
                             .anveContentWidth(),
                     ) {
+                        val stackScrubberHeader = LocalDensity.current.fontScale >= 1.3f
                         Column(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            val scrubberSummary: @Composable (Modifier) -> Unit = { colMod ->
+                                Column(modifier = colMod, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     val activePlaceMatch = remember(activePoint.eventId, places) {
                                         findMatchingPlace(activePoint.latitude, activePoint.longitude, places)
                                     }
@@ -1286,18 +1278,18 @@ private fun HistoryFullScreenMapDialog(
                                         text = stringResource(R.string.history_point_step, activeIndex + 1, validPoints.size, time),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                                        maxLines = 2,
                                     )
                                     Text(
                                         text = detailText,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = if (activePlaceMatch?.isInside == true) colors.primary else colors.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                                        maxLines = 2,
                                     )
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            }
+                            val scrubberButtons: @Composable () -> Unit = {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilledTonalIconButton(
                                         onClick = {
                                             if (activeIndex > 0) focusPoint(validPoints[activeIndex - 1])
@@ -1316,6 +1308,26 @@ private fun HistoryFullScreenMapDialog(
                                     ) {
                                         Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.history_next_point_desc))
                                     }
+                                }
+                            }
+                            if (stackScrubberHeader) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    scrubberSummary(Modifier.fillMaxWidth())
+                                    Box(modifier = Modifier.align(Alignment.End)) {
+                                        scrubberButtons()
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    scrubberSummary(Modifier.weight(1f))
+                                    scrubberButtons()
                                 }
                             }
                             if (validPoints.size > 1) {

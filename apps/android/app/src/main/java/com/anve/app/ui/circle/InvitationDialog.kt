@@ -2,6 +2,7 @@ package com.anve.app.ui.circle
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -82,12 +83,13 @@ fun InvitationDialog(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(preview.circleName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                            Text(preview.circleName, style = MaterialTheme.typography.titleLarge)
                             StitchSemanticBadge(
                                 text = stringResource(R.string.circle_role_member),
                                 kind = StitchBadgeKind.SAFE_HOME,

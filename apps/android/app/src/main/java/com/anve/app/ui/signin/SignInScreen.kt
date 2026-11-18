@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -208,6 +209,7 @@ fun SignInContent(
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = colors.primary,
+                                    modifier = Modifier.semantics { heading() },
                                 )
                                 Text(
                                     text = stringResource(R.string.splash_tagline),
@@ -238,6 +240,7 @@ fun SignInContent(
                                     Text(
                                         text = stringResource(R.string.signin_invitation_prompt),
                                         style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
                                     )
                                 }
                             }
@@ -267,7 +270,9 @@ fun SignInContent(
                                 Text(
                                     text = stringResource(R.string.signin_in_progress),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .semantics { liveRegion = LiveRegionMode.Polite },
                                 )
                             }
                         }

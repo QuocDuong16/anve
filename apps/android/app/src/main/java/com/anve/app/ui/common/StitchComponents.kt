@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -199,8 +200,7 @@ fun StitchSemanticBadge(
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelMedium,
-                maxLines = if (LocalDensity.current.fontScale > 1.3f) 2 else 1,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 3,
             )
         }
     }
@@ -220,59 +220,90 @@ fun StitchLiveSharingPill(
 ) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
+    val largeFont = LocalDensity.current.fontScale >= 1.3f
+    val pillShape = if (largeFont) RoundedCornerShape(24.dp) else CircleShape
     val container = if (active) stitch.cardTactile else colors.surfaceContainerLow
     val border = if (active) {
         BorderStroke(1.dp, stitch.livePulse.copy(alpha = 0.30f))
     } else {
         BorderStroke(1.dp, stitch.hairline)
     }
-    val content: @Composable () -> Unit = {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            StitchLivePulseDot(active = active)
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = colors.onSurface,
-                modifier = Modifier.weight(1f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (actionLabel != null) {
-                Surface(
-                    shape = CircleShape,
-                    color = if (active) stitch.liveContainer else colors.surfaceContainerHigh,
-                    contentColor = if (active) stitch.onLiveContainer else colors.onSurfaceVariant,
+    val actionChip: @Composable () -> Unit = {
+        if (actionLabel != null) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = if (active) stitch.liveContainer else colors.surfaceContainerHigh,
+                contentColor = if (active) stitch.onLiveContainer else colors.onSurfaceVariant,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = actionLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                        )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
+                    Text(
+                        text = actionLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 2,
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
                 }
+            }
+        }
+    }
+    val content: @Composable () -> Unit = {
+        if (largeFont && actionLabel != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StitchLivePulseDot(active = active)
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = colors.onSurface,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 3,
+                    )
+                }
+                Box(modifier = Modifier.align(Alignment.End)) {
+                    actionChip()
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StitchLivePulseDot(active = active)
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = colors.onSurface,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 3,
+                )
+                actionChip()
             }
         }
     }
     if (onClick != null) {
         Surface(
             onClick = onClick,
-            shape = CircleShape,
+            shape = pillShape,
             color = container,
             border = border,
             modifier = modifier
@@ -282,7 +313,7 @@ fun StitchLiveSharingPill(
         )
     } else {
         Surface(
-            shape = CircleShape,
+            shape = pillShape,
             color = container,
             border = border,
             modifier = modifier
@@ -747,7 +778,6 @@ fun AnVeSosHoldButton(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.6.sp,
-                        maxLines = 1,
                     )
                 }
             }

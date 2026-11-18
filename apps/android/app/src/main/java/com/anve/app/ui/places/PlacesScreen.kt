@@ -92,6 +92,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -101,7 +102,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -377,7 +377,7 @@ internal fun PlacesContent(
                             },
                             enabled = !state.pending,
                             shape = CircleShape,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         ) {
                             Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -411,7 +411,10 @@ internal fun PlacesContent(
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.semantics { heading() },
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 FilterChip(
                                     selected = !filterMine,
                                     onClick = { filterMine = false },
@@ -1016,7 +1019,7 @@ private fun PlacePreview(place: PlaceDto) {
                         )
                     }
                     Surface(
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(24.dp),
                         color = stitch.cardTactile.copy(alpha = 0.94f),
                         border = BorderStroke(1.dp, stitch.hairline),
                         shadowElevation = 2.dp,
@@ -1042,14 +1045,13 @@ private fun PlacePreview(place: PlaceDto) {
                                     text = place.name,
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    maxLines = 2,
                                 )
                                 Text(
                                     text = stringResource(R.string.places_radius, place.radiusMeters.toInt()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.onSurfaceVariant,
-                                    maxLines = 1,
+                                    maxLines = 2,
                                 )
                             }
                         }
@@ -1411,7 +1413,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                             }
                             if (inlineMapPanEnabled) {
                                 Surface(
-                                    shape = CircleShape,
+                                    shape = RoundedCornerShape(20.dp),
                                     color = stitch.cardTactile.copy(alpha = 0.94f),
                                     border = BorderStroke(1.dp, stitch.hairline),
                                     shadowElevation = 1.dp,
@@ -1423,8 +1425,7 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                                         text = stringResource(R.string.map_pan_unlocked_hint),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                                        maxLines = 2,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                     )
                                 }
@@ -1547,14 +1548,20 @@ private fun PlaceEditor(place: PlaceDto?, pending: Boolean, noticeRes: Int?, onC
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 48.dp)
-                            .clickable(role = Role.Button) { showManualCoords = !showManualCoords }
+                            .toggleable(
+                                value = showManualCoords,
+                                role = Role.Button,
+                                onValueChange = { showManualCoords = it },
+                            )
+                            .padding(vertical = 8.dp)
                             .semantics { stateDescription = coordsToggleState },
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             stringResource(R.string.places_manual_coords_toggle),
                             style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f),
                         )
                         Icon(
                             imageVector = if (showManualCoords) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
@@ -1730,8 +1737,9 @@ private fun PlaceFullScreenPickerDialog(
                 }
 
                 // Floating top bar with hint and Done action.
+                val stackPickerHeader = LocalDensity.current.fontScale >= 1.3f
                 Surface(
-                    shape = CircleShape,
+                    shape = RoundedCornerShape(24.dp),
                     color = stitch.cardTactile.copy(alpha = 0.94f),
                     border = BorderStroke(1.dp, stitch.hairline),
                     shadowElevation = 2.dp,
@@ -1742,38 +1750,63 @@ private fun PlaceFullScreenPickerDialog(
                         .fillMaxWidth()
                         .anveContentWidth(),
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.map_fullscreen_close))
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
+                    val pickerTitles: @Composable (Modifier) -> Unit = { colMod ->
+                        Column(modifier = colMod) {
                             Text(
                                 text = stringResource(R.string.places_map_picker_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                             Text(
                                 text = stringResource(R.string.places_map_picker_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                         }
+                    }
+                    val doneButton: @Composable (Modifier) -> Unit = { btnMod ->
                         Button(
                             onClick = onDismiss,
                             shape = CircleShape,
-                            modifier = Modifier.heightIn(min = 48.dp),
+                            modifier = btnMod.heightIn(min = 48.dp),
                         ) {
                             Text(stringResource(R.string.places_map_picker_done))
+                        }
+                    }
+                    if (stackPickerHeader) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                IconButton(onClick = onDismiss) {
+                                    Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.map_fullscreen_close))
+                                }
+                                pickerTitles(Modifier.weight(1f))
+                            }
+                            doneButton(Modifier.fillMaxWidth().padding(start = 8.dp))
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            IconButton(onClick = onDismiss) {
+                                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.map_fullscreen_close))
+                            }
+                            pickerTitles(Modifier.weight(1f))
+                            doneButton(Modifier)
                         }
                     }
                 }
@@ -1883,9 +1916,9 @@ private fun PlaceSearchCard(
             is PlaceSearchOutcome.Found -> if (!searching) {
                 outcome.suggestions.forEach { suggestion ->
                     ListItem(
-                        headlineContent = { Text(suggestion.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        headlineContent = { Text(suggestion.title, maxLines = 2) },
                         supportingContent = {
-                            Text(suggestion.subtitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(suggestion.subtitle, maxLines = 3)
                         },
                         leadingContent = { Icon(Icons.Outlined.Place, contentDescription = null) },
                         modifier = Modifier.heightIn(min = 56.dp).clickable(enabled = enabled) { onPick(suggestion) },

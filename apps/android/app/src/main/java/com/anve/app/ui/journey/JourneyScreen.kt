@@ -344,6 +344,7 @@ fun JourneyContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = 48.dp)
                             .clickable { onSelect(journey.id) }
                             .padding(vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -612,7 +613,7 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                     shape = CircleShape,
                     border = BorderStroke(1.dp, rememberInkOnSurface()),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = rememberInkOnSurface()),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) {
                     Icon(Icons.Outlined.Close, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.journey_end_action), style = MaterialTheme.typography.titleMedium)
                 }
@@ -709,7 +710,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
             state.places.forEach { place ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(destination == place.id, role = Role.RadioButton, onClick = { destination = place.id }), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(destination == place.id, onClick = null)
-                    Text(place.name, Modifier.padding(start = 8.dp))
+                    Text(place.name, Modifier.weight(1f).padding(start = 8.dp))
                 }
             }
             JourneyTextAction(stringResource(R.string.journey_manage_places), onPlaces)
@@ -758,7 +759,7 @@ private fun JourneyCreateForm(state: JourneyUiState, tracking: TrackingStatus, o
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(member.userId in recipients, role = Role.Checkbox,
                     onClick = { recipients = if (member.userId in recipients) recipients - member.userId else recipients + member.userId }), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(member.userId in recipients, onCheckedChange = null)
-                    Text(member.displayName, Modifier.padding(start = 8.dp))
+                    Text(member.displayName, Modifier.weight(1f).padding(start = 8.dp))
                 }
             }
         }
@@ -869,7 +870,7 @@ private fun JourneyPrimaryAction(text: String, onClick: () -> Unit, enabled: Boo
             containerColor = if (dark) colors.primaryContainer else colors.primary,
             contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,
         ),
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
     ) {
         Text(text, style = MaterialTheme.typography.titleMedium)
     }

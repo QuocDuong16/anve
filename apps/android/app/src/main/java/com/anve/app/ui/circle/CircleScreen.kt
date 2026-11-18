@@ -64,7 +64,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -499,15 +498,16 @@ fun CircleContent(
                     }
                 }
                 item {
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = stringResource(R.string.circle_members_title),
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f).semantics { heading() },
+                            modifier = Modifier.semantics { heading() },
                         )
                         StitchSemanticBadge(
                             text = stringResource(R.string.circle_member_count_pill, state.members.size),
@@ -535,15 +535,16 @@ fun CircleContent(
                     }
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
                                     text = stringResource(R.string.circle_invites_title),
                                     style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.weight(1f).semantics { heading() },
+                                    modifier = Modifier.semantics { heading() },
                                 )
                                 StitchSemanticBadge(
                                     text = stringResource(R.string.circle_invites_count_pill, state.invites.size),
@@ -569,7 +570,7 @@ fun CircleContent(
                         Button(
                             onClick = onCreateInvite,
                             shape = CircleShape,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         ) {
                             Icon(Icons.Outlined.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -694,7 +695,7 @@ private fun CircleSetup(
                         onClick = { onCreate(circleName) },
                         enabled = !busy && circleName.isNotBlank(),
                         shape = CircleShape,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     ) {
                         Text(stringResource(R.string.circle_create_button))
                     }
@@ -725,7 +726,7 @@ private fun CircleSetup(
                         onClick = { onJoin(code) },
                         enabled = !busy && code.isNotBlank(),
                         shape = CircleShape,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     ) {
                         Text(stringResource(R.string.invite_view))
                     }
@@ -786,8 +787,7 @@ private fun CircleHeaderCard(name: String, memberCount: Int, isOwner: Boolean, o
                                 name,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                maxLines = if (stackLeave) 2 else 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 3,
                             )
                             StitchSemanticBadge(
                                 text = if (isOwner) {
@@ -1066,14 +1066,14 @@ private fun MemberRow(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    FlowRow(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             member.displayName,
                             style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f, fill = false),
                         )
                         if (isSelf) {
                             StitchSemanticBadge(
@@ -1130,9 +1130,10 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
         modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
                 shape = RoundedCornerShape(10.dp),
@@ -1153,7 +1154,6 @@ private fun InviteRow(invite: InviteDto, busy: Boolean, onRevoke: () -> Unit, on
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
             )
         }
             FlowRow(

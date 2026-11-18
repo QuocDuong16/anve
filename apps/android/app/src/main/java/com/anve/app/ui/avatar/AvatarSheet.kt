@@ -203,7 +203,7 @@ fun AvatarSheet(
                     enabled = online && !state.busy,
                     colors = actionColors,
                     shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("avatar-check"),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("avatar-check"),
                 ) {
                     Text(stringResource(R.string.avatar_check_result))
                 }
@@ -212,7 +212,7 @@ fun AvatarSheet(
                     enabled = online && !state.busy,
                     colors = actionColors,
                     shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) {
                     Text(stringResource(R.string.action_retry))
                 }
@@ -221,7 +221,7 @@ fun AvatarSheet(
                     enabled = editable && state.changed && online,
                     colors = actionColors,
                     shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("avatar-save"),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("avatar-save"),
                 ) {
                     Text(
                         if (state.removeDraft) {

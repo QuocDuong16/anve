@@ -120,7 +120,7 @@ fun JourneyOptionsSheet(automaticArrival: Boolean, staleAfterMinutes: Int, onDis
             Button(
                 onClick = { onApply(automatic, stale) },
                 shape = CircleShape,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).heightIn(min = 48.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).heightIn(min = 52.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (dark) colors.primaryContainer else colors.primary,
                     contentColor = if (dark) colors.onPrimaryContainer else colors.onPrimary,

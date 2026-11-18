@@ -683,8 +683,7 @@ private fun AnVeShellHeader(
                         text = stringResource(R.string.home_brand_name),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 2,
                         modifier = Modifier.weight(1f),
                     )
                     AccountAvatarButton(
@@ -924,21 +923,13 @@ fun HomeContent(
                 )
             }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.weight(1f)) {
-                        AnVeSectionHeader(
-                            title = stringResource(R.string.home_group_devices_title),
-                        )
-                    }
-                    StitchSemanticBadge(
-                        text = stringResource(R.string.home_device_count_badge, state.devices.size),
-                        kind = StitchBadgeKind.NEUTRAL,
-                    )
-                }
+                AnVeSectionHeader(
+                    title = stringResource(R.string.home_group_devices_title),
+                    badgeText = stringResource(R.string.home_device_count_badge, state.devices.size),
+                    badgeContainerColor = colors.surfaceContainerHigh,
+                    badgeContentColor = colors.onSurface,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
             if (state.devices.isEmpty()) {
                 item {
