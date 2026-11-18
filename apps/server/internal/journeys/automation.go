@@ -16,7 +16,7 @@ import (
 // These conservative engineering defaults are not field-calibrated guarantees.
 // They consume already-authorized ingestion; they never start acquisition.
 const arrivalRadius = 150.0
-const arrivalAccuracy = 50.0
+const arrivalAccuracy = 75.0
 const arrivalDwell = 2 * time.Minute
 const arrivalMaxGap = 90 * time.Second
 const liveMaxLag = time.Minute

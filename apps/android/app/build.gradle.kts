@@ -1,5 +1,6 @@
 import com.anve.buildlogic.ReleaseInputs
 import com.anve.buildlogic.VerifyReleaseInputs
+import java.net.URI
 import org.gradle.api.artifacts.FileCollectionDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult
@@ -76,10 +77,15 @@ android {
 
         // Only debug retains the local emulator fallback. Release build types
         // override it and cannot package before their explicit-input guard.
-        buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(
-            providers.gradleProperty("ANVE_API_URL").orElse(providers.environmentVariable("ANVE_API_URL"))
-                .getOrElse("http://10.0.2.2:8080"),
-        ))
+        val debugApiUrl = providers.gradleProperty("ANVE_API_URL")
+            .orElse(providers.environmentVariable("ANVE_API_URL"))
+            .getOrElse("http://10.0.2.2:8080")
+        buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(debugApiUrl))
+        val debugAppLinksHost = runCatching { URI(debugApiUrl.trim()).host }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() && it != "10.0.2.2" && it != "localhost" && it != "127.0.0.1" }
+            ?: "anve.niand.id.vn"
+        manifestPlaceholders["APP_LINKS_HOST"] = debugAppLinksHost
         buildConfigField("String", "MAPS_API_KEY", "\"$escapedMapsApiKey\"")
         listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->
             buildConfigField("String", name, "\"${firebaseSetting(name)}\"")
@@ -115,7 +121,13 @@ android {
             ndk {
                 debugSymbolLevel = "FULL"
             }
-            buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(releaseSettings.getValue("ANVE_API_URL")))
+            val releaseApiUrl = releaseSettings.getValue("ANVE_API_URL")
+            buildConfigField("String", "API_BASE_URL", ReleaseInputs.javaString(releaseApiUrl))
+            val releaseAppLinksHost = runCatching { URI(releaseApiUrl.trim()).host }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: "anve.niand.id.vn"
+            manifestPlaceholders["APP_LINKS_HOST"] = releaseAppLinksHost
             resValue("string", "anve_google_server_client_id", releaseSettings.getValue("ANVE_GOOGLE_WEB_CLIENT_ID"))
             buildConfigField("String", "MAPS_API_KEY", ReleaseInputs.javaString(releaseSettings.getValue("ANVE_MAPS_API_KEY")))
             listOf("ANVE_FIREBASE_APP_ID", "ANVE_FIREBASE_PROJECT_ID", "ANVE_FIREBASE_API_KEY", "ANVE_FIREBASE_SENDER_ID").forEach { name ->

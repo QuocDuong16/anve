@@ -25,6 +25,7 @@ import com.anve.app.data.location.LocationSyncScheduler
 import com.anve.app.data.location.VisibleLocationRepository
 import com.anve.app.data.location.WorkManagerLocationSyncScheduler
 import com.anve.app.data.sos.ApiSosGateway
+import com.anve.app.data.sos.AndroidSosSnapshotProvider
 import com.anve.app.data.sos.EncryptedSosOutbox
 import com.anve.app.data.sos.FirebaseSetup
 import com.anve.app.data.sos.PushRegistrationCoordinator
@@ -43,6 +44,7 @@ import com.anve.app.tracking.DataStoreTrackingMetricsStore
 import com.anve.app.tracking.DataStoreTrackingStore
 import com.anve.app.tracking.FusedLocationProvider
 import com.anve.app.tracking.TrackingManager
+import com.anve.app.tracking.TrackingRecoveryNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -140,7 +142,8 @@ class AppContainer(application: Application) {
             scheduler = pushRegistrationScheduler,
         )
     }
-    val pushEventRepository by lazy { PushEventRepository(authApi) }
+    val pushEventRepository by lazy { PushEventRepository(authApi, sosOutbox::cachedMembers) }
+    val sosSnapshotProvider by lazy { AndroidSosSnapshotProvider(application) }
     val sosRepository by lazy { SosRepository(authApi) }
 
     val journeyOutbox by lazy { com.anve.app.data.journey.EncryptedJourneyOutbox(application) }
@@ -212,6 +215,10 @@ class AppContainer(application: Application) {
                 val journey = response.body()
                 response.isSuccessful && journey?.ownerId == owner && journey.id == id && journey.state == "ACTIVE" && journey.recipients.isNotEmpty()
             }
+        },
+        directSync = { locationSyncEngine.sync() },
+        onUnexpectedStop = { owner ->
+            TrackingRecoveryNotifier.notify(application, owner, TrackingRecoveryNotifier.Reason.INTERRUPTED)
         },
     )
 

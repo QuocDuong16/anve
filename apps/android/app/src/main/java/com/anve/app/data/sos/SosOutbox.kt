@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.anve.app.data.api.SosLocationDto
 import com.anve.app.data.auth.KeystoreTokenCipher
 import com.anve.app.data.auth.SealedBytes
 import com.anve.app.data.auth.TokenCipher
@@ -33,6 +34,8 @@ data class SosOutboxItem(
     val createdAtMillis: Long,
     val state: SosLocalState,
     val cancelRequestedAtMillis: Long? = null,
+    val location: SosLocationDto? = null,
+    val batteryPercent: Int? = null,
 )
 
 @JsonClass(generateAdapter = false)

@@ -266,3 +266,29 @@ func TestSMTPPortValidationWhenHostConfigured(t *testing.T) {
 		assert.Equal(t, "12345", cfg.TelegramChatID)
 	})
 }
+
+func TestAndroidAssetLinksValidation(t *testing.T) {
+	t.Run("empty sha256 keeps fingerprints empty", func(t *testing.T) {
+		cfg, err := config.Load()
+		require.NoError(t, err)
+		assert.Equal(t, "com.anve.app", cfg.AndroidAssetLinksPackage)
+		assert.Empty(t, cfg.AndroidAssetLinksFingerprints)
+	})
+
+	t.Run("valid comma-separated fingerprints normalize to uppercase", func(t *testing.T) {
+		fp1 := "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+		fp2 := "11:22:33:44:55:66:77:88:99:00:AA:BB:CC:DD:EE:FF:11:22:33:44:55:66:77:88:99:00:AA:BB:CC:DD:EE:FF"
+		t.Setenv("ANDROID_ASSETLINKS_SHA256", fp1+" , "+fp2)
+		cfg, err := config.Load()
+		require.NoError(t, err)
+		require.Len(t, cfg.AndroidAssetLinksFingerprints, 2)
+		assert.Equal(t, "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99", cfg.AndroidAssetLinksFingerprints[0])
+		assert.Equal(t, fp2, cfg.AndroidAssetLinksFingerprints[1])
+	})
+
+	t.Run("invalid fingerprint fails startup", func(t *testing.T) {
+		t.Setenv("ANDROID_ASSETLINKS_SHA256", "not-a-sha256")
+		_, err := config.Load()
+		require.ErrorContains(t, err, "ANDROID_ASSETLINKS_SHA256")
+	})
+}

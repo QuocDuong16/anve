@@ -573,15 +573,19 @@ giải thích thêm.*
   **đã được người nhận xác nhận**.
 
 **Dữ liệu.** SOS Event gồm người gửi, trạng thái, event time, danh sách người
-nhận được chọn và acknowledge. M6 không đính kèm tọa độ hoặc bật GPS; Journey
-thuộc M7.
+nhận được chọn, acknowledge và **tùy chọn đính kèm 1 lần (mặc định bật)** tọa
+độ hiện tại + mức pin lúc kích hoạt (best-effort fail-open: chỉ đọc 1 mẫu
+`getCurrentLocation` khi quyền OS vị trí đã cấp mà không bật theo dõi nền lâu
+dài hay phụ thuộc consent switch nền; nếu thiếu quyền hoặc timeout vẫn gửi SOS).
+Journey thuộc M7.
 
 **Business rules.** Chỉ người được cấp quyền nhận mới nhận được SOS; lifecycle
 không được vẽ lại quá khứ (mỗi mốc thời gian ghi tại chỗ nó xảy ra).
 
 **Privacy/security.** Người gửi chọn từng người nhận và có thể thu hồi từng
-quyền; cùng Circle không tự cấp quyền xem sự kiện. Push chỉ chứa loại và ID
-sự kiện, không chứa tọa độ. Xem [ADR 0011](../adr/0011-sos-notification-boundary.md).
+quyền; cùng Circle không tự cấp quyền xem sự kiện. Push FCM vẫn chỉ chứa loại
+và ID sự kiện, không chứa tọa độ hoặc mức pin — ứng dụng người nhận đọc chi
+tiết qua API có xác thực. Xem [ADR 0011](../adr/0011-sos-notification-boundary.md).
 
 **Ranh giới cam kết.** SOS **không** thay thế dịch vụ cấp cứu chuyên nghiệp
 (113/115/114). UI phải nói rõ điều này. Không cam kết thông báo đến ngay lập tức

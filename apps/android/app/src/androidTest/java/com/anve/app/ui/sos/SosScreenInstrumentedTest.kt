@@ -198,6 +198,31 @@ class SosScreenInstrumentedTest {
         compose.runOnIdle { assertEquals(1, openedSettings) }
     }
 
+    @Test fun selectedEventShowsAttachedBatteryLocationAndMapAction() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val event = SosEventDto(
+            id = "event-loc",
+            ownerId = "opener",
+            recordedAt = "2026-01-01T00:00:00Z",
+            receivedAt = "2026-01-01T00:00:05Z",
+            state = "ACTIVE",
+            ownerName = "Mẹ Lan",
+            location = com.anve.app.data.api.SosLocationDto(10.7769, 106.7009, 18.0, "2026-01-01T00:00:00Z"),
+            batteryPercent = 24,
+        )
+        compose.setContent {
+            SosContent(
+                state = SosState(owner = "viewer", events = listOf(event), selected = event),
+                vm = vmFor(FakeSource()),
+                notificationPermission = true,
+                onNotifications = {},
+            )
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(context.getString(R.string.sos_detail_open_map)))
+        compose.onNodeWithText(context.getString(R.string.sos_detail_battery, 24)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.sos_detail_open_map)).assertIsDisplayed()
+    }
+
     private fun vmFor(source: SosDataSource): SosViewModel {
         val box = FakeBox()
         val gateway = object : SosSyncGateway {

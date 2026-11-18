@@ -39,5 +39,8 @@ class InvitationInboxTest {
         inbox.offer("anve://invite/not-a-valid-code")
         assertNull(inbox.invitation.value!!.code)
         assertNull(InvitationInbox().invitation.value)
+
+        inbox.offer("https://anve.niand.id.vn/invite#ABCD234569", "https://anve.niand.id.vn")
+        assertEquals("ABCD234569", inbox.invitation.value!!.code)
     }
 }

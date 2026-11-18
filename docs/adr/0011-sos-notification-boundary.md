@@ -3,13 +3,18 @@
 - **Status:** Accepted; automated verification passed, external Firebase and physical-device validation pending.
 
 An SOS is explicitly created by its owner and explicitly addressed to selected
-members. This first contract never attaches coordinates and never starts GPS;
-consent OFF therefore does not prevent asking for help or activate tracking.
-Each recipient is bound to the exact current Circle membership period and
-reads recheck the sender and recipient's current membership. Leaving and
-rejoining does not restore access. The sender can revoke an individual
-recipient for an existing event; pending push is suppressed, and access cannot
-be restored without creating a new SOS. SOS does not contact emergency services.
+members. By default (with an explicit opt-out switch on the SOS screen), sending
+SOS performs a best-effort single-shot `getCurrentLocation` read (when OS
+location permission is already granted) and reads device battery percentage to
+attach directly to that SOS record; it never enables continuous background
+tracking and never blocks sending SOS when location permission is absent or
+times out. Periodic `location_sharing_enabled` consent OFF therefore does not
+prevent asking for help with a one-shot SOS location snapshot. Each recipient is
+bound to the exact current Circle membership period and reads recheck the sender
+and recipient's current membership. Leaving and rejoining does not restore
+access. The sender can revoke an individual recipient for an existing event;
+pending push is suppressed, and access cannot be restored without creating a new
+SOS. SOS does not contact emergency services.
 
 The client chooses the event ID before submission. A retried ID is only
 idempotent when the complete request matches; conflicting reuse must fail.

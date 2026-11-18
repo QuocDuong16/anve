@@ -48,19 +48,21 @@ type Deps struct {
 	Metrics *observability.Registry
 	Logger  *slog.Logger
 
-	Version        string
-	Auth           *auth.Service
-	Avatars        *avatars.Store
-	Invitations    *circles.InvitationStore
-	Circles        *circles.Service
-	Locations      *locations.Service
-	LocationAccess *locationaccess.Service
-	Places         *places.Store
-	SOS            *sos.Store
-	Journeys       *journeys.Store
-	Contacts       *contacts.Service
-	PushConfigured bool
-	DB             Pinger
+	Version                       string
+	Auth                          *auth.Service
+	Avatars                       *avatars.Store
+	Invitations                   *circles.InvitationStore
+	Circles                       *circles.Service
+	Locations                     *locations.Service
+	LocationAccess                *locationaccess.Service
+	Places                        *places.Store
+	SOS                           *sos.Store
+	Journeys                      *journeys.Store
+	Contacts                      *contacts.Service
+	PushConfigured                bool
+	AndroidAssetLinksPackage      string
+	AndroidAssetLinksFingerprints []string
+	DB                            Pinger
 	// DevLoginAllowedNetworks is the source-address allowlist for the
 	// development login. An empty list denies every request: the fixture
 	// fails closed rather than trusting the listener configuration alone.
@@ -103,6 +105,7 @@ func NewRouter(deps Deps) chi.Router {
 	r.Get("/privacy", privacyPolicyHandler())
 	r.Get("/delete-account", accountDeletionHandler())
 	r.Get("/invite", invitePageHandler())
+	r.Get("/.well-known/assetlinks.json", assetLinksHandler(deps.AndroidAssetLinksPackage, deps.AndroidAssetLinksFingerprints))
 	r.Get("/assets/hero-family-welcome.webp", heroAssetHandler())
 	r.Get("/assets/anve-logo.svg", brandLogoAssetHandler())
 	r.Get("/assets/invite.js", inviteScriptHandler())

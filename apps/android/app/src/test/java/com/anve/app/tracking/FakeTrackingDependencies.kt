@@ -157,6 +157,7 @@ class FakeServiceController(var startResult: Boolean = true) : TrackingServiceCo
 class FakeSyncScheduler : LocationSyncScheduler {
     var scheduled = 0
     var immediate = 0
+    var cancelled = 0
     val delayedDelays = mutableListOf<Long>()
 
     override fun ensureScheduled() {
@@ -170,6 +171,10 @@ class FakeSyncScheduler : LocationSyncScheduler {
 
     override fun enqueueImmediate() {
         immediate++
+    }
+
+    override fun cancel() {
+        cancelled++
     }
 }
 

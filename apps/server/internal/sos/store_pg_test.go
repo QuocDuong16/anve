@@ -464,3 +464,65 @@ func TestPGPushTokenCannotMoveFromLiveSessionButCanAfterExpiry(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, registered)
 }
+
+func TestPGSosCreateWithLocationBatteryAndOwnerName(t *testing.T) {
+	ctx := context.Background()
+	pool := testdb.Scratch(t)
+	a := auth.NewService(auth.NewPGStore(pool), nil, true)
+	c := circles.NewService(circles.NewPGStore(pool))
+	store := sos.NewStore(pool)
+	owner, ownerTokens, err := a.DevSignIn(ctx, "sos-loc-owner@example.com", "Mẹ Lan", auth.DeviceRegistration{ClientDeviceID: "sos-loc-owner"})
+	require.NoError(t, err)
+	recipient, _, err := a.DevSignIn(ctx, "sos-loc-viewer@example.com", "Bố Hải", auth.DeviceRegistration{ClientDeviceID: "sos-loc-viewer"})
+	require.NoError(t, err)
+	ownerSession, _, err := a.Authenticate(ctx, ownerTokens.AccessToken)
+	require.NoError(t, err)
+	op := sos.Principal{UserID: owner.ID, SessionID: ownerSession.ID, DeviceID: ownerSession.DeviceID}
+	circle, _, err := c.Create(ctx, owner.ID, "Family")
+	require.NoError(t, err)
+	invite, err := c.CreateInvite(ctx, owner.ID, circle.ID, nil)
+	require.NoError(t, err)
+	_, _, err = c.Redeem(ctx, recipient.ID, invite.Code)
+	require.NoError(t, err)
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	battery := 24
+	opts := sos.CreateOptions{
+		Location: &sos.Location{
+			Latitude:                 10.7769,
+			Longitude:                106.7009,
+			HorizontalAccuracyMeters: 18,
+			RecordedAt:               now,
+		},
+		BatteryPercent: &battery,
+	}
+	id := uuid.New()
+	event, created, err := store.CreateWithOptions(ctx, op, id, now, []uuid.UUID{recipient.ID}, opts)
+	require.NoError(t, err)
+	require.True(t, created)
+	require.Equal(t, "Mẹ Lan", event.OwnerName)
+	require.NotNil(t, event.Location)
+	require.InDelta(t, 10.7769, event.Location.Latitude, 1e-6)
+	require.InDelta(t, 106.7009, event.Location.Longitude, 1e-6)
+	require.NotNil(t, event.BatteryPercent)
+	require.Equal(t, 24, *event.BatteryPercent)
+
+	// Exact retry is idempotent; changing location/battery with same ID conflicts.
+	_, created, err = store.CreateWithOptions(ctx, op, id, now, []uuid.UUID{recipient.ID}, opts)
+	require.NoError(t, err)
+	require.False(t, created)
+	otherBattery := 25
+	_, _, err = store.CreateWithOptions(ctx, op, id, now, []uuid.UUID{recipient.ID}, sos.CreateOptions{
+		Location:       opts.Location,
+		BatteryPercent: &otherBattery,
+	})
+	require.ErrorIs(t, err, sos.ErrConflict)
+
+	// Recipient reads ownerName, location and battery through Get and List.
+	got, err := store.Get(ctx, recipient.ID, id)
+	require.NoError(t, err)
+	require.Equal(t, "Mẹ Lan", got.OwnerName)
+	require.NotNil(t, got.Location)
+	require.NotNil(t, got.BatteryPercent)
+	require.Equal(t, 24, *got.BatteryPercent)
+}

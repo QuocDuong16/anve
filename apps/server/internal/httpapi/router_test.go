@@ -219,6 +219,45 @@ func TestInvitePageAndScriptServeWithoutDatabase(t *testing.T) {
 	assert.Equal(t, "application/javascript; charset=utf-8", jsRec.Header().Get("Content-Type"))
 	assert.Equal(t, "nosniff", jsRec.Header().Get("X-Content-Type-Options"))
 	assert.Contains(t, jsRec.Body.String(), "window.location.hash")
+	assert.Contains(t, jsRec.Body.String(), "intent://invite/")
+}
+
+func TestAndroidAssetLinksEndpoint(t *testing.T) {
+	t.Parallel()
+
+	t.Run("unconfigured returns 404", func(t *testing.T) {
+		router := httpapi.NewRouter(httpapi.Deps{Version: "test-version"})
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/.well-known/assetlinks.json", nil))
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
+	t.Run("configured serves Digital Asset Links JSON", func(t *testing.T) {
+		fp := "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+		router := httpapi.NewRouter(httpapi.Deps{
+			Version:                       "test-version",
+			AndroidAssetLinksPackage:      "com.anve.app",
+			AndroidAssetLinksFingerprints: []string{fp},
+		})
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/.well-known/assetlinks.json", nil))
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+		var body []struct {
+			Relation []string `json:"relation"`
+			Target   struct {
+				Namespace              string   `json:"namespace"`
+				PackageName            string   `json:"package_name"`
+				SHA256CertFingerprints []string `json:"sha256_cert_fingerprints"`
+			} `json:"target"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		require.Len(t, body, 1)
+		assert.Equal(t, []string{"delegate_permission/common.handle_all_urls"}, body[0].Relation)
+		assert.Equal(t, "android_app", body[0].Target.Namespace)
+		assert.Equal(t, "com.anve.app", body[0].Target.PackageName)
+		assert.Equal(t, []string{fp}, body[0].Target.SHA256CertFingerprints)
+	})
 }
 
 func TestContactsEndpointRoutes(t *testing.T) {

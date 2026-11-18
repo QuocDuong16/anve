@@ -33,12 +33,14 @@ class TrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            TrackingRecoveryNotifier.cancel(this)
             manager()?.stopFromNotification()
             stopSelf()
             return START_NOT_STICKY
         }
         return try {
             startForeground(NOTIFICATION_ID, buildNotification(this))
+            TrackingRecoveryNotifier.cancel(this)
             manager()?.onServiceStarted(intent?.getLongExtra(EXTRA_START_GENERATION, -1L) ?: -1L)
             START_NOT_STICKY
         } catch (e: SecurityException) {

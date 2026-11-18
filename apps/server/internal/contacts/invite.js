@@ -13,7 +13,20 @@
   }
 
   codeText.textContent = rawHash;
-  openAppBtn.setAttribute("href", "anve://invite/" + rawHash);
+  var customSchemeUrl = "anve://invite/" + rawHash;
+  var isAndroid = /Android/i.test(navigator.userAgent || "");
+  if (isAndroid) {
+    openAppBtn.setAttribute(
+      "href",
+      "intent://invite/" +
+        rawHash +
+        "#Intent;scheme=anve;package=com.anve.app;S.browser_fallback_url=" +
+        encodeURIComponent(window.location.href) +
+        ";end"
+    );
+  } else {
+    openAppBtn.setAttribute("href", customSchemeUrl);
+  }
   codeSection.classList.remove("hidden");
   openAppBtn.classList.remove("hidden");
   missingSection.classList.add("hidden");

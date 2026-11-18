@@ -196,4 +196,40 @@ class AdaptiveTrackingPolicyTest {
         assertTrue(acceptedAfterReset.accepted)
         assertEquals(MotionState.STATIONARY, acceptedAfterReset.motion)
     }
+
+    @Test
+    fun `decelerating from moving maintains 45s confirmation cadence for 3 minutes then drops to stationary interval`() {
+        val policy = AdaptiveTrackingPolicy()
+        assertTrue(policy.onFix(fix(baseElapsed, speed = 3.0), baseElapsed).accepted)
+        assertEquals(MotionState.MOVING, policy.motion)
+
+        // Slow down at +60s -> starts 3-minute confirmation window (+60s..+240s).
+        val slow1 = policy.onFix(fix(baseElapsed + 60_000, latitude = 10.7770, speed = 0.2), baseElapsed + 60_000)
+        assertTrue(slow1.accepted)
+
+        // At +105s (45s later, same place): accepted past DUPLICATE window!
+        val confirm1 = policy.onFix(fix(baseElapsed + 105_000, latitude = 10.7770, speed = 0.0), baseElapsed + 105_000)
+        assertTrue(confirm1.accepted)
+
+        // At +190s (past 2-min STATIONARY_CONFIRM_MILLIS, still inside 3-min confirm window):
+        // motion is STATIONARY, but request interval stays 45s rather than 5 minutes.
+        val confirm2 = policy.onFix(fix(baseElapsed + 190_000, latitude = 10.7770, speed = 0.0), baseElapsed + 190_000)
+        assertTrue(confirm2.accepted)
+        assertEquals(MotionState.STATIONARY, confirm2.motion)
+        assertEquals(45_000L, confirm2.request.intervalMillis)
+
+        // After 3 minutes (+255s): interval drops back to 5 minutes.
+        val postWindow = policy.onFix(fix(baseElapsed + 255_000, latitude = 10.7770, speed = 0.0), baseElapsed + 255_000)
+        assertTrue(postWindow.accepted)
+        assertEquals(5 * 60_000L, postWindow.request.intervalMillis)
+    }
+
+    @Test
+    fun `active journey accepts 45s stationary confirmation fixes for arrival dwell`() {
+        val policy = AdaptiveTrackingPolicy()
+        policy.setJourney(true)
+        assertTrue(policy.onFix(fix(baseElapsed, speed = 0.0), baseElapsed).accepted)
+        assertFalse(policy.onFix(fix(baseElapsed + 30_000, speed = 0.0), baseElapsed + 30_000).accepted)
+        assertTrue(policy.onFix(fix(baseElapsed + 45_000, speed = 0.0), baseElapsed + 45_000).accepted)
+    }
 }

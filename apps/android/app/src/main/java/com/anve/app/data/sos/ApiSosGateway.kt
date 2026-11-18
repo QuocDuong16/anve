@@ -11,7 +11,16 @@ class SosCancelledException : Exception()
 class ApiSosGateway(private val api: AnveApi) : SosSyncGateway {
     override suspend fun create(owner: String, item: SosOutboxItem) {
         try {
-            api.createSos(owner, SosCreateDto(item.eventId, item.recordedAt, item.recipientIds)).orThrow()
+            api.createSos(
+                owner,
+                SosCreateDto(
+                    eventId = item.eventId,
+                    recordedAt = item.recordedAt,
+                    recipientIds = item.recipientIds,
+                    location = item.location,
+                    batteryPercent = item.batteryPercent,
+                ),
+            ).orThrow()
         } catch (e: ApiException) {
             if (e.code == "SOS_CANCELLED") throw SosCancelledException()
             throw e

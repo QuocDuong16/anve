@@ -1318,4 +1318,69 @@ class TrackingManagerTest {
         assertTrue(manager.status.value.online)
         assertEquals(OperationalState.ACTIVE, manager.status.value.operational)
     }
+
+    @Test
+    fun `active online service syncs directly without waiting for WorkManager and falls back on retry`() = runBlocking {
+        var directCalls = 0
+        var nextOutcome = com.anve.app.data.location.SyncOutcome(com.anve.app.data.location.SyncDisposition.COMPLETE)
+        val unexpectedStops = mutableListOf<String>()
+        val directManager = TrackingManager(
+            server = gateway,
+            sessions = managerSessions,
+            deviceIdentity = FakeDeviceIdentity(),
+            queue = queue,
+            store = store,
+            permissions = permissions,
+            provider = provider,
+            connectivity = connectivity,
+            service = service,
+            syncScheduler = scheduler,
+            scope = scope,
+            captureGenerations = checkpoints,
+            fetchCaptureGeneration = { fetchCheckpoint(it) },
+            consentMutations = consentMutations,
+            now = { now },
+            elapsedNow = { elapsed },
+            batterySaver = { saver },
+            directSync = {
+                directCalls++
+                if (nextOutcome.disposition == com.anve.app.data.location.SyncDisposition.COMPLETE) {
+                    dao.rows.clear()
+                }
+                nextOutcome
+            },
+            onUnexpectedStop = { unexpectedStops += it },
+        )
+        awaitUntil { directManager.status.value.sessionReady && directManager.status.value.consentEnabled }
+        directManager.startTracking()
+        awaitUntil { service.starts == 1 }
+        directManager.onServiceStarted()
+        awaitUntil { directManager.status.value.providerActive }
+
+        // First fix triggers immediate direct sync (threshold = 1 for first upload).
+        emitFix(eventId = "direct-1", speed = 0.0)
+        awaitUntil { directCalls == 1 }
+        assertEquals(0, scheduler.scheduled)
+        assertEquals(0, scheduler.immediate)
+        assertEquals(1, scheduler.cancelled)
+
+        // When direct sync fails/retries, WorkManager is scheduled as fallback.
+        nextOutcome = com.anve.app.data.location.SyncOutcome(com.anve.app.data.location.SyncDisposition.RETRY)
+        now += 65_000
+        elapsed += 65_000
+        emitFix(eventId = "direct-retry", latitude = 10.778, speed = 3.0)
+        awaitUntil { directCalls == 2 }
+        awaitUntil { scheduler.scheduled >= 1 }
+
+        // Unexpected service stop fires recovery callback; explicit stopTracking does not.
+        directManager.onServiceDestroyed()
+        assertEquals(listOf("u1"), unexpectedStops)
+        directManager.startTracking()
+        awaitUntil { service.starts == 2 }
+        directManager.onServiceStarted()
+        awaitUntil { directManager.status.value.providerActive }
+        directManager.stopTracking()
+        directManager.onServiceDestroyed()
+        assertEquals(listOf("u1"), unexpectedStops)
+    }
 }

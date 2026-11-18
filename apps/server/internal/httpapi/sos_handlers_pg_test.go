@@ -35,7 +35,8 @@ func TestPGSosHandlersAuthenticateAndBindOwner(t *testing.T) {
 	require.NoError(t, err)
 	router := NewRouter(Deps{Auth: a, SOS: sos.NewStore(pool)})
 	id := uuid.New()
-	body := fmt.Sprintf(`{"eventId":%q,"recordedAt":%q,"recipientIds":[%q]}`, id, time.Now().UTC().Format(time.RFC3339Nano), recipient.ID)
+	recorded := time.Now().UTC().Truncate(time.Microsecond)
+	body := fmt.Sprintf(`{"eventId":%q,"recordedAt":%q,"recipientIds":[%q],"location":{"latitude":10.7769,"longitude":106.7009,"horizontalAccuracyMeters":18,"recordedAt":%q},"batteryPercent":24}`, id, recorded.Format(time.RFC3339Nano), recipient.ID, recorded.Format(time.RFC3339Nano))
 	request := func(method, path, token, ownerID, payload string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, bytes.NewBufferString(payload))
 		req.Header.Set("Authorization", "Bearer "+token)

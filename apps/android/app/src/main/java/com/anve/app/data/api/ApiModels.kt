@@ -198,10 +198,34 @@ data class LocationEventDto(
 data class CaptureGenerationDto(@Json(name = "generation") val generation: Long)
 
 @JsonClass(generateAdapter = false)
-data class SosCreateDto(val eventId: String, val recordedAt: String, val recipientIds: List<String>)
+data class SosLocationDto(
+    val latitude: Double,
+    val longitude: Double,
+    val horizontalAccuracyMeters: Double,
+    val recordedAt: String,
+)
 
 @JsonClass(generateAdapter = false)
-data class SosEventDto(val id: String, val ownerId: String, val recordedAt: String, val receivedAt: String, val state: String, val acknowledgedAt: String? = null)
+data class SosCreateDto(
+    val eventId: String,
+    val recordedAt: String,
+    val recipientIds: List<String>,
+    val location: SosLocationDto? = null,
+    val batteryPercent: Int? = null,
+)
+
+@JsonClass(generateAdapter = false)
+data class SosEventDto(
+    val id: String,
+    val ownerId: String,
+    val recordedAt: String,
+    val receivedAt: String,
+    val state: String,
+    val acknowledgedAt: String? = null,
+    val ownerName: String? = null,
+    val location: SosLocationDto? = null,
+    val batteryPercent: Int? = null,
+)
 
 @JsonClass(generateAdapter = false)
 data class SosListDto(val events: List<SosEventDto>)

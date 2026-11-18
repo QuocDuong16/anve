@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.anve.app.data.sos.IncomingPush
+import com.anve.app.tracking.TrackingRecoveryNotifier
 import com.anve.app.ui.AnVeApp
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.update.AppUpdateCoordinator
@@ -25,6 +26,7 @@ import com.anve.app.ui.update.openPlayStoreListing
 
 class MainActivity : ComponentActivity() {
     private var incomingPush by mutableStateOf<IncomingPush?>(null)
+    private var openSharingOwner by mutableStateOf<String?>(null)
 
     private val updateCoordinator by lazy {
         AppUpdateCoordinator(
@@ -38,6 +40,9 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState?.containsKey("anve_event_kind") == true) {
             incomingPush = IncomingPush(savedInstanceState.getString("anve_event_kind"), savedInstanceState.getString("anve_event_id"), savedInstanceState.getString("anve_event_owner"))
         } else readPush(intent)
+        if (savedInstanceState?.containsKey("anve_open_sharing_owner") == true) {
+            openSharingOwner = savedInstanceState.getString("anve_open_sharing_owner")
+        } else readSharingRecovery(intent)
         if (savedInstanceState == null) readInvitation(intent) else intent?.data = null
         enableEdgeToEdge()
         val container = (application as AnVeApplication).container
@@ -63,6 +68,8 @@ class MainActivity : ComponentActivity() {
                     container = container,
                     incomingPush = incomingPush,
                     onPushConsumed = { incomingPush = null },
+                    openSharingOwner = openSharingOwner,
+                    onOpenSharingConsumed = { openSharingOwner = null },
                     updateState = updateState,
                     onStartAppUpdate = { updateCoordinator.onConfirmUpdate(updateLauncher) },
                     onOpenPlayStore = {
@@ -80,6 +87,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         readPush(intent)
+        readSharingRecovery(intent)
         readInvitation(intent)
     }
 
@@ -89,6 +97,7 @@ class MainActivity : ComponentActivity() {
             outState.putString("anve_event_id", it.eventId)
             outState.putString("anve_event_owner", it.ownerId)
         }
+        openSharingOwner?.let { outState.putString("anve_open_sharing_owner", it) }
         super.onSaveInstanceState(outState)
     }
 
@@ -100,11 +109,18 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra("anve_event_owner")
     }
 
+    private fun readSharingRecovery(intent: Intent?) {
+        if (intent?.getBooleanExtra(TrackingRecoveryNotifier.EXTRA_OPEN_SHARING, false) != true) return
+        openSharingOwner = intent.getStringExtra(TrackingRecoveryNotifier.EXTRA_OPEN_SHARING_OWNER)
+        intent.removeExtra(TrackingRecoveryNotifier.EXTRA_OPEN_SHARING)
+        intent.removeExtra(TrackingRecoveryNotifier.EXTRA_OPEN_SHARING_OWNER)
+    }
+
     private fun readInvitation(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         incomingPush = null
         val raw = intent.dataString
         intent.data = null
-        if (raw != null) (application as AnVeApplication).container.invitationInbox.offer(raw)
+        if (raw != null) (application as AnVeApplication).container.invitationInbox.offer(raw, BuildConfig.API_BASE_URL)
     }
 }

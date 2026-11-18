@@ -52,7 +52,8 @@
           "android.intent.category.LAUNCHER"
         ],
         "dataFilters": [
-          "5c1f763cf32c6e7d3545f36d2eabfd4cee88c3b41f6bdc5f9b9e6bcb8ad03fba"
+          "5c1f763cf32c6e7d3545f36d2eabfd4cee88c3b41f6bdc5f9b9e6bcb8ad03fba",
+          "d6e2cb5f7a67c5c27c520eba45138ea1de65670ebd72937663f99b1e88d714e9"
         ],
         "exported": "true",
         "kind": "activity",
@@ -169,6 +170,18 @@
         "kind": "receiver",
         "metadataNames": [],
         "name": "androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+      },
+      {
+        "actions": [
+          "android.intent.action.BOOT_COMPLETED",
+          "android.intent.action.MY_PACKAGE_REPLACED"
+        ],
+        "categories": [],
+        "dataFilters": [],
+        "exported": "false",
+        "kind": "receiver",
+        "metadataNames": [],
+        "name": "com.anve.app.tracking.TrackingRecoveryReceiver"
       },
       {
         "actions": [],
@@ -651,7 +664,7 @@
   ],
   "schemaVersion": 1,
   "sourcePolicies": {
-    "apps/android/app/src/main/AndroidManifest.xml": "2852cad3523409be8b173f9b70fba3667b7dca002ba4c880aeb44c0a0336bdf8",
+    "apps/android/app/src/main/AndroidManifest.xml": "e4ab0b483060b8b163b4d48ff030ed163b062c06c9147ca4469ff4cd84d325eb",
     "apps/android/app/src/main/res/xml/backup_rules.xml": "bab9f708acc805a3b6bf536a6401488cef5f7e91580d4d744f87881e4d7a122a",
     "apps/android/app/src/main/res/xml/data_extraction_rules.xml": "144681400e8ab3d4303178cc0c0c4534d607492d2d837a0911548c2d9237b653",
     "apps/android/app/src/main/res/xml/network_security_config.xml": "b3f61bf098d093c46deb038573bc2376b59f15263385835f6561c65eea27c8f2"

@@ -27,7 +27,7 @@ func TestEstimatedArrivalRequiresContinuousRecentRealSamples(t *testing.T) {
 		{"no-dwell", func(s []automationSample) []automationSample { s[2].RecordedAt = now.Add(-time.Minute); return s }},
 		{"mixed-device", func(s []automationSample) []automationSample { s[1].Device = uuid.New(); return s }},
 		{"mock", func(s []automationSample) []automationSample { s[1].Mock = true; return s }},
-		{"imprecise", func(s []automationSample) []automationSample { s[1].Accuracy = 51; return s }},
+		{"imprecise", func(s []automationSample) []automationSample { s[1].Accuracy = 76; return s }},
 		{"accuracy-overlaps-boundary", func(s []automationSample) []automationSample { s[1].Distance = 101; return s }},
 		{"delayed-upload", func(s []automationSample) []automationSample { s[1].ReceivedAt = now.Add(time.Second); return s }},
 		{"clock-ahead", func(s []automationSample) []automationSample { s[0].RecordedAt = now.Add(6 * time.Second); return s }},
@@ -54,4 +54,12 @@ func TestEstimatedArrivalRequiresContinuousRecentRealSamples(t *testing.T) {
 	// Duplicate delivery does not manufacture dwell but does not discard valid evidence.
 	withDuplicate := append([]automationSample{base[0]}, base...)
 	require.True(t, estimatedArrival(withDuplicate, now))
+
+	// Indoor Wi-Fi/Cell samples (65 m accuracy) within 150 m combined bound still confirm arrival.
+	indoor := make([]automationSample, 3)
+	for i := range indoor {
+		captured := now.Add(-time.Duration(i) * time.Minute)
+		indoor[i] = automationSample{Device: device, RecordedAt: captured, ReceivedAt: captured, Distance: 60, Accuracy: 65}
+	}
+	require.True(t, estimatedArrival(indoor, now))
 }

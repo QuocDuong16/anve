@@ -54,6 +54,8 @@ fun AnVeApp(
     container: AppContainer,
     incomingPush: IncomingPush? = null,
     onPushConsumed: () -> Unit = {},
+    openSharingOwner: String? = null,
+    onOpenSharingConsumed: () -> Unit = {},
     updateState: AppUpdateUiState = AppUpdateUiState(),
     onStartAppUpdate: () -> Unit = {},
     onOpenPlayStore: () -> Unit = {},
@@ -175,6 +177,8 @@ fun AnVeApp(
                     container = container,
                     incomingPush = incomingPush,
                     onPushConsumed = onPushConsumed,
+                    openSharingOwner = openSharingOwner,
+                    onOpenSharingConsumed = onOpenSharingConsumed,
                     onOpenOnboarding = { reopenOnboarding = true },
                 )
             }

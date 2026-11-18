@@ -13,6 +13,8 @@ import com.anve.app.data.auth.newPendingConsentOperation
 import com.anve.app.data.location.LocationQueueRepository
 import com.anve.app.data.location.CaptureGenerationStore
 import com.anve.app.data.location.LocationSyncScheduler
+import com.anve.app.data.location.SyncDisposition
+import com.anve.app.data.location.SyncOutcome
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -119,6 +121,8 @@ class TrackingManager(
     private val pendingConsentScheduler: com.anve.app.data.auth.PendingRevocationScheduler =
         com.anve.app.data.auth.NoOpPendingRevocationScheduler,
     private val fetchJourneyActive: suspend (String, String) -> Boolean = { _, _ -> false },
+    private val directSync: (suspend () -> SyncOutcome)? = null,
+    private val onUnexpectedStop: ((String) -> Unit)? = null,
 ) : TrackingControl, JourneyTrackingControl {
 
     private val _status = MutableStateFlow(TrackingStatus())
@@ -138,6 +142,8 @@ class TrackingManager(
     private var collectionJob: Job? = null
     private var tickerJob: Job? = null
     private var queueCountJob: Job? = null
+    private var directSyncJob: Job? = null
+    private var delayedFlushJob: Job? = null
     private var starting = false
     private val startLock = Mutex()
     @Volatile private var startEpoch = 0L
@@ -306,6 +312,8 @@ class TrackingManager(
                     sessionOwner = null
                     lastSession = null
                     delayedBatchPending = false
+                    delayedFlushJob?.cancel()
+                    directSyncJob?.cancel()
                     queue.purgeAll()
                     queueCountJob?.cancel()
                     syncScheduler.cancel()
@@ -433,6 +441,15 @@ class TrackingManager(
                             else -> current.operational
                         },
                     )
+                }
+                if (online && directSync != null && _status.value.serviceRunning && _status.value.running) {
+                    val owner = sessionOwner
+                    if (owner != null) {
+                        scope.launch {
+                            val pending = runCatching { queue.count(owner) }.getOrDefault(0)
+                            if (pending > 0) runDirectSync(owner)
+                        }
+                    }
                 }
             }
         }
@@ -1134,6 +1151,8 @@ class TrackingManager(
     /** Called from the service's onDestroy. */
     fun onServiceDestroyed() {
         val requested = _status.value.trackingRequested
+        val owner = sessionOwner
+        val consentActive = _status.value.consentEnabled
         recordServiceLifetime()
         stopAcquisition()
         _status.update {
@@ -1146,6 +1165,9 @@ class TrackingManager(
                 lastError = if (requested) TrackingProblem.RECOVERY_REQUIRED else it.lastError,
                 lastErrorAtMillis = if (requested) now() else it.lastErrorAtMillis,
             )
+        }
+        if (requested && consentActive && owner != null) {
+            onUnexpectedStop?.invoke(owner)
         }
     }
 
@@ -1537,6 +1559,32 @@ class TrackingManager(
             batterySaver = batterySaver,
             isFirstUpload = _status.value.lastUploadAtMillis == null,
         )
+        val canSyncDirectly = directSync != null &&
+            _status.value.serviceRunning &&
+            _status.value.running &&
+            connectivity.isOnline()
+        val owner = sessionOwner
+        if (canSyncDirectly && owner != null) {
+            if (countAfter >= thresholdCount) {
+                delayedBatchPending = false
+                delayedFlushJob?.cancel()
+                runDirectSync(owner)
+            } else {
+                delayedBatchPending = true
+                // Keep WorkManager as durable fallback if the service dies,
+                // while an in-process timer avoids Doze/JobScheduler delays.
+                syncScheduler.ensureScheduledAfter(delayMillis)
+                if (delayedFlushJob?.isActive != true) {
+                    delayedFlushJob = scope.launch {
+                        delay(delayMillis)
+                        if (_status.value.serviceRunning && _status.value.running && connectivity.isOnline()) {
+                            runDirectSync(owner)
+                        }
+                    }
+                }
+            }
+            return
+        }
         when {
             countAfter >= thresholdCount && delayedBatchPending -> {
                 delayedBatchPending = false
@@ -1549,6 +1597,42 @@ class TrackingManager(
             else -> {
                 delayedBatchPending = true
                 syncScheduler.ensureScheduledAfter(delayMillis)
+            }
+        }
+    }
+
+    private fun runDirectSync(owner: String) {
+        val syncCall = directSync ?: return
+        if (directSyncJob?.isActive == true) return
+        delayedBatchPending = false
+        directSyncJob = scope.launch {
+            val outcome = try {
+                syncCall()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                syncScheduler.ensureScheduled()
+                return@launch
+            }
+            when {
+                outcome.retryAfterMillis != null -> {
+                    syncScheduler.enqueueAfter(outcome.retryAfterMillis)
+                }
+                outcome.retry -> {
+                    syncScheduler.ensureScheduled()
+                }
+                outcome.disposition == SyncDisposition.COMPLETE && outcome.errorCode == null -> {
+                    val remaining = runCatching { queue.count(owner) }.getOrDefault(0)
+                    if (remaining > 0) {
+                        scheduleBatchSync(
+                            motion = policy.motion,
+                            batterySaver = batterySaver(),
+                            countAfter = remaining,
+                        )
+                    } else {
+                        syncScheduler.cancel()
+                    }
+                }
             }
         }
     }
@@ -1658,6 +1742,9 @@ class TrackingManager(
         val serviceMayBeRunning = starting || _status.value.serviceRunning
         starting = false
         startTimeoutJob?.cancel()
+        if (clearIntent) {
+            _status.update { it.copy(trackingRequested = false) }
+        }
         stopAcquisition()
         val serviceStopFailure = try {
             val accepted = service.stop()
@@ -1707,6 +1794,8 @@ class TrackingManager(
         collectionJob = null
         tickerJob?.cancel()
         tickerJob = null
+        delayedFlushJob?.cancel()
+        delayedFlushJob = null
         updateRequestOptions(policy.requestOptions())
         _status.update { it.copy(providerActive = false, motion = policy.motion) }
     }

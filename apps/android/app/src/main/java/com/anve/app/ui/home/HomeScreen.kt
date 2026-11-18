@@ -225,6 +225,8 @@ fun HomeScreen(
     container: AppContainer,
     incomingPush: IncomingPush? = null,
     onPushConsumed: () -> Unit = {},
+    openSharingOwner: String? = null,
+    onOpenSharingConsumed: () -> Unit = {},
     onOpenOnboarding: () -> Unit = {},
 ) {
     var tab by rememberSaveable(stateSaver = homeTabSaver) { mutableStateOf(HomeTab.CIRCLE) }
@@ -335,6 +337,17 @@ fun HomeScreen(
             }
         }
         onPushConsumed()
+    }
+    LaunchedEffect(openSharingOwner, session?.userId) {
+        val targetOwner = openSharingOwner ?: return@LaunchedEffect
+        val owner = session?.userId ?: return@LaunchedEffect
+        if (targetOwner == owner) {
+            showDiagnostics = false
+            showJourneys = false
+            sharingReturnPage = null
+            secondaryPage = HomeSecondaryPage.SHARING
+        }
+        onOpenSharingConsumed()
     }
     // One snackbar per applied push: name that a notification moved the user
     // and offer the pre-push screen back once. Resolved in composition — the

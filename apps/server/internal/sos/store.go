@@ -1,4 +1,5 @@
-// Package sos implements explicitly addressed emergency events without GPS.
+// Package sos implements explicitly addressed emergency events with optional
+// single-snapshot location and battery attachment.
 package sos
 
 import (
@@ -6,7 +7,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,14 +32,31 @@ var (
 	ErrCancelled = errors.New("sos request cancelled")
 )
 
-// Event is the server-confirmed SOS state without location data.
+// Location is an optional single-snapshot fix attached at SOS creation.
+type Location struct {
+	Latitude                 float64   `json:"latitude"`
+	Longitude                float64   `json:"longitude"`
+	HorizontalAccuracyMeters float64   `json:"horizontalAccuracyMeters"`
+	RecordedAt               time.Time `json:"recordedAt"`
+}
+
+// CreateOptions holds optional snapshot metadata bound into the SOS idempotency hash.
+type CreateOptions struct {
+	Location       *Location
+	BatteryPercent *int
+}
+
+// Event is the server-confirmed SOS state.
 type Event struct {
 	ID             uuid.UUID  `json:"id"`
 	OwnerID        uuid.UUID  `json:"ownerId"`
+	OwnerName      string     `json:"ownerName,omitempty"`
 	RecordedAt     time.Time  `json:"recordedAt"`
 	ReceivedAt     time.Time  `json:"receivedAt"`
 	State          string     `json:"state"`
 	AcknowledgedAt *time.Time `json:"acknowledgedAt,omitempty"`
+	Location       *Location  `json:"location,omitempty"`
+	BatteryPercent *int       `json:"batteryPercent,omitempty"`
 }
 
 // RecipientStatus distinguishes provider acceptance from human acknowledgement.
@@ -86,8 +106,28 @@ func NewStore(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 
 // Create stores the client-generated event ID and exact recipient set atomically.
 func (s *Store) Create(ctx context.Context, principal Principal, id uuid.UUID, recorded time.Time, recipients []uuid.UUID) (Event, bool, error) {
+	return s.CreateWithOptions(ctx, principal, id, recorded, recipients, CreateOptions{})
+}
+
+func validLocation(loc *Location, now time.Time) bool {
+	if loc == nil {
+		return true
+	}
+	return !math.IsNaN(loc.Latitude) && !math.IsInf(loc.Latitude, 0) && loc.Latitude >= -90 && loc.Latitude <= 90 &&
+		!math.IsNaN(loc.Longitude) && !math.IsInf(loc.Longitude, 0) && loc.Longitude >= -180 && loc.Longitude <= 180 &&
+		!math.IsNaN(loc.HorizontalAccuracyMeters) && !math.IsInf(loc.HorizontalAccuracyMeters, 0) &&
+		loc.HorizontalAccuracyMeters >= 0 && loc.HorizontalAccuracyMeters <= 100000 &&
+		!loc.RecordedAt.IsZero() && !loc.RecordedAt.After(now.Add(2*time.Minute)) && !loc.RecordedAt.Before(now.Add(-7*24*time.Hour))
+}
+
+// CreateWithOptions stores the client-generated event ID, recipients, and optional snapshot attachments atomically.
+func (s *Store) CreateWithOptions(ctx context.Context, principal Principal, id uuid.UUID, recorded time.Time, recipients []uuid.UUID, opts CreateOptions) (Event, bool, error) {
 	owner := principal.UserID
-	if id == uuid.Nil || owner == uuid.Nil || len(recipients) == 0 || len(recipients) > 30 || recorded.IsZero() || recorded.After(time.Now().Add(2*time.Minute)) || recorded.Before(time.Now().Add(-7*24*time.Hour)) {
+	now := time.Now()
+	if id == uuid.Nil || owner == uuid.Nil || len(recipients) == 0 || len(recipients) > 30 ||
+		recorded.IsZero() || recorded.After(now.Add(2*time.Minute)) || recorded.Before(now.Add(-7*24*time.Hour)) ||
+		!validLocation(opts.Location, now) ||
+		(opts.BatteryPercent != nil && (*opts.BatteryPercent < 0 || *opts.BatteryPercent > 100)) {
 		return Event{}, false, ErrInvalid
 	}
 	ids := append([]uuid.UUID(nil), recipients...)
@@ -98,6 +138,16 @@ func (s *Store) Create(ctx context.Context, principal Principal, id uuid.UUID, r
 			return Event{}, false, ErrInvalid
 		}
 		material += "|" + recipient.String()
+	}
+	if opts.Location != nil {
+		material += "|loc:" +
+			strconv.FormatFloat(opts.Location.Latitude, 'g', -1, 64) + "," +
+			strconv.FormatFloat(opts.Location.Longitude, 'g', -1, 64) + "," +
+			strconv.FormatFloat(opts.Location.HorizontalAccuracyMeters, 'g', -1, 64) + "," +
+			opts.Location.RecordedAt.UTC().Format(time.RFC3339Nano)
+	}
+	if opts.BatteryPercent != nil {
+		material += "|bat:" + strconv.Itoa(*opts.BatteryPercent)
 	}
 	hash := sha256.Sum256([]byte(material))
 	tx, err := s.pool.Begin(ctx)
@@ -172,7 +222,19 @@ func (s *Store) Create(ctx context.Context, principal Principal, id uuid.UUID, r
 		}
 		periods = append(periods, period)
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO sos_events(id,owner_user_id,circle_id,owner_period_id,recorded_at,request_hash) VALUES($1,$2,$3,$4,$5,$6)`, id, owner, circle, ownerPeriod, recorded.UTC(), hash[:])
+	var lat, lon, acc *float64
+	var locAt *time.Time
+	if opts.Location != nil {
+		vLat, vLon, vAcc := opts.Location.Latitude, opts.Location.Longitude, opts.Location.HorizontalAccuracyMeters
+		vAt := opts.Location.RecordedAt.UTC()
+		lat, lon, acc, locAt = &vLat, &vLon, &vAcc, &vAt
+	}
+	var bat *int
+	if opts.BatteryPercent != nil {
+		v := *opts.BatteryPercent
+		bat = &v
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO sos_events(id,owner_user_id,circle_id,owner_period_id,recorded_at,request_hash,latitude,longitude,horizontal_accuracy_m,location_recorded_at,battery_percent) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, id, owner, circle, ownerPeriod, recorded.UTC(), hash[:], lat, lon, acc, locAt, bat)
 	if err != nil {
 		return Event{}, false, fmt.Errorf("insert sos: %w", err)
 	}
@@ -203,15 +265,39 @@ type queryRower interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-func readEvent(ctx context.Context, db queryRower, actor, id uuid.UUID) (Event, error) {
+func scanEventRow(scanner interface{ Scan(...any) error }) (Event, error) {
 	var e Event
-	err := db.QueryRow(ctx, `SELECT e.id,e.owner_user_id,e.recorded_at,e.received_at,CASE WHEN e.state='ACTIVE' AND e.received_at<=now()-interval '7 days' THEN 'EXPIRED' ELSE e.state END,r.acknowledged_at
- FROM sos_events e JOIN circle_membership_periods op ON op.id=e.owner_period_id AND op.ended_at IS NULL
+	var lat, lon, acc *float64
+	var locAt *time.Time
+	var bat *int16
+	if err := scanner.Scan(&e.ID, &e.OwnerID, &e.OwnerName, &e.RecordedAt, &e.ReceivedAt, &e.State, &e.AcknowledgedAt, &lat, &lon, &acc, &locAt, &bat); err != nil {
+		return Event{}, err
+	}
+	if lat != nil && lon != nil && acc != nil && locAt != nil {
+		e.Location = &Location{
+			Latitude:                 *lat,
+			Longitude:                *lon,
+			HorizontalAccuracyMeters: *acc,
+			RecordedAt:               *locAt,
+		}
+	}
+	if bat != nil {
+		v := int(*bat)
+		e.BatteryPercent = &v
+	}
+	return e, nil
+}
+
+func readEvent(ctx context.Context, db queryRower, actor, id uuid.UUID) (Event, error) {
+	row := db.QueryRow(ctx, `SELECT e.id,e.owner_user_id,u.display_name,e.recorded_at,e.received_at,CASE WHEN e.state='ACTIVE' AND e.received_at<=now()-interval '7 days' THEN 'EXPIRED' ELSE e.state END,r.acknowledged_at,e.latitude,e.longitude,e.horizontal_accuracy_m,e.location_recorded_at,e.battery_percent
+ FROM sos_events e JOIN users u ON u.id=e.owner_user_id
+ JOIN circle_membership_periods op ON op.id=e.owner_period_id AND op.ended_at IS NULL
  JOIN memberships om ON om.id=op.membership_id AND om.user_id=e.owner_user_id AND om.circle_id=e.circle_id
  LEFT JOIN sos_recipients r ON r.event_id=e.id AND r.recipient_user_id=$1 AND r.revoked_at IS NULL
  LEFT JOIN circle_membership_periods rp ON rp.id=r.membership_period_id AND rp.ended_at IS NULL
  LEFT JOIN memberships rm ON rm.id=rp.membership_id AND rm.user_id=$1 AND rm.circle_id=e.circle_id
- WHERE e.id=$2 AND e.received_at>now()-interval '30 days' AND (e.owner_user_id=$1 OR rm.id IS NOT NULL)`, actor, id).Scan(&e.ID, &e.OwnerID, &e.RecordedAt, &e.ReceivedAt, &e.State, &e.AcknowledgedAt)
+ WHERE e.id=$2 AND e.received_at>now()-interval '30 days' AND (e.owner_user_id=$1 OR rm.id IS NOT NULL)`, actor, id)
+	e, err := scanEventRow(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Event{}, ErrNotFound
 	}
@@ -556,8 +642,9 @@ func (s *Store) Transition(ctx context.Context, principal Principal, id uuid.UUI
 
 // List is bounded and uses the same current membership predicates as Get.
 func (s *Store) List(ctx context.Context, actor uuid.UUID) ([]Event, error) {
-	rows, err := s.pool.Query(ctx, `SELECT e.id,e.owner_user_id,e.recorded_at,e.received_at,CASE WHEN e.state='ACTIVE' AND e.received_at<=now()-interval '7 days' THEN 'EXPIRED' ELSE e.state END,r.acknowledged_at
- FROM sos_events e JOIN circle_membership_periods op ON op.id=e.owner_period_id AND op.ended_at IS NULL
+	rows, err := s.pool.Query(ctx, `SELECT e.id,e.owner_user_id,u.display_name,e.recorded_at,e.received_at,CASE WHEN e.state='ACTIVE' AND e.received_at<=now()-interval '7 days' THEN 'EXPIRED' ELSE e.state END,r.acknowledged_at,e.latitude,e.longitude,e.horizontal_accuracy_m,e.location_recorded_at,e.battery_percent
+ FROM sos_events e JOIN users u ON u.id=e.owner_user_id
+ JOIN circle_membership_periods op ON op.id=e.owner_period_id AND op.ended_at IS NULL
  JOIN memberships om ON om.id=op.membership_id AND om.user_id=e.owner_user_id AND om.circle_id=e.circle_id
  LEFT JOIN sos_recipients r ON r.event_id=e.id AND r.recipient_user_id=$1 AND r.revoked_at IS NULL
  LEFT JOIN circle_membership_periods rp ON rp.id=r.membership_period_id AND rp.ended_at IS NULL
@@ -569,9 +656,9 @@ func (s *Store) List(ctx context.Context, actor uuid.UUID) ([]Event, error) {
 	defer rows.Close()
 	result := []Event{}
 	for rows.Next() {
-		var e Event
-		if err = rows.Scan(&e.ID, &e.OwnerID, &e.RecordedAt, &e.ReceivedAt, &e.State, &e.AcknowledgedAt); err != nil {
-			return nil, fmt.Errorf("scan sos event: %w", err)
+		e, scanErr := scanEventRow(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("scan sos event: %w", scanErr)
 		}
 		result = append(result, e)
 	}

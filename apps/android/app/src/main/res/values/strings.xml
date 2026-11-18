@@ -210,6 +210,12 @@
     <string name="tracking_notification_text">Vị trí của bạn đang được ghi nhận để chia sẻ với nhóm gia đình. Nhấn để mở AnVề.</string>
 
     <string name="tracking_notification_stop">Dừng</string>
+    <string name="tracking_recovery_channel">Nhắc bật lại chia sẻ vị trí</string>
+    <string name="tracking_recovery_channel_description">Thông báo khi chia sẻ vị trí bị tạm dừng sau khi khởi động lại máy hoặc hệ thống đóng tiến trình.</string>
+    <string name="tracking_recovery_title">Chia sẻ vị trí đã tạm dừng</string>
+    <string name="tracking_recovery_text_reboot">Chia sẻ vị trí đã tạm dừng sau khi khởi động lại máy — chạm để bật lại.</string>
+    <string name="tracking_recovery_text_updated">Chia sẻ vị trí đã tạm dừng sau khi cập nhật ứng dụng — chạm để bật lại.</string>
+    <string name="tracking_recovery_text_interrupted">Chia sẻ vị trí đã bị tạm dừng bởi hệ thống — chạm để bật lại.</string>
 
     <!-- Tracking screen -->
     <string name="tracking_title">Vị trí &amp; chia sẻ</string>
@@ -454,8 +460,17 @@
     <string name="sos_bottom_ready">Sẵn sàng gửi đến %1$d người đã chọn</string>
     <string name="sos_send_button">Gửi yêu cầu SOS</string>
     <string name="sos_bottom_disclaimer">Lời nhắn không đính kèm vị trí và không tự bật định vị.</string>
+    <string name="sos_bottom_disclaimer_with_location">Sẽ đính kèm vị trí hiện tại (nếu lấy được) và mức pin; không bật theo dõi nền.</string>
+    <string name="sos_attach_title">Đính kèm vị trí hiện tại &amp; mức pin</string>
+    <string name="sos_attach_subtitle">Lấy nhanh 1 lần vị trí hiện tại (không bật theo dõi nền) và phần trăm pin khi gửi SOS.</string>
+    <string name="sos_attach_no_permission">Chưa có quyền vị trí — vẫn gửi SOS kèm mức pin (nếu đọc được) mà không chặn yêu cầu.</string>
+    <string name="sos_detail_battery">Mức pin lúc gửi: %1$d%%</string>
+    <string name="sos_detail_location">Vị trí lúc gửi: %1$s (±%2$d m)</string>
+    <string name="sos_detail_open_map">Xem trên bản đồ</string>
+    <string name="sos_open_map_failed">Không tìm thấy ứng dụng bản đồ để mở vị trí này.</string>
     <string name="sos_confirm_title">Gửi yêu cầu hỗ trợ?</string>
     <string name="sos_confirm_body">Yêu cầu sẽ được gửi đến %1$d người đã chọn khi có kết nối. Không đính kèm vị trí.</string>
+    <string name="sos_confirm_body_with_location">Yêu cầu sẽ được gửi đến %1$d người đã chọn khi có kết nối, kèm vị trí hiện tại và mức pin (nếu lấy được).</string>
     <string name="sos_confirm_send">Xác nhận gửi</string>
     <string name="sos_action_cancel_title">Hủy yêu cầu?</string>
     <string name="sos_action_resolve_title">Kết thúc yêu cầu?</string>

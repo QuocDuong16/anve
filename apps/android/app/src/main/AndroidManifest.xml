@@ -24,6 +24,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Location is optional hardware: the account and Circle features must
          remain installable on a device without a GPS chip. -->
@@ -72,11 +73,29 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="anve" android:host="invite" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${APP_LINKS_HOST}"
+                    android:pathPrefix="/invite" />
+            </intent-filter>
         </activity>
 
+        <!-- Reboot/update recovery only notifies the user; never starts GPS silently. -->
+        <receiver
+            android:name=".tracking.TrackingRecoveryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Only ever started from a visible screen or an explicit user
-             resume; START_NOT_STICKY in code. No BOOT_COMPLETED receiver:
-             reboot recovery is user-visible, not a background-start bypass. -->
+             resume; START_NOT_STICKY in code. -->
         <service
             android:name=".tracking.TrackingService"
             android:exported="false"

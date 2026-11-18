@@ -86,6 +86,11 @@ type Config struct {
 	// Optional Telegram Bot settings for landing-page contact notifications.
 	TelegramBotToken string `env:"TELEGRAM_BOT_TOKEN"`
 	TelegramChatID   string `env:"TELEGRAM_CHAT_ID"`
+
+	// Android App Links verification (`/.well-known/assetlinks.json`).
+	AndroidAssetLinksPackage      string   `env:"ANDROID_ASSETLINKS_PACKAGE" envDefault:"com.anve.app"`
+	AndroidAssetLinksSHA256       string   `env:"ANDROID_ASSETLINKS_SHA256"`
+	AndroidAssetLinksFingerprints []string `env:"-"`
 }
 
 // Load reads the configuration from the process environment.
@@ -151,6 +156,18 @@ func (c *Config) resolve() error {
 		if err != nil || number < 1 || number > 65535 {
 			return errors.New("METRICS_LISTEN_ADDR port must be between 1 and 65535")
 		}
+	}
+
+	if c.AndroidAssetLinksSHA256 != "" {
+		fingerprints, err := parseSHA256Fingerprints(c.AndroidAssetLinksSHA256)
+		if err != nil {
+			return fmt.Errorf("ANDROID_ASSETLINKS_SHA256: %w", err)
+		}
+		c.AndroidAssetLinksFingerprints = fingerprints
+		if strings.TrimSpace(c.AndroidAssetLinksPackage) == "" {
+			return errors.New("ANDROID_ASSETLINKS_PACKAGE must not be empty when ANDROID_ASSETLINKS_SHA256 is set")
+		}
+		c.AndroidAssetLinksPackage = strings.TrimSpace(c.AndroidAssetLinksPackage)
 	}
 
 	if !c.AuthDevLoginEnabled {
@@ -237,4 +254,32 @@ func isLoopbackHost(host string) bool {
 	}
 	ip, err := netip.ParseAddr(host)
 	return err == nil && ip.IsLoopback()
+}
+
+func parseSHA256Fingerprints(raw string) ([]string, error) {
+	var out []string
+	for _, item := range strings.Split(raw, ",") {
+		fp := strings.ToUpper(strings.TrimSpace(item))
+		if fp == "" {
+			continue
+		}
+		if len(fp) != 95 {
+			return nil, fmt.Errorf("invalid SHA-256 fingerprint %q", item)
+		}
+		for i := 0; i < len(fp); i++ {
+			c := fp[i]
+			if i%3 == 2 {
+				if c != ':' {
+					return nil, fmt.Errorf("invalid SHA-256 fingerprint %q", item)
+				}
+			} else if (c < '0' || c > '9') && (c < 'A' || c > 'F') {
+				return nil, fmt.Errorf("invalid SHA-256 fingerprint %q", item)
+			}
+		}
+		out = append(out, fp)
+	}
+	if len(out) == 0 {
+		return nil, errors.New("no valid SHA-256 fingerprints provided")
+	}
+	return out, nil
 }

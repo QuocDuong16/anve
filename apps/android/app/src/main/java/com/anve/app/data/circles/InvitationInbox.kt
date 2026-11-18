@@ -14,8 +14,13 @@ class InvitationInbox(private val now: () -> Long = { System.nanoTime() / 1_000_
     val invitation = pending.asStateFlow()
     private var account: String? = null
 
-    @Synchronized fun offer(raw: String) {
-        pending.value = IncomingInvitation(UUID.randomUUID().toString(), InviteLink.parse(raw), now(), account)
+    @Synchronized fun offer(raw: String, allowedBaseUrl: String? = null) {
+        val code = if (allowedBaseUrl != null) {
+            InviteLink.parseIncoming(raw, allowedBaseUrl)
+        } else {
+            InviteLink.parse(raw)
+        }
+        pending.value = IncomingInvitation(UUID.randomUUID().toString(), code, now(), account)
     }
 
     @Synchronized fun accountChanged(owner: String?) {

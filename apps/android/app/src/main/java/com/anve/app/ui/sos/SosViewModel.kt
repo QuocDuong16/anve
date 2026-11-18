@@ -7,11 +7,14 @@ import com.anve.app.AppContainer
 import com.anve.app.R
 import com.anve.app.data.api.SosEventDto
 import com.anve.app.data.api.SosRecipientDto
+import com.anve.app.data.sos.NoOpSosSnapshotProvider
 import com.anve.app.data.sos.SosCachedMember
 import com.anve.app.data.sos.SosDataSource
 import com.anve.app.data.sos.SosLocalState
 import com.anve.app.data.sos.SosOutbox
 import com.anve.app.data.sos.SosOutboxItem
+import com.anve.app.data.sos.SosSnapshot
+import com.anve.app.data.sos.SosSnapshotProvider
 import com.anve.app.data.sos.SosSyncEngine
 import com.anve.app.data.sos.SosSyncScheduler
 import java.time.Instant
@@ -37,6 +40,7 @@ data class SosState(
     val offline: Boolean = false,
     val pushRegistered: Boolean? = null,
     val pushConfigured: Boolean? = null,
+    val attachLocationAndBattery: Boolean = true,
     val errorRes: Int? = null,
 )
 
@@ -45,6 +49,7 @@ class SosViewModel(
     private val outbox: SosOutbox,
     private val engine: SosSyncEngine,
     private val scheduler: SosSyncScheduler,
+    private val snapshotProvider: SosSnapshotProvider = NoOpSosSnapshotProvider,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(SosState())
@@ -129,12 +134,32 @@ class SosViewModel(
         }
     }
 
+    fun setAttachLocationAndBattery(enabled: Boolean) {
+        mutable.update { it.copy(attachLocationAndBattery = enabled) }
+    }
+
     fun send(recipientIds: Set<String>) {
         val owner = mutable.value.owner ?: return
         if (mutable.value.pending || recipientIds.isEmpty() || recipientIds.any { id -> mutable.value.members.none { it.userId == id } }) return
+        val attach = mutable.value.attachLocationAndBattery
         mutate {
+            val snapshot = if (attach) {
+                runCatching { snapshotProvider.capture(includeLocation = true, includeBattery = true) }
+                    .getOrDefault(SosSnapshot())
+            } else {
+                SosSnapshot()
+            }
             val at = now()
-            val item = SosOutboxItem(UUID.randomUUID().toString(), owner, Instant.ofEpochMilli(at).toString(), recipientIds.sorted(), at, SosLocalState.QUEUED)
+            val item = SosOutboxItem(
+                eventId = UUID.randomUUID().toString(),
+                ownerId = owner,
+                recordedAt = Instant.ofEpochMilli(at).toString(),
+                recipientIds = recipientIds.sorted(),
+                createdAtMillis = at,
+                state = SosLocalState.QUEUED,
+                location = snapshot.location,
+                batteryPercent = snapshot.batteryPercent,
+            )
             try {
                 outbox.enqueue(item)
             } catch (e: CancellationException) { throw e } catch (e: Exception) { throw SosLocalQueueException(e) }
@@ -214,7 +239,8 @@ class SosViewModel(
         const val CACHE_AGE_MILLIS = 7L * 24 * 60 * 60 * 1000
         fun factory(container: AppContainer): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = SosViewModel(container.sosRepository, container.sosOutbox, container.sosSyncEngine, container.sosSyncScheduler) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                SosViewModel(container.sosRepository, container.sosOutbox, container.sosSyncEngine, container.sosSyncScheduler, container.sosSnapshotProvider) as T
         }
     }
 }

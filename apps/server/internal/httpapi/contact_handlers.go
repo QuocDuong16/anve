@@ -57,6 +57,46 @@ func inviteScriptHandler() http.HandlerFunc {
 	}
 }
 
+func assetLinksHandler(pkg string, fingerprints []string) http.HandlerFunc {
+	if pkg == "" {
+		pkg = "com.anve.app"
+	}
+	type target struct {
+		Namespace              string   `json:"namespace"`
+		PackageName            string   `json:"package_name"`
+		SHA256CertFingerprints []string `json:"sha256_cert_fingerprints"`
+	}
+	type statement struct {
+		Relation []string `json:"relation"`
+		Target   target   `json:"target"`
+	}
+	var payload []byte
+	if len(fingerprints) > 0 {
+		encoded, err := json.Marshal([]statement{{
+			Relation: []string{"delegate_permission/common.handle_all_urls"},
+			Target: target{
+				Namespace:              "android_app",
+				PackageName:            pkg,
+				SHA256CertFingerprints: fingerprints,
+			},
+		}})
+		if err == nil {
+			payload = encoded
+		}
+	}
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if len(payload) == 0 {
+			http.NotFound(w, nil)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(payload)
+	}
+}
+
 func heroAssetHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "image/webp")

@@ -27,6 +27,8 @@ class AdaptiveTrackingPolicy(
     private var lastAccepted: LocationFix? = null
     private var lastAcceptedAtMillis: Long = 0
     private var lastMovementAtMillis: Long = 0
+    private var decelerationConfirmUntilMillis: Long = 0
+    private var lastFixElapsedMillis: Long = 0
 
     /** Clears accepted-fix history and stationary state for a new session or checkpoint. */
     @Synchronized
@@ -35,6 +37,8 @@ class AdaptiveTrackingPolicy(
         lastAccepted = null
         lastAcceptedAtMillis = 0L
         lastMovementAtMillis = 0L
+        decelerationConfirmUntilMillis = 0L
+        lastFixElapsedMillis = 0L
     }
 
     /** M7 hook; M3 never enters JOURNEY automatically. */
@@ -75,9 +79,16 @@ class AdaptiveTrackingPolicy(
 
         val displacement = previous?.let { distanceMeters(it, fix) } ?: 0.0
         val sinceLastAccepted = nowElapsedMillis - lastAcceptedAtMillis
+        lastFixElapsedMillis = nowElapsedMillis
+        val inConfirmWindow = journeyActive || nowElapsedMillis < decelerationConfirmUntilMillis
+        val duplicateWindowMillis = if (inConfirmWindow) {
+            CONFIRM_SAME_PLACE_WINDOW_MILLIS
+        } else {
+            SAME_PLACE_WINDOW_MILLIS
+        }
         if (previous != null &&
             displacement < SAME_PLACE_DISPLACEMENT_METERS &&
-            sinceLastAccepted < SAME_PLACE_WINDOW_MILLIS
+            sinceLastAccepted < duplicateWindowMillis
         ) {
             return decision(false, FixRejection.DUPLICATE, batterySaver)
         }
@@ -91,7 +102,7 @@ class AdaptiveTrackingPolicy(
     /** Current request parameters; the coordinator restarts the provider when they change. */
     @Synchronized
     fun requestOptions(batterySaver: Boolean = false): LocationRequestOptions =
-        baseOptions(motion, batterySaver)
+        baseOptions(motion, batterySaver, lastFixElapsedMillis)
 
     private fun updateMotion(fix: LocationFix, displacementMeters: Double, nowMillis: Long) {
         if (journeyActive) {
@@ -106,6 +117,7 @@ class AdaptiveTrackingPolicy(
         if (fast) {
             motion = MotionState.MOVING
             lastMovementAtMillis = nowMillis
+            decelerationConfirmUntilMillis = 0L
             return
         }
 
@@ -121,12 +133,18 @@ class AdaptiveTrackingPolicy(
                 if (displacementMeters >= MOVING_ENTER_DISPLACEMENT_METERS) {
                     motion = MotionState.MOVING
                     lastMovementAtMillis = nowMillis
+                    decelerationConfirmUntilMillis = 0L
                 }
             }
 
             MotionState.MOVING -> {
                 if (displacementMeters >= MOVEMENT_KEEPALIVE_DISPLACEMENT_METERS) {
                     lastMovementAtMillis = nowMillis
+                    decelerationConfirmUntilMillis = 0L
+                } else if (decelerationConfirmUntilMillis == 0L) {
+                    // Maintain 45s arrival confirmation cadence for the first 3 minutes
+                    // after slowing down so server-side place/journey dwell has enough samples.
+                    decelerationConfirmUntilMillis = nowMillis + DECELERATION_CONFIRM_WINDOW_MILLIS
                 }
                 val slow = speed == null || !speed.isFinite() || speed <= STATIONARY_ENTER_SPEED_MPS
                 if (slow && nowMillis - lastMovementAtMillis >= STATIONARY_CONFIRM_MILLIS) {
@@ -144,10 +162,14 @@ class AdaptiveTrackingPolicy(
         accepted = accepted,
         rejection = rejection,
         motion = motion,
-        request = requestOptions(batterySaver),
+        request = baseOptions(motion, batterySaver, lastFixElapsedMillis),
     )
 
-    private fun baseOptions(motion: MotionState, batterySaver: Boolean): LocationRequestOptions {
+    private fun baseOptions(
+        motion: MotionState,
+        batterySaver: Boolean,
+        nowElapsedMillis: Long = lastFixElapsedMillis,
+    ): LocationRequestOptions {
         val base = when (motion) {
             MotionState.IDLE -> LocationRequestOptions(
                 intervalMillis = 60_000,
@@ -156,7 +178,11 @@ class AdaptiveTrackingPolicy(
             )
 
             MotionState.STATIONARY -> LocationRequestOptions(
-                intervalMillis = 5 * 60_000,
+                intervalMillis = if (nowElapsedMillis < decelerationConfirmUntilMillis) {
+                    DECELERATION_CONFIRM_INTERVAL_MILLIS
+                } else {
+                    5 * 60_000
+                },
                 minDistanceMeters = 50f,
                 highAccuracy = false,
             )
@@ -177,7 +203,11 @@ class AdaptiveTrackingPolicy(
         // Power saver doubles the interval and the displacement filter. It
         // never silently stops acquisition: the UI reports the limitation.
         return base.copy(
-            intervalMillis = base.intervalMillis * 2,
+            intervalMillis = if (nowElapsedMillis < decelerationConfirmUntilMillis) {
+                minOf(base.intervalMillis * 2, DECELERATION_CONFIRM_INTERVAL_MILLIS)
+            } else {
+                base.intervalMillis * 2
+            },
             minDistanceMeters = base.minDistanceMeters * 2,
         )
     }
@@ -196,6 +226,9 @@ class AdaptiveTrackingPolicy(
         /** Jitter smaller than this within the window is not a new sample. */
         const val SAME_PLACE_DISPLACEMENT_METERS: Double = 5.0
         const val SAME_PLACE_WINDOW_MILLIS: Long = 60_000
+        const val CONFIRM_SAME_PLACE_WINDOW_MILLIS: Long = 45_000
+        const val DECELERATION_CONFIRM_INTERVAL_MILLIS: Long = 45_000
+        const val DECELERATION_CONFIRM_WINDOW_MILLIS: Long = 180_000
 
         /** Hysteresis: entering movement is easier than leaving it. */
         const val MOVING_ENTER_SPEED_MPS: Double = 1.4

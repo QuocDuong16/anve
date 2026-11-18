@@ -40,4 +40,12 @@ class InviteLinkTest {
         assertNull(InviteLink.extractCode("https://anve.example.com/other#$code"))
         assertNull(InviteLink.extractCode("invalid"))
     }
+
+    @Test fun `parseIncoming accepts custom scheme or verified matching https host only`() {
+        assertEquals(code, InviteLink.parseIncoming("anve://invite/$code", "https://anve.niand.id.vn"))
+        assertEquals(code, InviteLink.parseIncoming("https://anve.niand.id.vn/invite#$code", "https://anve.niand.id.vn"))
+        assertNull(InviteLink.parseIncoming("https://evil.example/invite#$code", "https://anve.niand.id.vn"))
+        assertNull(InviteLink.parseIncoming("https://anve.niand.id.vn/other#$code", "https://anve.niand.id.vn"))
+        assertNull(InviteLink.parseIncoming("https://anve.niand.id.vn/invite#$code", "http://10.0.2.2:8080"))
+    }
 }

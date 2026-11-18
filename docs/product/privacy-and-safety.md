@@ -115,10 +115,13 @@ Quy tắc:
   Latest read API không trả lịch sử M5.
 - **Quyền nhận sự kiện** (Place Alerts, SOS, Safe Journey) được chọn cho từng
   loại sự kiện/địa điểm/hành trình, không kế thừa âm thầm từ quyền xem bản đồ.
-  Với M6, mỗi SOS chọn rõ người nhận, không đính kèm vị trí
-  hoặc tự bật GPS; có thể thu hồi từng người nhận. Push chỉ chứa ID và loại
-  sự kiện, và quyền được kiểm tra lại khi gửi cũng như khi đọc. Provider chấp
-  nhận không có nghĩa là thiết bị đã nhận hoặc người dùng đã xem.
+  Mỗi SOS chọn rõ người nhận và có tùy chọn (mặc định bật) đính kèm 1 lần tọa
+  độ hiện tại (`getCurrentLocation`, best-effort fail-open khi đã có quyền OS)
+  cùng mức pin vào bản ghi SOS đó mà không tự bật theo dõi GPS nền; có thể tắt
+  tùy chọn này trước khi gửi và thu hồi từng người nhận sau khi gửi. Push FCM
+  chỉ chứa ID và loại sự kiện (không chứa tọa độ hay mức pin), và quyền được
+  kiểm tra lại khi gửi cũng như khi đọc. Provider chấp nhận không có nghĩa là
+  thiết bị đã nhận hoặc người dùng đã xem.
   Với M5-B, chủ thể tự bật theo dõi và chọn người nhận; người nhận còn phải có
   grant vị trí hiện tại và quyền xem Place tương ứng. Mất rồi cấp lại một trong
   các quyền không tự phục hồi cấu hình nhận sự kiện trước đó.

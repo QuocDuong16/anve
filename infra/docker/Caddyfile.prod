@@ -1,6 +1,6 @@
 http://{$API_DOMAIN} {
 	encode zstd gzip
-	@landing path / /privacy /delete-account /invite /assets/*
+	@landing path / /privacy /delete-account /invite /.well-known/assetlinks.json /assets/*
 	handle @landing {
 		reverse_proxy api:8080
 	}

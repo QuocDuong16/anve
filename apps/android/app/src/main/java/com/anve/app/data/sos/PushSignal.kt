@@ -14,8 +14,10 @@ import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
@@ -25,22 +27,126 @@ import com.anve.app.R
 import com.anve.app.data.api.AnveApi
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.JourneyDto
+import com.anve.app.data.api.PlaceEventDto
+import com.anve.app.data.api.ReceivedInvitationDto
+import com.anve.app.data.api.SosEventDto
 import com.anve.app.data.api.orThrow
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 
-class PushEventRepository(private val api: AnveApi) {
-    suspend fun authorized(owner: String, kind: String, id: String, episode: Int = 0): Boolean = try {
+data class PushSignalDetails(
+    val title: String,
+    val body: String,
+    val urgent: Boolean,
+)
+
+class PushEventRepository(
+    private val api: AnveApi,
+    private val cachedMembers: suspend (String) -> List<SosCachedMember> = { emptyList() },
+) {
+    suspend fun authorized(owner: String, kind: String, id: String, episode: Int = 0): Boolean =
+        resolveAuthorized(owner, kind, id, episode) != null
+
+    suspend fun resolveAuthorized(owner: String, kind: String, id: String, episode: Int = 0): PushSignalDetails? = try {
         when (kind) {
-            "CIRCLE_INVITE" -> api.receivedInvitation(owner, id).orThrow().let { it.id == id && Instant.parse(it.expiresAt).isAfter(Instant.now()) }
-            "SOS" -> api.getSos(owner, id).orThrow().let { it.state == "ACTIVE" && it.acknowledgedAt == null }
-            "PLACE" -> api.placeEvent(owner, id).orThrow().id == id
-            else -> if (kind in JOURNEY_PUSH_KINDS) authorizedJourneySignal(api.journey(owner, id).orThrow(), kind, id, episode) else false
+            "CIRCLE_INVITE" -> formatInvitation(api.receivedInvitation(owner, id).orThrow(), id)
+            "SOS" -> formatSos(owner, api.getSos(owner, id).orThrow())
+            "PLACE" -> formatPlace(api.placeEvent(owner, id).orThrow(), id)
+            else -> if (kind in JOURNEY_PUSH_KINDS) {
+                formatJourney(api.journey(owner, id).orThrow(), kind, id, episode)
+            } else {
+                null
+            }
         }
     } catch (e: ApiException) {
-        if (e.httpStatus in setOf(401, 403, 404)) false else throw e
+        if (e.httpStatus in setOf(401, 403, 404)) null else throw e
+    }
+
+    private fun formatInvitation(inv: ReceivedInvitationDto, id: String): PushSignalDetails? {
+        if (inv.id != id || !Instant.parse(inv.expiresAt).isAfter(Instant.now())) return null
+        val sender = inv.inviterDisplayName.trim()
+        val circle = inv.circleName.trim()
+        val title = if (sender.isNotBlank()) "Lời mời gia đình từ $sender" else "Có lời mời gia đình"
+        val body = if (circle.isNotBlank()) {
+            "Tham gia nhóm \"$circle\". Mở AnVề để xem và xác nhận."
+        } else {
+            "Mở AnVề để xem thông tin được phép."
+        }
+        return PushSignalDetails(title = title, body = body, urgent = false)
+    }
+
+    private suspend fun formatSos(owner: String, event: SosEventDto): PushSignalDetails? {
+        if (event.state != "ACTIVE" || event.acknowledgedAt != null) return null
+        val sender = event.ownerName?.trim()?.takeIf { it.isNotBlank() }
+            ?: runCatching { cachedMembers(owner) }.getOrDefault(emptyList())
+                .firstOrNull { it.userId == event.ownerId }?.displayName?.trim()?.takeIf { it.isNotBlank() }
+            ?: runCatching {
+                val circle = api.myCircle(owner).orThrow().circle ?: return@runCatching null
+                api.members(circle.id, owner).orThrow().members
+                    .firstOrNull { it.userId == event.ownerId }?.displayName
+            }.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
+        val title = if (sender != null) {
+            "$sender cần hỗ trợ khẩn cấp (SOS)"
+        } else {
+            "Có yêu cầu hỗ trợ khẩn cấp (SOS)"
+        }
+        val details = buildList {
+            event.batteryPercent?.let { add("Pin $it%") }
+            if (event.location != null) add("Có vị trí đính kèm")
+        }
+        val body = if (details.isNotEmpty()) {
+            "${details.joinToString(" · ")}. Mở AnVề để xem ngay."
+        } else {
+            "Mở AnVề để xem thông tin được phép."
+        }
+        return PushSignalDetails(title = title, body = body, urgent = true)
+    }
+
+    private fun formatPlace(event: PlaceEventDto, id: String): PushSignalDetails? {
+        if (event.id != id) return null
+        val member = event.ownerName.trim()
+        val place = event.placeName.trim()
+        val action = when (event.type) {
+            "ENTER" -> "đã đến"
+            "EXIT" -> "đã rời"
+            else -> "cập nhật tại"
+        }
+        val title = when {
+            member.isNotBlank() && place.isNotBlank() -> "$member $action $place"
+            place.isNotBlank() -> "Cập nhật tại $place"
+            else -> "Có sự kiện địa điểm"
+        }
+        val body = if (event.delayed) {
+            "Ghi nhận từ dữ liệu đồng bộ bù. Mở AnVề để xem chi tiết."
+        } else {
+            "Mở AnVề để xem thông tin được phép."
+        }
+        return PushSignalDetails(title = title, body = body, urgent = true)
+    }
+
+    private fun formatJourney(journey: JourneyDto, kind: String, id: String, episode: Int): PushSignalDetails? {
+        if (!authorizedJourneySignal(journey, kind, id, episode)) return null
+        val member = journey.ownerName.trim()
+        val destination = journey.destination.label.trim()
+        val subject = if (member.isNotBlank()) member else "Thành viên"
+        val placeSuffix = if (destination.isNotBlank()) " đến $destination" else ""
+        val title = when (kind) {
+            "JOURNEY_ACTIVE" -> "$subject bắt đầu hành trình$placeSuffix"
+            "JOURNEY_ARRIVED" -> "$subject đã đến${if (destination.isNotBlank()) " $destination" else " nơi"}"
+            "JOURNEY_ENDED" -> "$subject đã kết thúc hành trình$placeSuffix"
+            "JOURNEY_CANCELLED" -> "$subject đã hủy hành trình$placeSuffix"
+            "JOURNEY_EXPIRED" -> "Hành trình của $subject$placeSuffix đã hết hạn"
+            "JOURNEY_STALE" -> "Hành trình của $subject$placeSuffix chưa có cập nhật mới"
+            else -> "Có cập nhật hành trình"
+        }
+        val body = if (kind == "JOURNEY_STALE") {
+            "Hãy liên hệ. Mở AnVề để kiểm tra trạng thái hiện tại."
+        } else {
+            "Mở AnVề để xem thông tin được phép."
+        }
+        return PushSignalDetails(title = title, body = body, urgent = true)
     }
 }
 
@@ -56,57 +162,61 @@ fun authorizedJourneySignal(journey: JourneyDto, kind: String, id: String, episo
     return !newerRealSample
 }
 
-/** Incoming messages contain only opaque IDs; authorization is rechecked online. */
-class PushSignalScheduler(context: Context) {
-    private val app = context.applicationContext
-    fun schedule(kind: String, eventId: String, episode: Int = 0) {
-        if (!validPushSignal(kind, eventId, episode)) return
-        val work = OneTimeWorkRequestBuilder<PushSignalWorker>()
-            .setInputData(workDataOf("kind" to kind, "eventId" to eventId, "episode" to episode))
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
-        val workName = "push-signal-$kind-$eventId" + if (kind == "JOURNEY_STALE") "-$episode" else ""
-        WorkManager.getInstance(app).enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, work)
-    }
-}
+object PushNotificationDisplay {
+    private val dedupLock = Any()
 
-class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
-        val kind = inputData.getString("kind") ?: return Result.failure()
-        val eventId = inputData.getString("eventId") ?: return Result.failure()
-        val episode = inputData.getInt("episode", 0)
-        if (!validPushSignal(kind, eventId, episode)) return Result.failure()
-        val app = applicationContext as? AnVeApplication ?: return Result.failure()
-        val owner = app.container.sessionStore.current()?.userId ?: return Result.success()
-        return try {
-            if (!app.container.pushEventRepository.authorized(owner, kind, eventId, episode)) return Result.success()
-            if (app.container.sessionStore.current()?.userId != owner) return Result.success()
-            if (!areAppNotificationsEnabled(applicationContext)) return Result.success()
-            if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(applicationContext, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return Result.success()
-            val manager = NotificationManagerCompat.from(applicationContext)
-            val hash = MessageDigest.getInstance("SHA-256").digest("$owner:${pushSignalIdentity(kind, eventId, episode)}".toByteArray())
-            val key = hash.joinToString("") { "%02x".format(it) }
-            val prefs = applicationContext.getSharedPreferences("anve_push_dedup", Context.MODE_PRIVATE)
-            if (prefs.contains(key)) return Result.success()
-            val id = ((hash[0].toInt() and 255) shl 24) or ((hash[1].toInt() and 255) shl 16) or
-                ((hash[2].toInt() and 255) shl 8) or (hash[3].toInt() and 255)
-            val invitation = kind == "CIRCLE_INVITE"
-            val channelId = if (invitation) "anve_invitations" else "anve_events"
-            if (Build.VERSION.SDK_INT >= 26) {
-                val channel = NotificationChannel(channelId, if (invitation) "Lời mời gia đình" else "Sự kiện gia đình",
-                    if (invitation) NotificationManager.IMPORTANCE_DEFAULT else NotificationManager.IMPORTANCE_HIGH)
-                applicationContext.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-            }
-            val intent = Intent(applicationContext, MainActivity::class.java)
-                .putExtra("anve_event_kind", kind).putExtra("anve_event_id", eventId).putExtra("anve_event_owner", owner)
-                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            val pending = PendingIntent.getActivity(applicationContext, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val notification = NotificationCompat.Builder(applicationContext, channelId)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(when { invitation -> "Có lời mời gia đình"; kind == "SOS" -> "Có yêu cầu hỗ trợ"; kind == "JOURNEY_STALE" -> "Hành trình chưa có cập nhật mới"; kind in JOURNEY_PUSH_KINDS -> "Có cập nhật hành trình"; else -> "Có sự kiện địa điểm" })
-                .setContentText(if (kind == "JOURNEY_STALE") "Hãy liên hệ. Mở AnVề để kiểm tra trạng thái hiện tại." else "Mở AnVề để xem thông tin được phép.")
-                .setContentIntent(pending).setAutoCancel(true).build()
-            manager.notify(id, notification)
+    fun show(
+        context: Context,
+        owner: String,
+        kind: String,
+        eventId: String,
+        episode: Int,
+        details: PushSignalDetails,
+    ): Boolean {
+        val appContext = context.applicationContext
+        if (!areAppNotificationsEnabled(appContext)) return false
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(appContext, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+        val hash = MessageDigest.getInstance("SHA-256")
+            .digest("$owner:${pushSignalIdentity(kind, eventId, episode)}".toByteArray())
+        val key = hash.joinToString("") { "%02x".format(it) }
+        val id = ((hash[0].toInt() and 255) shl 24) or ((hash[1].toInt() and 255) shl 16) or
+            ((hash[2].toInt() and 255) shl 8) or (hash[3].toInt() and 255)
+
+        val invitation = kind == "CIRCLE_INVITE"
+        val channelId = if (invitation) "anve_invitations" else "anve_events"
+        ensureChannel(appContext, channelId, invitation)
+
+        val intent = Intent(appContext, MainActivity::class.java)
+            .putExtra("anve_event_kind", kind)
+            .putExtra("anve_event_id", eventId)
+            .putExtra("anve_event_owner", owner)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val pending = PendingIntent.getActivity(
+            appContext,
+            id,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(appContext, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(details.title)
+            .setContentText(details.body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(details.body))
+            .setPriority(if (details.urgent) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(if (kind == "SOS") NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .build()
+
+        synchronized(dedupLock) {
+            val prefs = appContext.getSharedPreferences("anve_push_dedup", Context.MODE_PRIVATE)
+            if (prefs.contains(key)) return false
+            NotificationManagerCompat.from(appContext).notify(id, notification)
             val now = System.currentTimeMillis()
             val edit = prefs.edit()
             val entries = prefs.all.entries
@@ -115,7 +225,69 @@ class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWo
             entries.filter { it.value is Long && now - (it.value as Long) <= 7L * 24 * 60 * 60 * 1000 }
                 .sortedBy { it.value as Long }.dropLast(511).forEach { edit.remove(it.key) }
             edit.putLong(key, now).apply()
+        }
+        return true
+    }
+
+    fun ensureChannel(context: Context, channelId: String, invitation: Boolean) {
+        if (Build.VERSION.SDK_INT < 26) return
+        val channel = NotificationChannel(
+            channelId,
+            if (invitation) "Lời mời gia đình" else "Sự kiện gia đình",
+            if (invitation) NotificationManager.IMPORTANCE_DEFAULT else NotificationManager.IMPORTANCE_HIGH,
+        )
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+    }
+}
+
+/** Incoming messages contain only opaque IDs; authorization is rechecked online. */
+class PushSignalScheduler(context: Context) {
+    private val app = context.applicationContext
+    fun schedule(kind: String, eventId: String, episode: Int = 0) {
+        if (!validPushSignal(kind, eventId, episode)) return
+        val work = OneTimeWorkRequestBuilder<PushSignalWorker>()
+            .setInputData(workDataOf("kind" to kind, "eventId" to eventId, "episode" to episode))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        val workName = "push-signal-$kind-$eventId" + if (kind == "JOURNEY_STALE") "-$episode" else ""
+        WorkManager.getInstance(app).enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, work)
+    }
+}
+
+class PushSignalWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        PushNotificationDisplay.ensureChannel(applicationContext, "anve_events", invitation = false)
+        val notification = NotificationCompat.Builder(applicationContext, "anve_events")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Đang kiểm tra thông báo gia đình")
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        return ForegroundInfo(FOREGROUND_NOTIFICATION_ID, notification)
+    }
+
+    override suspend fun doWork(): Result {
+        val kind = inputData.getString("kind") ?: return Result.failure()
+        val eventId = inputData.getString("eventId") ?: return Result.failure()
+        val episode = inputData.getInt("episode", 0)
+        if (!validPushSignal(kind, eventId, episode)) return Result.failure()
+        val app = applicationContext as? AnVeApplication ?: return Result.failure()
+        val owner = app.container.sessionStore.current()?.userId ?: return Result.success()
+        return try {
+            val details = app.container.pushEventRepository.resolveAuthorized(owner, kind, eventId, episode)
+                ?: return Result.success()
+            if (app.container.sessionStore.current()?.userId != owner) return Result.success()
+            PushNotificationDisplay.show(applicationContext, owner, kind, eventId, episode, details)
             Result.success()
-        } catch (e: CancellationException) { throw e } catch (_: Exception) { Result.retry() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            Result.retry()
+        }
+    }
+
+    private companion object {
+        const val FOREGROUND_NOTIFICATION_ID = 1003
     }
 }

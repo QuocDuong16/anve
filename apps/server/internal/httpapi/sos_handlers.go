@@ -32,9 +32,11 @@ func sosCollection(store *sos.Store) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			EventID      uuid.UUID   `json:"eventId"`
-			RecordedAt   time.Time   `json:"recordedAt"`
-			RecipientIDs []uuid.UUID `json:"recipientIds"`
+			EventID        uuid.UUID     `json:"eventId"`
+			RecordedAt     time.Time     `json:"recordedAt"`
+			RecipientIDs   []uuid.UUID   `json:"recipientIds"`
+			Location       *sos.Location `json:"location"`
+			BatteryPercent *int          `json:"batteryPercent"`
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, 8192)
 		decoder := json.NewDecoder(r.Body)
@@ -49,7 +51,10 @@ func sosCollection(store *sos.Store) http.HandlerFunc {
 		}
 		ac, _ := AuthFromContext(r.Context())
 		principal := sos.Principal{UserID: actor, SessionID: ac.Session.ID, DeviceID: ac.Session.DeviceID}
-		event, created, err := store.Create(r.Context(), principal, body.EventID, body.RecordedAt, body.RecipientIDs)
+		event, created, err := store.CreateWithOptions(r.Context(), principal, body.EventID, body.RecordedAt, body.RecipientIDs, sos.CreateOptions{
+			Location:       body.Location,
+			BatteryPercent: body.BatteryPercent,
+		})
 		if err != nil {
 			writeError(w, r, err)
 			return

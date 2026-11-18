@@ -51,12 +51,17 @@ func observe(state fenceState, at time.Time, distanceM, accuracyM, radiusM float
 	margin := math.Max(MinHysteresisM, radiusM*0.1)
 	var observed stateName
 	switch {
-	case distanceM+accuracyM <= radiusM-margin:
+	case distanceM <= radiusM:
 		observed = inside
 	case distanceM-accuracyM >= radiusM+margin:
 		observed = outside
 	default:
-		state.Candidate, state.CandidateAt = "", time.Time{}
+		// Keep a recent candidate across noisy indoor buffer samples so a
+		// Wi-Fi accuracy spike does not reset dwell, while expiring stale
+		// candidates that never re-confirm.
+		if state.Candidate != "" && at.Sub(state.CandidateAt) > 2*Dwell {
+			state.Candidate, state.CandidateAt = "", time.Time{}
+		}
 		return state, ""
 	}
 	if observed == state.Stable {

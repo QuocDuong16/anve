@@ -145,6 +145,28 @@ class SosViewModelTest {
         assertTrue(!vm.state.value.loading)
     }
 
+    @Test fun `send attaches snapshot when enabled and omits it when disabled`() {
+        val loc = com.anve.app.data.api.SosLocationDto(10.7769, 106.7009, 12.0, "2026-11-18T00:00:00Z")
+        val snapshotProvider = object : com.anve.app.data.sos.SosSnapshotProvider {
+            override suspend fun capture(includeLocation: Boolean, includeBattery: Boolean) =
+                com.anve.app.data.sos.SosSnapshot(
+                    location = if (includeLocation) loc else null,
+                    batteryPercent = if (includeBattery) 55 else null,
+                )
+        }
+        val customVm = SosViewModel(source, box, SosSyncEngine(box, sessions, gateway, now = { 1000 }), scheduler, snapshotProvider, now = { 1000 })
+        customVm.activate("a")
+        assertTrue(customVm.state.value.attachLocationAndBattery)
+        customVm.send(setOf("b"))
+        assertEquals(loc, box.items.last().location)
+        assertEquals(55, box.items.last().batteryPercent)
+
+        customVm.setAttachLocationAndBattery(false)
+        customVm.send(setOf("b"))
+        assertEquals(null, box.items.last().location)
+        assertEquals(null, box.items.last().batteryPercent)
+    }
+
     private class FakeSource : SosDataSource {
         var offline = false
         var failRevoke = false

@@ -33,7 +33,9 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Checks both OS channel/app toggle and Android 13+ runtime permission. */
 fun areAppNotificationsEnabled(context: Context): Boolean {
@@ -284,6 +286,30 @@ class AnveFirebaseMessagingService : FirebaseMessagingService() {
         val kind = message.data["kind"] ?: return
         val eventId = message.data["eventId"] ?: return
         val episode = message.data["episode"]?.toIntOrNull() ?: if ("episode" in message.data) return else 0
-        PushSignalScheduler(applicationContext).schedule(kind, eventId, episode)
+        if (!validPushSignal(kind, eventId, episode)) return
+        val app = applicationContext as? AnVeApplication ?: return
+        val handledDirect = try {
+            runBlocking(Dispatchers.IO) {
+                withTimeoutOrNull(DIRECT_FETCH_TIMEOUT_MILLIS) {
+                    val owner = app.container.sessionStore.current()?.userId ?: return@withTimeoutOrNull true
+                    val details = app.container.pushEventRepository.resolveAuthorized(owner, kind, eventId, episode)
+                        ?: return@withTimeoutOrNull true
+                    if (app.container.sessionStore.current()?.userId != owner) return@withTimeoutOrNull true
+                    PushNotificationDisplay.show(applicationContext, owner, kind, eventId, episode, details)
+                    true
+                } ?: false
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+        if (!handledDirect) {
+            PushSignalScheduler(applicationContext).schedule(kind, eventId, episode)
+        }
+    }
+
+    private companion object {
+        const val DIRECT_FETCH_TIMEOUT_MILLIS = 8_000L
     }
 }

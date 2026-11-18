@@ -58,4 +58,28 @@ object InviteLink {
         if (uri.rawPath != "/$code" || !codePattern.matches(code)) return null
         return code
     }
+
+    /**
+     * Parses an incoming VIEW intent URI from either the custom scheme
+     * (`anve://invite/<CODE>`) or a verified HTTPS App Link matching
+     * [allowedBaseUrl] (`https://<host>/invite#<CODE>`).
+     */
+    fun parseIncoming(raw: String?, allowedBaseUrl: String): String? {
+        parse(raw)?.let { return it }
+        if (raw == null || raw.length > 256) return null
+        val expected = runCatching { URI(allowedBaseUrl.trim()) }.getOrNull() ?: return null
+        val expectedHost = expected.host?.lowercase()
+        if (expected.scheme != "https" || expectedHost.isNullOrBlank() ||
+            expectedHost in setOf("localhost", "127.0.0.1", "10.0.2.2")
+        ) {
+            return null
+        }
+        val uri = runCatching { URI(raw) }.getOrNull() ?: return null
+        if (uri.isOpaque || uri.rawUserInfo != null || uri.port != -1 || uri.rawQuery != null) return null
+        if (uri.scheme != "https" || !uri.host.equals(expectedHost, ignoreCase = true) || uri.rawPath != "/invite") {
+            return null
+        }
+        val code = uri.rawFragment?.trim()?.uppercase().orEmpty()
+        return code.takeIf { codePattern.matches(it) }
+    }
 }

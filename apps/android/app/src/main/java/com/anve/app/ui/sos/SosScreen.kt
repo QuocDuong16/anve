@@ -1,7 +1,9 @@
 package com.anve.app.ui.sos
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
@@ -37,7 +39,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BatteryStd
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Warning
@@ -57,6 +62,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -83,6 +89,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -92,6 +99,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anve.app.AppContainer
 import com.anve.app.R
 import com.anve.app.data.api.SosEventDto
+import com.anve.app.data.api.SosLocationDto
 import com.anve.app.data.sos.FirebaseSetup
 import com.anve.app.data.sos.SosCachedMember
 import com.anve.app.data.sos.SosLocalState
@@ -112,7 +120,13 @@ import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.theme.LocalStitchColors
 import java.time.Duration
 import java.time.Instant
+import java.util.Locale
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+
+private fun hasAnyLocationPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
 @Composable
 fun SosScreen(container: AppContainer, eventId: String? = null) {
@@ -124,6 +138,7 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     var permission by remember(owner) { mutableStateOf(areAppNotificationsEnabled(context)) }
+    var locationPermission by remember(owner) { mutableStateOf(hasAnyLocationPermission(context)) }
     var notificationPermissionRequested by rememberSaveable(owner) { mutableStateOf(false) }
     var notificationPermissionPermanentlyDenied by rememberSaveable(owner) { mutableStateOf(false) }
     var autoRetriedRegistration by remember(owner) { mutableStateOf(false) }
@@ -149,6 +164,7 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
                 Lifecycle.Event.ON_START -> {
                     vm.activate(owner)
                     permission = areAppNotificationsEnabled(context)
+                    locationPermission = hasAnyLocationPermission(context)
                     if (permission && owner != null) {
                         notificationPermissionPermanentlyDenied = false
                         container.pushRegistrationCoordinator.syncIfPermitted(owner)
@@ -185,6 +201,7 @@ fun SosScreen(container: AppContainer, eventId: String? = null) {
         state = state,
         vm = vm,
         notificationPermission = permission,
+        locationPermissionGranted = locationPermission,
         settingsMessage = settingsMessage,
         onNotifications = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -261,6 +278,7 @@ internal fun SosContent(
     state: SosState,
     vm: SosViewModel,
     notificationPermission: Boolean,
+    locationPermissionGranted: Boolean = true,
     settingsMessage: String? = null,
     onNotifications: () -> Unit,
     onSystemSettings: () -> Unit = {},
@@ -272,6 +290,7 @@ internal fun SosContent(
         state = state,
         queuedEventId = queuedEventId,
         notificationPermission = notificationPermission,
+        locationPermissionGranted = locationPermissionGranted,
         settingsMessage = settingsMessage,
         onNotifications = onNotifications,
         onSystemSettings = onSystemSettings,
@@ -279,6 +298,7 @@ internal fun SosContent(
         pushConfiguredOnBuild = pushConfiguredOnBuild,
         onRefresh = { vm.refresh() },
         onSend = { vm.send(it) },
+        onToggleAttachLocationAndBattery = { vm.setAttachLocationAndBattery(it) },
         onCancel = { vm.cancel(it) },
         onResolve = { vm.resolve(it) },
         onAcknowledge = { vm.acknowledge(it) },
@@ -296,6 +316,7 @@ private fun SosContentBody(
     state: SosState,
     queuedEventId: String?,
     notificationPermission: Boolean,
+    locationPermissionGranted: Boolean,
     settingsMessage: String?,
     onNotifications: () -> Unit,
     onSystemSettings: () -> Unit,
@@ -303,6 +324,7 @@ private fun SosContentBody(
     pushConfiguredOnBuild: Boolean,
     onRefresh: () -> Unit,
     onSend: (Set<String>) -> Unit,
+    onToggleAttachLocationAndBattery: (Boolean) -> Unit,
     onCancel: (String) -> Unit,
     onResolve: (String) -> Unit,
     onAcknowledge: (String) -> Unit,
@@ -595,6 +617,61 @@ private fun SosContentBody(
                 }
             }
         })
+        add(SosRow("location-attach-card") {
+            OutlinedCard(
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(1.dp, stitch.hairline),
+                colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 56.dp)
+                            .toggleable(
+                                value = state.attachLocationAndBattery,
+                                enabled = !state.pending,
+                                role = Role.Switch,
+                                onValueChange = onToggleAttachLocationAndBattery,
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.sos_attach_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.sos_attach_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.attachLocationAndBattery,
+                            enabled = !state.pending,
+                            onCheckedChange = null,
+                        )
+                    }
+                    if (state.attachLocationAndBattery && !locationPermissionGranted) {
+                        Text(
+                            text = stringResource(R.string.sos_attach_no_permission),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        })
         add(SosRow(OUTBOX_TITLE_KEY) {
             Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
@@ -789,8 +866,25 @@ private fun SosContentBody(
         })
         state.selected?.let { event ->
             add(SosRow(DETAIL_CARD_KEY) {
-                SosCard(stringResource(R.string.sos_detail_title)) {
-                    val sender = if (event.ownerId == owner) stringResource(R.string.sos_person_you) else state.members.firstOrNull { it.userId == event.ownerId }?.displayName ?: stringResource(R.string.sos_person_member_unnamed)
+                val mapContext = LocalContext.current
+                val openMapFailedMessage = stringResource(R.string.sos_open_map_failed)
+                var mapError by remember(event.id) { mutableStateOf<String?>(null) }
+                SosCard(
+                    title = stringResource(R.string.sos_detail_title),
+                    trailing = {
+                        StitchSemanticBadge(
+                            text = sosState(event.state),
+                            kind = if (event.state == "ACTIVE") StitchBadgeKind.EMERGENCY else StitchBadgeKind.NEUTRAL,
+                        )
+                    },
+                ) {
+                    val sender = if (event.ownerId == owner) {
+                        stringResource(R.string.sos_person_you)
+                    } else {
+                        event.ownerName?.takeIf { it.isNotBlank() }
+                            ?: state.members.firstOrNull { it.userId == event.ownerId }?.displayName
+                            ?: stringResource(R.string.sos_person_member_unnamed)
+                    }
                     Text(stringResource(R.string.sos_detail_sender, sender), fontWeight = FontWeight.Medium)
                     Text(
                         stringResource(
@@ -803,6 +897,89 @@ private fun SosContentBody(
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                     )
+                    if (event.batteryPercent != null || event.location != null) {
+                        HorizontalDivider(color = stitch.hairline)
+                        event.batteryPercent?.let { percent ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.BatteryStd,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colors.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = stringResource(R.string.sos_detail_battery, percent),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        event.location?.let { loc ->
+                            val coordsText = String.format(Locale.US, "%.4f, %.4f", loc.latitude, loc.longitude)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colors.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.sos_detail_location,
+                                        coordsText,
+                                        loc.horizontalAccuracyMeters.roundToInt(),
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    mapError = null
+                                    val geoUri = Uri.parse(
+                                        "geo:${loc.latitude},${loc.longitude}?q=${loc.latitude},${loc.longitude}(${Uri.encode(sender)})",
+                                    )
+                                    val webUri = Uri.parse(
+                                        "https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}",
+                                    )
+                                    val opened = runCatching {
+                                        mapContext.startActivity(Intent(Intent.ACTION_VIEW, geoUri))
+                                    }.isSuccess || runCatching {
+                                        mapContext.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                                    }.isSuccess
+                                    if (!opened) {
+                                        mapError = openMapFailedMessage
+                                    }
+                                },
+                                shape = CircleShape,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Map,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.sos_detail_open_map))
+                            }
+                            mapError?.let { msg ->
+                                Text(
+                                    text = msg,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.error,
+                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                )
+                            }
+                        }
+                    }
                     if (event.ownerId == owner) {
                         state.recipients.forEach { recipient ->
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -950,7 +1127,13 @@ private fun SosContentBody(
                             ),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         ) { Text(stringResource(R.string.sos_send_button)) }
-                        Text(stringResource(R.string.sos_bottom_disclaimer), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            stringResource(
+                                if (state.attachLocationAndBattery) R.string.sos_bottom_disclaimer_with_location
+                                else R.string.sos_bottom_disclaimer,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }
@@ -978,7 +1161,11 @@ private fun SosContentBody(
         title = { Text(stringResource(R.string.sos_confirm_title)) },
         text = {
             Text(
-                stringResource(R.string.sos_confirm_body, selected.size),
+                stringResource(
+                    if (state.attachLocationAndBattery) R.string.sos_confirm_body_with_location
+                    else R.string.sos_confirm_body,
+                    selected.size,
+                ),
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             )
         },
@@ -1121,6 +1308,7 @@ private fun SosContentPreview() {
             state = previewSosState(),
             queuedEventId = null,
             notificationPermission = true,
+            locationPermissionGranted = true,
             settingsMessage = null,
             onNotifications = {},
             onSystemSettings = {},
@@ -1128,6 +1316,7 @@ private fun SosContentPreview() {
             pushConfiguredOnBuild = true,
             onRefresh = {},
             onSend = {},
+            onToggleAttachLocationAndBattery = {},
             onCancel = {},
             onResolve = {},
             onAcknowledge = {},
@@ -1149,6 +1338,7 @@ private fun SosContentDarkPreview() {
             state = previewSosState(),
             queuedEventId = null,
             notificationPermission = false,
+            locationPermissionGranted = false,
             settingsMessage = null,
             onNotifications = {},
             onSystemSettings = {},
@@ -1156,6 +1346,7 @@ private fun SosContentDarkPreview() {
             pushConfiguredOnBuild = true,
             onRefresh = {},
             onSend = {},
+            onToggleAttachLocationAndBattery = {},
             onCancel = {},
             onResolve = {},
             onAcknowledge = {},
@@ -1177,6 +1368,7 @@ private fun SosContentElderlyFontPreview() {
             state = previewSosState(),
             queuedEventId = null,
             notificationPermission = false,
+            locationPermissionGranted = false,
             settingsMessage = null,
             onNotifications = {},
             onSystemSettings = {},
@@ -1184,6 +1376,7 @@ private fun SosContentElderlyFontPreview() {
             pushConfiguredOnBuild = true,
             onRefresh = {},
             onSend = {},
+            onToggleAttachLocationAndBattery = {},
             onCancel = {},
             onResolve = {},
             onAcknowledge = {},
@@ -1197,31 +1390,42 @@ private fun SosContentElderlyFontPreview() {
     }
 }
 
-private fun previewSosState(): SosState = SosState(
-    owner = "owner",
-    members = listOf(
-        SosCachedMember("owner", "m1", "Bố Hải", 0L),
-        SosCachedMember("owner", "m2", "Mẹ Lan", 0L),
-    ),
-    outbox = listOf(
-        SosOutboxItem(
-            eventId = "outbox-1",
-            ownerId = "owner",
-            recordedAt = "2026-11-16T00:55:00Z",
-            recipientIds = listOf("m1", "m2"),
-            createdAtMillis = 1_000L,
-            state = SosLocalState.QUEUED,
-        ),
-    ),
-    events = listOf(
-        SosEventDto(
-            id = "ev-1",
-            ownerId = "owner",
+private fun previewSosState(): SosState {
+    val active = SosEventDto(
+        id = "ev-1",
+        ownerId = "m2",
+        ownerName = "Mẹ Lan",
+        recordedAt = "2026-11-16T00:50:00Z",
+        receivedAt = "2026-11-16T00:50:05Z",
+        state = "ACTIVE",
+        location = SosLocationDto(
+            latitude = 10.7769,
+            longitude = 106.7009,
+            horizontalAccuracyMeters = 18.0,
             recordedAt = "2026-11-16T00:50:00Z",
-            receivedAt = "2026-11-16T00:50:05Z",
-            state = "ACTIVE",
         ),
-    ),
-    pushRegistered = true,
-    pushConfigured = true,
-)
+        batteryPercent = 24,
+    )
+    return SosState(
+        owner = "owner",
+        members = listOf(
+            SosCachedMember("owner", "m1", "Bố Hải", 0L),
+            SosCachedMember("owner", "m2", "Mẹ Lan", 0L),
+        ),
+        outbox = listOf(
+            SosOutboxItem(
+                eventId = "outbox-1",
+                ownerId = "owner",
+                recordedAt = "2026-11-16T00:55:00Z",
+                recipientIds = listOf("m1", "m2"),
+                createdAtMillis = 1_000L,
+                state = SosLocalState.QUEUED,
+            ),
+        ),
+        events = listOf(active),
+        selected = active,
+        pushRegistered = true,
+        pushConfigured = true,
+        attachLocationAndBattery = true,
+    )
+}
