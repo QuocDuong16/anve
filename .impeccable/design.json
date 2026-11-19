@@ -1,120 +1,200 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-16T00:30:00+00:00",
-  "title": "Design System: AnVề (Warm Tactile Minimalism)",
+  "generatedAt": "2026-11-19T01:45:00Z",
+  "title": "Design System: AnVề",
   "extensions": {
     "colorMeta": {
-      "forest-primary": {
+      "primary": {
         "role": "primary",
-        "hex": "#3D602F",
-        "displayName": "Forest Primary"
+        "displayName": "Forest Green",
+        "canonical": "#3d602f",
+        "tonalRamp": ["#14240d", "#223918", "#2f4e22", "#3d602f", "#557945", "#7ea16e", "#aad295", "#dbffc6"]
       },
-      "forest-container": {
+      "primary-container": {
         "role": "primaryContainer",
-        "hex": "#557945",
-        "displayName": "Moss Sage Container"
+        "displayName": "Moss Sage Container",
+        "canonical": "#557945",
+        "tonalRamp": ["#192a12", "#28401e", "#3c5a2f", "#557945", "#70945f", "#92b482", "#b8d7a9", "#e2f7d8"]
       },
-      "forest-on-container": {
+      "on-primary-container": {
         "role": "onPrimaryContainer",
-        "hex": "#DBFFC6",
-        "displayName": "Soft Mint Ink"
+        "displayName": "Soft Mint Ink",
+        "canonical": "#dbffc6",
+        "tonalRamp": ["#102407", "#1e3d10", "#33601f", "#548a3b", "#82ba68", "#aad295", "#c5eeaf", "#dbffc6"]
       },
-      "blush-secondary": {
+      "secondary": {
         "role": "secondary",
-        "hex": "#695B60",
-        "displayName": "Plum Taupe Secondary"
+        "displayName": "Plum Taupe",
+        "canonical": "#695b60",
+        "tonalRamp": ["#23191e", "#392d32", "#504349", "#695b60", "#86767b", "#a7979c", "#d4c2c8", "#f1dde4"]
       },
-      "blush-container": {
+      "secondary-container": {
         "role": "secondaryContainer",
-        "hex": "#F1DDE4",
-        "displayName": "Soft Blush Container"
+        "displayName": "Soft Blush Container",
+        "canonical": "#f1dde4",
+        "tonalRamp": ["#23191e", "#392d32", "#514348", "#6f6066", "#9a898f", "#c5b3b9", "#e2cdd4", "#f1dde4"]
       },
-      "blush-on-container": {
+      "on-secondary-container": {
         "role": "onSecondaryContainer",
-        "hex": "#4A3B40",
-        "displayName": "Warm Plum Ink"
+        "displayName": "Warm Plum Ink",
+        "canonical": "#6f6066",
+        "tonalRamp": ["#23191e", "#392d32", "#504349", "#6f6066", "#8c7c82", "#b0a0a6", "#d4c2c8", "#f1dde4"]
       },
-      "cream-surface": {
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Muted Forest",
+        "canonical": "#30632a",
+        "tonalRamp": ["#002201", "#11370e", "#1e511a", "#30632a", "#487c40", "#6da163", "#9cd58f", "#b7f2a9"]
+      },
+      "tertiary-container": {
+        "role": "tertiaryContainer",
+        "displayName": "Muted Forest Container",
+        "canonical": "#487c40",
+        "tonalRamp": ["#0d260a", "#1b3d17", "#2e5c29", "#487c40", "#689b60", "#8dbb85", "#b7f2a9", "#dcffcf"]
+      },
+      "surface": {
         "role": "surface",
-        "hex": "#FDF9F2",
-        "displayName": "Warm Paper Cream"
+        "displayName": "Warm Paper Cream",
+        "canonical": "#fdf9f2",
+        "tonalRamp": ["#1c1c18", "#31302c", "#5e5c55", "#939087", "#c6c2b8", "#ebe8e1", "#f7f3ec", "#fdf9f2"]
       },
-      "cream-surface-low": {
+      "surface-container-lowest": {
+        "role": "surfaceContainerLowest",
+        "displayName": "Clean Lowest Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#1c1c18", "#3d3c37", "#696760", "#9c9990", "#ccc8be", "#ece8df", "#f8f5ef", "#ffffff"]
+      },
+      "surface-container-low": {
         "role": "surfaceContainerLow",
-        "hex": "#F7F3EC",
-        "displayName": "Cream Surface Low"
+        "displayName": "Cream Surface Low",
+        "canonical": "#f7f3ec",
+        "tonalRamp": ["#1c1c18", "#36342f", "#5e5b54", "#8e8a80", "#bfb9ae", "#e2ddd3", "#f1ede7", "#f7f3ec"]
       },
-      "cream-surface-mid": {
+      "surface-container": {
         "role": "surfaceContainer",
-        "hex": "#F1EDE7",
-        "displayName": "Cream Surface Mid"
+        "displayName": "Cream Surface Mid",
+        "canonical": "#f1ede7",
+        "tonalRamp": ["#1c1c18", "#36342f", "#5b5851", "#89857b", "#bab5aa", "#dad5cb", "#eae6df", "#f1ede7"]
       },
-      "cream-surface-high": {
+      "surface-container-high": {
         "role": "surfaceContainerHigh",
-        "hex": "#EBE8E1",
-        "displayName": "Cream Surface High"
+        "displayName": "Cream Surface High",
+        "canonical": "#ebe8e1",
+        "tonalRamp": ["#1c1c18", "#34332e", "#595750", "#858279", "#b3afa5", "#d3cfc6", "#e4e0d8", "#ebe8e1"]
       },
-      "cream-surface-highest": {
+      "surface-container-highest": {
         "role": "surfaceContainerHighest",
-        "hex": "#E6E2DB",
-        "displayName": "Cream Surface Highest"
+        "displayName": "Cream Surface Highest",
+        "canonical": "#e6e2db",
+        "tonalRamp": ["#1c1c18", "#33322d", "#56544d", "#807d75", "#adaaa0", "#ccc8be", "#dedad3", "#e6e2db"]
       },
-      "ink-primary": {
+      "on-surface": {
         "role": "onSurface",
-        "hex": "#1C1C18",
-        "displayName": "Charcoal Organic Ink"
+        "displayName": "Deep Organic Ink",
+        "canonical": "#1c1c18",
+        "tonalRamp": ["#1c1c18", "#31302c", "#4b4943", "#69665f", "#8e8b82", "#b7b4aa", "#dcd8ce", "#f4f0e9"]
       },
-      "olive-variant": {
+      "on-surface-variant": {
         "role": "onSurfaceVariant",
-        "hex": "#43483E",
-        "displayName": "Olive Variant Ink"
+        "displayName": "Olive Variant Ink",
+        "canonical": "#43483e",
+        "tonalRamp": ["#1c2019", "#2e332a", "#43483e", "#5e6457", "#7f8678", "#a5ac9e", "#c8cec1", "#e6ebe1"]
       },
-      "sage-outline": {
+      "outline": {
         "role": "outline",
-        "hex": "#74796D",
-        "displayName": "Sage Outline"
+        "displayName": "Sage Outline",
+        "canonical": "#73796d",
+        "tonalRamp": ["#20231d", "#373b32", "#53594d", "#73796d", "#92998c", "#b1b7aa", "#cfd4c9", "#ecefe8"]
       },
-      "sage-outline-variant": {
+      "outline-variant": {
         "role": "outlineVariant",
-        "hex": "#C3C8BB",
-        "displayName": "Subtle Hairline Border"
+        "displayName": "Hairline Border",
+        "canonical": "#c3c8bb",
+        "tonalRamp": ["#252821", "#3e4238", "#5b6054", "#7e8476", "#a2a89a", "#c3c8bb", "#dde1d7", "#f2f4ee"]
       },
-      "emergency-rose": {
-        "role": "emergency",
-        "hex": "#9E3E56",
-        "displayName": "Emergency Rose"
+      "error": {
+        "role": "error",
+        "displayName": "Error Crimson",
+        "canonical": "#ba1a1a",
+        "tonalRamp": ["#410002", "#690005", "#93000a", "#ba1a1a", "#de3730", "#ff5449", "#ff897d", "#ffdad6"]
       },
-      "emergency-rose-container": {
-        "role": "emergencyContainer",
-        "hex": "#F6E2E9",
-        "displayName": "Emergency Rose Blush Container"
+      "error-container": {
+        "role": "errorContainer",
+        "displayName": "Error Blush Container",
+        "canonical": "#ffdad6",
+        "tonalRamp": ["#410002", "#690005", "#93000a", "#ba1a1a", "#de3730", "#ff897d", "#ffb4ab", "#ffdad6"]
       }
     },
     "typographyMeta": {
-      "display": {
-        "displayName": "Be Vietnam Pro Display / Hero",
-        "purpose": "displayLarge (36sp Bold) and displaySmall (32sp Bold) for splash & landing hero titles."
+      "display-lg": {
+        "displayName": "Display Large",
+        "purpose": "Splash wordmark and landing hero headings (36px/700)."
       },
-      "headline": {
-        "displayName": "Be Vietnam Pro Headlines",
-        "purpose": "headlineLarge (28sp SemiBold), headlineMedium (22sp SemiBold), headlineSmall (18sp SemiBold) for screen headers and participant titles."
+      "headline-lg": {
+        "displayName": "Headline Large",
+        "purpose": "Primary screen headers with generous Vietnamese diacritic clearance (28px/600)."
       },
-      "title": {
-        "displayName": "Be Vietnam Pro Titles",
-        "purpose": "titleLarge (16sp SemiBold) and titleMedium (14sp Medium) for card titles, places, and member rows."
+      "headline-md": {
+        "displayName": "Headline Medium",
+        "purpose": "Secondary headers and prominent card greetings (22px/600)."
       },
-      "body": {
-        "displayName": "Be Vietnam Pro Body",
-        "purpose": "bodyLarge (16sp), bodyMedium (14sp), bodySmall (12sp) with ~1.45x-1.5x line heights tuned for Vietnamese diacritics."
+      "headline-sm": {
+        "displayName": "Headline Small",
+        "purpose": "Participant names and sub-screen section headings (18px/600)."
       },
-      "label": {
-        "displayName": "Be Vietnam Pro Labels",
-        "purpose": "labelLarge (14sp SemiBold), labelMedium (12sp SemiBold), labelSmall (11sp Medium) for pills, tabs, and actions."
+      "title-lg": {
+        "displayName": "Title Large",
+        "purpose": "Card titles, place names, and primary action headers (16px/600)."
+      },
+      "title-md": {
+        "displayName": "Title Medium",
+        "purpose": "Member location rows and compact section titles (14px/500)."
+      },
+      "body-lg": {
+        "displayName": "Body Large",
+        "purpose": "Primary privacy disclosures and core explanations (16px/400)."
+      },
+      "body-md": {
+        "displayName": "Body Medium",
+        "purpose": "Status descriptions and reassuring body copy (14px/400)."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Supporting hints, accuracy details, and metadata notes (12px/400)."
+      },
+      "label-lg": {
+        "displayName": "Label Large",
+        "purpose": "Primary pill CTA and button labels (14px/600)."
+      },
+      "label-md": {
+        "displayName": "Label Medium",
+        "purpose": "Navigation bar items, filter chips, and status pills (12px/600)."
+      },
+      "label-sm": {
+        "displayName": "Label Small",
+        "purpose": "Timestamps, badges, and compact secondary indicators (11px/500)."
       }
     },
-    "shadows": [],
-    "motion": [],
-    "breakpoints": [],
+    "shadows": [
+      {
+        "name": "floating-ambient",
+        "value": "0 4px 14px rgba(28, 28, 24, 0.08)",
+        "purpose": "Subtle warm elevation for the floating SOS pill and map overlay controls."
+      }
+    ],
+    "motion": [
+      {
+        "name": "material-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Standard Material 3 transitions for sheets, visibility, and playback stepping."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-max",
+        "value": "600dp"
+      }
+    ],
     "native": {
       "platform": "android",
       "layoutUnit": "dp",
@@ -126,15 +206,15 @@
       ],
       "roleMapping": {
         "primary": {
-          "light": "forest-primary (#3D602F)",
-          "dark": "forest-light (#AAD295)"
+          "light": "#3D602F",
+          "dark": "#AAD295"
         },
         "onPrimary": {
           "light": "#FFFFFF",
           "dark": "#143709"
         },
         "primaryContainer": {
-          "light": "forest-container (#557945)",
+          "light": "#557945",
           "dark": "#2C4E1F"
         },
         "onPrimaryContainer": {
@@ -142,7 +222,7 @@
           "dark": "#C5EFB0"
         },
         "secondary": {
-          "light": "blush-secondary (#695B60)",
+          "light": "#695B60",
           "dark": "#D5C2C8"
         },
         "onSecondary": {
@@ -150,7 +230,7 @@
           "dark": "#392D32"
         },
         "secondaryContainer": {
-          "light": "blush-container (#F1DDE4)",
+          "light": "#F1DDE4",
           "dark": "#514348"
         },
         "onSecondaryContainer": {
@@ -158,19 +238,19 @@
           "dark": "#F1DDE4"
         },
         "background": {
-          "light": "cream-surface (#FDF9F2)",
+          "light": "#FDF9F2",
           "dark": "#141410"
         },
         "onBackground": {
-          "light": "ink-primary (#1C1C18)",
+          "light": "#1C1C18",
           "dark": "#E6E2DB"
         },
         "surface": {
-          "light": "cream-surface (#FDF9F2)",
+          "light": "#FDF9F2",
           "dark": "#141410"
         },
         "onSurface": {
-          "light": "ink-primary (#1C1C18)",
+          "light": "#1C1C18",
           "dark": "#E6E2DB"
         },
         "surfaceContainerLow": {
@@ -190,150 +270,139 @@
           "dark": "#C3C8BB"
         }
       },
-      "typography": "Stitch Type.kt scale aligning Material 3 typography tokens with Be Vietnam Pro hierarchy; Be Vietnam Pro loaded via Google Fonts on web landing page and matched natively via Material 3 weights/spacing on Android.",
-      "shapes": "AnVeShapes (8/12/16/24/28dp) plus CircleShape (9999dp) for primary pill CTAs, status pills, and navigation active indicators.",
-      "dynamicColor": "Opt-in; disabled by default to preserve Warm Tactile Minimalism palette.",
+      "typography": "Be Vietnam Pro mapped through AnVeTypography in Type.kt using sp units so text scales with Android font_scale.",
+      "shapes": "AnVeShapes (8/12/16/24/28dp) plus CircleShape for primary pill actions, chips, and status indicators.",
+      "dynamicColor": "Opt-in; disabled by default to preserve the Warm Tactile Minimalism palette.",
       "components": [
         {
-          "refersTo": "button-filled",
+          "refersTo": "button-primary",
           "platform": "android-compose",
-          "example": "Button(onClick = onPrimary, shape = CircleShape) { Text(label) }"
+          "example": "Button(onClick = onPrimary, shape = CircleShape, modifier = Modifier.heightIn(min = 52.dp)) { Text(label) }"
         },
         {
-          "refersTo": "button-outlined",
+          "refersTo": "button-secondary",
           "platform": "android-compose",
-          "example": "OutlinedButton(onClick = onRetry, shape = CircleShape) { Text(\"Yêu cầu đồng bộ lại\") }"
+          "example": "OutlinedButton(onClick = onSecondary, shape = CircleShape, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) }"
         },
         {
-          "refersTo": "button-text",
+          "refersTo": "sos-fab",
           "platform": "android-compose",
-          "example": "TextButton(onClick = onExport, enabled = !loading) { Text(\"Xuất báo cáo\") }"
+          "example": "ExtendedFloatingActionButton(onClick = onOpenSos, containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer, shape = RoundedCornerShape(16.dp)) { Text(\"SOS\") }"
         },
         {
-          "refersTo": "field-outlined",
+          "refersTo": "card-default",
           "platform": "android-compose",
-          "example": "OutlinedTextField(value = email, onValueChange = onEmailChange, shape = MaterialTheme.shapes.medium, singleLine = true)"
+          "example": "OutlinedCard(shape = RoundedCornerShape(24.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { content() }"
+        },
+        {
+          "refersTo": "card-elevated",
+          "platform": "android-compose",
+          "example": "Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainer, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { content() }"
         },
         {
           "refersTo": "navigation-bar",
           "platform": "android-compose",
           "example": "NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) { NavigationBarItem(...) }"
-        },
-        {
-          "refersTo": "card-elevated-tonal",
-          "platform": "android-compose",
-          "example": "Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { content() }"
-        },
-        {
-          "refersTo": "segmented-choice",
-          "platform": "android-compose",
-          "example": "SingleChoiceSegmentedButtonRow { SegmentedButton(selected = selected, onClick = onSelect, shape = shape) { Text(label) } }"
         }
       ],
-      "panelLimitations": "Static HTML/CSS illustrations are not native UI previews or Android behavior specifications. Native hover, focus, pressed, keyboard and TalkBack semantics live in Compose.",
-      "evidence": "Synced with DESIGN.md Warm Tactile Minimalism tokens and Stitch project 13521834583655677229."
+      "panelLimitations": "Static HTML/CSS snippets illustrate visual tokens only; native Compose interaction semantics, insets, TalkBack, and 200% font scaling live in Android source.",
+      "evidence": "Synced with DESIGN.md frontmatter and narrative, plus Color.kt, Theme.kt, and Type.kt."
     }
   },
   "components": [
     {
-      "name": "Filled pill CTA",
+      "name": "Primary Pill Action",
       "kind": "button",
-      "refersTo": "button-filled",
-      "description": "Primary pill button (CircleShape) in Forest Green (#3D602F) with crisp white label.",
-      "html": "<div class=\"ds-native-button-filled\">Đăng nhập</div>",
-      "css": ".ds-native-button-filled { background:#3D602F; color:#FFFFFF; border-radius:9999px; font-family:'Be Vietnam Pro', sans-serif; font-weight:600; white-space:normal; }"
+      "refersTo": "button-primary",
+      "description": "52dp rounded-full primary pill in Moss Sage / Forest Green with white semibold label.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">Bắt đầu hành trình</button>",
+      "css": ".ds-btn-primary { min-height: 52px; padding: 14px 24px; background: #557945; color: #ffffff; border: none; border-radius: 9999px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.18s ease, transform 0.12s ease; } .ds-btn-primary:hover { background: #3d602f; } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: 2px solid #3d602f; outline-offset: 2px; }"
     },
     {
-      "name": "Outlined pill action",
+      "name": "Secondary / Ghost Pill",
       "kind": "button",
-      "refersTo": "button-outlined",
-      "description": "Secondary ghost pill with 1dp Sage (#557945) border and transparent/cream fill.",
-      "html": "<div class=\"ds-native-button-outlined\">Yêu cầu đồng bộ lại</div>",
-      "css": ".ds-native-button-outlined { border:1px solid #557945; color:#557945; background:transparent; border-radius:9999px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
+      "refersTo": "button-secondary",
+      "description": "Rounded-full outlined pill with 1dp sage border and transparent fill.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\">Xem toàn tuyến</button>",
+      "css": ".ds-btn-secondary { min-height: 48px; padding: 12px 20px; background: transparent; color: #557945; border: 1px solid #557945; border-radius: 9999px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.18s ease; } .ds-btn-secondary:hover { background: #f7f3ec; } .ds-btn-secondary:active { background: #ebe8e1; } .ds-btn-secondary:focus-visible { outline: 2px solid #3d602f; outline-offset: 2px; }"
     },
     {
-      "name": "Text action",
+      "name": "Emergency SOS FAB",
       "kind": "button",
-      "refersTo": "button-text",
-      "description": "Native text action in Forest Primary (#3D602F) with explicit enabled state.",
-      "html": "<div class=\"ds-native-button-text\">Xuất báo cáo</div>",
-      "css": ".ds-native-button-text { color:#3D602F; background:#FDF9F2; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
+      "refersTo": "sos-fab",
+      "description": "Distinctive soft blush floating action button opening the SOS flow without auto-sending.",
+      "html": "<button type=\"button\" class=\"ds-sos-fab\">SOS</button>",
+      "css": ".ds-sos-fab { min-height: 52px; padding: 14px 20px; background: #f1dde4; color: #6f6066; border: 1px solid #d4c2c8; border-radius: 16px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.04em; box-shadow: 0 4px 14px rgba(28, 28, 24, 0.08); cursor: pointer; transition: background 0.18s ease, transform 0.12s ease; } .ds-sos-fab:hover { background: #e8cdd7; } .ds-sos-fab:active { transform: scale(0.97); } .ds-sos-fab:focus-visible { outline: 2px solid #695b60; outline-offset: 2px; }"
     },
     {
-      "name": "Outlined field",
-      "kind": "input",
-      "refersTo": "field-outlined",
-      "description": "Rounded 16dp outlined input over paper cream surface.",
-      "html": "<div class=\"ds-native-field-outlined\">Email · ten@example.com</div>",
-      "css": ".ds-native-field-outlined { border:1px solid #C3C8BB; color:#1C1C18; background:#F7F3EC; border-radius:16px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
+      "name": "Warm Cream Default Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "24dp rounded surface container with crisp 1dp hairline border.",
+      "html": "<div class=\"ds-card-default\"><div class=\"ds-card-title\">Chia sẻ của tôi</div><div class=\"ds-card-body\">Bạn đang chủ động chia sẻ vị trí với gia đình.</div></div>",
+      "css": ".ds-card-default { padding: 16px; background: #fdf9f2; color: #1c1c18; border: 1px solid #c3c8bb; border-radius: 24px; font-family: 'Be Vietnam Pro', sans-serif; } .ds-card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; } .ds-card-body { font-size: 14px; color: #43483e; }"
     },
     {
-      "name": "Navigation item",
+      "name": "Elevated Tonal Container",
+      "kind": "card",
+      "refersTo": "card-elevated",
+      "description": "24dp rounded level-2 surface container for active cards and bottom playback bars.",
+      "html": "<div class=\"ds-card-elevated\"><div class=\"ds-card-title\">Lộ trình hôm nay</div><div class=\"ds-card-body\">240 điểm đã ghi nhận · Lưu giữ 30 ngày</div></div>",
+      "css": ".ds-card-elevated { padding: 16px; background: #f1ede7; color: #1c1c18; border: 1px solid #c3c8bb; border-radius: 24px; font-family: 'Be Vietnam Pro', sans-serif; }"
+    },
+    {
+      "name": "Material 3 Navigation Bar",
       "kind": "nav",
       "refersTo": "navigation-bar",
-      "description": "Bottom navigation bar item with active Moss Sage (#557945) pill indicator.",
-      "html": "<div class=\"ds-native-navigation-bar\">Vị trí</div>",
-      "css": ".ds-native-navigation-bar { color:#1C1C18; background:#FFFFFF; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
-    },
-    {
-      "name": "Warm cream section card",
-      "kind": "card",
-      "refersTo": "card-elevated-tonal",
-      "description": "Tactile 24dp card on Cream Low (#F7F3EC) with hairline outline-variant (#C3C8BB) border.",
-      "html": "<div class=\"ds-native-card-outlined\">Thu thập vị trí</div>",
-      "css": ".ds-native-card-outlined { border:1px solid #C3C8BB; color:#1C1C18; background:#F7F3EC; border-radius:24px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
-    },
-    {
-      "name": "Segmented choice",
-      "kind": "custom",
-      "refersTo": "segmented-choice",
-      "description": "Single-choice segmented control with Soft Blush (#F1DDE4) or Forest Primary accent.",
-      "html": "<div class=\"ds-native-segmented-choice\">Tổng quan | Chi tiết</div>",
-      "css": ".ds-native-segmented-choice { color:#4A3B40; background:#F1DDE4; border-radius:9999px; font-family:'Be Vietnam Pro', sans-serif; white-space:normal; }"
+      "description": "Light dock with Forest Green active pill indicator and 4 core destinations.",
+      "html": "<nav class=\"ds-nav-bar\"><span class=\"ds-nav-item\">Nhà</span><span class=\"ds-nav-item\">Gia đình</span><span class=\"ds-nav-item\">Địa điểm</span><span class=\"ds-nav-item is-active\">Lịch sử</span></nav>",
+      "css": ".ds-nav-bar { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #ffffff; border-top: 1px solid #e6e2db; font-family: 'Be Vietnam Pro', sans-serif; font-size: 12px; font-weight: 600; } .ds-nav-item { padding: 8px 14px; border-radius: 9999px; color: #43483e; } .ds-nav-item.is-active { background: #557945; color: #ffffff; }"
     }
   ],
   "narrative": {
-    "northStar": "AnVề — Warm Tactile Minimalism",
-    "overview": "AnVề uses the Stitch Warm Tactile Minimalism design system: Forest Green (#3D602F) primary actions, Moss Sage (#557945) containers and active nav pills, Soft Blush (#F1DDE4) secondary accents, Warm Paper Cream (#FDF9F2) stepped surfaces, Charcoal/Olive Ink (#1C1C18 / #43483E) typography, and Emergency Rose (#9E3E56) SOS surfaces.\n\nThe interface pairs tactile rounded geometry (24dp cards, CircleShape pill buttons) with calm Vietnamese copy so voluntary family safety and location sharing never feels intrusive or alarmist.",
+    "northStar": "Warm Tactile Minimalism",
+    "overview": "This design system establishes a warm, grounded, and deeply protective atmosphere for voluntary family location sharing. Drawing from the quiet elegance of traditional Vietnamese lacquerware (sơn mài) and organic family hearth aesthetics, the system intentionally rejects the cold, punitive surveillance tropes common in tracking applications. Instead, it frames location awareness as an act of familial care and mutual reassurance (\"Đường về nhà, gần hơn mỗi ngày\").",
     "keyCharacteristics": [
-      "Warm Tactile Minimalism palette: Forest Green, Soft Blush, and Paper Cream across light and dark modes.",
-      "Be Vietnam Pro scale with generous Vietnamese diacritic line heights and Clear Charcoal Ink contrast.",
-      "CircleShape pill buttons and tactile 16dp-24dp rounded cards with subtle hairline borders.",
-      "Consent, capture state, freshness, and emergency controls clearly separated."
+      "Warm Tactile Minimalism: Spacious, breathing-room layouts anchored by soft, pill-shaped interactions, organic silhouettes, and comforting domestic metaphors.",
+      "Voluntary & Transparent: Privacy and agency are front-and-center; absence of data or delayed timestamps is presented with calm neutrality rather than alarming red alerts.",
+      "Tone & Emotion: Calm, protective, reassuring, domestic, and dependable.",
+      "Native Android Material 3: Built on Jetpack Compose Material 3 components and semantic color roles using Vietnamese copy."
     ],
     "rules": [
       {
         "name": "The Paired Roles Rule",
-        "body": "Always pair a container and content role together and verify >= 4.5:1 contrast in ThemeContrastTest.",
+        "body": "Always choose a container and its corresponding content role together (primaryContainer/onPrimaryContainer, secondaryContainer/onSecondaryContainer, errorContainer/onErrorContainer) and verify light/dark contrast via ThemeContrastTest (>= 4.5:1 for body text).",
         "section": "colors"
       },
       {
         "name": "The Native Type Rule",
-        "body": "Use MaterialTheme.typography roles from Type.kt and Android sp scaling across all Compose surfaces.",
+        "body": "Map the Be Vietnam Pro scale to Compose MaterialTheme.typography roles using sp units so text respects Android system font-size settings (font_scale 1.3). Never hardcode fixed px sizes in Compose.",
         "section": "typography"
       },
       {
-        "name": "The Tactile Card & Pill Rule",
-        "body": "Primary actions use CircleShape pill geometry; cards use stepped cream surfaces with 1dp outlineVariant hairlines and avoid card-inside-card nesting.",
-        "section": "layout"
+        "name": "The Failure Notice Rule",
+        "body": "Operation failures render as an errorContainer card through a shared error notice component wherever no extra affordances are needed. Bare error-colored text is reserved for destructive action labels and inline cautions about consent conflicts or device/permission state.",
+        "section": "components"
       },
       {
-        "name": "The Native State Rule",
-        "body": "Preserve Material interaction semantics, loading, empty, error, offline, and TalkBack accessibility on real Compose controls.",
+        "name": "The Result Notice Rule",
+        "body": "One-shot confirmations (saved, created, revoked, joined) surface as a Snackbar on screens with a SnackbarHost; surfaces without their own host present results as a secondaryContainer card with an explicit dismiss. Persistent notices use the same card pattern.",
         "section": "components"
       }
     ],
     "dos": [
-      "Do use semantic Material color roles and test light/dark contrast.",
-      "Do use native Compose controls, real Vietnamese strings from strings.xml, and Android dp/sp units.",
-      "Do preserve explicit unknown, loading, offline and permission states.",
-      "Do keep consent, system permissions, capture state and viewer access distinguishable."
+      "Do use semantic Material 3 color roles (MaterialTheme.colorScheme) and test light/dark contrast via ThemeContrastTest.",
+      "Do use Be Vietnam Pro mapped through MaterialTheme.typography with sp units and test at font_scale 1.3.",
+      "Do use native Compose controls, real Vietnamese text, and dp spacing with 48dp minimum touch targets.",
+      "Do preserve explicit unknown, loading, offline, and permission states, keeping consent, system permissions, capture state, and viewer access distinguishable.",
+      "Do keep SOS emergency treatment (soft blush) distinct from error (failures), and render stale location data in neutral gray so old data never reads as danger.",
+      "Do follow the configured comp-first workflow (.impeccable/config.json) before implementing new screens or redesigns, and verify rendered builds on an emulator or device."
     ],
     "donts": [
       "Don't interpret a stale location or missing update as evidence of a person's safety or danger.",
-      "Don't bypass ThemeContrastTest or pair primaryContainer with unverified light ink.",
-      "Don't imply a report has been shared before explicit user action.",
-      "Don't present local JVM tests or APK builds as emulator or physical-device validation."
+      "Don't hardcode web px/rem values directly into Compose dimensions or bypass MaterialTheme roles.",
+      "Don't imply a report has been shared before the user reviews it and explicitly chooses to share.",
+      "Don't present static documentation previews, source review, APK builds, or JVM tests as emulator or physical-device validation."
     ]
   }
 }

@@ -1,30 +1,37 @@
 package com.anve.app.ui.history
 
 import com.anve.app.R
-
-import com.anve.app.data.api.HistoryRetentionDto
+import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.HistoryPageDto
 import com.anve.app.data.api.HistoryPointDto
+import com.anve.app.data.api.HistoryRetentionDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.PlaceInputDto
 import com.anve.app.data.api.PlaceMonitorDto
-import com.anve.app.data.location.HistoryMember
 import com.anve.app.data.location.HistoryDataSource
+import com.anve.app.data.location.HistoryMember
 import com.anve.app.data.location.PlacesDataSource
 import com.anve.app.data.location.SharingManagementSnapshot
+import java.io.IOException
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -105,33 +112,275 @@ class HistoryViewModelTest {
         assertEquals(R.string.history_error_viewer_revoked, vm.state.value.errorRes)
     }
 
-    @Test fun `timeline pages stay bounded and request the server cursor`() {
-        val first = point("first", "2026-10-29T00:00:00Z", 10.0)
-        val second = point("second", "2026-10-29T00:01:00Z", 10.0)
+    @Test fun `auto pagination loads full day past 200 nodes and deduplicates`() {
+        val base = Instant.parse("2026-10-29T00:00:00Z")
+        val page1 = (0 until 200).map { i -> point("p-$i", base.plusSeconds(i * 10L).toString(), 10.0 + i * 0.0001) }
+        val page2 = listOf(page1.last()) + (200 until 400).map { i ->
+            point("p-$i", base.plusSeconds(i * 10L).toString(), 10.0 + i * 0.0001)
+        }
+        val page3 = (400 until 450).map { i -> point("p-$i", base.plusSeconds(i * 10L).toString(), 10.0 + i * 0.0001) }
         source.fetchPage = { _, cursor ->
-            if (cursor == null) HistoryPageDto(listOf(first), "next") else HistoryPageDto(listOf(second))
+            when (cursor) {
+                null -> HistoryPageDto(page1, "c2")
+                "c2" -> HistoryPageDto(page2, "c3")
+                "c3" -> HistoryPageDto(page3, null)
+                else -> error("unexpected cursor $cursor")
+            }
         }
         vm.activate("a")
-        assertEquals("first", vm.state.value.points.single().eventId)
-        vm.next()
-        // Load-more appends: the page the reader already saw stays on screen.
-        assertEquals(listOf("first", "second"), vm.state.value.points.map { it.eventId })
-        assertEquals(null, vm.state.value.nextCursor)
+        assertEquals(450, vm.state.value.points.size)
+        assertEquals("p-0", vm.state.value.points.first().eventId)
+        assertEquals("p-449", vm.state.value.points.last().eventId)
+        assertNull(vm.state.value.nextCursor)
+        assertFalse(vm.state.value.loading)
+        assertFalse(vm.state.value.loadingMore)
     }
 
-    @Test fun `failed next page keeps the loaded timeline and drops the cursor`() {
+    @Test fun `stalled cursor stops pagination loop safely`() {
         val first = point("first", "2026-10-29T00:00:00Z", 10.0)
+        val second = point("second", "2026-10-29T00:01:00Z", 10.0)
+        var calls = 0
         source.fetchPage = { _, cursor ->
-            if (cursor == null) HistoryPageDto(listOf(first), "next") else throw IllegalStateException("offline")
+            calls++
+            when (cursor) {
+                null -> HistoryPageDto(listOf(first), "stuck")
+                "stuck" -> HistoryPageDto(listOf(second), "stuck")
+                else -> error("unexpected cursor")
+            }
         }
         vm.activate("a")
+        assertEquals(2, calls)
+        assertEquals(listOf("first", "second"), vm.state.value.points.map { it.eventId })
+        assertNull(vm.state.value.nextCursor)
+        assertFalse(vm.state.value.loadingMore)
+    }
+
+    @Test fun `auto pagination respects page cap and next loads remaining pages`() {
+        var pageCalls = 0
+        source.fetchPage = { _, cursor ->
+            pageCalls++
+            val pageNum = cursor?.removePrefix("c")?.toInt() ?: 1
+            val pt = point("p-$pageNum", Instant.parse("2026-10-29T00:00:00Z").plusSeconds(pageNum.toLong()).toString(), 10.0)
+            val next = if (pageNum < 52) "c${pageNum + 1}" else null
+            HistoryPageDto(listOf(pt), next)
+        }
+        vm.activate("a")
+        assertEquals(HistoryViewModel.MAX_AUTO_PAGES, pageCalls)
+        assertEquals(HistoryViewModel.MAX_AUTO_PAGES, vm.state.value.points.size)
+        assertEquals("c51", vm.state.value.nextCursor)
+        assertFalse(vm.state.value.loadingMore)
+
         vm.next()
-        // The reader keeps what was already shown; dropping the cursor is what
-        // stops the scroll-triggered load-more from retrying itself in a loop.
-        // Recovery goes through the error notice's refresh.
+        assertEquals(52, pageCalls)
+        assertEquals(52, vm.state.value.points.size)
+        assertNull(vm.state.value.nextCursor)
+    }
+
+    @Test fun `transient failure on later page keeps loaded timeline and retries from failed cursor`() {
+        val first = point("first", "2026-10-29T00:00:00Z", 10.0)
+        val second = point("second", "2026-10-29T00:01:00Z", 10.0)
+        var failSecond = true
+        source.fetchPage = { _, cursor ->
+            when (cursor) {
+                null -> HistoryPageDto(listOf(first), "c2")
+                "c2" -> if (failSecond) throw IOException("offline") else HistoryPageDto(listOf(second), null)
+                else -> error("unexpected cursor")
+            }
+        }
+        vm.activate("a")
         assertEquals(listOf("first"), vm.state.value.points.map { it.eventId })
-        assertEquals(null, vm.state.value.nextCursor)
-        assertEquals(R.string.history_error_load_failed, vm.state.value.errorRes)
+        assertEquals("c2", vm.state.value.nextCursor)
+        assertEquals(R.string.history_error_offline, vm.state.value.errorRes)
+        assertFalse(vm.state.value.loadingMore)
+
+        failSecond = false
+        vm.next()
+        assertEquals(listOf("first", "second"), vm.state.value.points.map { it.eventId })
+        assertNull(vm.state.value.nextCursor)
+        assertNull(vm.state.value.errorRes)
+    }
+
+    @Test fun `access revoked during later page clears all loaded points`() {
+        val first = point("first", "2026-10-29T00:00:00Z", 10.0)
+        source.fetchPage = { _, cursor ->
+            if (cursor == null) {
+                HistoryPageDto(listOf(first), "c2")
+            } else {
+                throw ApiException("NOT_FOUND", "denied", null, httpStatus = 404)
+            }
+        }
+        vm.activate("a")
+        assertTrue(vm.state.value.points.isEmpty())
+        assertNull(vm.state.value.nextCursor)
+        assertEquals(R.string.history_error_access_lost, vm.state.value.errorRes)
+    }
+
+    @Test fun `playback starts from start of day advances by speed and stops at end`() = runTest(dispatcher) {
+        val points = (0 until 6).map { i ->
+            point("p-$i", Instant.parse("2026-10-29T00:00:00Z").plusSeconds(i * 60L).toString(), 10.0 + i * 0.001)
+        }
+        source.fetch = { HistoryPageDto(points) }
+        vm.activate("a")
+
+        vm.togglePlayback()
+        assertTrue(vm.state.value.isPlaying)
+        assertEquals("p-0", vm.state.value.selectedPointId)
+
+        // Default speed X1 (700 ms/step)
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals("p-1", vm.state.value.selectedPointId)
+        assertTrue(vm.state.value.isPlaying)
+
+        // Live speed switch to X4 (175 ms/step) waits remainder of current 700ms tick first, then runs at 175ms.
+        vm.setPlaybackSpeed(HistoryPlaybackSpeed.X4)
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals("p-2", vm.state.value.selectedPointId)
+
+        advanceTimeBy(175)
+        runCurrent()
+        assertEquals("p-3", vm.state.value.selectedPointId)
+
+        // Live speed switch to X16 (90 ms, stride 2) jumps from p-3 -> p-5 (last point) and stops cleanly.
+        vm.setPlaybackSpeed(HistoryPlaybackSpeed.X16)
+        advanceTimeBy(175)
+        runCurrent()
+        assertEquals("p-5", vm.state.value.selectedPointId)
+        assertFalse(vm.state.value.isPlaying)
+
+        // Tapping play again when at the end restarts from start of day (p-0).
+        vm.togglePlayback()
+        assertTrue(vm.state.value.isPlaying)
+        assertEquals("p-0", vm.state.value.selectedPointId)
+    }
+
+    @Test fun `pause resume restart stepping and lifecycle boundaries behave cleanly`() = runTest(dispatcher) {
+        val points = (0 until 4).map { i ->
+            point("p-$i", Instant.parse("2026-10-29T00:00:00Z").plusSeconds(i * 60L).toString(), 10.0 + i * 0.001)
+        }
+        source.fetch = { HistoryPageDto(points) }
+        vm.activate("a")
+
+        vm.setPlaybackSpeed(HistoryPlaybackSpeed.X2)
+        vm.togglePlayback()
+        advanceTimeBy(350)
+        runCurrent()
+        assertEquals("p-1", vm.state.value.selectedPointId)
+
+        vm.pausePlayback()
+        assertFalse(vm.state.value.isPlaying)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals("p-1", vm.state.value.selectedPointId)
+
+        // Resume continues from paused point p-1 -> p-2
+        vm.togglePlayback()
+        assertTrue(vm.state.value.isPlaying)
+        assertEquals("p-1", vm.state.value.selectedPointId)
+        advanceTimeBy(350)
+        runCurrent()
+        assertEquals("p-2", vm.state.value.selectedPointId)
+
+        // Stepping pauses playback and moves cleanly
+        vm.stepPrevious()
+        assertFalse(vm.state.value.isPlaying)
+        assertEquals("p-1", vm.state.value.selectedPointId)
+        vm.stepNext()
+        assertEquals("p-2", vm.state.value.selectedPointId)
+
+        // Restart jumps back to index 0 and starts playing
+        vm.restartPlayback()
+        assertTrue(vm.state.value.isPlaying)
+        assertEquals("p-0", vm.state.value.selectedPointId)
+
+        // Manual point selection pauses playback
+        vm.selectPoint("p-2")
+        assertFalse(vm.state.value.isPlaying)
+        assertEquals("p-2", vm.state.value.selectedPointId)
+
+        // Switching member or revoking access stops playback and clears selection
+        vm.togglePlayback()
+        assertTrue(vm.state.value.isPlaying)
+        vm.select("viewer", LocalDate.now())
+        assertFalse(vm.state.value.isPlaying)
+        assertNull(vm.state.value.selectedPointId)
+
+        vm.togglePlayback()
+        assertTrue(vm.state.value.isPlaying)
+        vm.recheckAccess("a", "viewer")
+        assertFalse(vm.state.value.isPlaying)
+        assertNull(vm.state.value.selectedPointId)
+        assertTrue(vm.state.value.points.isEmpty())
+    }
+
+    @Test fun `playback continues seamlessly while additional pages stream in`() = runTest(dispatcher) {
+        val page1 = listOf(
+            point("p-0", "2026-10-29T00:00:00Z", 10.0),
+            point("p-1", "2026-10-29T00:01:00Z", 10.001),
+        )
+        val page2 = listOf(
+            point("p-2", "2026-10-29T00:02:00Z", 10.002),
+            point("p-3", "2026-10-29T00:03:00Z", 10.003),
+        )
+        val page2Gate = CompletableDeferred<HistoryPageDto>()
+        source.fetchPage = { _, cursor ->
+            if (cursor == null) {
+                HistoryPageDto(page1, "c2")
+            } else {
+                withContext(NonCancellable) { page2Gate.await() }
+            }
+        }
+        vm.activate("a")
+        assertTrue(vm.state.value.loadingMore)
+        assertEquals(2, vm.state.value.points.size)
+
+        vm.togglePlayback()
+        assertEquals("p-0", vm.state.value.selectedPointId)
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals("p-1", vm.state.value.selectedPointId)
+        assertTrue(vm.state.value.isPlaying)
+
+        // Reaches end of page 1 while page 2 is still streaming -> remains playing
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals("p-1", vm.state.value.selectedPointId)
+        assertTrue(vm.state.value.isPlaying)
+
+        // Page 2 arrives -> playback continues onto p-2 and stops cleanly at p-3
+        page2Gate.complete(HistoryPageDto(page2, null))
+        runCurrent()
+        assertFalse(vm.state.value.loadingMore)
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals("p-2", vm.state.value.selectedPointId)
+        assertTrue(vm.state.value.isPlaying)
+
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals("p-3", vm.state.value.selectedPointId)
+        assertFalse(vm.state.value.isPlaying)
+    }
+
+    @Test fun `traversed segments stop at active point and preserve segment breaks`() {
+        val p1 = point("1", "2026-10-29T00:00:00Z", 10.0)
+        val p2 = point("2", "2026-10-29T00:01:00Z", 10.0001)
+        val p3 = point("3", "2026-10-29T00:02:00Z", 10.0002)
+        val gapStart = point("4", "2026-10-29T02:00:00Z", 10.0003)
+        val gapEnd = point("5", "2026-10-29T02:01:00Z", 10.0004)
+        val all = listOf(p1, p2, p3, gapStart, gapEnd)
+        val segments = historySegments(all)
+        assertEquals(listOf(3, 2), segments.map { it.size })
+
+        assertTrue(historyTraversedSegments(all, segments, null).isEmpty())
+        assertTrue(historyTraversedSegments(all, segments, "1").isEmpty())
+        assertEquals(listOf(listOf("1", "2")), historyTraversedSegments(all, segments, "2").map { s -> s.map { it.eventId } })
+        assertEquals(listOf(listOf("1", "2", "3")), historyTraversedSegments(all, segments, "4").map { s -> s.map { it.eventId } })
+        assertEquals(
+            listOf(listOf("1", "2", "3"), listOf("4", "5")),
+            historyTraversedSegments(all, segments, "5").map { s -> s.map { it.eventId } },
+        )
     }
 
     @Test fun `failed delete never claims success or retries`() {

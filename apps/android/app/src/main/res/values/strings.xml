@@ -389,6 +389,16 @@
     <!-- Snackbar for a retention change the server confirmed: %1$d is the
          value the server returned, not the chip the user tapped. -->
     <string name="history_retention_saved">Đã lưu thời hạn lưu %1$d ngày.</string>
+    <string name="history_loading_more">Đang tải thêm hành trình… (%1$d điểm)</string>
+    <string name="history_load_more_action">Tải thêm mốc tiếp theo</string>
+    <string name="history_playback_play_from_start">Phát từ đầu</string>
+    <string name="history_playback_resume">Tiếp tục</string>
+    <string name="history_playback_pause">Tạm dừng</string>
+    <string name="history_playback_restart_desc">Phát lại từ đầu ngày</string>
+    <string name="history_playback_restart_short">Từ đầu</string>
+    <string name="history_playback_speed_label">Tốc độ</string>
+    <string name="history_playback_speed_desc">Tốc độ phát %1$s</string>
+    <string name="history_playback_progress_desc">Thanh tiến độ hành trình</string>
 
     <!-- SOS (M5) -->
     <string name="sos_push_not_configured">Dịch vụ thông báo chưa được cấu hình trên bản cài đặt này.</string>

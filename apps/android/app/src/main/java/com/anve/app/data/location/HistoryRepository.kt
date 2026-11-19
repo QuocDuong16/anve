@@ -6,6 +6,8 @@ import com.anve.app.data.api.HistoryRetentionDto
 import com.anve.app.data.api.HistoryRetentionUpdateDto
 import com.anve.app.data.api.orThrow
 
+internal const val HISTORY_PAGE_LIMIT = 200
+
 data class HistoryMember(val ownerId: String, val displayName: String)
 
 interface HistoryDataSource {
@@ -24,7 +26,7 @@ class HistoryRepository(
         api.latestVisibleLocations(expectedOwner = owner).orThrow().locations.map { HistoryMember(it.ownerId, it.displayName) }
 
     override suspend fun page(owner: String, member: String, from: String, to: String, cursor: String?): HistoryPageDto =
-        api.history(owner, member, from, to, cursor = cursor).orThrow()
+        api.history(owner, member, from, to, limit = HISTORY_PAGE_LIMIT, cursor = cursor).orThrow()
 
     override suspend fun retention(owner: String): HistoryRetentionDto = api.historyRetention(owner).orThrow()
 

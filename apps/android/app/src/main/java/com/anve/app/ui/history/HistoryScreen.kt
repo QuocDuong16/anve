@@ -43,12 +43,16 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.PanToolAlt
+import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.ZoomOutMap
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -82,6 +86,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -89,13 +94,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -139,7 +144,6 @@ import com.anve.app.ui.map.rememberPlaceMarkerIcon
 import com.anve.app.ui.theme.AnVeTheme
 import com.anve.app.ui.theme.LocalStitchColors
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.Circle
@@ -156,15 +160,11 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 private const val MAX_GAP_SECONDS = 900L
 private const val MAX_ACCURACY_METERS = 100.0
 private const val MAX_SPEED_METERS_PER_SECOND = 70.0
-// Rows before the end of the timeline at which the next page starts loading,
-// so the reader reaches fresh content before hitting a hard stop.
-private const val LOAD_MORE_LAST_ROWS = 4
 private enum class DeletionScope { DAY, RANGE, ALL }
 
 private fun formatMinute(minute: Int): String = "%02d:%02d".format(minute / 60, minute % 60)
@@ -195,6 +195,25 @@ fun historySegments(points: List<HistoryPointDto>): List<List<HistoryPointDto>> 
         }
     }
     return result
+}
+
+/**
+ * Slices [segments] up to [upToEventId] in [points] order so traversed playback
+ * polylines highlight progress without bridging across segment breaks.
+ */
+internal fun historyTraversedSegments(
+    points: List<HistoryPointDto>,
+    segments: List<List<HistoryPointDto>>,
+    upToEventId: String?,
+): List<List<HistoryPointDto>> {
+    if (upToEventId == null || segments.isEmpty()) return emptyList()
+    val order = HashMap<String, Int>(points.size)
+    points.forEachIndexed { index, point -> order[point.eventId] = index }
+    val targetOrder = order[upToEventId] ?: return emptyList()
+    return segments.mapNotNull { segment ->
+        val sliced = segment.takeWhile { (order[it.eventId] ?: Int.MAX_VALUE) <= targetOrder }
+        if (sliced.size > 1) sliced else null
+    }
 }
 
 private fun HistoryPointDto.latLngOrNull(): LatLng? {
@@ -255,8 +274,9 @@ fun HistoryScreen(container: AppContainer) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
-    var selectedId by remember(state.owner, state.member, state.date) { mutableStateOf<String?>(null) }
-    val selected = state.points.firstOrNull { it.eventId == selectedId }
+    val selected = remember(state.points, state.selectedPointId) {
+        state.selectedPointId?.let { id -> state.points.firstOrNull { it.eventId == id } }
+    }
     var deletionScope by remember(state.owner) { mutableStateOf<DeletionScope?>(null) }
     // Retention decrease pending confirmation, hoisted above the LazyColumn so
     // it survives list updates; saveable because the guard must not silently
@@ -275,12 +295,17 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
         return
     }
     var inlineMapPanEnabled by remember(state.owner, member, state.date) { mutableStateOf(false) }
+    var followPlaybackCamera by remember(state.owner, member, state.date) { mutableStateOf(true) }
     var fullScreenMapOpen by rememberSaveable(state.owner) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val validPoints = remember(state.points) {
         state.points.filter { it.latLngOrNull() != null }
     }
     val segments = remember(state.points) { historySegments(state.points) }
+    val traversedSegments = remember(state.points, segments, state.selectedPointId) {
+        historyTraversedSegments(state.points, segments, state.selectedPointId)
+    }
+    val delayedCount = remember(state.points) { state.points.count { it.backfill } }
     val memberLabel = if (member == state.owner) {
         stringResource(R.string.history_member_self)
     } else {
@@ -301,33 +326,40 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
         snackbarHostState.showSnackbar(message)
         vm.consumeRetentionConfirmation()
     }
-    // Auto load-more replaces the old "Trang tiếp theo" button: when the reader
-    // is within a few rows of the end, the next page is fetched. Loading and
-    // cursor guards are read from vm.state inside the combine — a captured
-    // `state` would go stale between recompositions — so a finished page cannot
-    // retrigger: success grows the list or exhausts the cursor, and a failure
-    // clears the cursor, which forces the condition back through false.
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            val info = listState.layoutInfo
-            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-            lastVisible >= 0 && lastVisible >= info.totalItemsCount - LOAD_MORE_LAST_ROWS
-        }
-            .combine(vm.state) { nearEnd, current ->
-                nearEnd && !current.loading && !current.mutationPending && current.nextCursor != null
-            }
-            .collect { ready -> if (ready) vm.next() }
-    }
     val gapStarts = remember(segments) {
         segments.drop(1).mapNotNull { it.firstOrNull()?.eventId }.toSet()
     }
-    LaunchedEffect(state.owner, member, state.date, validPoints.size, mapLoaded) {
-        if (!mapLoaded) return@LaunchedEffect
+    LaunchedEffect(
+        state.owner,
+        member,
+        state.date,
+        state.startMinute,
+        state.endMinute,
+        validPoints.firstOrNull()?.eventId,
+        validPoints.lastOrNull()?.eventId,
+        state.loadingMore,
+        mapLoaded,
+    ) {
+        if (!mapLoaded || state.isPlaying || inlineMapPanEnabled || state.selectedPointId != null) return@LaunchedEffect
         val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
         if (latLngs.isEmpty()) {
             camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 1f))
         } else {
             fitCameraToPoints(camera, latLngs, paddingPx = 84, singleZoom = 15f)
+        }
+    }
+    LaunchedEffect(mapLoaded, state.isPlaying, state.selectedPointId, followPlaybackCamera, fullScreenMapOpen) {
+        if (!mapLoaded || !state.isPlaying || !followPlaybackCamera || fullScreenMapOpen) return@LaunchedEffect
+        val latLng = selected?.latLngOrNull() ?: return@LaunchedEffect
+        val targetZoom = if (camera.position.zoom >= 13f) camera.position.zoom else 15f
+        val intervalMs = state.playbackSpeed.intervalMillis
+        if (intervalMs >= 300L) {
+            camera.animate(
+                CameraUpdateFactory.newLatLngZoom(latLng, targetZoom),
+                durationMs = (intervalMs * 0.75).toInt().coerceIn(120, 350),
+            )
+        } else {
+            camera.move(CameraUpdateFactory.newLatLngZoom(latLng, targetZoom))
         }
     }
     Scaffold(
@@ -512,8 +544,9 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     val retentionDays = (state.effectiveRetentionDays ?: state.retentionDays)?.toString() ?: "—"
                     HistorySummaryCard(
                         pointCount = state.points.size,
-                        delayedCount = state.points.count { it.backfill },
+                        delayedCount = delayedCount,
                         retentionDaysLabel = retentionDays,
+                        hasMore = state.loadingMore || state.nextCursor != null,
                     )
                 }
                 if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
@@ -552,10 +585,15 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     ) {
                                         HistoryMapContent(
                                             segments = segments,
+                                            traversedSegments = traversedSegments,
                                             validPoints = validPoints,
                                             selected = selected,
+                                            isPlaying = state.isPlaying,
                                             places = state.places,
-                                            onSelectPoint = { selectedId = it.eventId },
+                                            onSelectPoint = {
+                                                followPlaybackCamera = true
+                                                vm.selectPoint(it.eventId)
+                                            },
                                         )
                                     }
                                     Row(
@@ -604,48 +642,119 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     }
                                 }
                                 HorizontalDivider(color = stitch.hairline)
-                                FlowRow(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    TextButton(
-                                        onClick = {
-                                            val point = selected ?: validPoints.lastOrNull()
-                                            val latLng = point?.latLngOrNull()
-                                            if (mapLoaded && latLng != null) {
-                                                scope.launch {
-                                                    camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                                if (validPoints.size >= 2) {
+                                    HistoryPlaybackControls(
+                                        points = validPoints,
+                                        selectedPoint = selected,
+                                        places = state.places,
+                                        isPlaying = state.isPlaying,
+                                        playbackSpeed = state.playbackSpeed,
+                                        fullScreenControls = false,
+                                        onTogglePlay = {
+                                            followPlaybackCamera = true
+                                            vm.togglePlayback()
+                                        },
+                                        onRestart = {
+                                            followPlaybackCamera = true
+                                            vm.restartPlayback()
+                                        },
+                                        onSelectSpeed = vm::setPlaybackSpeed,
+                                        onScrubPoint = { point ->
+                                            followPlaybackCamera = true
+                                            vm.selectPoint(point.eventId)
+                                            point.latLngOrNull()?.let { latLng ->
+                                                if (mapLoaded) {
+                                                    scope.launch {
+                                                        camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15.5f))
+                                                    }
                                                 }
                                             }
                                         },
-                                        enabled = mapLoaded && validPoints.isNotEmpty(),
-                                        modifier = Modifier.heightIn(min = 48.dp),
-                                    ) {
-                                        Icon(Icons.Outlined.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            text = stringResource(R.string.history_center_map),
-                                            maxLines = 2,
-                                        )
-                                    }
-                                    TextButton(
-                                        onClick = {
-                                            val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
-                                            if (mapLoaded && latLngs.isNotEmpty()) {
-                                                scope.launch {
-                                                    fitCameraToPoints(camera, latLngs, paddingPx = 84, singleZoom = 15f, animate = true)
-                                                }
+                                        secondaryAction = {
+                                            TextButton(
+                                                onClick = {
+                                                    followPlaybackCamera = false
+                                                    val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
+                                                    if (mapLoaded && latLngs.isNotEmpty()) {
+                                                        scope.launch {
+                                                            fitCameraToPoints(camera, latLngs, paddingPx = 84, singleZoom = 15f, animate = true)
+                                                        }
+                                                    }
+                                                },
+                                                enabled = mapLoaded,
+                                                modifier = Modifier.heightIn(min = 48.dp),
+                                            ) {
+                                                Icon(Icons.Outlined.ZoomOutMap, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(stringResource(R.string.map_fit_route), maxLines = 2)
+                                            }
+                                            FilledTonalIconButton(
+                                                onClick = {
+                                                    followPlaybackCamera = true
+                                                    val point = selected ?: validPoints.lastOrNull()
+                                                    val latLng = point?.latLngOrNull()
+                                                    if (mapLoaded && latLng != null) {
+                                                        scope.launch {
+                                                            camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                                                        }
+                                                    }
+                                                },
+                                                enabled = mapLoaded,
+                                                modifier = Modifier.size(48.dp),
+                                            ) {
+                                                Icon(
+                                                    Icons.Outlined.MyLocation,
+                                                    contentDescription = stringResource(R.string.history_center_map),
+                                                )
                                             }
                                         },
-                                        enabled = mapLoaded && validPoints.isNotEmpty(),
-                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    )
+                                } else {
+                                    FlowRow(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
-                                        Icon(Icons.Outlined.ZoomOutMap, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(stringResource(R.string.map_fit_route), maxLines = 2)
+                                        TextButton(
+                                            onClick = {
+                                                followPlaybackCamera = true
+                                                val point = selected ?: validPoints.lastOrNull()
+                                                val latLng = point?.latLngOrNull()
+                                                if (mapLoaded && latLng != null) {
+                                                    scope.launch {
+                                                        camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                                                    }
+                                                }
+                                            },
+                                            enabled = mapLoaded && validPoints.isNotEmpty(),
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                        ) {
+                                            Icon(Icons.Outlined.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = stringResource(R.string.history_center_map),
+                                                maxLines = 2,
+                                            )
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                followPlaybackCamera = false
+                                                val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
+                                                if (mapLoaded && latLngs.isNotEmpty()) {
+                                                    scope.launch {
+                                                        fitCameraToPoints(camera, latLngs, paddingPx = 84, singleZoom = 15f, animate = true)
+                                                    }
+                                                }
+                                            },
+                                            enabled = mapLoaded && validPoints.isNotEmpty(),
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                        ) {
+                                            Icon(Icons.Outlined.ZoomOutMap, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(stringResource(R.string.map_fit_route), maxLines = 2)
+                                        }
                                     }
                                 }
                             }
@@ -668,6 +777,27 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
                             )
+                            if (validPoints.size >= 2) {
+                                Surface(
+                                    shape = RoundedCornerShape(22.dp),
+                                    color = stitch.cardTactile,
+                                    border = BorderStroke(1.dp, stitch.hairline),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    HistoryPlaybackControls(
+                                        points = validPoints,
+                                        selectedPoint = selected,
+                                        places = state.places,
+                                        isPlaying = state.isPlaying,
+                                        playbackSpeed = state.playbackSpeed,
+                                        fullScreenControls = false,
+                                        onTogglePlay = vm::togglePlayback,
+                                        onRestart = vm::restartPlayback,
+                                        onSelectSpeed = vm::setPlaybackSpeed,
+                                        onScrubPoint = { vm.selectPoint(it.eventId) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -676,7 +806,12 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         // Retry stays next to the failure instead of only behind
                         // the top-bar refresh icon, in the shared errorContainer
                         // notice.
-                        AnveErrorNotice(stringResource(res), onRetry = vm::refresh)
+                        val retryAction = if (state.nextCursor != null && state.points.isNotEmpty()) {
+                            vm::next
+                        } else {
+                            vm::refresh
+                        }
+                        AnveErrorNotice(stringResource(res), onRetry = retryAction)
                     }
                 }
                 if (state.loading || state.mutationPending) item {
@@ -694,6 +829,19 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                         if (state.loading && state.points.isEmpty()) {
                             StitchLoadingSkeletonCard(rows = 2)
                         }
+                    }
+                }
+                if (state.loadingMore && !state.loading) item {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(Modifier.size(18.dp))
+                        Text(
+                            text = stringResource(R.string.history_loading_more, state.points.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
                     }
                 }
                 if (state.points.isEmpty() && !state.loading && state.errorRes == null && !state.mutationPending) {
@@ -733,7 +881,7 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                     val placeMatch = remember(point.eventId, state.places) {
                         findMatchingPlace(point.latitude, point.longitude, state.places)
                     }
-                    val isSelected = point.eventId == selectedId
+                    val isSelected = point.eventId == state.selectedPointId
                     StitchTimelineItem(
                         icon = if (isSelected) Icons.Outlined.MyLocation else Icons.Outlined.Schedule,
                         nodeContainerColor = if (isSelected) colors.primary else colors.surfaceContainerHigh,
@@ -754,7 +902,13 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     // selectable() carries the state in semantics for
                                     // accessibility services, and container highlight +
                                     // border keep it visible regardless of hue.
-                                    .selectable(selected = isSelected, onClick = { selectedId = point.eventId })
+                                    .selectable(
+                                        selected = isSelected,
+                                        onClick = {
+                                            followPlaybackCamera = true
+                                            vm.selectPoint(point.eventId)
+                                        },
+                                    )
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
@@ -778,6 +932,19 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+                if (!state.loading && !state.loadingMore && !state.mutationPending && state.nextCursor != null && state.errorRes == null) {
+                    item {
+                        OutlinedButton(
+                            onClick = vm::next,
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.history_load_more_action))
                         }
                     }
                 }
@@ -997,10 +1164,18 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
             memberLabel = memberLabel,
             dateLabel = historyDateFormatter.format(state.date),
             segments = segments,
+            traversedSegments = traversedSegments,
             validPoints = validPoints,
             selected = selected,
+            isPlaying = state.isPlaying,
+            playbackSpeed = state.playbackSpeed,
             places = state.places,
-            onSelectPoint = { selectedId = it.eventId },
+            onTogglePlay = vm::togglePlayback,
+            onRestart = vm::restartPlayback,
+            onSelectSpeed = vm::setPlaybackSpeed,
+            onSelectPoint = { vm.selectPoint(it.eventId) },
+            onPrevious = vm::stepPrevious,
+            onNext = vm::stepNext,
             onDismiss = { fullScreenMapOpen = false },
         )
     }
@@ -1009,8 +1184,10 @@ internal fun HistoryContent(state: HistoryState, vm: HistoryViewModel) {
 @Composable
 private fun HistoryMapContent(
     segments: List<List<HistoryPointDto>>,
+    traversedSegments: List<List<HistoryPointDto>>,
     validPoints: List<HistoryPointDto>,
     selected: HistoryPointDto?,
+    isPlaying: Boolean = false,
     places: List<PlaceDto> = emptyList(),
     onSelectPoint: (HistoryPointDto) -> Unit,
 ) {
@@ -1034,13 +1211,32 @@ private fun HistoryMapContent(
             anchor = Offset(0.5f, 1f),
         )
     }
-    segments.filter { it.size > 1 }.forEach { segment ->
+    val segmentLatLngs = remember(segments) {
+        segments.filter { it.size > 1 }.map { segment -> segment.map { LatLng(it.latitude, it.longitude) } }
+    }
+    val traversedLatLngs = remember(traversedSegments) {
+        traversedSegments.filter { it.size > 1 }.map { segment -> segment.map { LatLng(it.latitude, it.longitude) } }
+    }
+    val hasPlaybackProgress = isPlaying || traversedLatLngs.isNotEmpty()
+    val baseRouteColor = if (hasPlaybackProgress) routeColor.copy(alpha = 0.28f) else routeColor
+    val baseRouteWidth = if (hasPlaybackProgress) 8f else 10f
+    segmentLatLngs.forEach { points ->
         Polyline(
-            points = segment.map { LatLng(it.latitude, it.longitude) },
-            color = routeColor,
-            width = 10f,
+            points = points,
+            color = baseRouteColor,
+            width = baseRouteWidth,
             startCap = RoundCap(),
             endCap = RoundCap(),
+        )
+    }
+    traversedLatLngs.forEach { points ->
+        Polyline(
+            points = points,
+            color = routeColor,
+            width = 11f,
+            startCap = RoundCap(),
+            endCap = RoundCap(),
+            zIndex = 0.5f,
         )
     }
     val startPoint = validPoints.firstOrNull()
@@ -1077,15 +1273,23 @@ private fun HistoryMapContent(
             )
         }
     }
-    selected?.latLngOrNull()?.let { latLng ->
-        val marker = remember(selected.eventId, latLng) { MarkerState(position = latLng) }
-        val clock = AnveTime.seconds(selected.recordedAt, "")
+    val selectedLatLng = selected?.latLngOrNull()
+    if (selected != null && selectedLatLng != null) {
+        val selectedMarkerState = remember { MarkerState(position = selectedLatLng) }
+        SideEffect {
+            selectedMarkerState.position = selectedLatLng
+        }
+        val clock = if (isPlaying) {
+            AnveTime.clock(selected.recordedAt, "")
+        } else {
+            AnveTime.seconds(selected.recordedAt, "")
+        }
         val (icon, anchorY) = rememberHistoryPointMarkerIcon(
             label = clock,
             isSelected = true,
         )
         Marker(
-            state = marker,
+            state = selectedMarkerState,
             title = AnveTime.full(selected.recordedAt, stringResource(R.string.journey_time_unknown)),
             icon = icon,
             anchor = Offset(0.5f, anchorY),
@@ -1099,10 +1303,18 @@ private fun HistoryFullScreenMapDialog(
     memberLabel: String,
     dateLabel: String,
     segments: List<List<HistoryPointDto>>,
+    traversedSegments: List<List<HistoryPointDto>>,
     validPoints: List<HistoryPointDto>,
     selected: HistoryPointDto?,
+    isPlaying: Boolean,
+    playbackSpeed: HistoryPlaybackSpeed,
     places: List<PlaceDto> = emptyList(),
+    onTogglePlay: () -> Unit,
+    onRestart: () -> Unit,
+    onSelectSpeed: (HistoryPlaybackSpeed) -> Unit,
     onSelectPoint: (HistoryPointDto) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -1117,14 +1329,36 @@ private fun HistoryFullScreenMapDialog(
         val scope = rememberCoroutineScope()
         val camera = rememberCameraPositionState()
         var mapLoaded by remember { mutableStateOf(false) }
+        var followPlaybackCamera by remember { mutableStateOf(true) }
         val activePoint = selected ?: validPoints.lastOrNull()
         val activeIndex = activePoint?.let { p -> validPoints.indexOfFirst { it.eventId == p.eventId } }
             ?.takeIf { it >= 0 } ?: 0
 
-        LaunchedEffect(mapLoaded, validPoints.size) {
-            if (!mapLoaded) return@LaunchedEffect
+        LaunchedEffect(mapLoaded) {
+            if (!mapLoaded || isPlaying) return@LaunchedEffect
             val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
             fitCameraToPoints(camera, latLngs, paddingPx = 120, singleZoom = 15f)
+        }
+
+        LaunchedEffect(mapLoaded, validPoints.firstOrNull()?.eventId, validPoints.lastOrNull()?.eventId) {
+            if (!mapLoaded || isPlaying || selected != null) return@LaunchedEffect
+            val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
+            fitCameraToPoints(camera, latLngs, paddingPx = 120, singleZoom = 15f)
+        }
+
+        LaunchedEffect(mapLoaded, isPlaying, activePoint?.eventId, followPlaybackCamera) {
+            if (!mapLoaded || !isPlaying || !followPlaybackCamera) return@LaunchedEffect
+            val latLng = activePoint?.latLngOrNull() ?: return@LaunchedEffect
+            val targetZoom = if (camera.position.zoom >= 13f) camera.position.zoom else 15.5f
+            val intervalMs = playbackSpeed.intervalMillis
+            if (intervalMs >= 300L) {
+                camera.animate(
+                    CameraUpdateFactory.newLatLngZoom(latLng, targetZoom),
+                    durationMs = (intervalMs * 0.75).toInt().coerceIn(120, 350),
+                )
+            } else {
+                camera.move(CameraUpdateFactory.newLatLngZoom(latLng, targetZoom))
+            }
         }
 
         Surface(modifier = Modifier.fillMaxSize(), color = colors.background) {
@@ -1144,10 +1378,15 @@ private fun HistoryFullScreenMapDialog(
                 ) {
                     HistoryMapContent(
                         segments = segments,
+                        traversedSegments = traversedSegments,
                         validPoints = validPoints,
                         selected = activePoint,
+                        isPlaying = isPlaying,
                         places = places,
-                        onSelectPoint = onSelectPoint,
+                        onSelectPoint = { point ->
+                            followPlaybackCamera = true
+                            onSelectPoint(point)
+                        },
                     )
                 }
 
@@ -1191,163 +1430,334 @@ private fun HistoryFullScreenMapDialog(
                     }
                 }
 
-                // Right-side fit & recenter buttons above the scrubber card.
+                // Bottom area stacks fit/recenter controls directly above the playback
+                // card so they never collide at larger font scales.
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                        .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(end = 16.dp, bottom = if (validPoints.isNotEmpty()) 172.dp else 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .fillMaxWidth()
+                        .anveContentWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (validPoints.isNotEmpty()) {
-                        Surface(
-                            onClick = {
-                                val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
-                                scope.launch {
-                                    fitCameraToPoints(camera, latLngs, paddingPx = 120, singleZoom = 15f, animate = true)
-                                }
-                            },
-                            shape = CircleShape,
-                            color = stitch.cardTactile.copy(alpha = 0.94f),
-                            contentColor = colors.onSurface,
-                            border = BorderStroke(1.dp, stitch.hairline),
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.size(48.dp),
+                        Column(
+                            modifier = Modifier.align(Alignment.End),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.ZoomOutMap, contentDescription = stringResource(R.string.map_fit_route), modifier = Modifier.size(20.dp))
+                            Surface(
+                                onClick = {
+                                    followPlaybackCamera = false
+                                    val latLngs = validPoints.mapNotNull(HistoryPointDto::latLngOrNull)
+                                    scope.launch {
+                                        fitCameraToPoints(camera, latLngs, paddingPx = 120, singleZoom = 15f, animate = true)
+                                    }
+                                },
+                                shape = CircleShape,
+                                color = stitch.cardTactile.copy(alpha = 0.94f),
+                                contentColor = colors.onSurface,
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                shadowElevation = 2.dp,
+                                modifier = Modifier.size(48.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Outlined.ZoomOutMap, contentDescription = stringResource(R.string.map_fit_route), modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Surface(
+                                onClick = {
+                                    followPlaybackCamera = true
+                                    activePoint?.latLngOrNull()?.let { latLng ->
+                                        scope.launch {
+                                            camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 16f))
+                                        }
+                                    }
+                                },
+                                shape = CircleShape,
+                                color = stitch.cardTactile.copy(alpha = 0.94f),
+                                contentColor = colors.primary,
+                                border = BorderStroke(1.dp, stitch.hairline),
+                                shadowElevation = 2.dp,
+                                modifier = Modifier.size(48.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.history_center_map), modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    if (validPoints.isNotEmpty() && activePoint != null) {
+                        val focusPoint: (HistoryPointDto) -> Unit = { point ->
+                            followPlaybackCamera = true
+                            onSelectPoint(point)
+                            point.latLngOrNull()?.let { latLng ->
+                                scope.launch {
+                                    camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15.5f))
+                                }
                             }
                         }
                         Surface(
-                            onClick = {
-                                activePoint?.latLngOrNull()?.let { latLng ->
-                                    scope.launch {
-                                        camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 16f))
-                                    }
-                                }
-                            },
-                            shape = CircleShape,
-                            color = stitch.cardTactile.copy(alpha = 0.94f),
-                            contentColor = colors.primary,
+                            shape = RoundedCornerShape(24.dp),
+                            color = stitch.cardTactile,
                             border = BorderStroke(1.dp, stitch.hairline),
                             shadowElevation = 2.dp,
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.MyLocation, contentDescription = stringResource(R.string.history_center_map), modifier = Modifier.size(20.dp))
-                            }
+                            HistoryPlaybackControls(
+                                points = validPoints,
+                                selectedPoint = activePoint,
+                                places = places,
+                                isPlaying = isPlaying,
+                                playbackSpeed = playbackSpeed,
+                                fullScreenControls = true,
+                                onTogglePlay = {
+                                    followPlaybackCamera = true
+                                    onTogglePlay()
+                                },
+                                onRestart = {
+                                    followPlaybackCamera = true
+                                    onRestart()
+                                },
+                                onSelectSpeed = onSelectSpeed,
+                                onScrubPoint = focusPoint,
+                                onPrevious = {
+                                    followPlaybackCamera = true
+                                    val prev = validPoints.getOrNull(activeIndex - 1)
+                                    onPrevious()
+                                    prev?.latLngOrNull()?.let { latLng ->
+                                        scope.launch {
+                                            camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15.5f))
+                                        }
+                                    }
+                                },
+                                onNext = {
+                                    followPlaybackCamera = true
+                                    val next = validPoints.getOrNull(activeIndex + 1)
+                                    onNext()
+                                    next?.latLngOrNull()?.let { latLng ->
+                                        scope.launch {
+                                            camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15.5f))
+                                        }
+                                    }
+                                },
+                            )
                         }
                     }
                 }
+            }
+        }
+    }
+}
 
-                // Bottom timeline scrubber card for effortless 1-thumb point stepping.
-                if (validPoints.isNotEmpty() && activePoint != null) {
-                    val time = AnveTime.seconds(activePoint.recordedAt, stringResource(R.string.journey_time_unknown))
-                    val focusPoint: (HistoryPointDto) -> Unit = { point ->
-                        onSelectPoint(point)
-                        point.latLngOrNull()?.let { latLng ->
-                            scope.launch {
-                                camera.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15.5f))
-                            }
+@Composable
+internal fun HistoryPlaybackControls(
+    points: List<HistoryPointDto>,
+    selectedPoint: HistoryPointDto?,
+    places: List<PlaceDto>,
+    isPlaying: Boolean,
+    playbackSpeed: HistoryPlaybackSpeed,
+    fullScreenControls: Boolean,
+    onTogglePlay: () -> Unit,
+    onRestart: () -> Unit,
+    onSelectSpeed: (HistoryPlaybackSpeed) -> Unit,
+    onScrubPoint: (HistoryPointDto) -> Unit,
+    onPrevious: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
+    secondaryAction: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    if (points.isEmpty()) return
+    val colors = MaterialTheme.colorScheme
+    val activePoint = selectedPoint ?: if (fullScreenControls) points.last() else points.first()
+    val activeIndex = points.indexOfFirst { it.eventId == activePoint.eventId }.takeIf { it >= 0 } ?: 0
+    val time = AnveTime.seconds(activePoint.recordedAt, stringResource(R.string.journey_time_unknown))
+    val activePlaceMatch = remember(activePoint.eventId, places) {
+        findMatchingPlace(activePoint.latitude, activePoint.longitude, places)
+    }
+    val accuracyText = stringResource(R.string.map_accuracy, activePoint.horizontalAccuracyMeters.toInt())
+    val detailText = if (activePlaceMatch?.isInside == true) {
+        "${stringResource(R.string.history_at_place_badge, activePlaceMatch.place.name)} · $accuracyText"
+    } else {
+        accuracyText
+    }
+    val progressDesc = stringResource(R.string.history_playback_progress_desc)
+    val isPausedMidway = !isPlaying && selectedPoint != null && activeIndex in 1 until points.lastIndex
+    val playLabel = when {
+        isPlaying -> stringResource(R.string.history_playback_pause)
+        isPausedMidway -> stringResource(R.string.history_playback_resume)
+        else -> stringResource(R.string.history_playback_play_from_start)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.history_point_step, activeIndex + 1, points.size, time),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface,
+                maxLines = 2,
+            )
+            Text(
+                text = detailText,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (activePlaceMatch?.isInside == true) colors.primary else colors.onSurfaceVariant,
+                maxLines = 2,
+            )
+        }
+
+        if (points.size > 1) {
+            Slider(
+                value = activeIndex.toFloat(),
+                onValueChange = { raw ->
+                    val idx = raw.roundToInt().coerceIn(0, points.lastIndex)
+                    if (isPlaying || idx != activeIndex) {
+                        onScrubPoint(points[idx])
+                    }
+                },
+                valueRange = 0f..points.lastIndex.toFloat(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = progressDesc },
+            )
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (fullScreenControls) {
+                    FilledTonalButton(
+                        onClick = onRestart,
+                        shape = CircleShape,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Icon(Icons.Outlined.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.history_playback_restart_short), maxLines = 2)
+                    }
+                    if (onPrevious != null) {
+                        FilledTonalIconButton(
+                            onClick = onPrevious,
+                            enabled = activeIndex > 0,
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                                contentDescription = stringResource(R.string.history_prev_point_desc),
+                            )
                         }
                     }
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = stitch.cardTactile,
-                        border = BorderStroke(1.dp, stitch.hairline),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
-                            .fillMaxWidth()
-                            .anveContentWidth(),
+                    Button(
+                        onClick = onTogglePlay,
+                        shape = CircleShape,
+                        modifier = Modifier.heightIn(min = 48.dp),
                     ) {
-                        val stackScrubberHeader = LocalDensity.current.fontScale >= 1.3f
-                        Column(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(playLabel, maxLines = 2)
+                    }
+                    if (onNext != null) {
+                        FilledTonalIconButton(
+                            onClick = onNext,
+                            enabled = activeIndex < points.lastIndex,
+                            modifier = Modifier.size(48.dp),
                         ) {
-                            val scrubberSummary: @Composable (Modifier) -> Unit = { colMod ->
-                                Column(modifier = colMod, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    val activePlaceMatch = remember(activePoint.eventId, places) {
-                                        findMatchingPlace(activePoint.latitude, activePoint.longitude, places)
-                                    }
-                                    val accuracyText = stringResource(R.string.map_accuracy, activePoint.horizontalAccuracyMeters.toInt())
-                                    val detailText = if (activePlaceMatch?.isInside == true) {
-                                        "${stringResource(R.string.history_at_place_badge, activePlaceMatch.place.name)} · $accuracyText"
-                                    } else {
-                                        accuracyText
-                                    }
-                                    Text(
-                                        text = stringResource(R.string.history_point_step, activeIndex + 1, validPoints.size, time),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 2,
-                                    )
-                                    Text(
-                                        text = detailText,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (activePlaceMatch?.isInside == true) colors.primary else colors.onSurfaceVariant,
-                                        maxLines = 2,
-                                    )
-                                }
-                            }
-                            val scrubberButtons: @Composable () -> Unit = {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    FilledTonalIconButton(
-                                        onClick = {
-                                            if (activeIndex > 0) focusPoint(validPoints[activeIndex - 1])
-                                        },
-                                        enabled = activeIndex > 0,
-                                        modifier = Modifier.size(48.dp),
-                                    ) {
-                                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = stringResource(R.string.history_prev_point_desc))
-                                    }
-                                    FilledTonalIconButton(
-                                        onClick = {
-                                            if (activeIndex < validPoints.lastIndex) focusPoint(validPoints[activeIndex + 1])
-                                        },
-                                        enabled = activeIndex < validPoints.lastIndex,
-                                        modifier = Modifier.size(48.dp),
-                                    ) {
-                                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = stringResource(R.string.history_next_point_desc))
-                                    }
-                                }
-                            }
-                            if (stackScrubberHeader) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    scrubberSummary(Modifier.fillMaxWidth())
-                                    Box(modifier = Modifier.align(Alignment.End)) {
-                                        scrubberButtons()
-                                    }
-                                }
-                            } else {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    scrubberSummary(Modifier.weight(1f))
-                                    scrubberButtons()
-                                }
-                            }
-                            if (validPoints.size > 1) {
-                                Slider(
-                                    value = activeIndex.toFloat(),
-                                    onValueChange = { raw ->
-                                        val idx = raw.roundToInt().coerceIn(0, validPoints.lastIndex)
-                                        if (idx != activeIndex) {
-                                            focusPoint(validPoints[idx])
-                                        }
-                                    },
-                                    valueRange = 0f..validPoints.lastIndex.toFloat(),
-                                )
-                            }
+                            Icon(
+                                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                contentDescription = stringResource(R.string.history_next_point_desc),
+                            )
                         }
+                    }
+                } else {
+                    Button(
+                        onClick = onTogglePlay,
+                        shape = CircleShape,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(playLabel, maxLines = 2)
+                    }
+                    FilledTonalIconButton(
+                        onClick = onRestart,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Replay,
+                            contentDescription = stringResource(R.string.history_playback_restart_desc),
+                        )
+                    }
+                    secondaryAction?.invoke()
+                }
+            }
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.history_playback_speed_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                HistoryPlaybackSpeed.entries.forEach { speed ->
+                    val speedDesc = stringResource(R.string.history_playback_speed_desc, speed.label)
+                    FilterChip(
+                        selected = playbackSpeed == speed,
+                        onClick = { onSelectSpeed(speed) },
+                        label = { Text(speed.label) },
+                        shape = CircleShape,
+                        modifier = Modifier.semantics { contentDescription = speedDesc },
+                    )
+                }
+            }
+        } else if (fullScreenControls && (onPrevious != null || onNext != null)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onPrevious != null) {
+                    FilledTonalIconButton(
+                        onClick = onPrevious,
+                        enabled = false,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                            contentDescription = stringResource(R.string.history_prev_point_desc),
+                        )
+                    }
+                }
+                if (onNext != null) {
+                    Spacer(Modifier.width(8.dp))
+                    FilledTonalIconButton(
+                        onClick = onNext,
+                        enabled = false,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            contentDescription = stringResource(R.string.history_next_point_desc),
+                        )
                     }
                 }
             }
@@ -1360,10 +1770,12 @@ private fun HistorySummaryCard(
     pointCount: Int,
     delayedCount: Int,
     retentionDaysLabel: String,
+    hasMore: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val stitch = LocalStitchColors.current
     val largeFont = LocalDensity.current.fontScale > 1.35f
+    val pointCountLabel = if (hasMore) "${pointCount}+" else pointCount.toString()
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = colors.surfaceContainerLow,
@@ -1380,7 +1792,7 @@ private fun HistorySummaryCard(
                 ) {
                     HistoryStatItem(
                         label = stringResource(R.string.history_metric_points),
-                        value = pointCount.toString(),
+                        value = pointCountLabel,
                         modifier = Modifier.weight(1f),
                     )
                     HistoryStatItem(
@@ -1402,7 +1814,7 @@ private fun HistorySummaryCard(
                 ) {
                     HistoryStatItem(
                         label = stringResource(R.string.history_metric_points),
-                        value = pointCount.toString(),
+                        value = pointCountLabel,
                         modifier = Modifier.weight(1f),
                     )
                     HistoryStatItem(
@@ -1444,6 +1856,38 @@ private fun HistoryStatItem(
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceVariant,
         )
+    }
+}
+
+@Preview(name = "1. Playback Light", showBackground = true)
+@Preview(name = "2. Playback Dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(name = "3. Playback Elderly 200% Font", fontScale = 2.0f, showBackground = true)
+@Composable
+private fun HistoryPlaybackControlsPreview() {
+    val samplePoints = listOf(
+        HistoryPointDto("p1", 21.0285, 105.8542, 10.0, "2026-11-16T01:00:00Z", "2026-11-16T01:00:05Z", "fused", false, false, "seg1"),
+        HistoryPointDto("p2", 21.0310, 105.8490, 12.0, "2026-11-16T01:15:30Z", "2026-11-16T01:15:34Z", "fused", false, false, "seg1"),
+        HistoryPointDto("p3", 21.0350, 105.8440, 14.0, "2026-11-16T01:30:00Z", "2026-11-16T01:30:04Z", "fused", false, false, "seg1"),
+    )
+    AnVeTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            HistoryPlaybackControls(
+                points = samplePoints,
+                selectedPoint = samplePoints[1],
+                places = listOf(
+                    PlaceDto("pl1", "owner", "c1", "Trường học", 21.0310, 105.8490, 150.0, "2026-11-16T00:00:00Z", "2026-11-16T00:00:00Z", false),
+                ),
+                isPlaying = true,
+                playbackSpeed = HistoryPlaybackSpeed.X2,
+                fullScreenControls = true,
+                onTogglePlay = {},
+                onRestart = {},
+                onSelectSpeed = {},
+                onScrubPoint = {},
+                onPrevious = {},
+                onNext = {},
+            )
+        }
     }
 }
 

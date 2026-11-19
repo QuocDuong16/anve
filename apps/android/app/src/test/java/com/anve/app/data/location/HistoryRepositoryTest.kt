@@ -25,6 +25,7 @@ class HistoryRepositoryTest {
             val history = server.takeRequest()
             assertEquals("viewer", history.getHeader("X-Anve-Expected-Owner"))
             assertEquals("member", history.requestUrl?.queryParameter("ownerId"))
+            assertEquals("200", history.requestUrl?.queryParameter("limit"))
             server.enqueue(MockResponse().setBody("""{"days":30,"effectiveDays":7}"""))
             assertEquals(7, repository.retention("viewer").effectiveDays)
             assertEquals("viewer", server.takeRequest().getHeader("X-Anve-Expected-Owner"))

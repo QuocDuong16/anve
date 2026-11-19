@@ -81,6 +81,11 @@ const (
 	// not a quota.
 	locationRateLimitPerMinute = 120
 	locationRateLimitBurst     = 60
+
+	// History pagination fetches a full day's points across multiple 200-point
+	// pages; give families behind one NAT extra read headroom while staying bounded.
+	historyReadRateLimitPerMinute = 240
+	historyReadRateLimitBurst     = 120
 )
 
 // NewRouter builds the HTTP router for the API server.
@@ -236,7 +241,7 @@ func NewRouter(deps Deps) chi.Router {
 				private.Put("/location-sharing/audience/{viewerId}", grantAudienceHandler(access))
 				private.Delete("/location-sharing/audience/{viewerId}", revokeAudienceHandler(access))
 				private.Get("/locations/visible/latest", latestVisibleLocationsHandler(access))
-				historyReadLimiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				historyReadLimiter := newRateLimiter(historyReadRateLimitPerMinute, historyReadRateLimitBurst)
 				private.With(RateLimit(historyReadLimiter)).Get("/locations/history", historyHandler(access))
 			}
 

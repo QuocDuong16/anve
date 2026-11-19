@@ -29,6 +29,7 @@ import com.anve.app.data.location.HistoryMember
 import com.anve.app.data.location.HistoryDataSource
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -132,12 +133,58 @@ class HistoryScreenInstrumentedTest {
         compose.onNodeWithText(context.getString(R.string.history_retention_confirm_title)).assertDoesNotExist()
     }
 
+    @Test
+    fun playbackControlsAutoPlayAndSelectSpeed() {
+        val fake = FakeHistory().apply {
+            customPoints = listOf(
+                HistoryPointDto("p1", 21.0285, 105.8542, 10.0, "2026-10-29T00:00:00Z", "2026-10-29T00:00:05Z", "fused", false, false, "seg"),
+                HistoryPointDto("p2", 21.0300, 105.8500, 10.0, "2026-10-29T00:05:00Z", "2026-10-29T00:05:05Z", "fused", false, false, "seg"),
+                HistoryPointDto("p3", 21.0320, 105.8470, 10.0, "2026-10-29T00:10:00Z", "2026-10-29T00:10:05Z", "fused", false, false, "seg"),
+            )
+        }
+        val vm = HistoryViewModel(fake)
+        compose.setContent {
+            val state by vm.state.collectAsState()
+            AnVeTheme {
+                HistoryContent(state, vm)
+            }
+        }
+        compose.runOnIdle { vm.activate("owner") }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val playFromStart = context.getString(R.string.history_playback_play_from_start)
+        val pauseLabel = context.getString(R.string.history_playback_pause)
+        val restartDesc = context.getString(R.string.history_playback_restart_desc)
+
+        compose.onNode(hasText("4x") and hasClickAction()).performScrollTo().performClick()
+        assertEquals(HistoryPlaybackSpeed.X4, vm.state.value.playbackSpeed)
+
+        compose.onNode(hasText(playFromStart) and hasClickAction()).performScrollTo().performClick()
+        assertTrue(vm.state.value.isPlaying)
+        compose.onNode(hasText(pauseLabel) and hasClickAction()).assertIsDisplayed().performClick()
+        assertFalse(vm.state.value.isPlaying)
+
+        compose.onNodeWithContentDescription(restartDesc).performScrollTo().performClick()
+        assertTrue(vm.state.value.isPlaying)
+        assertEquals("p1", vm.state.value.selectedPointId)
+
+        compose.runOnIdle { vm.activate(null) }
+    }
+
     private class FakeHistory : HistoryDataSource {
         // Retention values the screen asked to store, in call order.
         val retentionCalls = mutableListOf<Int>()
+        var customPoints: List<HistoryPointDto>? = null
         override suspend fun members(owner: String): List<HistoryMember> = emptyList()
         override suspend fun page(owner: String, member: String, from: String, to: String, cursor: String?) =
-            HistoryPageDto(if (owner == "owner") listOf(HistoryPointDto("event", 10.0, 106.0, 10.0, "2026-10-29T00:00:00Z", "2026-10-29T01:00:00Z", "fused", false, true, "segment")) else emptyList())
+            HistoryPageDto(
+                if (owner == "owner") {
+                    customPoints ?: listOf(
+                        HistoryPointDto("event", 10.0, 106.0, 10.0, "2026-10-29T00:00:00Z", "2026-10-29T01:00:00Z", "fused", false, true, "segment"),
+                    )
+                } else {
+                    emptyList()
+                },
+            )
         override suspend fun retention(owner: String) = HistoryRetentionDto(30, 30)
         override suspend fun setRetention(owner: String, days: Int): HistoryRetentionDto {
             retentionCalls += days

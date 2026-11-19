@@ -17,10 +17,27 @@ import java.time.ZoneId
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+enum class HistoryPlaybackSpeed(
+    val label: String,
+    val intervalMillis: Long,
+    val stepStride: Int = 1,
+) {
+    X1("1x", 700L, 1),
+    X2("2x", 350L, 1),
+    X4("4x", 175L, 1),
+    X8("8x", 90L, 1),
+    X16("16x", 90L, 2),
+}
+
+internal fun HistoryPointDto.hasValidCoordinates(): Boolean =
+    latitude.isFinite() && longitude.isFinite() &&
+        latitude in -90.0..90.0 && longitude in -180.0..180.0
 
 data class HistoryState(
     val owner: String? = null,
@@ -35,8 +52,12 @@ data class HistoryState(
     val retentionDays: Int? = null,
     val effectiveRetentionDays: Int? = null,
     val loading: Boolean = false,
+    val loadingMore: Boolean = false,
     val mutationPending: Boolean = false,
     val errorRes: Int? = null,
+    val selectedPointId: String? = null,
+    val isPlaying: Boolean = false,
+    val playbackSpeed: HistoryPlaybackSpeed = HistoryPlaybackSpeed.X1,
 )
 
 /**
@@ -79,12 +100,14 @@ class HistoryViewModel(
     private var loadJob: Job? = null
     private var mutationJob: Job? = null
     private var accessJob: Job? = null
+    private var playbackJob: Job? = null
 
     fun activate(owner: String?) {
         generation++
         loadJob?.cancel()
         mutationJob?.cancel()
         accessJob?.cancel()
+        playbackJob?.cancel()
         mutable.value = HistoryState(owner = owner, member = owner)
         // An unconsumed confirmation belongs to the session that earned it; a
         // fresh owner must not see a stale "saved" announcement.
@@ -94,7 +117,18 @@ class HistoryViewModel(
 
     fun select(member: String, date: LocalDate) {
         if (mutable.value.mutationPending) return
-        mutable.update { it.copy(member = member, date = date, points = emptyList(), nextCursor = null) }
+        playbackJob?.cancel()
+        mutable.update {
+            it.copy(
+                member = member,
+                date = date,
+                points = emptyList(),
+                nextCursor = null,
+                selectedPointId = null,
+                isPlaying = false,
+                loadingMore = false,
+            )
+        }
         refresh()
     }
 
@@ -107,8 +141,131 @@ class HistoryViewModel(
             mutable.update { it.copy(errorRes = R.string.history_error_invalid_interval) }
             return
         }
-        mutable.update { it.copy(startMinute = start, endMinute = end, points = emptyList(), nextCursor = null) }
+        playbackJob?.cancel()
+        mutable.update {
+            it.copy(
+                startMinute = start,
+                endMinute = end,
+                points = emptyList(),
+                nextCursor = null,
+                selectedPointId = null,
+                isPlaying = false,
+                loadingMore = false,
+            )
+        }
         refresh()
+    }
+
+    fun selectPoint(eventId: String?) {
+        playbackJob?.cancel()
+        mutable.update { it.copy(selectedPointId = eventId, isPlaying = false) }
+    }
+
+    fun pausePlayback() {
+        playbackJob?.cancel()
+        mutable.update { it.copy(isPlaying = false) }
+    }
+
+    fun setPlaybackSpeed(speed: HistoryPlaybackSpeed) {
+        mutable.update { it.copy(playbackSpeed = speed) }
+    }
+
+    fun stepPrevious() {
+        playbackJob?.cancel()
+        val current = mutable.value
+        val valid = current.points.filter(HistoryPointDto::hasValidCoordinates)
+        if (valid.isEmpty()) {
+            mutable.update { it.copy(isPlaying = false) }
+            return
+        }
+        val index = current.selectedPointId?.let { id -> valid.indexOfFirst { it.eventId == id } } ?: -1
+        val target = when {
+            index < 0 -> valid.last()
+            index > 0 -> valid[index - 1]
+            else -> valid.first()
+        }
+        mutable.update { it.copy(selectedPointId = target.eventId, isPlaying = false) }
+    }
+
+    fun stepNext() {
+        playbackJob?.cancel()
+        val current = mutable.value
+        val valid = current.points.filter(HistoryPointDto::hasValidCoordinates)
+        if (valid.isEmpty()) {
+            mutable.update { it.copy(isPlaying = false) }
+            return
+        }
+        val index = current.selectedPointId?.let { id -> valid.indexOfFirst { it.eventId == id } } ?: -1
+        val target = when {
+            index < 0 -> valid.first()
+            index < valid.lastIndex -> valid[index + 1]
+            else -> valid.last()
+        }
+        mutable.update { it.copy(selectedPointId = target.eventId, isPlaying = false) }
+    }
+
+    fun togglePlayback() {
+        val current = mutable.value
+        if (current.isPlaying) {
+            pausePlayback()
+            return
+        }
+        val valid = current.points.filter(HistoryPointDto::hasValidCoordinates)
+        if (valid.size < 2) return
+        val currentIndex = current.selectedPointId?.let { id -> valid.indexOfFirst { it.eventId == id } } ?: -1
+        val startId = if (currentIndex < 0 || currentIndex >= valid.lastIndex) {
+            valid.first().eventId
+        } else {
+            valid[currentIndex].eventId
+        }
+        startPlaybackLoop(startId)
+    }
+
+    fun restartPlayback() {
+        val valid = mutable.value.points.filter(HistoryPointDto::hasValidCoordinates)
+        if (valid.size < 2) return
+        startPlaybackLoop(valid.first().eventId)
+    }
+
+    private fun startPlaybackLoop(startPointId: String) {
+        val token = generation
+        val owner = mutable.value.owner ?: return
+        playbackJob?.cancel()
+        mutable.update { it.copy(selectedPointId = startPointId, isPlaying = true) }
+        playbackJob = viewModelScope.launch {
+            while (true) {
+                val speed = mutable.value.playbackSpeed
+                delay(speed.intervalMillis)
+                val snapshot = mutable.value
+                if (generation != token || snapshot.owner != owner || !snapshot.isPlaying) return@launch
+                val valid = snapshot.points.filter(HistoryPointDto::hasValidCoordinates)
+                if (valid.size < 2) {
+                    mutable.update { it.copy(isPlaying = false) }
+                    return@launch
+                }
+                val currentIndex = snapshot.selectedPointId?.let { id ->
+                    valid.indexOfFirst { it.eventId == id }
+                } ?: -1
+                if (currentIndex < 0) {
+                    mutable.update { it.copy(selectedPointId = valid.first().eventId) }
+                    continue
+                }
+                if (currentIndex >= valid.lastIndex) {
+                    if (snapshot.loadingMore) continue
+                    mutable.update { it.copy(isPlaying = false) }
+                    return@launch
+                }
+                val nextIndex = minOf(currentIndex + snapshot.playbackSpeed.stepStride, valid.lastIndex)
+                val reachedEnd = nextIndex == valid.lastIndex && !snapshot.loadingMore
+                mutable.update {
+                    it.copy(
+                        selectedPointId = valid[nextIndex].eventId,
+                        isPlaying = !reachedEnd,
+                    )
+                }
+                if (reachedEnd) return@launch
+            }
+        }
     }
 
     private fun load(append: Boolean) {
@@ -116,50 +273,117 @@ class HistoryViewModel(
         if (current.mutationPending) return
         val owner = current.owner ?: return
         val member = current.member ?: return
-        val cursor = if (append) current.nextCursor ?: return else null
+        val startCursor = if (append) current.nextCursor ?: return else null
         val token = ++generation
         loadJob?.cancel()
-        // A page load appends into the timeline the reader already sees;
-        // clearing it here would blank the list (and jump the scroll position)
-        // every time the next page arrives. Only a fresh query starts empty.
-        mutable.update { it.copy(loading = true, errorRes = null, points = if (append) it.points else emptyList()) }
+        if (!append) playbackJob?.cancel()
+        // A fresh query resets to empty and shows full loading state; appending
+        // keeps the points already rendered so map and timeline stay responsive.
+        mutable.update {
+            if (append) {
+                it.copy(loadingMore = true, errorRes = null)
+            } else {
+                it.copy(
+                    loading = true,
+                    loadingMore = false,
+                    errorRes = null,
+                    points = emptyList(),
+                    nextCursor = null,
+                    selectedPointId = null,
+                    isPlaying = false,
+                )
+            }
+        }
         loadJob = viewModelScope.launch {
+            var hasEmittedFirstPage = append
+            var cursor: String? = startCursor
+            var pagesLoadedInBatch = 0
+            val seenIds = HashSet<String>().apply {
+                if (append) current.points.forEach { add(it.eventId) }
+            }
             try {
                 val (from, to) = timeInterval(current.date, ZoneId.systemDefault(), current.startMinute, current.endMinute)
-                val page = repository.page(owner, member, from.toString(), to.toString(), cursor)
-                val members = if (append) current.members else repository.members(owner)
-                val retention = if (append) null else repository.retention(owner)
-                val places = if (append) current.places else runCatching { placesDataSource?.places(owner).orEmpty() }.getOrElse { current.places }
-                if (generation != token || mutable.value.owner != owner) return@launch
-                mutable.update {
-                    it.copy(
-                        points = if (append) it.points + page.points else page.points,
-                        nextCursor = page.nextCursor,
-                        members = members,
-                        places = places,
-                        retentionDays = retention?.days ?: current.retentionDays,
-                        effectiveRetentionDays = retention?.effectiveDays ?: current.effectiveRetentionDays,
-                        loading = false,
-                    )
+                if (!append) {
+                    val page = repository.page(owner, member, from.toString(), to.toString(), null)
+                    val members = repository.members(owner)
+                    val retention = repository.retention(owner)
+                    val places = runCatching { placesDataSource?.places(owner).orEmpty() }.getOrElse { current.places }
+                    if (generation != token || mutable.value.owner != owner) return@launch
+                    pagesLoadedInBatch = 1
+                    val dedupedFirst = page.points.filter { seenIds.add(it.eventId) }
+                    val initialCursor = page.nextCursor?.takeIf { page.points.isNotEmpty() }
+                    val keepLoading = initialCursor != null && pagesLoadedInBatch < MAX_AUTO_PAGES
+                    mutable.update {
+                        it.copy(
+                            points = dedupedFirst,
+                            nextCursor = initialCursor,
+                            members = members,
+                            places = places,
+                            retentionDays = retention.days,
+                            effectiveRetentionDays = retention.effectiveDays,
+                            loading = false,
+                            loadingMore = keepLoading,
+                        )
+                    }
+                    hasEmittedFirstPage = true
+                    cursor = initialCursor
                 }
-            } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                while (cursor != null && pagesLoadedInBatch < MAX_AUTO_PAGES) {
+                    val nextPage = repository.page(owner, member, from.toString(), to.toString(), cursor)
+                    if (generation != token || mutable.value.owner != owner) return@launch
+                    pagesLoadedInBatch++
+                    val freshPoints = nextPage.points.filter { seenIds.add(it.eventId) }
+                    val next = if (nextPage.nextCursor == cursor || (freshPoints.isEmpty() && nextPage.points.isEmpty())) {
+                        null
+                    } else {
+                        nextPage.nextCursor
+                    }
+                    val keepLoading = next != null && pagesLoadedInBatch < MAX_AUTO_PAGES
+                    mutable.update {
+                        it.copy(
+                            points = it.points + freshPoints,
+                            nextCursor = next,
+                            loadingMore = keepLoading,
+                        )
+                    }
+                    cursor = next
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val isAccessLost = e is ApiException && e.httpStatus in listOf(403, 404)
                 val messageRes = when {
                     e is IOException -> R.string.history_error_offline
-                    e is ApiException && e.httpStatus in listOf(403, 404) -> R.string.history_error_access_lost
+                    isAccessLost -> R.string.history_error_access_lost
                     else -> R.string.history_error_load_failed
                 }
-                if (generation == token && mutable.value.owner == owner) mutable.update {
-                    it.copy(
-                        // A failed page keeps the pages already on screen and only
-                        // drops the cursor, so the scroll-triggered load-more cannot
-                        // retry itself into a loop; the error notice's refresh
-                        // reloads the query from the first page.
-                        points = if (append) it.points else emptyList(),
-                        nextCursor = null,
-                        members = if (append) it.members else emptyList(),
-                        loading = false,
-                        errorRes = messageRes,
-                    )
+                if (generation == token && mutable.value.owner == owner) {
+                    if (!hasEmittedFirstPage || isAccessLost) {
+                        playbackJob?.cancel()
+                        mutable.update {
+                            it.copy(
+                                points = emptyList(),
+                                nextCursor = null,
+                                members = emptyList(),
+                                selectedPointId = null,
+                                isPlaying = false,
+                                loading = false,
+                                loadingMore = false,
+                                errorRes = messageRes,
+                            )
+                        }
+                    } else {
+                        // Keep pages already loaded on transient errors and retain the failed cursor
+                        // so a single retry resumes from where pagination stopped.
+                        mutable.update {
+                            it.copy(
+                                nextCursor = cursor,
+                                loading = false,
+                                loadingMore = false,
+                                errorRes = messageRes,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -167,7 +391,7 @@ class HistoryViewModel(
 
     fun recheckAccess(owner: String, member: String) {
         val current = mutable.value
-        if (current.owner != owner || current.member != member || member == owner || current.loading || accessJob?.isActive == true) return
+        if (current.owner != owner || current.member != member || member == owner || current.loading || current.loadingMore || accessJob?.isActive == true) return
         val token = generation
         accessJob = viewModelScope.launch {
             try {
@@ -176,13 +400,39 @@ class HistoryViewModel(
                 if (members.none { it.ownerId == member }) {
                     generation++
                     loadJob?.cancel()
-                    mutable.update { it.copy(points = emptyList(), nextCursor = null, members = members, loading = false, errorRes = R.string.history_error_viewer_revoked) }
+                    playbackJob?.cancel()
+                    mutable.update {
+                        it.copy(
+                            points = emptyList(),
+                            nextCursor = null,
+                            members = members,
+                            selectedPointId = null,
+                            isPlaying = false,
+                            loading = false,
+                            loadingMore = false,
+                            errorRes = R.string.history_error_viewer_revoked,
+                        )
+                    }
                 }
-            } catch (e: CancellationException) { throw e } catch (_: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
                 if (generation == token && mutable.value.owner == owner && mutable.value.member == member) {
                     generation++
                     loadJob?.cancel()
-                    mutable.update { it.copy(points = emptyList(), nextCursor = null, members = emptyList(), loading = false, errorRes = R.string.history_error_access_check_failed) }
+                    playbackJob?.cancel()
+                    mutable.update {
+                        it.copy(
+                            points = emptyList(),
+                            nextCursor = null,
+                            members = emptyList(),
+                            selectedPointId = null,
+                            isPlaying = false,
+                            loading = false,
+                            loadingMore = false,
+                            errorRes = R.string.history_error_access_check_failed,
+                        )
+                    }
                 }
             }
         }
@@ -194,7 +444,18 @@ class HistoryViewModel(
         if (current.member != owner || current.mutationPending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(points = emptyList(), nextCursor = null, mutationPending = true, errorRes = null) }
+        playbackJob?.cancel()
+        mutable.update {
+            it.copy(
+                points = emptyList(),
+                nextCursor = null,
+                mutationPending = true,
+                errorRes = null,
+                loadingMore = false,
+                selectedPointId = null,
+                isPlaying = false,
+            )
+        }
         mutationJob = viewModelScope.launch {
             try {
                 val (from, end) = if (filtered) timeInterval(current.date, ZoneId.systemDefault(), current.startMinute, current.endMinute) else dayInterval(current.date, ZoneId.systemDefault())
@@ -215,7 +476,18 @@ class HistoryViewModel(
         if (mutable.value.mutationPending) return
         val token = ++generation
         loadJob?.cancel()
-        mutable.update { it.copy(points = emptyList(), nextCursor = null, mutationPending = true, errorRes = null) }
+        playbackJob?.cancel()
+        mutable.update {
+            it.copy(
+                points = emptyList(),
+                nextCursor = null,
+                mutationPending = true,
+                errorRes = null,
+                loadingMore = false,
+                selectedPointId = null,
+                isPlaying = false,
+            )
+        }
         mutationJob = viewModelScope.launch {
             try {
                 val result = repository.setRetention(owner, days)
@@ -232,6 +504,8 @@ class HistoryViewModel(
     }
 
     companion object {
+        internal const val MAX_AUTO_PAGES = 50
+
         fun factory(
             repository: HistoryDataSource,
             placesDataSource: PlacesDataSource? = null,
