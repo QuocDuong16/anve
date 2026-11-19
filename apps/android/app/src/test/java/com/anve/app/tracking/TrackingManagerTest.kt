@@ -14,6 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -1713,5 +1714,32 @@ class TrackingManagerTest {
             restartedStoppedManager.recoverForegroundAfterAppUpdateIfNeeded()
             yield()
             assertEquals(0, service.starts)
+        }
+
+    @Test
+    fun `recoverAfterAppUpdate falls back to RequiresUserAction when overall timeout expires on slow server`() =
+        runBlocking {
+            gateway.beforeCurrentUser = { delay(1_000L) }
+            try {
+                val freshMutations = ConsentMutationCoordinator()
+                val recoveringStore = FakeTrackingStore(
+                    LocalTrackingState(
+                        trackingRequested = true,
+                        localConsentConfirmed = true,
+                        consentOwnerUserId = "u1",
+                    ),
+                )
+                val recoveringManager = newManager(
+                    trackingStore = recoveringStore,
+                    targetMutations = freshMutations,
+                    packageUpdateTime = { 2_000L },
+                )
+
+                val result = recoveringManager.recoverAfterAppUpdate(timeoutMillis = 150L)
+                assertEquals(UpdateRecoveryOutcome.RequiresUserAction("u1"), result)
+                assertTrue(recoveringStore.current().pendingUpdateRecovery)
+            } finally {
+                gateway.beforeCurrentUser = null
+            }
         }
 }

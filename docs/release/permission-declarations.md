@@ -17,11 +17,11 @@ manifest alone has eight; SDKs contribute the rest. The machine-readable
 | --- | --- | --- |
 | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | User-started family location sharing; account/Circle functionality remains available without location permission. Accuracy is carried with samples; approximate-only is a supported state. | Demonstrate reduced precision, denial and revocation. Justify precision for the advertised core feature using real measurements; a compiler pass is insufficient. |
 | `ACCESS_BACKGROUND_LOCATION` | Continued consented updates when the app is not visible; disclosure and foreground grant precede the background request. API 30+ uses the supported Settings path. | Prove the feature needs background access, show the disclosure and system permission flow in the required video, and test screen-off/OEM behavior. Do not claim automatic arrival/stale alerts as justification; those features remain Planned. |
-| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` | Private `TrackingService`, type `location`, persistent notification/stop action and explicit start/resume; no app-defined tracking boot receiver. | Verify allowed starts, stop behavior, permission loss, notification visibility and the final OS/target combinations. |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` | Private `TrackingService`, type `location`, persistent notification/stop action and explicit start/resume; `TrackingRecoveryReceiver` only posts a reminder on `BOOT_COMPLETED` and only auto-resumes previously active, consented sharing on `MY_PACKAGE_REPLACED` when `ACCESS_BACKGROUND_LOCATION` and server/local consent checks allow (otherwise posting a user-facing reminder notification). | Verify allowed starts, stop behavior, permission loss, notification visibility, update recovery with/without background permission, and the final OS/target combinations. |
 | `POST_NOTIFICATIONS` | Tracking visibility plus chosen SOS/place/journey notifications. The app explains notification setup; FCM acceptance is not receipt. | Test denial, later revocation, process death and real Firebase delivery. OS notification permission is distinct from location consent and event audience. |
 | `INTERNET`, `ACCESS_NETWORK_STATE` | Authenticated AnVề API traffic, provider SDKs, conditional polling and offline sync scheduling. | Observe actual HTTPS/provider destinations and offline recovery. Release network-security source refuses cleartext; deployment TLS remains separate. |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT` | Inherited credential SDK declarations; no first-party biometric capture API was identified in this review. | Check the sign-in/device credential path. A permission declaration does not imply that AnVề receives fingerprint or face templates. |
-| `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | Inherited WorkManager/SDK scheduling support. Merged SDK receivers can reschedule work; source tracking still requires explicit user admission. | Verify reboot/process recovery does not silently restart GPS, while consent/privacy outboxes remain recoverable. Do not describe the final package as containing no boot receiver. |
+| `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | Inherited WorkManager/SDK scheduling support plus `TrackingRecoveryReceiver` (`BOOT_COMPLETED` and `MY_PACKAGE_REPLACED`). `BOOT_COMPLETED` only posts a reminder notification when sharing was previously active; `MY_PACKAGE_REPLACED` only auto-resumes `TrackingService` if sharing was already active with confirmed consent and `ACCESS_BACKGROUND_LOCATION` granted (otherwise posting a reminder notification). | Verify reboot never silently restarts GPS, verify app-update recovery respects consent/revocation/background-permission gates, and verify consent/privacy outboxes remain recoverable. Do not describe the final package as containing no boot receiver. |
 | `com.google.android.c2dm.permission.RECEIVE` | Firebase/Google messaging transport. | Verify provider restrictions, owner-bound registration and current authorization before display. |
 | `${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | AndroidX-generated app signature permission and use. The package suffix differs for the isolated fixture. | Preserve signature protection; inspect the final production package rather than presenting the fixture identity as the app ID. |
 
@@ -42,7 +42,13 @@ with individually selected family members and show when a sample was recorded.
 The member starts tracking, can stop it and can revoke consent/audience; group
 administration cannot silently enable another person's tracking. Background
 updates support this advertised feature while the member uses other apps or
-locks the screen. Notifications and freshness states show its limits.
+locks the screen. After an app update (`MY_PACKAGE_REPLACED`), if the member
+already had active, consented sharing enabled and `ACCESS_BACKGROUND_LOCATION`
+is granted, AnVề resumes the `TrackingService` with its persistent notification
+(or posts a reminder notification if background permission, connectivity, or OS
+restrictions prevent automatic resume); on device reboot (`BOOT_COMPLETED`), AnVề
+never auto-starts GPS and only posts a reminder notification. Notifications and
+freshness states show its limits.
 
 This draft must be reconciled with the actual store listing and release video.
 [Google's background-location guidance](https://support.google.com/googleplay/android-developer/answer/9799150)

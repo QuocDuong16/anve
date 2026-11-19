@@ -1208,24 +1208,30 @@ class TrackingManager(
     /**
      * Attempts safe automatic resume after `MY_PACKAGE_REPLACED` when OS
      * background-location prerequisites and server privacy checks allow.
-     * Falls back to [UpdateRecoveryOutcome.RequiresUserAction] (never claiming
-     * tracking is active) when Android background/permission/offline limits apply.
+     * Enforces a single overall [timeoutMillis] budget so `BroadcastReceiver.goAsync()`
+     * callers finish well before the OS ~10s limit, falling back to
+     * [UpdateRecoveryOutcome.RequiresUserAction] on timeout or error (never
+     * claiming tracking is active) when Android background/permission/offline
+     * limits apply.
      */
     suspend fun recoverAfterAppUpdate(
         timeoutMillis: Long = UPDATE_RECOVERY_TIMEOUT_MILLIS,
     ): UpdateRecoveryOutcome {
-        if (withTimeoutOrNull(timeoutMillis) { initialSessionObserved.await() } == null) {
-            val fallbackOwner = runCatching { sessions.current()?.userId }.getOrNull()
-            val fallbackLocal = runCatching { store.current() }.getOrNull()
-            return if (fallbackOwner != null &&
-                fallbackLocal?.trackingRequested == true &&
-                fallbackLocal.consentOwnerUserId == fallbackOwner
-            ) {
-                UpdateRecoveryOutcome.RequiresUserAction(fallbackOwner)
-            } else {
-                UpdateRecoveryOutcome.NotApplicable
-            }
+        return try {
+            withTimeoutOrNull(timeoutMillis) {
+                recoverAfterAppUpdateWithinBudget(timeoutMillis)
+            } ?: updateRecoveryFallbackOutcome()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            updateRecoveryFallbackOutcome()
         }
+    }
+
+    private suspend fun recoverAfterAppUpdateWithinBudget(
+        timeoutMillis: Long,
+    ): UpdateRecoveryOutcome {
+        initialSessionObserved.await()
         val session = sessions.current() ?: return UpdateRecoveryOutcome.NotApplicable
         val owner = session.userId ?: sessionOwner ?: return UpdateRecoveryOutcome.NotApplicable
         val local = store.current()
@@ -1275,24 +1281,34 @@ class TrackingManager(
             return UpdateRecoveryOutcome.RequiresUserAction(owner)
         }
 
-        return try {
-            val acquired = withTimeoutOrNull(timeoutMillis) {
-                startLock.withLock {
-                    if (!_status.value.running && !starting) {
-                        startInternal(startEpoch)
-                    }
-                    true
-                }
-            } ?: false
-            if (!acquired) {
-                UpdateRecoveryOutcome.RequiresUserAction(owner)
-            } else {
-                awaitRecoverySettlement(owner, timeoutMillis)
+        startLock.withLock {
+            if (!_status.value.running && !starting) {
+                startInternal(startEpoch)
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            UpdateRecoveryOutcome.RequiresUserAction(owner)
+        }
+        return awaitRecoverySettlement(owner, timeoutMillis)
+    }
+
+    private suspend fun updateRecoveryFallbackOutcome(): UpdateRecoveryOutcome {
+        val fallbackOwner = runCatching { sessions.current()?.userId ?: sessionOwner }.getOrNull()
+        val fallbackLocal = runCatching { store.current() }.getOrNull()
+        val pendingConsent = if (fallbackOwner != null) {
+            runCatching {
+                sessions.pendingConsentOperations().any { it.ownerUserId == fallbackOwner }
+            }.getOrDefault(false)
+        } else {
+            false
+        }
+        return if (fallbackOwner != null &&
+            fallbackLocal?.trackingRequested == true &&
+            fallbackLocal.consentOwnerUserId == fallbackOwner &&
+            fallbackLocal.localConsentConfirmed &&
+            !fallbackLocal.pendingConsentRevocation &&
+            !pendingConsent
+        ) {
+            UpdateRecoveryOutcome.RequiresUserAction(fallbackOwner)
+        } else {
+            UpdateRecoveryOutcome.NotApplicable
         }
     }
 

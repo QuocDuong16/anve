@@ -130,6 +130,29 @@ class TrackingRecoveryReceiver : BroadcastReceiver() {
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
+                if (action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                    runCatching {
+                        val session = app.container.sessionStore.current()
+                        val owner = session?.userId
+                        val local = app.container.trackingStore.current()
+                        val pendingConsent = owner != null &&
+                            app.container.sessionStore.pendingConsentOperations()
+                                .any { it.ownerUserId == owner }
+                        if (owner != null &&
+                            local.trackingRequested &&
+                            local.consentOwnerUserId == owner &&
+                            local.localConsentConfirmed &&
+                            !local.pendingConsentRevocation &&
+                            !pendingConsent
+                        ) {
+                            TrackingRecoveryNotifier.notify(
+                                app,
+                                owner,
+                                TrackingRecoveryNotifier.Reason.APP_UPDATED,
+                            )
+                        }
+                    }
+                }
                 // Recovery is best-effort; foreground update recovery or TrackingManager still flags recoveryRequired on launch.
             } finally {
                 pendingResult.finish()
