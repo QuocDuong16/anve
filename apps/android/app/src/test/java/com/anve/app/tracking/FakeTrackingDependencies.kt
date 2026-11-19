@@ -52,6 +52,9 @@ class FakeTrackingStore(
             lastSuccessfulUploadAtMillis = _state.value.lastSuccessfulUploadAtMillis.takeIf { sameOwner },
             lastTrackedPackageUpdateTime = _state.value.lastTrackedPackageUpdateTime.takeIf { sameOwner },
             pendingUpdateRecovery = _state.value.pendingUpdateRecovery && sameOwner,
+            lowBatteryOwnerUserId = _state.value.lowBatteryOwnerUserId.takeIf { it == ownerUserId },
+            lowBatteryAlertsEnabled = _state.value.lowBatteryAlertsEnabled && _state.value.lowBatteryOwnerUserId == ownerUserId,
+            lowBatteryAlertsVersion = _state.value.lowBatteryAlertsVersion.takeIf { _state.value.lowBatteryOwnerUserId == ownerUserId } ?: 0L,
         )
     }
 
@@ -72,6 +75,15 @@ class FakeTrackingStore(
 
     override suspend fun setPendingUpdateRecovery(pending: Boolean) {
         _state.value = _state.value.copy(pendingUpdateRecovery = pending)
+    }
+
+    override suspend fun setLowBatteryAlerts(ownerUserId: String?, enabled: Boolean, version: Long) {
+        writes += "lowBatteryAlerts=$ownerUserId:$enabled@$version"
+        _state.value = _state.value.copy(
+            lowBatteryOwnerUserId = ownerUserId,
+            lowBatteryAlertsEnabled = if (ownerUserId == null) false else enabled,
+            lowBatteryAlertsVersion = if (ownerUserId == null) 0L else version,
+        )
     }
 }
 
@@ -200,6 +212,8 @@ class FakeDeviceIdentity : DeviceRegistrationProvider {
 class FakeServerGateway(
     var consent: Boolean = true,
     var consentVersion: Long = 0,
+    var lowBatteryAlertsEnabled: Boolean = false,
+    var lowBatteryAlertsVersion: Long = 0,
     var hasCircle: Boolean = true,
     private val store: FakeTrackingStore? = null,
 ) : TrackingServerGateway {
@@ -208,11 +222,13 @@ class FakeServerGateway(
     var currentUserCalls: Int = 0
 
     var failConsentWith: Exception? = null
+    var failLowBatteryWith: Exception? = null
     var failCurrentUserWith: Exception? = null
     var pendingAtConsentCall: Boolean? = null
     var beforeCurrentUser: (suspend () -> Unit)? = null
     val consentCalls = mutableListOf<Boolean>()
     val consentOperationIds = mutableListOf<String>()
+    val lowBatteryCalls = mutableListOf<Pair<Boolean, Long>>()
 
     override suspend fun currentUser(): UserDto {
         currentUserCalls++
@@ -244,6 +260,22 @@ class FakeServerGateway(
         return user(this.ownerUserId, consent)
     }
 
+    override suspend fun setLowBatteryAlerts(
+        enabled: Boolean,
+        expectedVersion: Long,
+        ownerUserId: String,
+    ): UserDto {
+        if (ownerUserId != this.ownerUserId) throw java.io.IOException("owner mismatch")
+        lowBatteryCalls += enabled to expectedVersion
+        failLowBatteryWith?.let { throw it }
+        if (expectedVersion != lowBatteryAlertsVersion) {
+            throw ApiException("LOW_BATTERY_PREFERENCE_VERSION_CONFLICT", "version conflict", null, httpStatus = 409)
+        }
+        lowBatteryAlertsEnabled = enabled
+        lowBatteryAlertsVersion++
+        return user(this.ownerUserId, consent)
+    }
+
     override suspend fun hasCircle(): Boolean = hasCircle
 
     private fun user(owner: String, sharing: Boolean) = UserDto(
@@ -254,6 +286,8 @@ class FakeServerGateway(
         locationSharingEnabled = sharing,
         createdAt = "2026-10-26T00:00:00Z",
         locationSharingVersion = consentVersion,
+        lowBatteryAlertsEnabled = lowBatteryAlertsEnabled,
+        lowBatteryAlertsVersion = lowBatteryAlertsVersion,
     )
 }
 

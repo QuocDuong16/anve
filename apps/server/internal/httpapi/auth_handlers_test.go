@@ -312,6 +312,22 @@ func TestConsentAuditTrailOverHTTP(t *testing.T) {
 	assert.Contains(t, actions, audit.ActionDevSignIn)
 }
 
+func TestLowBatteryPreferenceCASAndAuditOverHTTP(t *testing.T) {
+	t.Parallel()
+	ts := newTestServer(t)
+	tokens := ts.signInDev(t, "bat-pref@example.com")
+
+	rec := ts.do(t, http.MethodPut, "/api/v1/me/low-battery-alerts", map[string]any{"enabled": true, "expectedVersion": 0}, tokens.AccessToken)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	rec = ts.do(t, http.MethodPut, "/api/v1/me/low-battery-alerts", map[string]any{"enabled": false, "expectedVersion": 0}, tokens.AccessToken)
+	require.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "LOW_BATTERY_PREFERENCE_VERSION_CONFLICT")
+
+	actions := ts.store.RecordedActions()
+	assert.Contains(t, actions, audit.ActionLowBatteryAlertsOn)
+}
+
 func TestConcurrentConsentWritesWithSameVersionHaveOneWinner(t *testing.T) {
 	t.Parallel()
 	ts := newTestServer(t)

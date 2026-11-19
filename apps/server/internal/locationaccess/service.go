@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/QuocDuong16/anve/server/internal/batteryalerts"
 )
 
 var (
@@ -34,15 +36,16 @@ type Grant struct {
 
 // VisibleLocation contains only the latest location fields authorized for a viewer.
 type VisibleLocation struct {
-	OwnerID     uuid.UUID  `json:"ownerId"`
-	DisplayName string     `json:"displayName"`
-	Latitude    *float64   `json:"latitude"`
-	Longitude   *float64   `json:"longitude"`
-	AccuracyM   *float64   `json:"horizontalAccuracyMeters"`
-	RecordedAt  *time.Time `json:"recordedAt"`
-	ReceivedAt  *time.Time `json:"receivedAt"`
-	AgeMillis   *int64     `json:"ageMillis"`
-	Confidence  string     `json:"confidence"`
+	OwnerID         uuid.UUID              `json:"ownerId"`
+	DisplayName     string                 `json:"displayName"`
+	Latitude        *float64               `json:"latitude"`
+	Longitude       *float64               `json:"longitude"`
+	AccuracyM       *float64               `json:"horizontalAccuracyMeters"`
+	RecordedAt      *time.Time             `json:"recordedAt"`
+	ReceivedAt      *time.Time             `json:"receivedAt"`
+	AgeMillis       *int64                 `json:"ageMillis"`
+	Confidence      string                 `json:"confidence"`
+	LowBatteryAlert *batteryalerts.Summary `json:"lowBatteryAlert,omitempty"`
 }
 
 // Store defines persistence operations that enforce location audience authorization.

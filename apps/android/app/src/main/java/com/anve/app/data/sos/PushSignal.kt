@@ -27,10 +27,12 @@ import com.anve.app.R
 import com.anve.app.data.api.AnveApi
 import com.anve.app.data.api.ApiException
 import com.anve.app.data.api.JourneyDto
+import com.anve.app.data.api.LowBatteryAlertDto
 import com.anve.app.data.api.PlaceEventDto
 import com.anve.app.data.api.ReceivedInvitationDto
 import com.anve.app.data.api.SosEventDto
 import com.anve.app.data.api.orThrow
+import com.anve.app.ui.map.findMatchingPlace
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -54,6 +56,7 @@ class PushEventRepository(
             "CIRCLE_INVITE" -> formatInvitation(api.receivedInvitation(owner, id).orThrow(), id)
             "SOS" -> formatSos(owner, api.getSos(owner, id).orThrow())
             "PLACE" -> formatPlace(api.placeEvent(owner, id).orThrow(), id)
+            "LOW_BATTERY" -> formatLowBattery(owner, api.batteryAlert(owner, id).orThrow(), id)
             else -> if (kind in JOURNEY_PUSH_KINDS) {
                 formatJourney(api.journey(owner, id).orThrow(), kind, id, episode)
             } else {
@@ -148,6 +151,33 @@ class PushEventRepository(
         }
         return PushSignalDetails(title = title, body = body, urgent = true)
     }
+
+    private suspend fun formatLowBattery(owner: String, alert: LowBatteryAlertDto, id: String): PushSignalDetails? {
+        if (alert.id != id || alert.resolvedAt != null) return null
+        val member = alert.ownerName.trim().ifBlank { "Thành viên" }
+        val isCritical = alert.threshold <= 5 || alert.batteryPercent <= 5
+        val placeMatch = alert.location?.let { loc ->
+            val places = runCatching { api.places(owner).orThrow().places }.getOrDefault(emptyList())
+            findMatchingPlace(loc.latitude, loc.longitude, places)
+        }
+        val locationText = when {
+            placeMatch != null && placeMatch.isInside -> " tại ${placeMatch.place.name}"
+            placeMatch != null -> " gần ${placeMatch.place.name}"
+            alert.location != null -> " (đã lưu tọa độ cuối)"
+            else -> ""
+        }
+        val title = if (isCritical) {
+            "Điện thoại của $member sắp hết pin (${alert.batteryPercent}%)"
+        } else {
+            "Điện thoại của $member còn ${alert.batteryPercent}% pin"
+        }
+        val body = if (isCritical) {
+            "Pin còn ${alert.batteryPercent}%$locationText — có thể sắp mất kết nối do hết pin."
+        } else {
+            "Pin còn ${alert.batteryPercent}%$locationText. Mở AnVề để xem vị trí và trạng thái chia sẻ."
+        }
+        return PushSignalDetails(title = title, body = body, urgent = isCritical)
+    }
 }
 
 fun authorizedJourneySignal(journey: JourneyDto, kind: String, id: String, episode: Int): Boolean {
@@ -187,7 +217,12 @@ object PushNotificationDisplay {
             ((hash[2].toInt() and 255) shl 8) or (hash[3].toInt() and 255)
 
         val invitation = kind == "CIRCLE_INVITE"
-        val channelId = if (invitation) "anve_invitations" else "anve_events"
+        val quietBattery = kind == "LOW_BATTERY" && !details.urgent
+        val channelId = when {
+            invitation -> "anve_invitations"
+            quietBattery -> "anve_battery_info"
+            else -> "anve_events"
+        }
         ensureChannel(appContext, channelId, invitation)
 
         val intent = Intent(appContext, MainActivity::class.java)
@@ -231,11 +266,18 @@ object PushNotificationDisplay {
 
     fun ensureChannel(context: Context, channelId: String, invitation: Boolean) {
         if (Build.VERSION.SDK_INT < 26) return
-        val channel = NotificationChannel(
-            channelId,
-            if (invitation) "Lời mời gia đình" else "Sự kiện gia đình",
-            if (invitation) NotificationManager.IMPORTANCE_DEFAULT else NotificationManager.IMPORTANCE_HIGH,
-        )
+        val quietBattery = channelId == "anve_battery_info"
+        val title = when {
+            invitation -> "Lời mời gia đình"
+            quietBattery -> "Thông báo pin gia đình"
+            else -> "Sự kiện gia đình"
+        }
+        val importance = if (invitation || quietBattery) {
+            NotificationManager.IMPORTANCE_DEFAULT
+        } else {
+            NotificationManager.IMPORTANCE_HIGH
+        }
+        val channel = NotificationChannel(channelId, title, importance)
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
     }
 }

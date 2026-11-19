@@ -219,6 +219,27 @@ func (s *Store) SetLocationSharingAtVersion(_ context.Context, userID uuid.UUID,
 	return *u, nil
 }
 
+// SetLowBatteryAlertsAtVersion flips low-battery alerts if version matches and audits the change.
+func (s *Store) SetLowBatteryAlertsAtVersion(_ context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (auth.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u, ok := s.users[userID]
+	if !ok {
+		return auth.User{}, auth.ErrNotFound
+	}
+	if u.LowBatteryAlertsVersion != expectedVersion {
+		return auth.User{}, auth.ErrLowBatteryPreferenceVersionConflict
+	}
+	u.LowBatteryAlertsEnabled = enabled
+	u.LowBatteryAlertsVersion++
+	action := audit.ActionLowBatteryAlertsOff
+	if enabled {
+		action = audit.ActionLowBatteryAlertsOn
+	}
+	s.auditTrail = append(s.auditTrail, audit.Event{ActorUserID: userID, Action: action})
+	return *u, nil
+}
+
 // DeleteUser removes the account and cascades devices/sessions.
 func (s *Store) DeleteUser(_ context.Context, userID uuid.UUID) error {
 	s.mu.Lock()

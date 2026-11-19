@@ -181,6 +181,8 @@ Quy tắc:
   dữ liệu cá nhân; app phải kiểm tra quyền và episode online trước hiển thị.
   Metadata suy ra tuân theo cùng retention, xóa history và capture generation.
 
+- **Cảnh báo pin yếu (ADR 0018):** Tùy chọn `low_battery_alerts_enabled` mặc định **TẮT**, thay đổi bằng CAS version và ghi một dòng audit trong cùng transaction. Chỉ thu nhận và phân phát khi consent chia sẻ vị trí đang bật và `TrackingService` đang chạy; thu hẹp về `journey_recipients` khi đang có Safe Journey `ACTIVE`. Pending khi mất mạng chỉ giữ trong RAM tối đa 15 phút (tự hủy khi sạc, hồi pin, dừng theo dõi hoặc đổi tài khoản); server từ chối bản ghi và hết hạn push quá 15 phút. Dữ liệu tuân theo retention tối đa 7 ngày (giới hạn bởi `location_retention_days` và watermark), trigger xóa toàn bộ nội dung khi xóa Location History (chỉ giữ UUID fence tới khi xóa tài khoản). Sạc hồi ≥ 20% gửi tín hiệu im lặng `resolve` để ẩn badge, không gửi push. FCM chỉ chứa `eventId` và `kind=LOW_BATTERY`; app người nhận khớp tọa độ hoàn toàn nội bộ với Địa điểm được phép xem, không tự gọi OS `Geocoder`.
+
 - Link mời là capability, không phải lệnh tự tham gia. API xem trước yêu
   cầu đăng nhập và đúng tài khoản; chỉ trả tên/ID nhóm, hạn mời. Xác nhận
   tham gia vẫn kiểm tra lại mã một lần và không bật chia sẻ. Không ghi mã
@@ -329,6 +331,7 @@ chỉ bảo vệ việc rà soát thay đổi, không thay thế các bằng ch�
 | Place Alerts | Máy chủ đánh giá các mẫu M3 sau khi đồng bộ; không có OS geofence wakeup và sự kiện có thể trễ hoặc bị bỏ lỡ. |
 | SOS | Không thay thế dịch vụ cấp cứu 113/115/114; ba mốc "đã gửi / push đã chấp nhận / người nhận đã xác nhận" không được gộp thành "đã cứu". |
 | Safe Journey | Không suy diễn mất GPS/ngừng di chuyển là tai nạn; cảnh báo dùng ngôn ngữ "hãy liên hệ". |
+| Cảnh báo pin yếu | Mang tính *best-effort* khi dịch vụ theo dõi đang chạy; pin chai sập nguồn đột ngột, mất mạng quá 15 phút hoặc OS/OEM dừng nền có thể làm cảnh báo không gửi được. |
 | GPS nói chung | Không cam kết GPS hoạt động 24/7 trong mọi điều kiện (trong nhà, Battery Saver, OEM restrictions). |
 
 Ngoài ra: tài liệu và UI **không** đưa ra tuyên bố rằng Google Play chắc chắn

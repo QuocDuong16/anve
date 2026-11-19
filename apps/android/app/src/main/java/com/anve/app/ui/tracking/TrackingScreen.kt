@@ -47,6 +47,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -360,6 +361,7 @@ fun TrackingScreen(
         onStartFlow = ::beginStart,
         onStop = viewModel::stop,
         onToggleConsent = ::toggleConsent,
+        onToggleLowBatteryAlerts = viewModel::setLowBatteryAlerts,
         onRetrySync = viewModel::retrySync,
         onRequestBackground = {
             val foregroundGranted = state.status.permission == LocationPermissionState.GRANTED_PRECISE ||
@@ -433,6 +435,7 @@ fun TrackingContent(
     onOpenDiagnostics: () -> Unit = {},
     onOpenJourney: () -> Unit = {},
     onOpenAudience: () -> Unit = {},
+    onToggleLowBatteryAlerts: (Boolean) -> Unit = {},
 ) {
     val status = state.status
     val colors = MaterialTheme.colorScheme
@@ -535,6 +538,14 @@ fun TrackingContent(
                     onToggleConsent = onToggleConsent,
                     onOpenAudience = onOpenAudience,
                     enabled = !state.busy,
+                )
+            }
+            item {
+                LowBatteryAlertsCard(
+                    status = status,
+                    busy = state.lowBatteryBusy,
+                    controlsEnabled = !state.busy,
+                    onToggle = onToggleLowBatteryAlerts,
                 )
             }
             item {
@@ -846,6 +857,106 @@ private fun TrackingControlCard(
                 )
                 Spacer(Modifier.size(8.dp))
                 Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LowBatteryAlertsCard(
+    status: TrackingStatus,
+    busy: Boolean,
+    controlsEnabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val stitch = LocalStitchColors.current
+    val switchEnabled = status.consentEnabled && status.sessionReady && controlsEnabled && !busy
+    val isActive = status.lowBatteryAlertsEnabled && status.consentEnabled
+    val badgeText = when {
+        busy -> stringResource(R.string.tracking_low_battery_updating)
+        status.lowBatteryAlertsEnabled -> stringResource(R.string.tracking_low_battery_on)
+        else -> stringResource(R.string.tracking_low_battery_off)
+    }
+    val badgeKind = when {
+        busy -> StitchBadgeKind.IN_TRANSIT
+        status.lowBatteryAlertsEnabled -> StitchBadgeKind.SAFE_HOME
+        else -> StitchBadgeKind.NEUTRAL
+    }
+
+    OutlinedCard(
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(
+            if (isActive) 1.5.dp else 1.dp,
+            if (isActive) colors.primary.copy(alpha = 0.55f) else stitch.hairline,
+        ),
+        colors = CardDefaults.outlinedCardColors(containerColor = stitch.cardTactile),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.tracking_low_battery_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics { heading() },
+                )
+                StitchSemanticBadge(
+                    text = badgeText,
+                    kind = badgeKind,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .toggleable(
+                        value = status.lowBatteryAlertsEnabled,
+                        enabled = switchEnabled,
+                        role = Role.Switch,
+                        onValueChange = onToggle,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.tracking_low_battery_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.tracking_low_battery_footnote),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = status.lowBatteryAlertsEnabled,
+                    onCheckedChange = null,
+                    enabled = switchEnabled,
+                )
+            }
+            if (!status.consentEnabled) {
+                Text(
+                    text = stringResource(R.string.tracking_low_battery_need_consent),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            if (busy) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         }
     }
@@ -1421,6 +1532,7 @@ private fun TrackingContentDarkPreview() {
                     lastAccuracyMeters = 10.0,
                     lastUploadAtMillis = System.currentTimeMillis(),
                     pendingQueueCount = 0,
+                    lowBatteryAlertsEnabled = true,
                 ),
             ),
             onStartFlow = {},

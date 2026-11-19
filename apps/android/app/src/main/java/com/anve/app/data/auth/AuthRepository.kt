@@ -8,6 +8,7 @@ import com.anve.app.data.api.DevLoginRequestDto
 import com.anve.app.data.api.DeviceListDto
 import com.anve.app.data.api.GoogleSignInRequestDto
 import com.anve.app.data.api.LocationSharingRequestDto
+import com.anve.app.data.api.LowBatteryAlertsRequestDto
 import com.anve.app.data.api.RefreshRequestDto
 import com.anve.app.data.api.SignInResponseDto
 import com.anve.app.data.api.UpdateMeRequestDto
@@ -736,6 +737,30 @@ class AuthRepository(
                 }
             }
         }
+        return user
+    }
+
+    suspend fun setLowBatteryAlerts(
+        enabled: Boolean,
+        expectedVersion: Long,
+        expectedOwnerUserId: String? = null,
+    ): UserDto {
+        val before = storage.current() ?: throw IOException("There is no active session")
+        val authenticatedOwner = before.userId ?: me().id
+        val owner = expectedOwnerUserId ?: authenticatedOwner
+        if (authenticatedOwner != owner) {
+            throw IOException("The authenticated account does not match the low-battery owner")
+        }
+        if (before.userId != null && before.userId != owner) {
+            throw IOException("The active account changed before the low-battery request")
+        }
+        if (before.userId == null) storage.setUserIdIfMatches(before.accessToken, owner)
+
+        val user = api.setLowBatteryAlerts(
+            body = LowBatteryAlertsRequestDto(enabled = enabled, expectedVersion = expectedVersion),
+            expectedOwner = owner,
+        ).orThrow()
+        if (user.id != owner) throw IOException("The low-battery response belongs to another account")
         return user
     }
 

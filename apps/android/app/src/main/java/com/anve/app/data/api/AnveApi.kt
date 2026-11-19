@@ -135,6 +135,12 @@ interface AnveApi {
         @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
     ): Response<UserDto>
 
+    @PUT("api/v1/me/low-battery-alerts")
+    suspend fun setLowBatteryAlerts(
+        @Body body: LowBatteryAlertsRequestDto,
+        @Header("X-Anve-Expected-Owner") expectedOwner: String? = null,
+    ): Response<UserDto>
+
     @PUT("api/v1/me/location-sharing")
     suspend fun setLocationSharingWithAuthorization(
         @Header("Authorization") authorization: String,
@@ -346,4 +352,21 @@ interface AnveApi {
         @Query("from") from: String?,
         @Query("to") to: String,
     ): Response<Unit>
+
+    @POST("api/v1/battery-alerts")
+    suspend fun createBatteryAlert(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+        @Body body: LowBatteryAlertCreateDto,
+    ): Response<LowBatteryAlertDto>
+
+    @POST("api/v1/battery-alerts/resolve")
+    suspend fun resolveBatteryAlerts(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+    ): Response<Unit>
+
+    @GET("api/v1/battery-alerts/{alertId}")
+    suspend fun batteryAlert(
+        @Header("X-Anve-Expected-Owner") expectedOwner: String,
+        @Path("alertId") alertId: String,
+    ): Response<LowBatteryAlertDto>
 }

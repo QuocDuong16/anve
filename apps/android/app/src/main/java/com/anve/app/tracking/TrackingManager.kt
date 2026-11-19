@@ -51,6 +51,15 @@ data class ConsentResult(
     val pendingOperationPersisted: Boolean = false,
 )
 
+/** Outcome of toggling opt-in low-battery alerts (15% and 5%). */
+data class LowBatteryPreferenceResult(
+    val enabled: Boolean,
+    val serverConfirmed: Boolean,
+    val message: String? = null,
+    val user: UserDto? = null,
+    val conflict: Boolean = false,
+)
+
 private data class ConsentOffPreparation(
     val session: StoredSession?,
     val ownerUserId: String?,
@@ -94,6 +103,8 @@ interface TrackingControl : ConsentController {
     fun stopTracking()
     fun retrySync()
     fun refreshStatus()
+    suspend fun setLowBatteryAlerts(enabled: Boolean): LowBatteryPreferenceResult =
+        LowBatteryPreferenceResult(enabled = status.value.lowBatteryAlertsEnabled, serverConfirmed = false)
 }
 
 /**
@@ -169,6 +180,7 @@ class TrackingManager(
     @Volatile private var delayedBatchPending = false
     private var lastMetricsTickElapsed = elapsedNow()
     private var serviceStartedAtElapsed: Long? = null
+    @Volatile private var lastAcceptedFix: LocationFix? = null
 
     override fun journeyAdmissionRevision(): Long = journeyLease.revision
 
@@ -282,6 +294,7 @@ class TrackingManager(
         if (owner != null) {
             initialRecoveryEvaluatedForOwner = owner
         }
+        val lowBatteryMatches = owner != null && local.lowBatteryOwnerUserId == owner
         _status.update { current ->
             val markRecovery = shouldFlagInitialRecovery && !current.running && !starting
             val hasConflict = pendingConsent?.hasConsentConflict == true
@@ -302,6 +315,8 @@ class TrackingManager(
                 consentConflict = hasConflict,
                 conflictServerConsent = pendingConsent?.conflictServerEnabled,
                 trackingRequested = ownerMatches && local.trackingRequested,
+                lowBatteryAlertsEnabled = if (lowBatteryMatches) local.lowBatteryAlertsEnabled else false,
+                lowBatteryAlertsVersion = if (lowBatteryMatches) local.lowBatteryAlertsVersion else 0L,
                 lastUploadAtMillis = if (ownerMatches) local.lastSuccessfulUploadAtMillis else null,
                 privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf(
                     "LOCATION_CAPTURE_GENERATION_EXPIRED",
@@ -327,6 +342,7 @@ class TrackingManager(
                     if (session == null) {
                         captureGenerations.clear()
                         sessionGeneration++
+                        lastAcceptedFix = null
                         migrateLegacyRevocation(lastSession)
                         sessionOwner = null
                         lastSession = null
@@ -354,6 +370,8 @@ class TrackingManager(
                                 serverConsentEnabled = null,
                                 locationAdmissionOpen = false,
                                 pendingQueueCount = 0,
+                                lowBatteryAlertsEnabled = false,
+                                lowBatteryAlertsVersion = 0L,
                             )
                         }
                         return@collectLatest
@@ -367,6 +385,7 @@ class TrackingManager(
                             delayedBatchPending = false
                             captureGenerations.clear()
                             sessionGeneration++
+                            lastAcceptedFix = null
                             if (previousOwner != null) {
                                 initialRecoveryEvaluatedForOwner = null
                                 _status.update {
@@ -387,6 +406,8 @@ class TrackingManager(
                                         consentConflict = false,
                                         conflictServerConsent = null,
                                         trackingRequested = false,
+                                        lowBatteryAlertsEnabled = false,
+                                        lowBatteryAlertsVersion = 0L,
                                         running = false,
                                         providerActive = false,
                                         serviceRunning = false,
@@ -613,6 +634,7 @@ class TrackingManager(
         val ownerHint = sessionOwner ?: lastSession?.userId
         consentMutations.closeLocationAdmission(ownerHint)
         captureGenerations.clear()
+        lastAcceptedFix = null
         val serviceStopFailure = stopInternal(clearIntent = true, clearRecovery = true, persistIntent = false)
         _status.update {
             it.copy(
@@ -867,7 +889,106 @@ class TrackingManager(
     }
 
     override suspend fun recordServerConsent(user: UserDto) {
+        recordServerPreferences(user.id, user.lowBatteryAlertsEnabled, user.lowBatteryAlertsVersion)
         recordServerConsentSnapshot(user.id, user.locationSharingEnabled, user.locationSharingVersion)
+    }
+
+    override suspend fun setLowBatteryAlerts(enabled: Boolean): LowBatteryPreferenceResult {
+        initialSessionObserved.await()
+        val session = sessions.current()
+        val owner = session?.userId ?: sessionOwner
+        if (session == null || owner == null) {
+            return LowBatteryPreferenceResult(
+                enabled = _status.value.lowBatteryAlertsEnabled,
+                serverConfirmed = false,
+                message = "Đăng nhập lại để thay đổi cảnh báo pin yếu.",
+            )
+        }
+        val local = runCatching { store.current() }.getOrNull()
+        val statusSnapshot = _status.value
+        val expectedVersion = maxOf(
+            if (statusSnapshot.ownerUserId == owner) statusSnapshot.lowBatteryAlertsVersion else 0L,
+            if (local?.lowBatteryOwnerUserId == owner) local.lowBatteryAlertsVersion else 0L,
+        )
+        return try {
+            val updated = server.setLowBatteryAlerts(
+                enabled = enabled,
+                expectedVersion = expectedVersion,
+                ownerUserId = owner,
+            )
+            val currentSessionOwner = sessions.current()?.userId
+            if (updated.id != owner || (currentSessionOwner != null && currentSessionOwner != owner)) {
+                return LowBatteryPreferenceResult(
+                    enabled = _status.value.lowBatteryAlertsEnabled,
+                    serverConfirmed = false,
+                    message = "Tài khoản đã thay đổi. Vui lòng thử lại.",
+                )
+            }
+            recordServerPreferences(updated.id, updated.lowBatteryAlertsEnabled, updated.lowBatteryAlertsVersion)
+            LowBatteryPreferenceResult(
+                enabled = updated.lowBatteryAlertsEnabled,
+                serverConfirmed = true,
+                user = updated,
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: ApiException) {
+            if (error.httpStatus == 409 || error.code == "LOW_BATTERY_PREFERENCE_VERSION_CONFLICT") {
+                val refreshed = runCatching { server.currentUser() }.getOrNull()
+                if (refreshed != null && refreshed.id == owner) {
+                    recordServerPreferences(
+                        refreshed.id,
+                        refreshed.lowBatteryAlertsEnabled,
+                        refreshed.lowBatteryAlertsVersion,
+                    )
+                    return LowBatteryPreferenceResult(
+                        enabled = refreshed.lowBatteryAlertsEnabled,
+                        serverConfirmed = false,
+                        user = refreshed,
+                        conflict = true,
+                        message = "Trạng thái cảnh báo pin yếu vừa được cập nhật từ thiết bị khác. Vui lòng kiểm tra và thử lại.",
+                    )
+                }
+                return LowBatteryPreferenceResult(
+                    enabled = _status.value.lowBatteryAlertsEnabled,
+                    serverConfirmed = false,
+                    conflict = true,
+                    message = "Trạng thái cảnh báo pin yếu trên máy chủ đã thay đổi. Hãy làm mới và thử lại.",
+                )
+            }
+            LowBatteryPreferenceResult(
+                enabled = _status.value.lowBatteryAlertsEnabled,
+                serverConfirmed = false,
+                message = error.message,
+            )
+        } catch (_: IOException) {
+            LowBatteryPreferenceResult(
+                enabled = _status.value.lowBatteryAlertsEnabled,
+                serverConfirmed = false,
+                message = "Không thể kết nối máy chủ để cập nhật cảnh báo pin yếu.",
+            )
+        }
+    }
+
+    private suspend fun recordServerPreferences(
+        ownerUserId: String,
+        lowBatteryEnabled: Boolean,
+        lowBatteryVersion: Long,
+    ) {
+        val session = sessions.current() ?: return
+        val owner = session.userId ?: sessionOwner ?: ownerUserId
+        if (owner != ownerUserId) return
+        val local = store.current()
+        val versionFloor = if (local.lowBatteryOwnerUserId == owner) local.lowBatteryAlertsVersion else -1L
+        if (lowBatteryVersion < versionFloor) return
+        store.setLowBatteryAlerts(owner, lowBatteryEnabled, lowBatteryVersion)
+        _status.update { current ->
+            if (current.ownerUserId != null && current.ownerUserId != owner) return@update current
+            current.copy(
+                lowBatteryAlertsEnabled = lowBatteryEnabled,
+                lowBatteryAlertsVersion = lowBatteryVersion,
+            )
+        }
     }
 
     private suspend fun recordServerConsentSnapshot(ownerUserId: String, enabled: Boolean, version: Long?) {
@@ -1546,6 +1667,10 @@ class TrackingManager(
                     consentSyncPending = pendingRevocation || pendingOperation != null,
                     consentConflict = pendingOperation?.hasConsentConflict == true,
                     conflictServerConsent = pendingOperation?.conflictServerEnabled,
+                    lowBatteryAlertsEnabled = remote?.lowBatteryAlertsEnabled
+                        ?: if (owner != null && local.lowBatteryOwnerUserId == owner) local.lowBatteryAlertsEnabled else false,
+                    lowBatteryAlertsVersion = remote?.lowBatteryAlertsVersion
+                        ?: if (owner != null && local.lowBatteryOwnerUserId == owner) local.lowBatteryAlertsVersion else 0L,
                 )
             }
         }
@@ -1588,6 +1713,7 @@ class TrackingManager(
         if (ownerUserId.isBlank()) return
         scope.launch {
             if (sessionOwner != ownerUserId) return@launch
+            lastAcceptedFix = null
             policy.reset()
             policy.setJourney(journeyLease.active(sessionOwner) && _status.value.activelyTracking)
             _status.update { it.copy(motion = policy.motion) }
@@ -1777,6 +1903,7 @@ class TrackingManager(
             return
         }
         if (queuedCount != null) {
+            lastAcceptedFix = fix
             _status.update {
                 it.copy(
                     lastFixAtMillis = fix.recordedAtMillis,
@@ -2045,7 +2172,25 @@ class TrackingManager(
         return serviceStopFailure
     }
 
+    fun latestAcceptedFix(): LocationFix? = lastAcceptedFix
+
+    fun submitExternalFreshFix(ownerUserId: String, fix: LocationFix) {
+        if (ownerUserId.isBlank() || fix.isMock) return
+        val generation = sessionGeneration
+        scope.launch {
+            val current = _status.value
+            if (generation == sessionGeneration &&
+                ownerUserId == sessionOwner &&
+                current.ownerUserId == ownerUserId &&
+                current.activelyTracking
+            ) {
+                handleFix(fix, ownerUserId, generation)
+            }
+        }
+    }
+
     private fun stopAcquisition() {
+        lastAcceptedFix = null
         journeyLease.clear()
         journeyConfirmationJob?.cancel()
         journeyConfirmationJob = null

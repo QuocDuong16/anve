@@ -54,6 +54,8 @@ data class UserDto(
     @Json(name = "locationSharingEnabled") val locationSharingEnabled: Boolean,
     @Json(name = "createdAt") val createdAt: String,
     @Json(name = "locationSharingVersion") val locationSharingVersion: Long = 0,
+    @Json(name = "lowBatteryAlertsEnabled") val lowBatteryAlertsEnabled: Boolean = false,
+    @Json(name = "lowBatteryAlertsVersion") val lowBatteryAlertsVersion: Long = 0,
 )
 
 @JsonClass(generateAdapter = false)
@@ -107,6 +109,12 @@ data class UpdateMeRequestDto(
 
 @JsonClass(generateAdapter = false)
 data class LocationSharingRequestDto(
+    @Json(name = "enabled") val enabled: Boolean,
+    @Json(name = "expectedVersion") val expectedVersion: Long,
+)
+
+@JsonClass(generateAdapter = false)
+data class LowBatteryAlertsRequestDto(
     @Json(name = "enabled") val enabled: Boolean,
     @Json(name = "expectedVersion") val expectedVersion: Long,
 )
@@ -347,6 +355,52 @@ data class LatestVisibleLocationsDto(
 )
 
 @JsonClass(generateAdapter = false)
+data class LowBatteryLocationDto(
+    @Json(name = "latitude") val latitude: Double,
+    @Json(name = "longitude") val longitude: Double,
+    @Json(name = "horizontalAccuracyMeters") val horizontalAccuracyMeters: Double,
+    @Json(name = "recordedAt") val recordedAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class LowBatteryAlertCreateDto(
+    @Json(name = "eventId") val eventId: String,
+    @Json(name = "threshold") val threshold: Int,
+    @Json(name = "batteryPercent") val batteryPercent: Int,
+    @Json(name = "recordedAt") val recordedAt: String,
+    @Json(name = "location") val location: LowBatteryLocationDto? = null,
+)
+
+@JsonClass(generateAdapter = false)
+data class LowBatteryAlertSummaryDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "threshold") val threshold: Int,
+    @Json(name = "batteryPercent") val batteryPercent: Int,
+    @Json(name = "recordedAt") val recordedAt: String,
+    @Json(name = "latitude") val latitude: Double? = null,
+    @Json(name = "longitude") val longitude: Double? = null,
+    @Json(name = "horizontalAccuracyMeters") val horizontalAccuracyMeters: Double? = null,
+    @Json(name = "locationRecordedAt") val locationRecordedAt: String? = null,
+    @Json(name = "journeyId") val journeyId: String? = null,
+)
+
+@JsonClass(generateAdapter = false)
+data class LowBatteryAlertDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "ownerId") val ownerId: String,
+    @Json(name = "ownerName") val ownerName: String,
+    @Json(name = "scope") val scope: String,
+    @Json(name = "journeyId") val journeyId: String? = null,
+    @Json(name = "threshold") val threshold: Int,
+    @Json(name = "batteryPercent") val batteryPercent: Int,
+    @Json(name = "recordedAt") val recordedAt: String,
+    @Json(name = "receivedAt") val receivedAt: String,
+    @Json(name = "resolvedAt") val resolvedAt: String? = null,
+    @Json(name = "recipientCount") val recipientCount: Int,
+    @Json(name = "location") val location: LowBatteryLocationDto? = null,
+)
+
+@JsonClass(generateAdapter = false)
 data class VisibleLocationDto(
     @Json(name = "ownerId") val ownerId: String,
     @Json(name = "displayName") val displayName: String,
@@ -357,6 +411,7 @@ data class VisibleLocationDto(
     @Json(name = "receivedAt") val receivedAt: String?,
     @Json(name = "ageMillis") val ageMillis: Long? = null,
     @Json(name = "confidence") val confidence: String,
+    @Json(name = "lowBatteryAlert") val lowBatteryAlert: LowBatteryAlertSummaryDto? = null,
 )
 
 // ── Circles (M2) ─────────────────────────────────────────────────────────────

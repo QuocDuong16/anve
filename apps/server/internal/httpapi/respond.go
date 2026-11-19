@@ -9,6 +9,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/avatars"
+	"github.com/QuocDuong16/anve/server/internal/batteryalerts"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
 	"github.com/QuocDuong16/anve/server/internal/locationaccess"
@@ -107,6 +108,33 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, auth.ErrConsentVersionConflict):
 		body.Code, body.Message = errCodeConsentVersionConflict, "The consent state changed; read it again before retrying."
 		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, auth.ErrLowBatteryPreferenceVersionConflict):
+		body.Code, body.Message = "LOW_BATTERY_PREFERENCE_VERSION_CONFLICT", "The low-battery alert preference changed; read it again before retrying."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, batteryalerts.ErrInvalid):
+		body.Code, body.Message = "BATTERY_ALERT_INVALID", "Invalid low-battery alert payload."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, batteryalerts.ErrTooOld):
+		body.Code, body.Message = "BATTERY_ALERT_TOO_OLD", "The low-battery alert is outside the freshness window."
+		writeJSON(w, http.StatusBadRequest, body)
+	case errors.Is(err, batteryalerts.ErrNotFound):
+		body.Code, body.Message = "BATTERY_ALERT_UNAVAILABLE", "The low-battery alert is unavailable."
+		writeJSON(w, http.StatusNotFound, body)
+	case errors.Is(err, batteryalerts.ErrConflict):
+		body.Code, body.Message = "BATTERY_ALERT_CONFLICT", "The low-battery alert ID conflicts with an existing request."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, batteryalerts.ErrPreferenceDisabled):
+		body.Code, body.Message = "LOW_BATTERY_ALERTS_DISABLED", "Low-battery alerts are disabled for this account."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, batteryalerts.ErrConsentRequired):
+		body.Code, body.Message = "LOCATION_CONSENT_REQUIRED", "Location sharing is disabled for this account."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, batteryalerts.ErrCircleRequired):
+		body.Code, body.Message = "LOCATION_CIRCLE_REQUIRED", "The account has no active Family Circle."
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, batteryalerts.ErrCooldown):
+		body.Code, body.Message = "LOW_BATTERY_ALERT_COOLDOWN", "A recent low-battery alert for this threshold is still in cooldown."
+		writeJSON(w, http.StatusTooManyRequests, body)
 	case errors.Is(err, circles.ErrForbidden):
 		body.Code, body.Message = "FORBIDDEN", "This action requires the circle owner role."
 		writeJSON(w, http.StatusForbidden, body)

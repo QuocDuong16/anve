@@ -62,13 +62,15 @@ type locationSharingRequest struct {
 }
 
 type userResponse struct {
-	ID                     string  `json:"id"`
-	Email                  string  `json:"email"`
-	DisplayName            string  `json:"displayName"`
-	AvatarURL              *string `json:"avatarUrl,omitempty"`
-	LocationSharingEnabled bool    `json:"locationSharingEnabled"`
-	LocationSharingVersion int64   `json:"locationSharingVersion"`
-	CreatedAt              string  `json:"createdAt"`
+	ID                      string  `json:"id"`
+	Email                   string  `json:"email"`
+	DisplayName             string  `json:"displayName"`
+	AvatarURL               *string `json:"avatarUrl,omitempty"`
+	LocationSharingEnabled  bool    `json:"locationSharingEnabled"`
+	LocationSharingVersion  int64   `json:"locationSharingVersion"`
+	LowBatteryAlertsEnabled bool    `json:"lowBatteryAlertsEnabled"`
+	LowBatteryAlertsVersion int64   `json:"lowBatteryAlertsVersion"`
+	CreatedAt               string  `json:"createdAt"`
 }
 
 type sessionTokensResponse struct {
@@ -116,13 +118,15 @@ type deviceListResponse struct {
 
 func toUserResponse(u auth.User) userResponse {
 	return userResponse{
-		ID:                     u.ID.String(),
-		Email:                  u.Email,
-		DisplayName:            u.DisplayName,
-		AvatarURL:              u.AvatarURL,
-		LocationSharingEnabled: u.LocationSharingEnabled,
-		LocationSharingVersion: u.LocationSharingVersion,
-		CreatedAt:              u.CreatedAt.UTC().Format(timeFormat),
+		ID:                      u.ID.String(),
+		Email:                   u.Email,
+		DisplayName:             u.DisplayName,
+		AvatarURL:               u.AvatarURL,
+		LocationSharingEnabled:  u.LocationSharingEnabled,
+		LocationSharingVersion:  u.LocationSharingVersion,
+		LowBatteryAlertsEnabled: u.LowBatteryAlertsEnabled,
+		LowBatteryAlertsVersion: u.LowBatteryAlertsVersion,
+		CreatedAt:               u.CreatedAt.UTC().Format(timeFormat),
 	}
 }
 
@@ -277,6 +281,30 @@ func setLocationSharingHandler(svc *auth.Service) http.HandlerFunc {
 			writeError(w, r, err)
 			return
 		}
+		writeJSON(w, http.StatusOK, toUserResponse(user))
+	}
+}
+
+func setLowBatteryAlertsHandler(svc *auth.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ac, _ := AuthFromContext(r.Context())
+		if r.Header.Get("X-Anve-Expected-Owner") != "" && !matchesExpectedOwner(w, r, ac.User.ID) {
+			return
+		}
+		var body locationSharingRequest
+		if !decodeAuthBody(w, r, &body) {
+			return
+		}
+		if body.Enabled == nil || body.ExpectedVersion == nil || *body.ExpectedVersion < 0 {
+			writeValidationError(w, r, "enabled and a non-negative expectedVersion are required.")
+			return
+		}
+		user, err := svc.SetLowBatteryAlertsAtVersion(r.Context(), ac.User.ID, *body.Enabled, *body.ExpectedVersion)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store, private")
 		writeJSON(w, http.StatusOK, toUserResponse(user))
 	}
 }

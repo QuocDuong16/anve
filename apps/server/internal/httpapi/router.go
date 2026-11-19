@@ -13,6 +13,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/avatars"
+	"github.com/QuocDuong16/anve/server/internal/batteryalerts"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/contacts"
 	"github.com/QuocDuong16/anve/server/internal/journeys"
@@ -58,6 +59,7 @@ type Deps struct {
 	Places                        *places.Store
 	SOS                           *sos.Store
 	Journeys                      *journeys.Store
+	BatteryAlerts                 *batteryalerts.Store
 	Contacts                      *contacts.Service
 	PushConfigured                bool
 	AndroidAssetLinksPackage      string
@@ -189,6 +191,12 @@ func NewRouter(deps Deps) chi.Router {
 				private.With(RateLimit(limiter)).Post("/journeys/{journeyId}/{action}", journeyDetail(deps.Journeys))
 				private.With(RateLimit(limiter)).Delete("/journeys/{journeyId}/recipients/{recipientId}", journeyDetail(deps.Journeys))
 			}
+			if deps.BatteryAlerts != nil {
+				limiter := newRateLimiter(locationRateLimitPerMinute, locationRateLimitBurst)
+				private.With(RateLimit(limiter)).Post("/battery-alerts", createBatteryAlertHandler(deps.BatteryAlerts))
+				private.With(RateLimit(limiter)).Post("/battery-alerts/resolve", resolveBatteryAlertsHandler(deps.BatteryAlerts))
+				private.Get("/battery-alerts/{alertId}", getBatteryAlertHandler(deps.BatteryAlerts))
+			}
 			if deps.SOS != nil {
 				limiter := newRateLimiter(authRateLimitPerMinute, authRateLimitBurst)
 				private.Get("/notifications/status", func(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +224,7 @@ func NewRouter(deps Deps) chi.Router {
 				me.Patch("/", updateMeHandler(svc))
 				me.Delete("/", deleteMeHandler(svc))
 				me.Put("/location-sharing", setLocationSharingHandler(svc))
+				me.Put("/low-battery-alerts", setLowBatteryAlertsHandler(svc))
 			})
 
 			private.Route("/devices", func(devices chi.Router) {

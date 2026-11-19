@@ -41,6 +41,9 @@ data class LocalTrackingState(
     val lastSyncErrorCode: String? = null,
     val lastTrackedPackageUpdateTime: Long? = null,
     val pendingUpdateRecovery: Boolean = false,
+    val lowBatteryOwnerUserId: String? = null,
+    val lowBatteryAlertsEnabled: Boolean = false,
+    val lowBatteryAlertsVersion: Long = 0,
 )
 
 interface TrackingStore {
@@ -54,6 +57,7 @@ interface TrackingStore {
     suspend fun setLastSyncError(code: String?)
     suspend fun setLastTrackedPackageUpdateTime(updatedAtMillis: Long?)
     suspend fun setPendingUpdateRecovery(pending: Boolean)
+    suspend fun setLowBatteryAlerts(ownerUserId: String?, enabled: Boolean, version: Long) {}
 }
 
 private val Context.trackingDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -79,6 +83,9 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
             lastSyncErrorCode = prefs[KEY_LAST_SYNC_ERROR],
             lastTrackedPackageUpdateTime = prefs[KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME],
             pendingUpdateRecovery = prefs[KEY_PENDING_UPDATE_RECOVERY] ?: false,
+            lowBatteryOwnerUserId = prefs[KEY_LOW_BATTERY_OWNER],
+            lowBatteryAlertsEnabled = prefs[KEY_LOW_BATTERY_ALERTS_ENABLED] ?: false,
+            lowBatteryAlertsVersion = prefs[KEY_LOW_BATTERY_ALERTS_VERSION] ?: 0L,
         )
     }
 
@@ -111,6 +118,11 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
                 prefs.remove(KEY_LAST_UPLOAD_AT)
                 prefs.remove(KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME)
                 prefs.remove(KEY_PENDING_UPDATE_RECOVERY)
+            }
+            if (ownerUserId == null || prefs[KEY_LOW_BATTERY_OWNER] != ownerUserId) {
+                prefs.remove(KEY_LOW_BATTERY_OWNER)
+                prefs.remove(KEY_LOW_BATTERY_ALERTS_ENABLED)
+                prefs.remove(KEY_LOW_BATTERY_ALERTS_VERSION)
             }
             if (ownerUserId == null) {
                 prefs.remove(KEY_CONSENT_OWNER)
@@ -149,6 +161,20 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
         dataStore.edit { it[KEY_PENDING_UPDATE_RECOVERY] = pending }
     }
 
+    override suspend fun setLowBatteryAlerts(ownerUserId: String?, enabled: Boolean, version: Long) {
+        dataStore.edit { prefs ->
+            if (ownerUserId == null) {
+                prefs.remove(KEY_LOW_BATTERY_OWNER)
+                prefs.remove(KEY_LOW_BATTERY_ALERTS_ENABLED)
+                prefs.remove(KEY_LOW_BATTERY_ALERTS_VERSION)
+            } else {
+                prefs[KEY_LOW_BATTERY_OWNER] = ownerUserId
+                prefs[KEY_LOW_BATTERY_ALERTS_ENABLED] = enabled
+                prefs[KEY_LOW_BATTERY_ALERTS_VERSION] = version
+            }
+        }
+    }
+
     private companion object {
         val KEY_TRACKING_REQUESTED = booleanPreferencesKey("tracking_requested")
         val KEY_PENDING_CONSENT_REVOCATION = booleanPreferencesKey("pending_consent_revocation")
@@ -158,5 +184,8 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
         val KEY_LAST_SYNC_ERROR = stringPreferencesKey("last_sync_error")
         val KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME = longPreferencesKey("last_tracked_package_update_time")
         val KEY_PENDING_UPDATE_RECOVERY = booleanPreferencesKey("pending_update_recovery")
+        val KEY_LOW_BATTERY_OWNER = stringPreferencesKey("low_battery_owner_user_id")
+        val KEY_LOW_BATTERY_ALERTS_ENABLED = booleanPreferencesKey("low_battery_alerts_enabled")
+        val KEY_LOW_BATTERY_ALERTS_VERSION = longPreferencesKey("low_battery_alerts_version")
     }
 }

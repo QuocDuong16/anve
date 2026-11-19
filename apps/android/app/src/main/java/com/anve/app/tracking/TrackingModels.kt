@@ -132,6 +132,8 @@ data class TrackingStatus(
     val lastError: TrackingProblem? = null,
     val lastErrorAtMillis: Long? = null,
     val recoveryRequired: Boolean = false,
+    val lowBatteryAlertsEnabled: Boolean = false,
+    val lowBatteryAlertsVersion: Long = 0,
 ) {
     /** True only when the OS is actually delivering fixes, not on request. */
     val activelyTracking: Boolean

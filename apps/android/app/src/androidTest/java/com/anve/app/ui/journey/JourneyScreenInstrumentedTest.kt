@@ -26,6 +26,7 @@ import com.anve.app.data.api.JourneyDestinationDto
 import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.JourneyProgressDto
 import com.anve.app.data.api.JourneyRecipientDto
+import com.anve.app.data.api.LowBatteryAlertSummaryDto
 import com.anve.app.data.api.PlaceDto
 import com.anve.app.data.journey.JourneyAction
 import com.anve.app.data.journey.JourneyOperation
@@ -214,6 +215,34 @@ class JourneyScreenInstrumentedTest {
         compose.onNode(hasText("Đã đến nơi") and hasClickAction()).assertIsNotEnabled()
         compose.onNode(hasText("Kết thúc hành trình") and hasClickAction()).assertIsEnabled()
         capture("expiry-awaiting-server")
+    }
+
+    @Test fun lowBatteryBannerDisplaysCalmContextAndHidesWhenAbsent() {
+        val alert = LowBatteryAlertSummaryDto(
+            id = "alert-5",
+            threshold = 5,
+            batteryPercent = 5,
+            recordedAt = now.minusSeconds(30).toString(),
+            latitude = 21.0,
+            longitude = 105.0,
+            journeyId = journey.id,
+        )
+        val place = PlaceDto("school", "owner", "circle", "Trường học", 21.0, 105.0, 150.0, now.toString(), now.toString(), sharedWithCircle = true)
+        val showAlert = mutableStateOf(true)
+        compose.setContent {
+            AnVeTheme {
+                JourneyContent(
+                    state = state.copy(
+                        places = listOf(place),
+                        journeys = listOf(journey.copy(lowBatteryAlert = if (showAlert.value) alert else null)),
+                    ),
+                    tracking = tracking.copy(online = true),
+                )
+            }
+        }
+        compose.onNode(hasText("Tại Trường học — có thể sắp mất kết nối do hết pin.")).assertIsDisplayed()
+        compose.runOnIdle { showAlert.value = false }
+        compose.onNode(hasText("Tại Trường học — có thể sắp mất kết nối do hết pin.")).assertDoesNotExist()
     }
 
     private fun formState() = JourneyUiState(owner = "owner", loading = false, consentEnabled = true,

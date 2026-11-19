@@ -11,15 +11,17 @@ import (
 
 // User is an AnVề account.
 type User struct {
-	ID                     uuid.UUID
-	GoogleSub              *string
-	Email                  string
-	DisplayName            string
-	AvatarURL              *string
-	LocationSharingEnabled bool
-	LocationSharingVersion int64
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	ID                      uuid.UUID
+	GoogleSub               *string
+	Email                   string
+	DisplayName             string
+	AvatarURL               *string
+	LocationSharingEnabled  bool
+	LocationSharingVersion  int64
+	LowBatteryAlertsEnabled bool
+	LowBatteryAlertsVersion int64
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 // Device is one registered device of an account.

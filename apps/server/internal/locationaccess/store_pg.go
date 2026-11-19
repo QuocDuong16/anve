@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/QuocDuong16/anve/server/internal/audit"
+	"github.com/QuocDuong16/anve/server/internal/batteryalerts"
 )
 
 // PGStore implements location audience persistence with PostgreSQL transactions.
@@ -241,7 +242,9 @@ func (s *PGStore) Latest(ctx context.Context, viewerID uuid.UUID, now, retention
 	rows, err := s.pool.Query(ctx,
 		`SELECT DISTINCT ON (g.owner_user_id)
 		        g.owner_user_id, g.display_name, p.latitude, p.longitude,
-		        p.horizontal_accuracy_m, p.recorded_at, p.received_at
+		        p.horizontal_accuracy_m, p.recorded_at, p.received_at,
+		        ba.id, ba.threshold, ba.battery_percent, ba.recorded_at,
+		        ba.latitude, ba.longitude, ba.horizontal_accuracy_m, ba.location_recorded_at, ba.journey_id
 		   FROM active_location_audience g
 		   LEFT JOIN LATERAL (
 		       SELECT lp.latitude, lp.longitude, lp.horizontal_accuracy_m, lp.recorded_at, lp.received_at
@@ -255,6 +258,39 @@ func (s *PGStore) Latest(ctx context.Context, viewerID uuid.UUID, now, retention
 		        ORDER BY lp.recorded_at DESC, lp.received_at DESC
 		        LIMIT 1
 		   ) p ON TRUE
+		   LEFT JOIN LATERAL (
+		       SELECT a.id, a.threshold, a.battery_percent, a.recorded_at,
+		              a.latitude, a.longitude, a.horizontal_accuracy_m, a.location_recorded_at, a.journey_id
+		         FROM low_battery_alerts a
+		         JOIN low_battery_alert_recipients ar
+		           ON ar.alert_id = a.id
+		          AND ar.recipient_user_id = $1
+		          AND ar.grant_id = g.id
+		        WHERE a.owner_user_id = g.owner_user_id
+		          AND a.sharing_epoch_id = g.sharing_epoch_id
+		          AND a.resolved_at IS NULL
+		          AND a.recorded_at >= $2::timestamptz - interval '12 hours'
+		          AND a.recorded_at >= g.visible_from
+		          AND a.capture_generation >= g.capture_generation
+		          AND a.recorded_at >= $3
+		          AND a.recorded_at >= COALESCE((SELECT cutoff FROM location_retention_watermark WHERE singleton), '-infinity'::timestamptz)
+		          AND a.recorded_at >= $2::timestamptz - LEAST(7, g.location_retention_days) * interval '1 day'
+		          AND (
+		              a.scope = 'SHARING'
+		              OR (
+		                  a.scope = 'JOURNEY'
+		                  AND a.journey_id IS NOT NULL
+		                  AND EXISTS (
+		                      SELECT 1 FROM authorized_journey_recipients jr
+		                       WHERE jr.journey_id = a.journey_id
+		                         AND jr.user_id = $1
+		                         AND jr.grant_id = ar.grant_id
+		                  )
+		              )
+		          )
+		        ORDER BY a.recorded_at DESC, a.received_at DESC
+		        LIMIT 1
+		   ) ba ON TRUE
 		  WHERE g.viewer_user_id = $1
 		    AND g.visible_from <= $2 AND (g.visible_until IS NULL OR g.visible_until > $2)
 		    AND EXISTS (SELECT 1 FROM users v WHERE v.id = $1)
@@ -268,7 +304,15 @@ func (s *PGStore) Latest(ctx context.Context, viewerID uuid.UUID, now, retention
 		var item VisibleLocation
 		var latitude, longitude, accuracy pgtype.Float8
 		var recordedAt, receivedAt pgtype.Timestamptz
-		if err := rows.Scan(&item.OwnerID, &item.DisplayName, &latitude, &longitude, &accuracy, &recordedAt, &receivedAt); err != nil {
+		var alertID, alertJourneyID pgtype.UUID
+		var alertThreshold, alertBattery pgtype.Int4
+		var alertRecordedAt, alertLocRecordedAt pgtype.Timestamptz
+		var alertLat, alertLon, alertAcc pgtype.Float8
+		if err := rows.Scan(
+			&item.OwnerID, &item.DisplayName, &latitude, &longitude, &accuracy, &recordedAt, &receivedAt,
+			&alertID, &alertThreshold, &alertBattery, &alertRecordedAt,
+			&alertLat, &alertLon, &alertAcc, &alertLocRecordedAt, &alertJourneyID,
+		); err != nil {
 			return nil, fmt.Errorf("scan authorized latest location: %w", err)
 		}
 		if latitude.Valid {
@@ -279,6 +323,29 @@ func (s *PGStore) Latest(ctx context.Context, viewerID uuid.UUID, now, retention
 			received := receivedAt.Time.UTC()
 			item.RecordedAt = &recorded
 			item.ReceivedAt = &received
+		}
+		if alertID.Valid {
+			summary := &batteryalerts.Summary{
+				ID:             uuid.UUID(alertID.Bytes),
+				Threshold:      int(alertThreshold.Int32),
+				BatteryPercent: int(alertBattery.Int32),
+				RecordedAt:     alertRecordedAt.Time.UTC(),
+			}
+			if alertLat.Valid {
+				vLat := alertLat.Float64
+				vLon := alertLon.Float64
+				vAcc := alertAcc.Float64
+				vLocAt := alertLocRecordedAt.Time.UTC()
+				summary.Latitude = &vLat
+				summary.Longitude = &vLon
+				summary.AccuracyM = &vAcc
+				summary.LocationRecordedAt = &vLocAt
+			}
+			if alertJourneyID.Valid {
+				jid := uuid.UUID(alertJourneyID.Bytes)
+				summary.JourneyID = &jid
+			}
+			item.LowBatteryAlert = summary
 		}
 		out = append(out, item)
 	}

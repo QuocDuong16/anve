@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 data class TrackingUiState(
     val status: TrackingStatus = TrackingStatus(),
     val busy: Boolean = false,
+    val lowBatteryBusy: Boolean = false,
     /** Outcome copy this ViewModel owns; the screen resolves it from resources. */
     val messageRes: Int? = null,
     /**
@@ -77,6 +78,26 @@ class TrackingViewModel internal constructor(
                     it.copy(
                         busy = false,
                         messageRes = if (enabled) R.string.tracking_consent_enable_failed else R.string.tracking_consent_disable_unconfirmed,
+                    )
+                }
+            }
+        }
+    }
+
+    fun setLowBatteryAlerts(enabled: Boolean) {
+        if (_state.value.busy || _state.value.lowBatteryBusy) return
+        scope.launch {
+            _state.update { it.copy(lowBatteryBusy = true, messageRes = null, consentMessage = null) }
+            try {
+                val result = manager.setLowBatteryAlerts(enabled)
+                _state.update { it.copy(lowBatteryBusy = false, consentMessage = result.message) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _state.update {
+                    it.copy(
+                        lowBatteryBusy = false,
+                        messageRes = R.string.tracking_low_battery_failed,
                     )
                 }
             }

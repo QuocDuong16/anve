@@ -293,6 +293,24 @@ dừng hoàn toàn khi người dùng tắt; đứng yên không sinh vị trí 
 engine quay lại đúng trạng thái được phép; pin tiêu thụ ở mức được đo và công bố
 (tham chiếu NFR — [`non-functional-requirements.md`](non-functional-requirements.md)).
 
+### 4b. Cảnh báo vị trí cuối trước khi hết pin (Low-Battery Last Breath)
+
+> Trạng thái: **Implemented** (OpenAPI, PostgreSQL/PostGIS, Go API, Android engine & Compose UI đã triển khai theo [ADR 0018](../adr/0018-low-battery-last-breath-alerts.md) và kiểm thử tự động cục bộ; vẫn chờ emulator CI và kiểm chứng thiết bị thật cho pin/GPS/OEM/FCM).
+
+**Mục đích.** Giúp người thân biết điện thoại sắp hết pin (ở các mốc 15% và 5%) kèm tọa độ gần nhất còn hợp lệ khi người dùng đang bật chia sẻ vị trí hoặc đang trong một chuyến Safe Journey, tránh nhầm lẫn giữa mất liên lạc do sập nguồn với tình huống bất thường.
+
+**Yêu cầu & ràng buộc kỹ thuật.**
+
+- **Opt-in hai tầng:** Công tắc `low_battery_alerts_enabled` mặc định **TẮT** (CAS version + audit log phía server, kiểm tra đồng thời ở Android và Go backend).
+- **Điều kiện kích hoạt:** Chỉ chạy khi foreground tracking service đang hoạt động (`activelyTracking`), consent chia sẻ bật và máy **đang xả pin** (bỏ qua khi đang sạc).
+- **Thu hẹp người nhận:** Nếu đang có Safe Journey `ACTIVE`, cảnh báo gắn với `journey_id` và chỉ gửi cho người xem được chọn của chuyến đó; nếu đang chia sẻ vị trí thông thường, gửi cho các `location_audience_grants` hiện hành.
+- **Ngưỡng & chống spam:** Cố định 15% và 5% (hysteresis nạp lại ở ≥ 20% / ≥ 10%); khi bắt đầu chia sẻ với pin đã ≤ 15%, chỉ báo 1 lần theo mốc thấp nhất đang thỏa; cooldown 30 phút/mốc phía server; idempotent theo `eventId`.
+- **Chốt tọa độ & TTL offline:** Dùng fix mới < 30 giây, nếu không có thì gọi một lần `getCurrentLocation` (~4 giây, đồng thời đẩy fix tươi vào luồng Live Map), fallback fix cuối ≤ 15 phút, hoặc gửi cảnh báo không tọa độ nếu mất GPS. Hàng đợi chưa gửi chỉ giữ trong bộ nhớ tối đa 15 phút (hủy ngay khi cắm sạc, hồi pin, dừng chia sẻ, tắt consent hoặc đổi tài khoản); server từ chối và hết hạn outbox push sau 15 phút.
+- **Push tối giản & khớp địa điểm nội bộ:** FCM chỉ mang `eventId` và `kind=LOW_BATTERY`; app người nhận đọc qua API có xác thực và chỉ khớp tên địa điểm với **Địa điểm đã lưu/gia đình** (`findMatchingPlace`) trên thiết bị, không tự gửi tọa độ sang OS `Geocoder`.
+- **Tự ẩn khi sạc hồi & retention:** Khi pin sạc lại ≥ 20%, Android gửi tín hiệu im lặng `resolve` (không bắn push) để ẩn badge trên Live Map / Safe Journey (badge cũng tự ẩn trên Live Map sau 12 giờ). Dữ liệu tuân theo retention tối đa 7 ngày (hoặc ngắn hơn theo cài đặt của owner) và bị xóa sạch khi xóa Location History.
+- **Giới hạn bắt buộc công bố:** Mang tính *best-effort*; pin chai tụt sập đột ngột trước 5%, mất mạng kéo dài quá 15 phút hoặc OEM kill tiến trình nền có thể khiến cảnh báo không gửi được.
+
+
 ## 5. Location Confidence Engine
 
 > Trạng thái: **Implemented — Automated Verified (M4)** cho freshness
@@ -732,6 +750,7 @@ cho các sự kiện hợp lệ:
 - Place Alerts (đến/rời địa điểm).
 - SOS.
 - Safe Journey events (bắt đầu, hoàn tất, cảnh báo).
+- Cảnh báo pin yếu (15% và 5%, `LOW_BATTERY` — tín hiệu tối giản khi đang chia sẻ vị trí hoặc Safe Journey theo [ADR 0018](../adr/0018-low-battery-last-breath-alerts.md)).
 - Những sự kiện an toàn hợp lệ khác.
 
 M6 triển khai SOS và Place Alerts; M7-B bổ sung lifecycle Journey và cảnh báo

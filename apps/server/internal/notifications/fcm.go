@@ -67,7 +67,7 @@ func validProject(project string) bool {
 // Send returns nil only when FCM accepted the request. Unknown failures must
 // be retried with a stable event ID; clients must also deduplicate display.
 func (f *FCM) Send(ctx context.Context, token string, signal Signal) error {
-	validKind := signal.Kind == "CIRCLE_INVITE" || signal.Kind == "SOS" || signal.Kind == "PLACE" || signal.Kind == "JOURNEY_ACTIVE" || signal.Kind == "JOURNEY_ARRIVED" || signal.Kind == "JOURNEY_ENDED" || signal.Kind == "JOURNEY_CANCELLED" || signal.Kind == "JOURNEY_EXPIRED" || signal.Kind == "JOURNEY_STALE"
+	validKind := signal.Kind == "CIRCLE_INVITE" || signal.Kind == "SOS" || signal.Kind == "PLACE" || signal.Kind == "LOW_BATTERY" || signal.Kind == "JOURNEY_ACTIVE" || signal.Kind == "JOURNEY_ARRIVED" || signal.Kind == "JOURNEY_ENDED" || signal.Kind == "JOURNEY_CANCELLED" || signal.Kind == "JOURNEY_EXPIRED" || signal.Kind == "JOURNEY_STALE"
 	if token == "" || signal.EventID == uuid.Nil || !validKind || (signal.Kind == "JOURNEY_STALE" && signal.Episode <= 0) || (signal.Kind != "JOURNEY_STALE" && signal.Episode != 0) {
 		return errors.New("invalid push request")
 	}

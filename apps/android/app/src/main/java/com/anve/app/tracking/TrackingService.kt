@@ -5,9 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -30,9 +33,29 @@ import com.anve.app.R
  */
 class TrackingService : Service() {
 
+    private var batteryReceiverRegistered = false
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
+                forwardBatteryIntent(intent)
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createChannel(this)
+        val sticky = ContextCompat.registerReceiver(
+            this,
+            batteryReceiver,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        batteryReceiverRegistered = true
+        if (sticky != null) {
+            forwardBatteryIntent(sticky)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -66,6 +89,10 @@ class TrackingService : Service() {
     }
 
     override fun onDestroy() {
+        if (batteryReceiverRegistered) {
+            batteryReceiverRegistered = false
+            runCatching { unregisterReceiver(batteryReceiver) }
+        }
         manager()?.onServiceDestroyed()
         super.onDestroy()
     }
@@ -74,6 +101,22 @@ class TrackingService : Service() {
 
     private fun manager(): TrackingManager? =
         (application as? AnVeApplication)?.container?.trackingManager
+
+    private fun batteryAlertManager() =
+        (application as? AnVeApplication)?.container?.batteryAlertManager
+
+    private fun forwardBatteryIntent(intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        if (level < 0 || scale <= 0) return
+        val percent = ((level * 100f) / scale).toInt().coerceIn(0, 100)
+        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+        val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL ||
+            plugged != 0
+        batteryAlertManager()?.onBatterySample(percent = percent, isCharging = isCharging)
+    }
 
     companion object {
         const val ACTION_STOP = "com.anve.app.action.STOP_TRACKING"

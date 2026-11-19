@@ -35,6 +35,8 @@ var (
 	ErrIdentityConflict = errors.New("identity conflict")
 	// ErrConsentVersionConflict means the caller's consent snapshot is stale.
 	ErrConsentVersionConflict = errors.New("location consent version conflict")
+	// ErrLowBatteryPreferenceVersionConflict means the caller's low-battery preference snapshot is stale.
+	ErrLowBatteryPreferenceVersionConflict = errors.New("low-battery preference version conflict")
 )
 
 // SignInInput carries everything the store needs to complete one sign-in
@@ -93,6 +95,9 @@ type Store interface {
 	// cannot overwrite a newer consent choice. The state and audit row commit
 	// in one transaction.
 	SetLocationSharingAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error)
+	// SetLowBatteryAlertsAtVersion toggles opt-in low-battery alerts using CAS
+	// and writes an audit event in the same transaction.
+	SetLowBatteryAlertsAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error)
 	// DeleteUser removes the account (devices and sessions cascade) and
 	// writes the deletion audit row in the same transaction.
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
@@ -290,6 +295,14 @@ func (s *Service) SetLocationSharingAtVersion(ctx context.Context, userID uuid.U
 		return User{}, fmt.Errorf("%w: expectedVersion must be non-negative", ErrValidation)
 	}
 	return s.store.SetLocationSharingAtVersion(ctx, userID, enabled, expectedVersion)
+}
+
+// SetLowBatteryAlertsAtVersion applies an explicit server snapshot version for low-battery alerts.
+func (s *Service) SetLowBatteryAlertsAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error) {
+	if expectedVersion < 0 {
+		return User{}, fmt.Errorf("%w: expectedVersion must be non-negative", ErrValidation)
+	}
+	return s.store.SetLowBatteryAlertsAtVersion(ctx, userID, enabled, expectedVersion)
 }
 
 // DeleteAccount removes the account and everything hanging off it.

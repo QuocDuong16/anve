@@ -1178,4 +1178,26 @@
     <!-- Account screen re-entry -->
     <string name="home_reopen_onboarding_title">Thiết lập lại từ đầu</string>
     <string name="home_reopen_onboarding_subtitle">Mở lại hướng dẫn gia đình, quyền vị trí và địa điểm quen thuộc.</string>
+
+    <!-- Low-battery last breath alerts -->
+    <string name="tracking_low_battery_title" formatted="false">Cảnh báo pin yếu (15% và 5%)</string>
+    <string name="tracking_low_battery_subtitle" formatted="false">Tự động gửi vị trí cuối khi máy còn 15% và 5% pin lúc đang chia sẻ hoặc đang trong Hành trình an toàn.</string>
+    <string name="tracking_low_battery_need_consent">Bật chia sẻ vị trí trước để dùng cảnh báo pin yếu.</string>
+    <string name="tracking_low_battery_footnote" formatted="false">Tự động ẩn khi sạc trên 20%.</string>
+    <string name="tracking_low_battery_on">Đang bật</string>
+    <string name="tracking_low_battery_off">Đang tắt</string>
+    <string name="tracking_low_battery_updating">Đang lưu…</string>
+    <string name="tracking_low_battery_failed">Chưa cập nhật được cảnh báo pin yếu. Vui lòng thử lại.</string>
+    <string name="low_battery_pill_with_time">Pin %1$d%% lúc %2$s</string>
+    <string name="low_battery_pill_no_time">Pin %1$d%%</string>
+    <string name="low_battery_critical_note">Có thể sắp mất kết nối do hết pin</string>
+    <string name="low_battery_warning_note">Pin đang xuống thấp</string>
+    <string name="low_battery_banner_title_with_time">Điện thoại còn %1$d%% pin lúc %2$s</string>
+    <string name="low_battery_banner_title_no_time">Điện thoại còn %1$d%% pin</string>
+    <string name="low_battery_banner_critical_place">%1$s — có thể sắp mất kết nối do hết pin.</string>
+    <string name="low_battery_banner_critical_no_place">Có thể sắp mất kết nối do hết pin.</string>
+    <string name="low_battery_banner_warning_place">%1$s — pin đang xuống thấp.</string>
+    <string name="low_battery_banner_warning_no_place">Pin đang xuống thấp khi chia sẻ vị trí.</string>
+    <string name="low_battery_place_at">Tại %1$s</string>
+    <string name="low_battery_place_near">Gần %1$s</string>
 </resources>

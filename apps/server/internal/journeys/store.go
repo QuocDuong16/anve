@@ -16,10 +16,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/QuocDuong16/anve/server/internal/audit"
 	"github.com/QuocDuong16/anve/server/internal/auth"
+	"github.com/QuocDuong16/anve/server/internal/batteryalerts"
 	"github.com/QuocDuong16/anve/server/internal/locations"
 )
 
@@ -68,22 +70,23 @@ type Progress struct {
 
 // Journey is the currently authorized server state.
 type Journey struct {
-	ID                uuid.UUID   `json:"id"`
-	OwnerID           uuid.UUID   `json:"ownerId"`
-	OwnerName         string      `json:"ownerName"`
-	State             string      `json:"state"`
-	StartedAt         time.Time   `json:"startedAt"`
-	ExpiresAt         time.Time   `json:"expiresAt"`
-	EndedAt           *time.Time  `json:"endedAt,omitempty"`
-	Destination       Destination `json:"destination"`
-	Recipients        []Recipient `json:"recipients,omitempty"`
-	Progress          *Progress   `json:"progress,omitempty"`
-	AutomaticArrival  bool        `json:"automaticArrival"`
-	StaleAfterMinutes int         `json:"staleAfterMinutes"`
-	ArrivalSource     string      `json:"arrivalSource,omitempty"`
-	LastLiveUpdateAt  *time.Time  `json:"lastLiveUpdateAt,omitempty"`
-	StaleSince        *time.Time  `json:"staleSince,omitempty"`
-	StaleEpisode      int         `json:"staleEpisode,omitempty"`
+	ID                uuid.UUID              `json:"id"`
+	OwnerID           uuid.UUID              `json:"ownerId"`
+	OwnerName         string                 `json:"ownerName"`
+	State             string                 `json:"state"`
+	StartedAt         time.Time              `json:"startedAt"`
+	ExpiresAt         time.Time              `json:"expiresAt"`
+	EndedAt           *time.Time             `json:"endedAt,omitempty"`
+	Destination       Destination            `json:"destination"`
+	Recipients        []Recipient            `json:"recipients,omitempty"`
+	Progress          *Progress              `json:"progress,omitempty"`
+	AutomaticArrival  bool                   `json:"automaticArrival"`
+	StaleAfterMinutes int                    `json:"staleAfterMinutes"`
+	ArrivalSource     string                 `json:"arrivalSource,omitempty"`
+	LastLiveUpdateAt  *time.Time             `json:"lastLiveUpdateAt,omitempty"`
+	StaleSince        *time.Time             `json:"staleSince,omitempty"`
+	StaleEpisode      int                    `json:"staleEpisode,omitempty"`
+	LowBatteryAlert   *batteryalerts.Summary `json:"lowBatteryAlert,omitempty"`
 }
 
 // Store rechecks authorization inside PostgreSQL, without a location cache.
@@ -323,6 +326,71 @@ func (s *Store) read(ctx context.Context, q querier, actor, id uuid.UUID) (Journ
 			j.Progress = &progress
 		} else if !errors.Is(err, pgx.ErrNoRows) {
 			return Journey{}, fmt.Errorf("read journey progress: %w", err)
+		}
+	}
+	if j.State == "ACTIVE" || j.State == "EXPIRED" {
+		var alertID, alertJourneyID pgtype.UUID
+		var alertThreshold, alertBattery pgtype.Int4
+		var alertRecordedAt, alertLocRecordedAt pgtype.Timestamptz
+		var alertLat, alertLon, alertAcc pgtype.Float8
+		err = q.QueryRow(ctx, `SELECT a.id,a.threshold,a.battery_percent,a.recorded_at,
+				a.latitude,a.longitude,a.horizontal_accuracy_m,a.location_recorded_at,a.journey_id
+			FROM low_battery_alerts a
+			JOIN current_journeys j ON j.id=a.journey_id
+			JOIN users u ON u.id=j.owner_user_id AND u.location_sharing_enabled
+			WHERE a.journey_id=$1
+			  AND a.resolved_at IS NULL
+			  AND j.effective_state IN ('ACTIVE','EXPIRED')
+			  AND a.recorded_at >= now() - interval '12 hours'
+			  AND a.recorded_at > now() - LEAST($3, u.location_retention_days) * interval '1 day'
+			  AND a.recorded_at > COALESCE((SELECT cutoff FROM location_retention_watermark WHERE singleton),'-infinity'::timestamptz)
+			  AND (
+				j.owner_user_id=$2
+				OR EXISTS (
+					SELECT 1
+					FROM low_battery_alert_recipients ar
+					JOIN authorized_journey_recipients jr
+					  ON jr.journey_id=a.journey_id
+					 AND jr.user_id=$2
+					 AND jr.grant_id=ar.grant_id
+					JOIN active_location_audience g
+					  ON g.id=ar.grant_id
+					 AND g.sharing_epoch_id=a.sharing_epoch_id
+					WHERE ar.alert_id=a.id
+					  AND ar.recipient_user_id=$2
+					  AND a.recorded_at >= g.visible_from
+					  AND a.capture_generation >= g.capture_generation
+				)
+			  )
+			ORDER BY a.recorded_at DESC, a.received_at DESC
+			LIMIT 1`, id, actor, s.retentionDays).Scan(
+			&alertID, &alertThreshold, &alertBattery, &alertRecordedAt,
+			&alertLat, &alertLon, &alertAcc, &alertLocRecordedAt, &alertJourneyID,
+		)
+		if err == nil && alertID.Valid {
+			summary := &batteryalerts.Summary{
+				ID:             uuid.UUID(alertID.Bytes),
+				Threshold:      int(alertThreshold.Int32),
+				BatteryPercent: int(alertBattery.Int32),
+				RecordedAt:     alertRecordedAt.Time.UTC(),
+			}
+			if alertLat.Valid {
+				vLat := alertLat.Float64
+				vLon := alertLon.Float64
+				vAcc := alertAcc.Float64
+				vLocAt := alertLocRecordedAt.Time.UTC()
+				summary.Latitude = &vLat
+				summary.Longitude = &vLon
+				summary.AccuracyM = &vAcc
+				summary.LocationRecordedAt = &vLocAt
+			}
+			if alertJourneyID.Valid {
+				jid := uuid.UUID(alertJourneyID.Bytes)
+				summary.JourneyID = &jid
+			}
+			j.LowBatteryAlert = summary
+		} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return Journey{}, fmt.Errorf("read journey low-battery alert: %w", err)
 		}
 	}
 	return j, nil

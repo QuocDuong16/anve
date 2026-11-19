@@ -123,6 +123,9 @@ import com.anve.app.ui.brand.AnVeSharingHeroIllustration
 import com.anve.app.ui.common.AnVeSectionHeader
 import com.anve.app.ui.common.AnVeSosHoldButton
 import com.anve.app.ui.common.AnveErrorNotice
+import com.anve.app.ui.common.LowBatteryAlertPill
+import com.anve.app.ui.common.resolveLowBatteryPlaceMatch
+import com.anve.app.ui.theme.LocalEmergencyColors
 import com.anve.app.ui.common.AnveTime
 import com.anve.app.ui.common.StitchBadgeKind
 import com.anve.app.ui.common.StitchLivePulseDot
@@ -1159,7 +1162,7 @@ private fun MemberLocationCard(
             ) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -1174,6 +1177,9 @@ private fun MemberLocationCard(
                         color = if (confidence == "FRESH") statusDotColor else colors.onSurfaceVariant,
                         maxLines = 2,
                     )
+                    location.lowBatteryAlert?.let { alert ->
+                        LowBatteryAlertPill(alert = alert)
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1193,6 +1199,35 @@ private fun MemberLocationCard(
                         color = colors.onSurface,
                         maxLines = 3,
                         modifier = Modifier.weight(1f),
+                    )
+                }
+                location.lowBatteryAlert?.let { alert ->
+                    val isCritical = alert.threshold <= 5 || alert.batteryPercent <= 5
+                    val noteColor = if (isCritical) {
+                        LocalEmergencyColors.current.onEmergencyContainer
+                    } else {
+                        stitch.onTransitContainer
+                    }
+                    val noteBase = stringResource(
+                        if (isCritical) R.string.low_battery_critical_note else R.string.low_battery_warning_note,
+                    )
+                    val alertPlace = resolveLowBatteryPlaceMatch(alert, places)?.let { match ->
+                        if (match.isInside) {
+                            stringResource(R.string.low_battery_place_at, match.place.name)
+                        } else {
+                            stringResource(R.string.low_battery_place_near, match.place.name)
+                        }
+                    }
+                    val noteLine = if (alertPlace != null && placeContextText == null) {
+                        "$alertPlace · $noteBase"
+                    } else {
+                        noteBase
+                    }
+                    Text(
+                        text = noteLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = noteColor,
+                        maxLines = 2,
                     )
                 }
                 Text(

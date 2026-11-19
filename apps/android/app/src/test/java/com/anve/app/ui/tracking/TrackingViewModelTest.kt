@@ -2,6 +2,7 @@ package com.anve.app.ui.tracking
 
 import com.anve.app.R
 import com.anve.app.tracking.ConsentResult
+import com.anve.app.tracking.LowBatteryPreferenceResult
 import com.anve.app.tracking.TrackingControl
 import com.anve.app.tracking.TrackingStatus
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +36,9 @@ class TrackingViewModelTest {
         var refreshes = 0
         var refusal: ConsentResult? = null
         var consent: Boolean? = null
+        var lowBatteryResult: LowBatteryPreferenceResult? = null
+        var lowBatteryInput: Boolean? = null
+        var failLowBattery: Exception? = null
 
         override fun startTracking() {
             starts++
@@ -60,6 +64,12 @@ class TrackingViewModelTest {
         }
 
         override suspend fun recordServerConsent(enabled: Boolean) = Unit
+
+        override suspend fun setLowBatteryAlerts(enabled: Boolean): LowBatteryPreferenceResult {
+            lowBatteryInput = enabled
+            failLowBattery?.let { throw it }
+            return lowBatteryResult ?: LowBatteryPreferenceResult(enabled = enabled, serverConfirmed = true)
+        }
     }
 
     @Before
@@ -125,4 +135,29 @@ class TrackingViewModelTest {
         assertTrue(viewModel.state.value.messageRes == null)
         assertTrue(viewModel.state.value.consentMessage == null)
     }
+
+    @Test
+    fun `low battery alerts toggle delegates to coordinator, surfaces conflicts, and handles unexpected errors`() =
+        runBlocking {
+            val viewModel = TrackingViewModel(control, scope)
+
+            control.lowBatteryResult = LowBatteryPreferenceResult(
+                enabled = false,
+                serverConfirmed = false,
+                conflict = true,
+                message = "Trạng thái cảnh báo pin yếu vừa được cập nhật từ thiết bị khác.",
+            )
+            viewModel.setLowBatteryAlerts(true)
+            assertEquals(true, control.lowBatteryInput)
+            assertFalse(viewModel.state.value.lowBatteryBusy)
+            assertEquals(
+                "Trạng thái cảnh báo pin yếu vừa được cập nhật từ thiết bị khác.",
+                viewModel.state.value.consentMessage,
+            )
+
+            control.failLowBattery = IllegalStateException("boom")
+            viewModel.setLowBatteryAlerts(true)
+            assertFalse(viewModel.state.value.lowBatteryBusy)
+            assertEquals(R.string.tracking_low_battery_failed, viewModel.state.value.messageRes)
+        }
 }

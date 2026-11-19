@@ -15,6 +15,7 @@ import (
 
 	"github.com/QuocDuong16/anve/server/internal/auth"
 	"github.com/QuocDuong16/anve/server/internal/avatars"
+	"github.com/QuocDuong16/anve/server/internal/batteryalerts"
 	"github.com/QuocDuong16/anve/server/internal/circles"
 	"github.com/QuocDuong16/anve/server/internal/config"
 	"github.com/QuocDuong16/anve/server/internal/contacts"
@@ -72,6 +73,7 @@ func run() error {
 	var placeStore *places.Store
 	var sosStore *sos.Store
 	var journeyStore *journeys.Store
+	var batteryAlertStore *batteryalerts.Store
 	var contactSvc *contacts.Service
 	var pushGateway notifications.Gateway
 	var pool *pgxpool.Pool
@@ -119,6 +121,7 @@ func run() error {
 		placeStore = places.NewStore(pool, time.Duration(cfg.LocationRetentionDays)*24*time.Hour)
 		sosStore = sos.NewStore(pool)
 		journeyStore = journeys.NewStore(pool, cfg.LocationRetentionDays)
+		batteryAlertStore = batteryalerts.NewStore(pool, cfg.LocationRetentionDays)
 		contactNotifier := contacts.NewMultiNotifier(
 			contacts.SMTPConfig{
 				Host:        cfg.SMTPHost,
@@ -175,6 +178,7 @@ func run() error {
 			Places:                        placeStore,
 			SOS:                           sosStore,
 			Journeys:                      journeyStore,
+			BatteryAlerts:                 batteryAlertStore,
 			Contacts:                      contactSvc,
 			PushConfigured:                pushGateway != nil,
 			AndroidAssetLinksPackage:      cfg.AndroidAssetLinksPackage,
@@ -207,6 +211,9 @@ func run() error {
 	}
 	if journeyStore != nil {
 		go journeys.RunWorker(ctx, journeyStore, pushGateway, logger.With("component", "journeys"))
+	}
+	if batteryAlertStore != nil {
+		go batteryalerts.RunWorker(ctx, batteryAlertStore, pushGateway, logger.With("component", "battery-alerts"))
 	}
 	if invitationStore != nil {
 		go circles.RunInvitationWorker(ctx, invitationStore, pushGateway, logger.With("component", "invitations"))

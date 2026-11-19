@@ -19,6 +19,12 @@ interface TrackingServerGateway {
         operationId: String,
     ): UserDto
 
+    suspend fun setLowBatteryAlerts(
+        enabled: Boolean,
+        expectedVersion: Long,
+        ownerUserId: String,
+    ): UserDto = throw UnsupportedOperationException("low-battery alerts gateway not implemented")
+
     suspend fun hasCircle(): Boolean
 }
 
@@ -35,6 +41,12 @@ class AppTrackingServerGateway(
         ownerUserId: String,
         operationId: String,
     ): UserDto = auth.setLocationSharing(enabled, expectedVersion, ownerUserId, operationId)
+
+    override suspend fun setLowBatteryAlerts(
+        enabled: Boolean,
+        expectedVersion: Long,
+        ownerUserId: String,
+    ): UserDto = auth.setLowBatteryAlerts(enabled, expectedVersion, ownerUserId)
 
     override suspend fun hasCircle(): Boolean = circles.myCircle().circle != null
 }

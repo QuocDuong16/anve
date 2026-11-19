@@ -1,5 +1,6 @@
 package com.anve.app.data.api
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = false)
@@ -37,9 +38,10 @@ data class JourneyDto(
     val automaticArrival: Boolean = false,
     val staleAfterMinutes: Int = 0,
     val arrivalSource: String? = null,
-    val lastLiveUpdateAt: String? = null,
-    val staleSince: String? = null,
-    val staleEpisode: Int = 0,
+    @Json(name = "lastLiveUpdateAt") val lastLiveUpdateAt: String? = null,
+    @Json(name = "staleSince") val staleSince: String? = null,
+    @Json(name = "staleEpisode") val staleEpisode: Int = 0,
+    @Json(name = "lowBatteryAlert") val lowBatteryAlert: LowBatteryAlertSummaryDto? = null,
 )
 
 @JsonClass(generateAdapter = false)

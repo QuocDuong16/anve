@@ -69,6 +69,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
+import com.anve.app.ui.common.LowBatteryAlertBanner
+import com.anve.app.ui.common.LowBatteryAlertPill
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -294,6 +296,7 @@ fun JourneyContent(
                 selected != null -> item {
                     JourneyDetails(selected, state.owner == selected.ownerId, tracking, now, state.busy,
                         pending = state.pending.any { it.journeyId == selected.id },
+                        places = state.places,
                         onConfirm = { action, recipient, name -> confirmation = Confirmation(selected, action, recipient, name) },
                         onResume = { onResume(selected.id) }, onLocation = onLocation)
                 }
@@ -358,15 +361,26 @@ fun JourneyContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        StitchSemanticBadge(
-                            text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
-                            kind = when (journey.state) {
-                                "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
-                                "ARRIVED" -> StitchBadgeKind.SAFE_HOME
-                                else -> StitchBadgeKind.NEUTRAL
-                            },
-                            showDot = journey.state == "ACTIVE",
-                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            StitchSemanticBadge(
+                                text = if (journey.arrivalSource == "AUTOMATIC") stringResource(R.string.stitch_badge_at_place) else journeyStateLabel(journey.state),
+                                kind = when (journey.state) {
+                                    "ACTIVE" -> StitchBadgeKind.IN_TRANSIT
+                                    "ARRIVED" -> StitchBadgeKind.SAFE_HOME
+                                    else -> StitchBadgeKind.NEUTRAL
+                                },
+                                showDot = journey.state == "ACTIVE",
+                            )
+                            if (journey.state == "ACTIVE") {
+                                journey.lowBatteryAlert?.let { alert ->
+                                    LowBatteryAlertPill(alert = alert)
+                                }
+                            }
+                        }
                         Text(
                             stringResource(R.string.journey_started_at, journeyTime(journey.startedAt, stringResource(R.string.journey_time_unknown))),
                             style = MaterialTheme.typography.bodySmall,
@@ -447,6 +461,7 @@ fun JourneyContent(
 
 @Composable
 private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: TrackingStatus, now: Long, busy: Boolean, pending: Boolean,
+    places: List<PlaceDto> = emptyList(),
     onConfirm: (JourneyAction, String?, String?) -> Unit, onResume: () -> Unit, onLocation: () -> Unit) {
     var people by remember(journey.id) { mutableStateOf(false) }
     val active = journey.state == "ACTIVE"
@@ -549,6 +564,10 @@ private fun JourneyDetails(journey: JourneyDto, owner: Boolean, tracking: Tracki
                     else -> stringResource(R.string.journey_arrival_waiting_confirm)
                 }, style = MaterialTheme.typography.bodyMedium)
             }
+        }
+        val batteryAlert = journey.lowBatteryAlert
+        if (batteryAlert != null && (active || journey.state == "EXPIRED")) {
+            LowBatteryAlertBanner(alert = batteryAlert, places = places)
         }
         if (active && !expiredLocally && authorizedJourneySignal(journey, "JOURNEY_STALE", journey.id, journey.staleEpisode)) {
             JourneyNotice(stringResource(R.string.journey_stale_notice))

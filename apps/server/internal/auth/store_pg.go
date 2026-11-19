@@ -31,12 +31,16 @@ func NewPGStore(pool *pgxpool.Pool) *PGStore {
 }
 
 const userColumns = `id, google_sub, email, display_name, avatar_url,
-	location_sharing_enabled, location_sharing_version, created_at, updated_at`
+	location_sharing_enabled, location_sharing_version,
+	low_battery_alerts_enabled, low_battery_alerts_version,
+	created_at, updated_at`
 
 func scanUser(row pgx.Row) (User, error) {
 	var u User
 	err := row.Scan(&u.ID, &u.GoogleSub, &u.Email, &u.DisplayName, &u.AvatarURL,
-		&u.LocationSharingEnabled, &u.LocationSharingVersion, &u.CreatedAt, &u.UpdatedAt)
+		&u.LocationSharingEnabled, &u.LocationSharingVersion,
+		&u.LowBatteryAlertsEnabled, &u.LowBatteryAlertsVersion,
+		&u.CreatedAt, &u.UpdatedAt)
 	return u, err
 }
 
@@ -217,7 +221,9 @@ func (s *PGStore) Authenticate(ctx context.Context, accessHash []byte) (Session,
 		`SELECT s.id, s.user_id, s.device_id, s.refresh_expires_at, s.access_expires_at,
 		        s.created_at, s.last_used_at,
 		        u.id, u.google_sub, u.email, u.display_name, u.avatar_url,
-		        u.location_sharing_enabled, u.location_sharing_version, u.created_at, u.updated_at
+		        u.location_sharing_enabled, u.location_sharing_version,
+		        u.low_battery_alerts_enabled, u.low_battery_alerts_version,
+		        u.created_at, u.updated_at
 		   FROM sessions s
 		   JOIN users u ON u.id = s.user_id
 		  WHERE s.access_token_hash = $1
@@ -227,7 +233,9 @@ func (s *PGStore) Authenticate(ctx context.Context, accessHash []byte) (Session,
 	).Scan(&sess.ID, &sess.UserID, &sess.DeviceID, &sess.RefreshExpiresAt, &sess.AccessExpiresAt,
 		&sess.CreatedAt, &sess.LastUsedAt,
 		&u.ID, &u.GoogleSub, &u.Email, &u.DisplayName, &u.AvatarURL,
-		&u.LocationSharingEnabled, &u.LocationSharingVersion, &u.CreatedAt, &u.UpdatedAt)
+		&u.LocationSharingEnabled, &u.LocationSharingVersion,
+		&u.LowBatteryAlertsEnabled, &u.LowBatteryAlertsVersion,
+		&u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, User{}, fmt.Errorf("%w: session not found, revoked or expired", ErrUnauthenticated)
 	}
@@ -265,7 +273,9 @@ func (s *PGStore) Refresh(ctx context.Context, in RefreshInput) (Session, User, 
 		`SELECT s.id, s.user_id, s.device_id, s.refresh_expires_at, s.access_expires_at,
 		        s.created_at, s.last_used_at,
 		        u.id, u.google_sub, u.email, u.display_name, u.avatar_url,
-		        u.location_sharing_enabled, u.location_sharing_version, u.created_at, u.updated_at
+		        u.location_sharing_enabled, u.location_sharing_version,
+		        u.low_battery_alerts_enabled, u.low_battery_alerts_version,
+		        u.created_at, u.updated_at
 		   FROM sessions s
 		   JOIN users u ON u.id = s.user_id
 		  WHERE s.refresh_token_hash = $1
@@ -276,7 +286,9 @@ func (s *PGStore) Refresh(ctx context.Context, in RefreshInput) (Session, User, 
 	).Scan(&sess.ID, &sess.UserID, &sess.DeviceID, &sess.RefreshExpiresAt, &sess.AccessExpiresAt,
 		&sess.CreatedAt, &sess.LastUsedAt,
 		&u.ID, &u.GoogleSub, &u.Email, &u.DisplayName, &u.AvatarURL,
-		&u.LocationSharingEnabled, &u.LocationSharingVersion, &u.CreatedAt, &u.UpdatedAt)
+		&u.LocationSharingEnabled, &u.LocationSharingVersion,
+		&u.LowBatteryAlertsEnabled, &u.LowBatteryAlertsVersion,
+		&u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, User{}, fmt.Errorf("%w: refresh token not found, revoked or rotated", ErrUnauthenticated)
 	}
@@ -429,6 +441,50 @@ func (s *PGStore) SetLocationSharingAtVersion(ctx context.Context, userID uuid.U
 
 	if err := tx.Commit(ctx); err != nil {
 		return User{}, fmt.Errorf("commit consent change: %w", err)
+	}
+	return u, nil
+}
+
+// SetLowBatteryAlertsAtVersion toggles the opt-in low-battery alerts preference
+// when expectedVersion matches and records an audit event in the same transaction.
+func (s *PGStore) SetLowBatteryAlertsAtVersion(ctx context.Context, userID uuid.UUID, enabled bool, expectedVersion int64) (User, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return User{}, fmt.Errorf("begin low-battery preference transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	u, err := scanUser(tx.QueryRow(ctx,
+		`UPDATE users SET low_battery_alerts_enabled = $2,
+		                  low_battery_alerts_version = low_battery_alerts_version + 1,
+		                  updated_at = now()
+		  WHERE id = $1 AND low_battery_alerts_version = $3
+		  RETURNING `+userColumns,
+		userID, enabled, expectedVersion))
+	if errors.Is(err, pgx.ErrNoRows) {
+		var exists bool
+		if checkErr := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&exists); checkErr != nil {
+			return User{}, fmt.Errorf("check user after low-battery preference conflict: %w", checkErr)
+		}
+		if !exists {
+			return User{}, fmt.Errorf("%w: user %s", ErrNotFound, userID)
+		}
+		return User{}, ErrLowBatteryPreferenceVersionConflict
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("set low-battery alerts: %w", err)
+	}
+
+	action := audit.ActionLowBatteryAlertsOff
+	if enabled {
+		action = audit.ActionLowBatteryAlertsOn
+	}
+	if err := audit.InTx(ctx, tx, audit.Event{ActorUserID: userID, Action: action}); err != nil {
+		return User{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return User{}, fmt.Errorf("commit low-battery preference change: %w", err)
 	}
 	return u, nil
 }

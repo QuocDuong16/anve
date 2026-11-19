@@ -226,6 +226,17 @@ class AppContainer(application: Application) {
         packageUpdateTime = { readPackageLastUpdateTime(application) },
     )
 
+    val batteryAlertManager = com.anve.app.data.battery.BatteryAlertManager(
+        trackingStatus = trackingManager.status,
+        connectivity = AndroidConnectivityMonitor(application),
+        gateway = com.anve.app.data.battery.ApiBatteryAlertGateway(authApi),
+        snapshotProvider = com.anve.app.data.battery.AndroidBatterySnapshotProvider(application),
+        localNotifier = com.anve.app.data.battery.AndroidBatteryAlertLocalNotifier(application),
+        latestAcceptedFix = trackingManager::latestAcceptedFix,
+        onFreshFixCaptured = trackingManager::submitExternalFreshFix,
+        scope = applicationScope,
+    )
+
     val locationSyncEngine: LocationSyncEngine = LocationSyncEngine(
         gateway = locationGateway,
         queue = locationQueue,

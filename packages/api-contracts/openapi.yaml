@@ -37,6 +37,8 @@ tags:
     description: Explicit emergency requests, recipients and acknowledgement
   - name: journeys
     description: Explicitly addressed journeys with manual arrival or optional per-journey arrival estimates and missing-update reminders
+  - name: battery-alerts
+    description: Opt-in low-battery last-breath alerts at 15% and 5% during active sharing or Safe Journey
   - name: contacts
     description: Public landing page and internal-testing contact submissions
 
@@ -437,7 +439,68 @@ paths:
         "204": {description: "Cancellation recorded, including before an uncertain create commits."}
         "401": {description: Invalid session or account mismatch.}
         "404": {description: Event unavailable.}
-        "409": {description: State transition is not allowed.}
+        "409":
+          description: State transition is not allowed.
+  /api/v1/battery-alerts:
+    description: Opt-in low-battery alerts (15% and 5%) with optional single-snapshot location and silent charging recovery.
+    post:
+      operationId: createBatteryAlert
+      summary: Submit a low-battery threshold alert with best-effort snapshot location
+      tags: [battery-alerts]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LowBatteryAlertCreateRequest"
+      responses:
+        "200":
+          description: Existing idempotent low-battery alert.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LowBatteryAlert"}}}
+        "201":
+          description: Low-battery alert committed and recipient notifications queued.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LowBatteryAlert"}}}
+        "400":
+          description: Invalid payload or alert older than the 15-minute freshness window (`BATTERY_ALERT_INVALID` / `BATTERY_ALERT_TOO_OLD`).
+          content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+        "401":
+          description: Invalid session or account mismatch.
+          content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+        "409":
+          description: Consent OFF, low-battery alerts disabled, missing Circle, or conflicting ID reuse.
+          content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+        "429":
+          description: Per-threshold 30-minute cooldown is still active (`LOW_BATTERY_ALERT_COOLDOWN`).
+          content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+  /api/v1/battery-alerts/resolve:
+    post:
+      operationId: resolveBatteryAlerts
+      summary: Silently resolve active low-battery alerts for the authenticated device when charging recovers
+      tags: [battery-alerts]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "204": {description: Active alerts for this device resolved without push notification.}
+        "401": {description: Invalid session or account mismatch.}
+  /api/v1/battery-alerts/{alertId}:
+    parameters:
+      - {in: path, name: alertId, required: true, schema: {type: string, format: uuid}}
+      - {in: header, name: X-Anve-Expected-Owner, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getBatteryAlert
+      summary: Read a currently authorized low-battery alert
+      tags: [battery-alerts]
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Authorized low-battery alert.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LowBatteryAlert"}}}
+        "401": {description: Invalid session or account mismatch.}
+        "404": {description: Alert unavailable, expired, or unauthorized (`BATTERY_ALERT_UNAVAILABLE`).}
   /healthz:
     get:
       operationId: getHealthz
@@ -937,6 +1000,60 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           description: No valid session token was presented.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/me/low-battery-alerts:
+    put:
+      operationId: setLowBatteryAlerts
+      summary: Enable or disable opt-in low-battery alerts (15% and 5%)
+      description: |
+        Two-layer opt-in switch (off by default) using compare-and-set version
+        control and transactional audit logging.
+      security:
+        - bearerAuth: []
+      tags: [me, battery-alerts]
+      parameters:
+        - {in: header, name: X-Anve-Expected-Owner, required: false, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [enabled, expectedVersion]
+              properties:
+                enabled:
+                  type: boolean
+                expectedVersion:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                  description: Preference version returned by the latest user read; stale versions receive 409.
+      responses:
+        "200":
+          description: The updated user preference state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Preference changed since expectedVersion (code `LOW_BATTERY_PREFERENCE_VERSION_CONFLICT`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session token was presented or owner mismatch.
           content:
             application/json:
               schema:
@@ -2340,6 +2457,61 @@ components:
             distanceMeters: {type: number, minimum: 0}
             accuracyMeters: {type: number, minimum: 0}
             isMock: {type: boolean}
+        lowBatteryAlert:
+          allOf:
+            - $ref: "#/components/schemas/LowBatteryAlertSummary"
+          nullable: true
+          description: Latest unresolved low-battery alert associated with this journey, if currently authorized.
+    LowBatteryAlertLocation:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, horizontalAccuracyMeters, recordedAt]
+      properties:
+        latitude: {type: number, format: double, minimum: -90, maximum: 90}
+        longitude: {type: number, format: double, minimum: -180, maximum: 180}
+        horizontalAccuracyMeters: {type: number, format: double, minimum: 0, maximum: 100000}
+        recordedAt: {type: string, format: date-time}
+    LowBatteryAlertCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [eventId, threshold, batteryPercent, recordedAt]
+      properties:
+        eventId: {type: string, format: uuid}
+        threshold: {type: integer, enum: [15, 5]}
+        batteryPercent: {type: integer, minimum: 0, maximum: 100}
+        recordedAt: {type: string, format: date-time}
+        location:
+          $ref: "#/components/schemas/LowBatteryAlertLocation"
+    LowBatteryAlertSummary:
+      type: object
+      required: [id, threshold, batteryPercent, recordedAt]
+      properties:
+        id: {type: string, format: uuid}
+        threshold: {type: integer, enum: [15, 5]}
+        batteryPercent: {type: integer, minimum: 0, maximum: 100}
+        recordedAt: {type: string, format: date-time}
+        latitude: {type: number, format: double, nullable: true}
+        longitude: {type: number, format: double, nullable: true}
+        horizontalAccuracyMeters: {type: number, format: double, nullable: true}
+        locationRecordedAt: {type: string, format: date-time, nullable: true}
+        journeyId: {type: string, format: uuid, nullable: true}
+    LowBatteryAlert:
+      type: object
+      required: [id, ownerId, ownerName, scope, threshold, batteryPercent, recordedAt, receivedAt, recipientCount]
+      properties:
+        id: {type: string, format: uuid}
+        ownerId: {type: string, format: uuid}
+        ownerName: {type: string}
+        scope: {type: string, enum: [SHARING, JOURNEY]}
+        journeyId: {type: string, format: uuid, nullable: true}
+        threshold: {type: integer, enum: [15, 5]}
+        batteryPercent: {type: integer, minimum: 0, maximum: 100}
+        recordedAt: {type: string, format: date-time}
+        receivedAt: {type: string, format: date-time}
+        resolvedAt: {type: string, format: date-time, nullable: true}
+        recipientCount: {type: integer, minimum: 0}
+        location:
+          $ref: "#/components/schemas/LowBatteryAlertLocation"
     SosLocation:
       type: object
       additionalProperties: false
@@ -2495,6 +2667,16 @@ components:
           format: int64
           minimum: 0
           description: Monotonic compare-and-set version for consent mutations.
+        lowBatteryAlertsEnabled:
+          type: boolean
+          default: false
+          description: Opt-in low-battery alerts (15% and 5%). Off by default.
+        lowBatteryAlertsVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+          description: Monotonic compare-and-set version for low-battery alert preference mutations.
         createdAt:
           type: string
           format: date-time
@@ -2861,6 +3043,11 @@ components:
           type: string
           enum: [FRESH, DELAYED, STALE, OFFLINE, UNKNOWN]
           description: Offline is reserved for a future authoritative presence signal and is not inferred from missing GPS data.
+        lowBatteryAlert:
+          allOf:
+            - $ref: "#/components/schemas/LowBatteryAlertSummary"
+          nullable: true
+          description: Latest unresolved low-battery alert within 12 hours, if authorized for the current grant and epoch.
 
     Circle:
       type: object

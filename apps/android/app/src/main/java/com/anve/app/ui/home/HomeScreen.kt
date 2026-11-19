@@ -331,7 +331,7 @@ fun HomeScreen(
             placeEditorOpen = false
             selectedInvitation = if (destination.kind == "CIRCLE_INVITE") destination.eventId else null
             tab = when {
-                showJourneys -> HomeTab.MAP
+                showJourneys || destination.kind == "LOW_BATTERY" -> HomeTab.MAP
                 destination.kind == "SOS" || destination.kind == "CIRCLE_INVITE" -> HomeTab.CIRCLE
                 else -> HomeTab.PLACES
             }
