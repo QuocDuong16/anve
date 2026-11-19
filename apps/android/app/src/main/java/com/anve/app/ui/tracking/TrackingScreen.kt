@@ -228,7 +228,7 @@ fun TrackingScreen(
     fun beginStart() {
         val canTrack = state.status.permission == LocationPermissionState.GRANTED_PRECISE ||
             state.status.permission == LocationPermissionState.GRANTED_APPROXIMATE
-        if (disclosureAccepted) {
+        if (disclosureAccepted || (state.status.consentEnabled && canTrack)) {
             when {
                 !state.status.consentEnabled -> {
                     pending = PendingAction.ENABLE_THEN_START

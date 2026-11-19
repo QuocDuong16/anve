@@ -249,7 +249,14 @@ liên tục.*
 - Xử lý thay đổi độ chính xác do provider báo cáo.
 - Xử lý Battery Saver, Doze và các giới hạn background execution; không giả
   định OS luôn cho phép GPS cập nhật với chu kỳ cố định.
-- Khôi phục hoạt động hợp lệ sau app restart hoặc reboot.
+- Khôi phục hoạt động hợp lệ sau app restart, app update hoặc reboot: khi cập nhật
+  ứng dụng (`MY_PACKAGE_REPLACED`) và người dùng đang bật theo dõi với consent
+  hợp lệ, app tự bật lại nếu OS/quyền nền (`ACCESS_BACKGROUND_LOCATION`),
+  Location hệ thống và kiểm tra quyền phía server đều cho phép; nếu OS/OEM hoặc
+  thiếu quyền nền/kết nối ngăn chạy nền, app giữ nguyên consent/intent và gửi
+  thông báo đẩy nhắc người dùng bật lại (đồng thời tự nối lại khi người dùng mở
+  app ở foreground nếu đủ điều kiện). Sau reboot vẫn chỉ nhắc thông báo để người
+  dùng chủ động bật lại.
 - Không đánh đổi mức tiêu thụ pin vô lý để lấy tần suất GPS.
 
 **Thiết kế trạng thái logic (mô hình tham khảo).**

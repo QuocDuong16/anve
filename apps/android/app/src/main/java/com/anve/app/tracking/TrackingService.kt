@@ -7,8 +7,11 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.anve.app.AnVeApplication
 import com.anve.app.MainActivity
@@ -22,7 +25,8 @@ import com.anve.app.R
  *
  * The service is deliberately `START_NOT_STICKY`: Android may kill it, and
  * pretending tracking resumed after a process death would be false. The
- * user's intent is persisted and the UI offers an explicit resume.
+ * user's intent is persisted and the app resumes only when permitted or asks
+ * the user via notification/UI otherwise.
  */
 class TrackingService : Service() {
 
@@ -39,13 +43,22 @@ class TrackingService : Service() {
             return START_NOT_STICKY
         }
         return try {
-            startForeground(NOTIFICATION_ID, buildNotification(this))
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                buildNotification(this),
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                } else {
+                    0
+                },
+            )
             TrackingRecoveryNotifier.cancel(this)
             manager()?.onServiceStarted(intent?.getLongExtra(EXTRA_START_GENERATION, -1L) ?: -1L)
             START_NOT_STICKY
-        } catch (e: SecurityException) {
-            // Missing foreground-service/location permission: fail closed
-            // and tell the coordinator instead of running invisibly.
+        } catch (_: RuntimeException) {
+            // Missing foreground-service/location permission or background FGS
+            // restriction (Android 12+): fail closed and notify the coordinator.
             manager()?.onServiceStartFailed(intent?.getLongExtra(EXTRA_START_GENERATION, -1L))
             stopSelf()
             START_NOT_STICKY

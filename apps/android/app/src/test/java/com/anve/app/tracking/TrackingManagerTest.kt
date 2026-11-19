@@ -106,24 +106,32 @@ class TrackingManagerTest {
         userId = owner,
     )
 
-    private fun newManager(trackingStore: TrackingStore) = TrackingManager(
+    private fun newManager(
+        trackingStore: TrackingStore,
+        targetScope: CoroutineScope = scope,
+        targetPermissions: TrackingPermissions = permissions,
+        targetConnectivity: ConnectivityMonitor = connectivity,
+        targetMutations: ConsentMutationCoordinator = consentMutations,
+        packageUpdateTime: () -> Long = { 0L },
+    ) = TrackingManager(
         server = gateway,
         sessions = managerSessions,
         deviceIdentity = FakeDeviceIdentity(),
         queue = queue,
         store = trackingStore,
-        permissions = permissions,
+        permissions = targetPermissions,
         provider = provider,
-        connectivity = connectivity,
+        connectivity = targetConnectivity,
         service = service,
         syncScheduler = scheduler,
-        scope = scope,
+        scope = targetScope,
         captureGenerations = checkpoints,
         fetchCaptureGeneration = { fetchCheckpoint(it) },
-        consentMutations = consentMutations,
+        consentMutations = targetMutations,
         now = { now },
         elapsedNow = { elapsed },
         batterySaver = { saver },
+        packageUpdateTime = packageUpdateTime,
     )
 
     private suspend fun startAndConfirm() {
@@ -1383,4 +1391,327 @@ class TrackingManagerTest {
         directManager.onServiceDestroyed()
         assertEquals(listOf("u1"), unexpectedStops)
     }
+
+    @Test
+    fun `cold start race preserves consent, admission and completes refreshStatus offline and online`() = runTest {
+        scope.cancel()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        try {
+            val persistedStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                ),
+            )
+            val offlineMutations = ConsentMutationCoordinator()
+            val offlineManager = newManager(
+                trackingStore = persistedStore,
+                targetScope = testScope,
+                targetConnectivity = FakeConnectivity(online = false),
+                targetMutations = offlineMutations,
+            )
+            testScheduler.runCurrent()
+
+            assertTrue(offlineManager.status.value.sessionReady)
+            assertEquals("u1", offlineManager.status.value.ownerUserId)
+            assertTrue(offlineManager.status.value.consentEnabled)
+            assertTrue(offlineManager.status.value.trackingRequested)
+            assertTrue(offlineManager.status.value.recoveryRequired)
+            assertTrue(offlineManager.status.value.locationAdmissionOpen)
+            assertFalse(offlineMutations.isLocationAdmissionClosed("u1"))
+            assertEquals(TrackingProblem.RECOVERY_REQUIRED, offlineManager.status.value.lastError)
+
+            val callsBefore = gateway.currentUserCalls
+            val onlineMutations = ConsentMutationCoordinator()
+            val onlineManager = newManager(
+                trackingStore = persistedStore,
+                targetScope = testScope,
+                targetConnectivity = FakeConnectivity(online = true),
+                targetMutations = onlineMutations,
+            )
+            testScheduler.runCurrent()
+
+            assertTrue(gateway.currentUserCalls > callsBefore)
+            assertTrue(onlineManager.status.value.consentEnabled)
+            assertTrue(onlineManager.status.value.trackingRequested)
+            assertTrue(onlineManager.status.value.recoveryRequired)
+            assertTrue(onlineManager.status.value.locationAdmissionOpen)
+            assertFalse(onlineMutations.isLocationAdmissionClosed("u1"))
+        } finally {
+            testScope.cancel()
+        }
+    }
+
+    @Test
+    fun `cold start offline with persisted OFF operation remains fail-closed`() = runBlocking {
+        connectivity.updateOnline(false)
+        sessions.savePendingConsentOperation(
+            PendingConsentOperation(
+                operationId = "op-off",
+                ownerUserId = "u1",
+                desiredEnabled = false,
+                expectedVersion = 0L,
+                generation = 3L,
+                createdAtMillis = now,
+                expiresAtMillis = now + 60_000L,
+            ),
+        )
+        val freshMutations = ConsentMutationCoordinator()
+        val recoveringStore = FakeTrackingStore(
+            LocalTrackingState(
+                localConsentConfirmed = true,
+                consentOwnerUserId = "u1",
+                trackingRequested = false,
+            ),
+        )
+        val offlineManager = newManager(
+            trackingStore = recoveringStore,
+            targetMutations = freshMutations,
+        )
+        awaitUntil { offlineManager.status.value.sessionReady && offlineManager.status.value.ownerUserId == "u1" }
+
+        assertFalse(offlineManager.status.value.consentEnabled)
+        assertFalse(offlineManager.status.value.locationAdmissionOpen)
+        assertTrue(freshMutations.isLocationAdmissionClosed("u1"))
+        assertTrue(offlineManager.status.value.consentSyncPending)
+    }
+
+    @Test
+    fun `401 access token rotation during preflight inside startTracking still admits start`() = runBlocking {
+        gateway.beforeCurrentUser = {
+            sessions.save(session("u1").copy(accessToken = "refreshed-token"))
+        }
+        manager.startTracking()
+        awaitUntil { service.starts == 1 }
+        assertEquals("refreshed-token", sessions.current()?.accessToken)
+
+        manager.onServiceStarted()
+        awaitUntil { manager.status.value.activelyTracking }
+    }
+
+    @Test
+    fun `recoverAfterAppUpdate resumes sharing when background permission and online server checks allow`() =
+        runBlocking {
+            val freshMutations = ConsentMutationCoordinator()
+            val recoveringStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                    lastTrackedPackageUpdateTime = 1_000L,
+                ),
+            )
+            val recoveringManager = newManager(
+                trackingStore = recoveringStore,
+                targetMutations = freshMutations,
+                packageUpdateTime = { 2_000L },
+            )
+
+            val outcome = async { recoveringManager.recoverAfterAppUpdate(timeoutMillis = 2_000L) }
+            awaitUntil { service.starts == 1 }
+            assertTrue(recoveringStore.current().pendingUpdateRecovery)
+
+            recoveringManager.onServiceStarted()
+            assertEquals(UpdateRecoveryOutcome.Resumed, outcome.await())
+            assertTrue(recoveringManager.status.value.activelyTracking)
+            awaitUntil {
+                !recoveringStore.current().pendingUpdateRecovery &&
+                    recoveringStore.current().lastTrackedPackageUpdateTime == 2_000L
+            }
+        }
+
+    @Test
+    fun `recoverAfterAppUpdate returns RequiresUserAction and preserves intent when restricted`() = runBlocking {
+        suspend fun assertRequiresAction(configure: suspend () -> Unit, expectedStarts: Int) {
+            service.starts = 0
+            service.startResult = true
+            connectivity.updateOnline(true)
+            permissions.value = PermissionSnapshot(
+                location = LocationPermissionState.GRANTED_PRECISE,
+                backgroundLocation = true,
+                notifications = true,
+                locationServicesEnabled = true,
+            )
+            configure()
+            val freshMutations = ConsentMutationCoordinator()
+            val recoveringStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                ),
+            )
+            val recoveringManager = newManager(
+                trackingStore = recoveringStore,
+                targetMutations = freshMutations,
+                packageUpdateTime = { 2_000L },
+            )
+            val result = recoveringManager.recoverAfterAppUpdate(timeoutMillis = 2_000L)
+            assertEquals(UpdateRecoveryOutcome.RequiresUserAction("u1"), result)
+            assertEquals(expectedStarts, service.starts)
+            assertTrue(recoveringStore.current().pendingUpdateRecovery)
+            assertTrue(recoveringManager.status.value.consentEnabled)
+            assertTrue(recoveringManager.status.value.trackingRequested)
+        }
+
+        assertRequiresAction(
+            configure = { permissions.value = permissions.value.copy(backgroundLocation = false) },
+            expectedStarts = 0,
+        )
+        assertRequiresAction(
+            configure = { service.startResult = false },
+            expectedStarts = 1,
+        )
+        assertRequiresAction(
+            configure = { connectivity.updateOnline(false) },
+            expectedStarts = 0,
+        )
+        assertRequiresAction(
+            configure = { permissions.value = permissions.value.copy(locationServicesEnabled = false) },
+            expectedStarts = 0,
+        )
+    }
+
+    @Test
+    fun `recoverAfterAppUpdate returns NotApplicable when stopped, revoked on server, or pending OFF`() =
+        runBlocking {
+            val stoppedStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = false,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                    pendingUpdateRecovery = true,
+                ),
+            )
+            val stoppedManager = newManager(stoppedStore, targetMutations = ConsentMutationCoordinator())
+            assertEquals(UpdateRecoveryOutcome.NotApplicable, stoppedManager.recoverAfterAppUpdate())
+            assertEquals(0, service.starts)
+            assertFalse(stoppedStore.current().pendingUpdateRecovery)
+
+            gateway.consent = false
+            val revokedStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                ),
+            )
+            val revokedManager = newManager(revokedStore, targetMutations = ConsentMutationCoordinator())
+            assertEquals(UpdateRecoveryOutcome.NotApplicable, revokedManager.recoverAfterAppUpdate())
+            assertEquals(0, service.starts)
+            assertFalse(revokedStore.current().pendingUpdateRecovery)
+            gateway.consent = true
+
+            sessions.savePendingConsentOperation(
+                PendingConsentOperation(
+                    operationId = "pending-off",
+                    ownerUserId = "u1",
+                    desiredEnabled = false,
+                    expectedVersion = 0L,
+                    generation = 2L,
+                    createdAtMillis = now,
+                    expiresAtMillis = now + 60_000L,
+                ),
+            )
+            val offStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                ),
+            )
+            val offManager = newManager(offStore, targetMutations = ConsentMutationCoordinator())
+            assertEquals(UpdateRecoveryOutcome.NotApplicable, offManager.recoverAfterAppUpdate())
+            assertEquals(0, service.starts)
+        }
+
+    @Test
+    fun `recoverForegroundAfterAppUpdateIfNeeded resumes in foreground without background permission and skips non-update restarts`() =
+        runBlocking {
+            permissions.value = permissions.value.copy(backgroundLocation = false)
+            var currentUpdateTime = 2_000L
+
+            // Pending update recovery from MY_PACKAGE_REPLACED resumes once opened in foreground.
+            val pendingStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                    pendingUpdateRecovery = true,
+                ),
+            )
+            val pendingManager = newManager(
+                trackingStore = pendingStore,
+                targetMutations = ConsentMutationCoordinator(),
+                packageUpdateTime = { currentUpdateTime },
+            )
+            pendingManager.recoverForegroundAfterAppUpdateIfNeeded()
+            awaitUntil { service.starts == 1 }
+            pendingManager.onServiceStarted()
+            awaitUntil {
+                pendingManager.status.value.activelyTracking &&
+                    !pendingStore.current().pendingUpdateRecovery &&
+                    pendingStore.current().lastTrackedPackageUpdateTime == 2_000L
+            }
+
+            // Changed package update time resumes on foreground even without MY_PACKAGE_REPLACED flag.
+            service.starts = 0
+            currentUpdateTime = 3_000L
+            val timestampChangedStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                    lastTrackedPackageUpdateTime = 2_000L,
+                    pendingUpdateRecovery = false,
+                ),
+            )
+            val timestampChangedManager = newManager(
+                trackingStore = timestampChangedStore,
+                targetMutations = ConsentMutationCoordinator(),
+                packageUpdateTime = { currentUpdateTime },
+            )
+            timestampChangedManager.recoverForegroundAfterAppUpdateIfNeeded()
+            awaitUntil { service.starts == 1 }
+            timestampChangedManager.onServiceStarted()
+            awaitUntil {
+                timestampChangedManager.status.value.activelyTracking &&
+                    timestampChangedStore.current().lastTrackedPackageUpdateTime == 3_000L
+            }
+
+            // Unchanged package update time without pendingUpdateRecovery does not auto-resume.
+            service.starts = 0
+            val unchangedStore = FakeTrackingStore(
+                LocalTrackingState(
+                    trackingRequested = true,
+                    localConsentConfirmed = true,
+                    consentOwnerUserId = "u1",
+                    lastTrackedPackageUpdateTime = 3_000L,
+                    pendingUpdateRecovery = false,
+                ),
+            )
+            val unchangedManager = newManager(
+                trackingStore = unchangedStore,
+                targetMutations = ConsentMutationCoordinator(),
+                packageUpdateTime = { currentUpdateTime },
+            )
+            unchangedManager.recoverForegroundAfterAppUpdateIfNeeded()
+            yield()
+            assertEquals(0, service.starts)
+
+            // Explicitly stopped user never auto-resumes even when package update time changes.
+            timestampChangedManager.stopTracking()
+            awaitUntil { !timestampChangedManager.status.value.running }
+            currentUpdateTime = 4_000L
+            service.starts = 0
+            val restartedStoppedManager = newManager(
+                trackingStore = timestampChangedStore,
+                targetMutations = ConsentMutationCoordinator(),
+                packageUpdateTime = { currentUpdateTime },
+            )
+            restartedStoppedManager.recoverForegroundAfterAppUpdateIfNeeded()
+            yield()
+            assertEquals(0, service.starts)
+        }
 }

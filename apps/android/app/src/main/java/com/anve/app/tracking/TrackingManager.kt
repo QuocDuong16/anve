@@ -16,6 +16,7 @@ import com.anve.app.data.location.LocationSyncScheduler
 import com.anve.app.data.location.SyncDisposition
 import com.anve.app.data.location.SyncOutcome
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -27,11 +28,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 
 /** Outcome of a consent switch, separating local effect from server confirmation. */
@@ -64,6 +68,13 @@ private enum class TrackingStartAdmission {
     DENIED,
     SERVICE_REFUSED,
     ACCEPTED,
+}
+
+/** Outcome of automatic tracking recovery after an app update (`MY_PACKAGE_REPLACED`). */
+sealed interface UpdateRecoveryOutcome {
+    data object NotApplicable : UpdateRecoveryOutcome
+    data object Resumed : UpdateRecoveryOutcome
+    data class RequiresUserAction(val ownerUserId: String) : UpdateRecoveryOutcome
 }
 
 /**
@@ -123,6 +134,7 @@ class TrackingManager(
     private val fetchJourneyActive: suspend (String, String) -> Boolean = { _, _ -> false },
     private val directSync: (suspend () -> SyncOutcome)? = null,
     private val onUnexpectedStop: ((String) -> Unit)? = null,
+    private val packageUpdateTime: () -> Long = { 0L },
 ) : TrackingControl, JourneyTrackingControl {
 
     private val _status = MutableStateFlow(TrackingStatus())
@@ -152,7 +164,8 @@ class TrackingManager(
     private var sessionOwner: String? = null
     private var lastSession: com.anve.app.data.auth.StoredSession? = null
     private var clientDeviceId: String? = null
-    private var initialIntentLoaded = false
+    private val initialSessionObserved = CompletableDeferred<Unit>()
+    private var initialRecoveryEvaluatedForOwner: String? = null
     @Volatile private var delayedBatchPending = false
     private var lastMetricsTickElapsed = elapsedNow()
     private var serviceStartedAtElapsed: Long? = null
@@ -225,8 +238,8 @@ class TrackingManager(
     }
 
     init {
-        observeLocalState()
         observeSession()
+        observeLocalState()
         observeConnectivity()
         // Establish the OS snapshot immediately so the UI never shows a
         // permission state from a previous process.
@@ -235,179 +248,206 @@ class TrackingManager(
 
     private fun observeLocalState() {
         scope.launch {
+            initialSessionObserved.await()
             store.state.collectLatest { local ->
-                val wasInitial = !initialIntentLoaded
-                initialIntentLoaded = true
-                val owner = currentOwnerId()
-                val ownerMatches = owner != null && local.consentOwnerUserId == owner
-                val pendingConsent = owner?.let { userId ->
-                    sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
-                }
-                val pendingRevocation = ownerMatches && local.pendingConsentRevocation
-                if (owner != null && pendingConsent != null) {
-                    consentMutations.restoreBlockedAdmission(owner, pendingConsent.generation)
-                } else if (owner != null && pendingRevocation) {
-                    consentMutations.restoreBlockedAdmission(owner, generation = 0)
-                }
-                val admissionOpen = ownerMatches && pendingConsent == null && !pendingRevocation &&
-                    !consentMutations.isLocationAdmissionClosed(owner)
-                _status.update { current ->
-                    current.copy(
-                        consentEnabled = ownerMatches && local.localConsentConfirmed &&
-                            !pendingRevocation && pendingConsent == null && admissionOpen &&
-                            current.serverConsentEnabled != false,
-                        consentConfirmedByServer = ownerMatches && local.localConsentConfirmed,
-                        serverConsentEnabled = if (ownerMatches && local.localConsentConfirmed) {
-                            current.serverConsentEnabled ?: true
-                        } else if (owner == null || !ownerMatches) {
-                            null
-                        } else {
-                            current.serverConsentEnabled
-                        },
-                        locationAdmissionOpen = admissionOpen,
-                        consentSyncPending = pendingRevocation || pendingConsent != null,
-                        consentConflict = pendingConsent?.hasConsentConflict == true,
-                        conflictServerConsent = pendingConsent?.conflictServerEnabled,
-                        trackingRequested = ownerMatches && local.trackingRequested,
-                        lastUploadAtMillis = if (ownerMatches) local.lastSuccessfulUploadAtMillis else null,
-                        privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf(
-                            "LOCATION_CAPTURE_GENERATION_EXPIRED",
-                            "LOCATION_HISTORY_DELETED",
-                        ),
-                        recoveryRequired = if (wasInitial && ownerMatches && local.trackingRequested && !current.running) {
-                            true
-                        } else {
-                            current.recoveryRequired
-                        },
-                        operational = if (wasInitial && ownerMatches && local.trackingRequested && !current.running) {
-                            OperationalState.PAUSED
-                        } else {
-                            current.operational
-                        },
-                        lastError = if (pendingConsent?.hasConsentConflict == true) {
-                            TrackingProblem.CONSENT_CONFLICT
-                        } else if (current.lastError == TrackingProblem.CONSENT_CONFLICT) {
-                            null
-                        } else {
-                            current.lastError
-                        },
-                    )
-                }
-                if (wasInitial && ownerMatches && local.trackingRequested && !status.value.running) {
-                    _status.update {
-                        it.copy(lastError = TrackingProblem.RECOVERY_REQUIRED, recoveryRequired = true)
-                    }
-                }
+                applyLocalState(local, currentOwnerId())
             }
+        }
+    }
+
+    private suspend fun applyLocalState(local: LocalTrackingState, owner: String?) {
+        val ownerMatches = owner != null && local.consentOwnerUserId == owner
+        val pendingConsent = owner?.let { userId ->
+            sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == userId }
+        }
+        val pendingRevocation = ownerMatches && local.pendingConsentRevocation
+        if (owner != null && pendingConsent != null) {
+            consentMutations.restoreBlockedAdmission(owner, pendingConsent.generation)
+        } else if (owner != null && pendingRevocation) {
+            consentMutations.restoreBlockedAdmission(owner, generation = 0)
+        } else if (ownerMatches && local.localConsentConfirmed) {
+            consentMutations.reconcileLocationAdmission(owner, enabled = true)
+        }
+        val admissionOpen = ownerMatches && pendingConsent == null && !pendingRevocation &&
+            !consentMutations.isLocationAdmissionClosed(owner)
+        val shouldFlagInitialRecovery = owner != null &&
+            initialRecoveryEvaluatedForOwner != owner &&
+            ownerMatches &&
+            local.trackingRequested &&
+            local.localConsentConfirmed &&
+            !pendingRevocation &&
+            pendingConsent == null &&
+            !_status.value.running &&
+            !starting
+        if (owner != null) {
+            initialRecoveryEvaluatedForOwner = owner
+        }
+        _status.update { current ->
+            val markRecovery = shouldFlagInitialRecovery && !current.running && !starting
+            val hasConflict = pendingConsent?.hasConsentConflict == true
+            current.copy(
+                consentEnabled = ownerMatches && local.localConsentConfirmed &&
+                    !pendingRevocation && pendingConsent == null && admissionOpen &&
+                    current.serverConsentEnabled != false,
+                consentConfirmedByServer = ownerMatches && local.localConsentConfirmed,
+                serverConsentEnabled = if (ownerMatches && local.localConsentConfirmed) {
+                    current.serverConsentEnabled ?: true
+                } else if (owner == null || !ownerMatches) {
+                    null
+                } else {
+                    current.serverConsentEnabled
+                },
+                locationAdmissionOpen = admissionOpen,
+                consentSyncPending = pendingRevocation || pendingConsent != null,
+                consentConflict = hasConflict,
+                conflictServerConsent = pendingConsent?.conflictServerEnabled,
+                trackingRequested = ownerMatches && local.trackingRequested,
+                lastUploadAtMillis = if (ownerMatches) local.lastSuccessfulUploadAtMillis else null,
+                privacyDiscardedPoints = ownerMatches && local.lastSyncErrorCode in setOf(
+                    "LOCATION_CAPTURE_GENERATION_EXPIRED",
+                    "LOCATION_HISTORY_DELETED",
+                ),
+                recoveryRequired = if (markRecovery) true else current.recoveryRequired,
+                operational = if (markRecovery) OperationalState.PAUSED else current.operational,
+                lastError = when {
+                    hasConflict -> TrackingProblem.CONSENT_CONFLICT
+                    markRecovery -> TrackingProblem.RECOVERY_REQUIRED
+                    current.lastError == TrackingProblem.CONSENT_CONFLICT -> null
+                    else -> current.lastError
+                },
+                lastErrorAtMillis = if (markRecovery) now() else current.lastErrorAtMillis,
+            )
         }
     }
 
     private fun observeSession() {
         scope.launch {
             sessions.session.collectLatest { session ->
-                if (session == null) {
-                    captureGenerations.clear()
-                    sessionGeneration++
-                    migrateLegacyRevocation(lastSession)
-                    sessionOwner = null
-                    lastSession = null
-                    delayedBatchPending = false
-                    delayedFlushJob?.cancel()
-                    directSyncJob?.cancel()
-                    queue.purgeAll()
-                    queueCountJob?.cancel()
-                    syncScheduler.cancel()
-                    stopInternal(clearIntent = true, clearRecovery = true)
-                    _status.update {
-                        it.copy(
-                            ownerUserId = null,
-                            lastFixAtMillis = null,
-                            lastAccuracyMeters = null,
-                            lastUploadAtMillis = null,
-                            lastError = null,
-                            lastErrorAtMillis = null,
-                            sessionReady = false,
-                            trackingRequested = false,
-                            consentEnabled = false,
-                            consentConfirmedByServer = false,
-                            serverConsentEnabled = null,
-                            locationAdmissionOpen = false,
-                            pendingQueueCount = 0,
-                        )
-                    }
-                    return@collectLatest
-                }
-
-                _status.update { it.copy(sessionReady = true) }
-                val owner = session.userId
-                if (owner != null) {
-                    if (owner != sessionOwner) {
-                        delayedBatchPending = false
+                try {
+                    if (session == null) {
                         captureGenerations.clear()
                         sessionGeneration++
+                        migrateLegacyRevocation(lastSession)
+                        sessionOwner = null
+                        lastSession = null
+                        initialRecoveryEvaluatedForOwner = null
+                        delayedBatchPending = false
+                        delayedFlushJob?.cancel()
+                        directSyncJob?.cancel()
+                        queue.purgeAll()
+                        queueCountJob?.cancel()
+                        queueCountJob = null
+                        syncScheduler.cancel()
+                        stopInternal(clearIntent = true, clearRecovery = true)
                         _status.update {
                             it.copy(
                                 ownerUserId = null,
                                 lastFixAtMillis = null,
                                 lastAccuracyMeters = null,
                                 lastUploadAtMillis = null,
-                                pendingQueueCount = 0,
-                                // Initial adoption may follow the owner-checked
-                                // recovery signal emitted by observeLocalState.
-                                lastError = if (sessionOwner == null && it.recoveryRequired) it.lastError else null,
-                                lastErrorAtMillis = if (sessionOwner == null && it.recoveryRequired) it.lastErrorAtMillis else null,
-                                recoveryRequired = sessionOwner == null && it.recoveryRequired,
+                                lastError = null,
+                                lastErrorAtMillis = null,
+                                sessionReady = false,
+                                trackingRequested = false,
                                 consentEnabled = false,
                                 consentConfirmedByServer = false,
                                 serverConsentEnabled = null,
                                 locationAdmissionOpen = false,
-                                trackingRequested = false,
-                                running = false,
-                                providerActive = false,
-                                serviceRunning = false,
+                                pendingQueueCount = 0,
                             )
                         }
+                        return@collectLatest
                     }
-                    val local = store.current()
-                    if (local.localConsentConfirmed && local.consentOwnerUserId == null) {
-                        // Consent persisted by a build that did not record
-                        // its owner. Provenance is unknown, so it is not
-                        // allowed to authorize collection for this account.
-                        store.setLocalConsentConfirmed(false)
-                    }
-                    if (local.consentOwnerUserId != null && local.consentOwnerUserId != owner) {
-                        // A different account's consent mirror and queue
-                        // must never carry over, even if a sign-out was
-                        // interrupted before clearing them.
-                        queue.purgeAll()
-                        delayedBatchPending = false
-                        syncScheduler.cancel()
-                        stopInternal(clearIntent = true, clearRecovery = true)
-                        store.setLocalConsentConfirmed(false)
-                        migrateLegacyRevocation(lastSession)
-                        store.setPendingConsentRevocation(false)
-                        store.setTrackingRequested(false)
-                        store.setConsentOwner(null)
-                    }
-                    if (owner != sessionOwner) {
-                        if (sessionOwner != null) {
-                            // Session replacement without a null in between.
+
+                    _status.update { it.copy(sessionReady = true) }
+                    val owner = session.userId
+                    if (owner != null) {
+                        val previousOwner = sessionOwner
+                        if (owner != previousOwner) {
+                            delayedBatchPending = false
+                            captureGenerations.clear()
+                            sessionGeneration++
+                            if (previousOwner != null) {
+                                initialRecoveryEvaluatedForOwner = null
+                                _status.update {
+                                    it.copy(
+                                        ownerUserId = null,
+                                        lastFixAtMillis = null,
+                                        lastAccuracyMeters = null,
+                                        lastUploadAtMillis = null,
+                                        pendingQueueCount = 0,
+                                        lastError = null,
+                                        lastErrorAtMillis = null,
+                                        recoveryRequired = false,
+                                        consentEnabled = false,
+                                        consentConfirmedByServer = false,
+                                        serverConsentEnabled = null,
+                                        locationAdmissionOpen = false,
+                                        consentSyncPending = false,
+                                        consentConflict = false,
+                                        conflictServerConsent = null,
+                                        trackingRequested = false,
+                                        running = false,
+                                        providerActive = false,
+                                        serviceRunning = false,
+                                    )
+                                }
+                            }
+                        }
+                        val local = store.current()
+                        if (local.localConsentConfirmed && local.consentOwnerUserId == null) {
+                            // Consent persisted by a build that did not record
+                            // its owner. Provenance is unknown, so it is not
+                            // allowed to authorize collection for this account.
+                            store.setLocalConsentConfirmed(false)
+                        }
+                        if (local.consentOwnerUserId != null && local.consentOwnerUserId != owner) {
+                            // A different account's consent mirror and queue
+                            // must never carry over, even if a sign-out was
+                            // interrupted before clearing them.
                             queue.purgeAll()
                             delayedBatchPending = false
                             syncScheduler.cancel()
                             stopInternal(clearIntent = true, clearRecovery = true)
-                            migrateLegacyRevocation(lastSession)
                             store.setLocalConsentConfirmed(false)
+                            migrateLegacyRevocation(lastSession)
                             store.setPendingConsentRevocation(false)
                             store.setTrackingRequested(false)
+                            store.setPendingUpdateRecovery(false)
                             store.setConsentOwner(null)
                         }
-                        sessionOwner = owner
-                        _status.update { it.copy(ownerUserId = owner) }
-                        observeQueueCount(owner)
+                        if (owner != previousOwner) {
+                            if (previousOwner != null) {
+                                // Session replacement without a null in between.
+                                queue.purgeAll()
+                                delayedBatchPending = false
+                                syncScheduler.cancel()
+                                stopInternal(clearIntent = true, clearRecovery = true)
+                                migrateLegacyRevocation(lastSession)
+                                store.setLocalConsentConfirmed(false)
+                                store.setPendingConsentRevocation(false)
+                                store.setTrackingRequested(false)
+                                store.setPendingUpdateRecovery(false)
+                                store.setConsentOwner(null)
+                            }
+                            sessionOwner = owner
+                            _status.update { it.copy(ownerUserId = owner) }
+                            observeQueueCount(owner)
+                            applyLocalState(store.current(), owner)
+                        } else if (_status.value.ownerUserId != owner || queueCountJob == null) {
+                            _status.update { it.copy(ownerUserId = owner) }
+                            observeQueueCount(owner)
+                            applyLocalState(local, owner)
+                        }
                     }
+                    lastSession = session
+                    initialSessionObserved.complete(Unit)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    initialSessionObserved.complete(Unit)
+                    throw error
                 }
-                lastSession = session
             }
         }
     }
@@ -645,6 +685,7 @@ class TrackingManager(
             attempt { store.setPendingConsentRevocation(true) }
             attempt { store.setLocalConsentConfirmed(false) }
             attempt { store.setTrackingRequested(false) }
+            attempt { store.setPendingUpdateRecovery(false) }
             val queuePurged = attempt {
                 consentMutations.withLocalMutation { queue.purgeAll() }
             }
@@ -1015,6 +1056,14 @@ class TrackingManager(
         }
 
         val verifiedOwner = owner
+        val sessionBeforeCheckpoint = sessions.current()
+        if (sessionBeforeCheckpoint == null ||
+            (sessionBeforeCheckpoint.userId != null && sessionBeforeCheckpoint.userId != verifiedOwner) ||
+            (sessionBeforeCheckpoint.userId == null && sessionOwner == null)
+        ) {
+            failStart(TrackingProblem.SESSION_UNAVAILABLE)
+            return
+        }
         val generationAtRequest = sessionGeneration
         val checkpoint = try {
             if (connectivity.isOnline()) fetchCaptureGeneration(verifiedOwner) else null
@@ -1042,7 +1091,7 @@ class TrackingManager(
             }
             if (starting || _status.value.running) {
                 TrackingStartAdmission.ALREADY_STARTING
-            } else if (latestSession == null || latestSession.accessToken != session.accessToken) {
+            } else if (latestSession == null || latestSession.accessToken != sessionBeforeCheckpoint.accessToken) {
                 TrackingStartAdmission.SESSION_CHANGED
             } else if (attempt != startEpoch || generationAtRequest != sessionGeneration ||
                 latestOwner != owner || pending != null ||
@@ -1139,6 +1188,195 @@ class TrackingManager(
         serviceStartedAtElapsed = elapsedNow()
         scope.launch { metrics.recordServiceStart() }
         startAcquisition(owner, sessionGeneration)
+        if (_status.value.activelyTracking) {
+            scope.launch {
+                runCatching {
+                    store.setPendingUpdateRecovery(false)
+                    recordTrackedPackageUpdateTime()
+                }
+            }
+        }
+    }
+
+    private suspend fun recordTrackedPackageUpdateTime() {
+        val updatedAt = packageUpdateTime()
+        if (updatedAt > 0L) {
+            store.setLastTrackedPackageUpdateTime(updatedAt)
+        }
+    }
+
+    /**
+     * Attempts safe automatic resume after `MY_PACKAGE_REPLACED` when OS
+     * background-location prerequisites and server privacy checks allow.
+     * Falls back to [UpdateRecoveryOutcome.RequiresUserAction] (never claiming
+     * tracking is active) when Android background/permission/offline limits apply.
+     */
+    suspend fun recoverAfterAppUpdate(
+        timeoutMillis: Long = UPDATE_RECOVERY_TIMEOUT_MILLIS,
+    ): UpdateRecoveryOutcome {
+        if (withTimeoutOrNull(timeoutMillis) { initialSessionObserved.await() } == null) {
+            val fallbackOwner = runCatching { sessions.current()?.userId }.getOrNull()
+            val fallbackLocal = runCatching { store.current() }.getOrNull()
+            return if (fallbackOwner != null &&
+                fallbackLocal?.trackingRequested == true &&
+                fallbackLocal.consentOwnerUserId == fallbackOwner
+            ) {
+                UpdateRecoveryOutcome.RequiresUserAction(fallbackOwner)
+            } else {
+                UpdateRecoveryOutcome.NotApplicable
+            }
+        }
+        val session = sessions.current() ?: return UpdateRecoveryOutcome.NotApplicable
+        val owner = session.userId ?: sessionOwner ?: return UpdateRecoveryOutcome.NotApplicable
+        val local = store.current()
+        val pendingConsent = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == owner }
+        val eligibleLocally = local.trackingRequested &&
+            local.consentOwnerUserId == owner &&
+            local.localConsentConfirmed &&
+            !local.pendingConsentRevocation &&
+            pendingConsent == null
+        if (!eligibleLocally) {
+            if (local.pendingUpdateRecovery) {
+                runCatching { store.setPendingUpdateRecovery(false) }
+            }
+            return UpdateRecoveryOutcome.NotApplicable
+        }
+        if (_status.value.activelyTracking) {
+            runCatching {
+                store.setPendingUpdateRecovery(false)
+                recordTrackedPackageUpdateTime()
+            }
+            return UpdateRecoveryOutcome.Resumed
+        }
+
+        runCatching { store.setPendingUpdateRecovery(true) }
+        if (starting) {
+            return awaitRecoverySettlement(owner, timeoutMillis)
+        }
+
+        val snapshot = permissions.snapshot()
+        _status.update {
+            it.copy(
+                permission = snapshot.location,
+                backgroundPermissionGranted = snapshot.backgroundLocation,
+                notificationsGranted = snapshot.notifications,
+                locationServicesEnabled = snapshot.locationServicesEnabled,
+                online = connectivity.isOnline(),
+                batterySaver = batterySaver(),
+                recoveryRequired = true,
+            )
+        }
+        if (!snapshot.canTrack ||
+            !snapshot.backgroundLocation ||
+            !snapshot.locationServicesEnabled ||
+            !provider.isAvailable() ||
+            (!connectivity.isOnline() && !captureGenerations.has(owner))
+        ) {
+            return UpdateRecoveryOutcome.RequiresUserAction(owner)
+        }
+
+        return try {
+            val acquired = withTimeoutOrNull(timeoutMillis) {
+                startLock.withLock {
+                    if (!_status.value.running && !starting) {
+                        startInternal(startEpoch)
+                    }
+                    true
+                }
+            } ?: false
+            if (!acquired) {
+                UpdateRecoveryOutcome.RequiresUserAction(owner)
+            } else {
+                awaitRecoverySettlement(owner, timeoutMillis)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            UpdateRecoveryOutcome.RequiresUserAction(owner)
+        }
+    }
+
+    private suspend fun awaitRecoverySettlement(
+        owner: String,
+        timeoutMillis: Long,
+    ): UpdateRecoveryOutcome {
+        val settled = withTimeoutOrNull(timeoutMillis) {
+            status.first { current ->
+                current.activelyTracking || (!starting && !current.running)
+            }
+        } ?: _status.value
+        if (settled.activelyTracking) {
+            runCatching {
+                store.setPendingUpdateRecovery(false)
+                recordTrackedPackageUpdateTime()
+            }
+            return UpdateRecoveryOutcome.Resumed
+        }
+        val localAfter = runCatching { store.current() }.getOrNull()
+        if (settled.lastError in NON_RECOVERABLE_UPDATE_PROBLEMS ||
+            settled.consentConflict ||
+            !settled.sessionReady ||
+            localAfter?.trackingRequested != true
+        ) {
+            runCatching { store.setPendingUpdateRecovery(false) }
+            return UpdateRecoveryOutcome.NotApplicable
+        }
+        return UpdateRecoveryOutcome.RequiresUserAction(owner)
+    }
+
+    /**
+     * Resumes sharing automatically once the user opens the app in foreground
+     * after an app update if prior consent and foreground permissions allow.
+     */
+    fun recoverForegroundAfterAppUpdateIfNeeded() {
+        if (_status.value.running || starting) return
+        val attempt = startEpoch
+        scope.launch {
+            initialSessionObserved.await()
+            if (attempt != startEpoch || _status.value.running || starting) return@launch
+            val session = sessions.current() ?: return@launch
+            val owner = session.userId ?: sessionOwner ?: return@launch
+            val local = store.current()
+            val pendingConsent = sessions.pendingConsentOperations().firstOrNull { it.ownerUserId == owner }
+            val eligibleLocally = local.trackingRequested &&
+                local.consentOwnerUserId == owner &&
+                local.localConsentConfirmed &&
+                !local.pendingConsentRevocation &&
+                pendingConsent == null
+            if (!eligibleLocally) {
+                if (local.pendingUpdateRecovery) {
+                    runCatching { store.setPendingUpdateRecovery(false) }
+                }
+                return@launch
+            }
+            val currentUpdateTime = packageUpdateTime()
+            val updateDetected = local.pendingUpdateRecovery ||
+                (currentUpdateTime > 0L && local.lastTrackedPackageUpdateTime != currentUpdateTime)
+            if (!updateDetected) return@launch
+
+            val snapshot = permissions.snapshot()
+            _status.update {
+                it.copy(
+                    permission = snapshot.location,
+                    backgroundPermissionGranted = snapshot.backgroundLocation,
+                    notificationsGranted = snapshot.notifications,
+                    locationServicesEnabled = snapshot.locationServicesEnabled,
+                    online = connectivity.isOnline(),
+                    batterySaver = batterySaver(),
+                )
+            }
+            if (!snapshot.canTrack || !snapshot.locationServicesEnabled || !provider.isAvailable()) {
+                return@launch
+            }
+            if (!startLock.tryLock()) return@launch
+            try {
+                if (attempt == startEpoch && !_status.value.running && !starting) {
+                    startInternal(attempt)
+                }
+            } finally {
+                startLock.unlock()
+            }
+        }
     }
 
     fun onServiceStartFailed(startGeneration: Long? = null) {
@@ -1188,6 +1426,7 @@ class TrackingManager(
 
     override fun refreshStatus() {
         scope.launch {
+            initialSessionObserved.await()
             val snapshot = permissions.snapshot()
             val activeSession = sessions.current()
             val refreshGeneration = sessionGeneration
@@ -1216,6 +1455,9 @@ class TrackingManager(
                         sessions.setUserIdIfMatches(activeSession.accessToken, refreshedUser.id)
                         sessionOwner = refreshedUser.id
                         owner = refreshedUser.id
+                        _status.update { current ->
+                            if (current.ownerUserId == null) current.copy(ownerUserId = refreshedUser.id) else current
+                        }
                     }
                     try {
                         recordServerConsent(refreshedUser)
@@ -1259,6 +1501,9 @@ class TrackingManager(
             if (owner != null && pendingRevocation) {
                 consentMutations.restoreBlockedAdmission(owner, pendingOperation?.generation ?: 0L)
             }
+            if (ownerMatches && local.localConsentConfirmed && pendingOperation == null && !pendingRevocation) {
+                consentMutations.reconcileLocationAdmission(owner, enabled = true)
+            }
             val admissionOpen = ownerMatches && pendingOperation == null && !pendingRevocation &&
                 !consentMutations.isLocationAdmissionClosed(owner)
             val count = owner?.let { runCatching { queue.count(it) }.getOrNull() }
@@ -1273,6 +1518,8 @@ class TrackingManager(
                     online = connectivity.isOnline(),
                     batterySaver = batterySaver(),
                     pendingQueueCount = count ?: it.pendingQueueCount,
+                    trackingRequested = ownerMatches && local.trackingRequested,
+                    lastUploadAtMillis = if (ownerMatches) local.lastSuccessfulUploadAtMillis else null,
                     consentEnabled = ownerMatches && local.localConsentConfirmed &&
                         !pendingRevocation && pendingOperation == null && admissionOpen &&
                         (remote?.locationSharingEnabled ?: it.serverConsentEnabled.takeIf { ownerMatches }) != false,
@@ -1304,6 +1551,7 @@ class TrackingManager(
         syncScheduler.cancel()
         stopInternal(clearIntent = true, clearRecovery = true)
         store.setLocalConsentConfirmed(false)
+        store.setPendingUpdateRecovery(false)
         _status.update {
             it.copy(
                 consentEnabled = false,
@@ -1759,7 +2007,10 @@ class TrackingManager(
         if (clearIntent && persistIntent) {
             // Persist asynchronously: the in-memory state must flip now so
             // the UI cannot keep showing a running tracker during the write.
-            scope.launch { store.setTrackingRequested(false) }
+            scope.launch {
+                store.setTrackingRequested(false)
+                store.setPendingUpdateRecovery(false)
+            }
         }
         _status.update {
             it.copy(
@@ -1808,6 +2059,11 @@ class TrackingManager(
     }
 
     private fun failStart(problem: TrackingProblem) {
+        if (problem in NON_RECOVERABLE_UPDATE_PROBLEMS) {
+            scope.launch {
+                runCatching { store.setPendingUpdateRecovery(false) }
+            }
+        }
         _status.update {
             it.copy(
                 running = false,
@@ -1816,7 +2072,9 @@ class TrackingManager(
                 operational = OperationalState.PAUSED,
                 recoveryRequired = problem == TrackingProblem.SERVICE_START_FAILED ||
                     problem == TrackingProblem.PERMISSION_DENIED ||
-                    problem == TrackingProblem.PERMISSION_REVOKED,
+                    problem == TrackingProblem.PERMISSION_REVOKED ||
+                    problem == TrackingProblem.LOCATION_DISABLED ||
+                    problem == TrackingProblem.CHECKPOINT_UNAVAILABLE,
                 lastError = problem,
                 lastErrorAtMillis = now(),
             )
@@ -1825,7 +2083,15 @@ class TrackingManager(
 
     companion object {
         const val SERVICE_START_TIMEOUT_MILLIS: Long = 10_000
+        const val UPDATE_RECOVERY_TIMEOUT_MILLIS: Long = 7_000
         const val OPERATIONAL_CHECK_INTERVAL_MILLIS: Long = 2 * 60_000L
+
+        private val NON_RECOVERABLE_UPDATE_PROBLEMS = setOf(
+            TrackingProblem.CONSENT_REQUIRED,
+            TrackingProblem.CONSENT_CONFLICT,
+            TrackingProblem.CIRCLE_REQUIRED,
+            TrackingProblem.SESSION_UNAVAILABLE,
+        )
 
         /** State-aware batch thresholds: keep Live Map fresh while cutting radio wakeups. */
         const val JOURNEY_BATCH_TRIGGER_COUNT: Int = 2

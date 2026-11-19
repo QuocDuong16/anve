@@ -664,7 +664,7 @@
   ],
   "schemaVersion": 1,
   "sourcePolicies": {
-    "apps/android/app/src/main/AndroidManifest.xml": "e4ab0b483060b8b163b4d48ff030ed163b062c06c9147ca4469ff4cd84d325eb",
+    "apps/android/app/src/main/AndroidManifest.xml": "3076f4177e38baae13acf11088269a2c1b0a7df1e7bcdbc4dc1912f46f2583f2",
     "apps/android/app/src/main/res/xml/backup_rules.xml": "bab9f708acc805a3b6bf536a6401488cef5f7e91580d4d744f87881e4d7a122a",
     "apps/android/app/src/main/res/xml/data_extraction_rules.xml": "144681400e8ab3d4303178cc0c0c4534d607492d2d837a0911548c2d9237b653",
     "apps/android/app/src/main/res/xml/network_security_config.xml": "b3f61bf098d093c46deb038573bc2376b59f15263385835f6561c65eea27c8f2"

@@ -20,8 +20,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Displays a user-visible reminder when active location sharing was halted by
- * a reboot, app update, or unexpected system service shutdown, without
- * silently restarting the foreground location service in the background.
+ * a reboot, unexpected system service shutdown, or an app update that cannot
+ * resume automatically in the background due to Android OS restrictions.
  */
 object TrackingRecoveryNotifier {
     const val CHANNEL_ID = "anve_tracking_recovery"
@@ -99,6 +99,17 @@ class TrackingRecoveryReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         app.container.applicationScope.launch {
             try {
+                if (action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                    val outcome = app.container.trackingManager.recoverAfterAppUpdate()
+                    if (outcome is UpdateRecoveryOutcome.RequiresUserAction) {
+                        TrackingRecoveryNotifier.notify(
+                            app,
+                            outcome.ownerUserId,
+                            TrackingRecoveryNotifier.Reason.APP_UPDATED,
+                        )
+                    }
+                    return@launch
+                }
                 val session = app.container.sessionStore.current()
                 val owner = session?.userId ?: return@launch
                 val local = app.container.trackingStore.current()
@@ -110,17 +121,16 @@ class TrackingRecoveryReceiver : BroadcastReceiver() {
                     !local.pendingConsentRevocation &&
                     !pendingConsent
                 ) {
-                    val reason = if (action == Intent.ACTION_BOOT_COMPLETED) {
-                        TrackingRecoveryNotifier.Reason.REBOOT
-                    } else {
-                        TrackingRecoveryNotifier.Reason.APP_UPDATED
-                    }
-                    TrackingRecoveryNotifier.notify(app, owner, reason)
+                    TrackingRecoveryNotifier.notify(
+                        app,
+                        owner,
+                        TrackingRecoveryNotifier.Reason.REBOOT,
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Recovery notification is best-effort; TrackingManager still flags recoveryRequired on app launch.
+                // Recovery is best-effort; foreground update recovery or TrackingManager still flags recoveryRequired on launch.
             } finally {
                 pendingResult.finish()
             }

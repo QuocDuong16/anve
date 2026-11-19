@@ -75,7 +75,15 @@ Quy tắc:
 - **Consent không đồng nghĩa tracking.** Consent là bản ghi đồng ý trên máy
   chủ; điện thoại chỉ thực sự thu thập khi người dùng bật theo dõi và cấp
   quyền OS. Foreground service phải hiển thị thông báo cố định; UI tách rõ
-  "đã đồng ý" khỏi "đang cập nhật vị trí".
+  "đã đồng ý" khỏi "đang cập nhật vị trí". Sau khi cập nhật ứng dụng
+  (`MY_PACKAGE_REPLACED`), nếu trước đó người dùng đã đồng ý **và** đang bật theo
+  dõi (`trackingRequested=true`) và không có thu hồi/xung đột chờ xử lý, app
+  chỉ tự khôi phục dịch vụ nền (kèm thông báo cố định bắt buộc) khi quyền OS
+  nền (`ACCESS_BACKGROUND_LOCATION`) và máy chủ cùng cho phép; nếu bị giới hạn
+  OS/OEM, thiếu quyền nền hoặc đang offline, app không tự chạy lén mà gửi thông
+  báo nhắc người dùng bật lại và có thể tự khôi phục khi người dùng mở app lên
+  foreground. Nếu người dùng đã dừng theo dõi hoặc thu hồi consent trước khi
+  cập nhật thì tuyệt đối không tự bật lại.
 - **Tắt consent là hành động local-first:** acquisition dừng ngay, mọi điểm
   chưa gửi bị xóa khỏi thiết bị, ý định thu hồi được lưu bền vững trước khi
   gọi mạng và chặn upload mới cho đúng owner. App không tuyên bố server đã

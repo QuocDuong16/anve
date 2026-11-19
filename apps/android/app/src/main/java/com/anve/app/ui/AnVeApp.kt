@@ -73,6 +73,7 @@ fun AnVeApp(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START && userId != null) {
                 container.pushRegistrationCoordinator.syncIfPermitted(userId)
+                container.trackingManager.recoverForegroundAfterAppUpdateIfNeeded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

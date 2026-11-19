@@ -1,6 +1,9 @@
 package com.anve.app
 
 import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.PowerManager
 import androidx.room.Room
 import com.anve.app.data.api.AnveApi
@@ -220,6 +223,7 @@ class AppContainer(application: Application) {
         onUnexpectedStop = { owner ->
             TrackingRecoveryNotifier.notify(application, owner, TrackingRecoveryNotifier.Reason.INTERRUPTED)
         },
+        packageUpdateTime = { readPackageLastUpdateTime(application) },
     )
 
     val locationSyncEngine: LocationSyncEngine = LocationSyncEngine(
@@ -262,6 +266,17 @@ class AppContainer(application: Application) {
         val passThroughInterceptor = Interceptor { chain -> chain.proceed(chain.request()) }
     }
 }
+
+private fun readPackageLastUpdateTime(context: Context): Long = runCatching {
+    val manager = context.packageManager
+    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        manager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+    } else {
+        @Suppress("DEPRECATION")
+        manager.getPackageInfo(context.packageName, 0)
+    }
+    info.lastUpdateTime
+}.getOrDefault(0L)
 
 class AnVeApplication : Application() {
 

@@ -39,6 +39,8 @@ data class LocalTrackingState(
     val consentOwnerUserId: String? = null,
     val lastSuccessfulUploadAtMillis: Long? = null,
     val lastSyncErrorCode: String? = null,
+    val lastTrackedPackageUpdateTime: Long? = null,
+    val pendingUpdateRecovery: Boolean = false,
 )
 
 interface TrackingStore {
@@ -50,6 +52,8 @@ interface TrackingStore {
     suspend fun setConsentOwner(ownerUserId: String?)
     suspend fun setLastSuccessfulUpload(atMillis: Long)
     suspend fun setLastSyncError(code: String?)
+    suspend fun setLastTrackedPackageUpdateTime(updatedAtMillis: Long?)
+    suspend fun setPendingUpdateRecovery(pending: Boolean)
 }
 
 private val Context.trackingDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -73,6 +77,8 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
             consentOwnerUserId = prefs[KEY_CONSENT_OWNER],
             lastSuccessfulUploadAtMillis = prefs[KEY_LAST_UPLOAD_AT],
             lastSyncErrorCode = prefs[KEY_LAST_SYNC_ERROR],
+            lastTrackedPackageUpdateTime = prefs[KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME],
+            pendingUpdateRecovery = prefs[KEY_PENDING_UPDATE_RECOVERY] ?: false,
         )
     }
 
@@ -103,6 +109,8 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
             if (prefs[KEY_CONSENT_OWNER] != ownerUserId) {
                 prefs.remove(KEY_LAST_SYNC_ERROR)
                 prefs.remove(KEY_LAST_UPLOAD_AT)
+                prefs.remove(KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME)
+                prefs.remove(KEY_PENDING_UPDATE_RECOVERY)
             }
             if (ownerUserId == null) {
                 prefs.remove(KEY_CONSENT_OWNER)
@@ -127,6 +135,20 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
         }
     }
 
+    override suspend fun setLastTrackedPackageUpdateTime(updatedAtMillis: Long?) {
+        dataStore.edit { prefs ->
+            if (updatedAtMillis == null) {
+                prefs.remove(KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME)
+            } else {
+                prefs[KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME] = updatedAtMillis
+            }
+        }
+    }
+
+    override suspend fun setPendingUpdateRecovery(pending: Boolean) {
+        dataStore.edit { it[KEY_PENDING_UPDATE_RECOVERY] = pending }
+    }
+
     private companion object {
         val KEY_TRACKING_REQUESTED = booleanPreferencesKey("tracking_requested")
         val KEY_PENDING_CONSENT_REVOCATION = booleanPreferencesKey("pending_consent_revocation")
@@ -134,5 +156,7 @@ class DataStoreTrackingStore(context: Context) : TrackingStore {
         val KEY_CONSENT_OWNER = stringPreferencesKey("consent_owner_user_id")
         val KEY_LAST_UPLOAD_AT = longPreferencesKey("last_successful_upload_at")
         val KEY_LAST_SYNC_ERROR = stringPreferencesKey("last_sync_error")
+        val KEY_LAST_TRACKED_PACKAGE_UPDATE_TIME = longPreferencesKey("last_tracked_package_update_time")
+        val KEY_PENDING_UPDATE_RECOVERY = booleanPreferencesKey("pending_update_recovery")
     }
 }

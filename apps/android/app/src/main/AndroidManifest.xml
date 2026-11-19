@@ -84,7 +84,8 @@
             </intent-filter>
         </activity>
 
-        <!-- Reboot/update recovery only notifies the user; never starts GPS silently. -->
+        <!-- MY_PACKAGE_REPLACED resumes previously active, consented sharing with its persistent notification
+             when OS/background permissions allow and notifies the user otherwise; BOOT_COMPLETED notifies only. -->
         <receiver
             android:name=".tracking.TrackingRecoveryReceiver"
             android:exported="false">
@@ -94,8 +95,8 @@
             </intent-filter>
         </receiver>
 
-        <!-- Only ever started from a visible screen or an explicit user
-             resume; START_NOT_STICKY in code. -->
+        <!-- Started from visible user action or eligible app-update recovery;
+             always posts foreground notification and runs START_NOT_STICKY. -->
         <service
             android:name=".tracking.TrackingService"
             android:exported="false"

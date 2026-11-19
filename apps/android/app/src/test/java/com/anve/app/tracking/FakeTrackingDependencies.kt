@@ -50,6 +50,8 @@ class FakeTrackingStore(
             consentOwnerUserId = ownerUserId,
             lastSyncErrorCode = _state.value.lastSyncErrorCode.takeIf { sameOwner },
             lastSuccessfulUploadAtMillis = _state.value.lastSuccessfulUploadAtMillis.takeIf { sameOwner },
+            lastTrackedPackageUpdateTime = _state.value.lastTrackedPackageUpdateTime.takeIf { sameOwner },
+            pendingUpdateRecovery = _state.value.pendingUpdateRecovery && sameOwner,
         )
     }
 
@@ -62,6 +64,14 @@ class FakeTrackingStore(
 
     override suspend fun setLastSyncError(code: String?) {
         _state.value = _state.value.copy(lastSyncErrorCode = code)
+    }
+
+    override suspend fun setLastTrackedPackageUpdateTime(updatedAtMillis: Long?) {
+        _state.value = _state.value.copy(lastTrackedPackageUpdateTime = updatedAtMillis)
+    }
+
+    override suspend fun setPendingUpdateRecovery(pending: Boolean) {
+        _state.value = _state.value.copy(pendingUpdateRecovery = pending)
     }
 }
 
