@@ -29,6 +29,13 @@ def enum_value(value, symbols):
         raise ValueError("Review the newly introduced manifest enum before exporting privacy fields") from None
 
 
+def app_link_data(element):
+    attrs = dict(element.attrib)
+    if attrs.get(NS + "scheme") == "https" and NS + "host" in attrs:
+        attrs[NS + "host"] = "${APP_LINKS_HOST}"
+    return attrs
+
+
 def manifest_inventory(xml):
     root = ET.fromstring(xml)
     package = root.get("package")
@@ -74,7 +81,9 @@ def manifest_inventory(xml):
         fields["categories"] = sorted({e.get(NS + "name", "") for e in child.findall("intent-filter/category")})
         # Data filters change external entry points. Persist only field names
         # and digests, since a malformed declaration might contain a token.
-        fields["dataFilters"] = sorted(hashlib.sha256(json.dumps(sorted(e.attrib.items())).encode()).hexdigest()
+        # The verified App Links host is the deployment's API host, so it differs between the
+        # validation build and the real release. Review its scheme/path, not the host value.
+        fields["dataFilters"] = sorted(hashlib.sha256(json.dumps(sorted(app_link_data(e).items())).encode()).hexdigest()
                                       for e in child.findall("intent-filter/data"))
         fields["metadataNames"] = sorted(e.get(NS + "name", "") for e in child.findall("meta-data"))
         components.append(fields)

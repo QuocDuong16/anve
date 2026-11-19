@@ -52,8 +52,8 @@
           "android.intent.category.LAUNCHER"
         ],
         "dataFilters": [
-          "5c1f763cf32c6e7d3545f36d2eabfd4cee88c3b41f6bdc5f9b9e6bcb8ad03fba",
-          "d6e2cb5f7a67c5c27c520eba45138ea1de65670ebd72937663f99b1e88d714e9"
+          "4c820b4504077fe5fbb856f996ab713788dc90020396b6629c70be130d8815ef",
+          "5c1f763cf32c6e7d3545f36d2eabfd4cee88c3b41f6bdc5f9b9e6bcb8ad03fba"
         ],
         "exported": "true",
         "kind": "activity",
