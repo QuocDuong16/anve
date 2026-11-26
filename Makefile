@@ -14,7 +14,7 @@
 	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
 	android-sdk-check android-build android-test android-lint android-ui-rules-check android-check android-release android-release-config-check android-release-check android-signed-smoke android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint release-tooling-check \
-	outdated server-outdated toolchain-outdated \
+	outdated server-outdated android-outdated toolchain-outdated \
 	quality-check
 
 ##@ Getting started
@@ -234,15 +234,20 @@ deps-lint: ## Validate the Dependabot configuration against its schema
 
 ##@ Dependency maintenance
 # Reports query upstream registries, so they are opt-in rather than CI gates.
-# Android catalog and wrapper updates arrive through Dependabot (see deps-lint).
-outdated: ## List newer direct Go dependencies and mise-pinned tools
+# Gradle wrapper and SDK platform pins are checked by toolchain-check instead.
+outdated: ## List newer Go, Android and mise-pinned tool versions
 	@echo "Outdated Go server dependencies..."
 	$(MAKE) --no-print-directory server-outdated
+	@echo "Outdated Android dependencies..."
+	$(MAKE) --no-print-directory android-outdated
 	@echo "Outdated toolchain pins (major upgrades included; adopt them deliberately)..."
 	$(MAKE) --no-print-directory toolchain-outdated
 
 server-outdated: ## List newer direct Go dependencies
 	cd apps/server && go list -u -m -f '{{if and .Update (not .Indirect)}}{{.Path}} {{.Version}} -> {{.Update.Version}}{{end}}' all
+
+android-outdated: android-sdk-check ## List newer Android dependencies from the version catalog
+	cd $(ANDROID_DIR) && ./gradlew :app:dependencyUpdates --console=plain
 
 toolchain-outdated: ## List newer versions of the mise-pinned tools
 	@command -v mise >/dev/null 2>&1 || $(MISE_MISSING)

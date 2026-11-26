@@ -1,5 +1,6 @@
 import com.anve.buildlogic.ReleaseInputs
 import com.anve.buildlogic.VerifyReleaseInputs
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import java.net.URI
 import org.gradle.api.artifacts.FileCollectionDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
@@ -16,6 +17,19 @@ plugins {
     // the only supported annotation processor for Kotlin now that the Kotlin
     // Android plugin (and therefore kapt) is gone.
     alias(libs.plugins.ksp)
+    // Registers :app:dependencyUpdates for the opt-in `make android-outdated` report.
+    alias(libs.plugins.dependency.updates)
+}
+
+// Pre-release candidates are information, not upgrade targets: Dependabot only
+// opens stable bumps, and the report should reflect what we can actually adopt.
+fun isNonStable(version: String): Boolean =
+    Regex("(?i)(alpha|beta|rc|preview|dev|earlier)").containsMatchIn(version)
+
+tasks.withType<DependencyUpdatesTask>().configureEach {
+    rejectVersionIf {
+        isNonStable(candidate.version) && !isNonStable(currentVersion)
+    }
 }
 
 fun releaseSetting(name: String): String = providers.environmentVariable(name)

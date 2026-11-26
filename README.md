@@ -202,7 +202,7 @@ API chạy tại <http://localhost:8080>; `GET /healthz` trả `{"status":"ok",.
 | Build APK production có ký | `make android-release` |
 | Kiểm tra Go | `make server-check` |
 | Kiểm tra Android | `make android-check` |
-| Kiểm tra dependency/toolchain cũ | `make outdated` |
+| Kiểm tra dependency/toolchain cũ (Go/Android/mise) | `make outdated` |
 | Dev migrations | `make migrate-up-dev` / `make migrate-down-dev` |
 | Mọi thứ | `make quality-check` |
 
