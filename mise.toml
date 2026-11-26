@@ -16,11 +16,11 @@ lockfile = true
 [tools]
 go = "1.27.4"
 java = "temurin-21.0.12+8.0.LTS"
-gradle = "9.9.1"
+gradle = "9.9.2"
 
 "go:golang.org/x/tools/gopls" = "0.24.0"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
-"go:github.com/securego/gosec/v2/cmd/gosec" = "2.29.1-0.20261009120814-7b1b5cebe007"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.10.0"
+"go:github.com/securego/gosec/v2/cmd/gosec" = "2.30.0"
 
 golangci-lint = "2.15.0"
 actionlint = "1.7.12"
