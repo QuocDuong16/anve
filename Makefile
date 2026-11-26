@@ -14,6 +14,7 @@
 	server-run server-build server-observability-smoke server-test server-test-race server-test-integration server-history-plan server-fix server-lint server-check \
 	android-sdk-check android-build android-test android-lint android-ui-rules-check android-check android-release android-release-config-check android-release-check android-signed-smoke android-privacy-candidate android-distribution android-test-build android-instrumentation android-validation-avd android-emulator-validation android-ui-captures tracking-validation android-clean \
 	contracts-lint deps-lint release-tooling-check \
+	outdated server-outdated toolchain-outdated \
 	quality-check
 
 ##@ Getting started
@@ -230,6 +231,22 @@ release-tooling-check: ## Check the exact-commit distribution CI gate
 deps-lint: ## Validate the Dependabot configuration against its schema
 	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required to validate the Dependabot configuration." >&2; exit 1; }
 	python3 scripts/check_dependabot.py
+
+##@ Dependency maintenance
+# Reports query upstream registries, so they are opt-in rather than CI gates.
+# Android catalog and wrapper updates arrive through Dependabot (see deps-lint).
+outdated: ## List newer direct Go dependencies and mise-pinned tools
+	@echo "Outdated Go server dependencies..."
+	$(MAKE) --no-print-directory server-outdated
+	@echo "Outdated toolchain pins (major upgrades included; adopt them deliberately)..."
+	$(MAKE) --no-print-directory toolchain-outdated
+
+server-outdated: ## List newer direct Go dependencies
+	cd apps/server && go list -u -m -f '{{if and .Update (not .Indirect)}}{{.Path}} {{.Version}} -> {{.Update.Version}}{{end}}' all
+
+toolchain-outdated: ## List newer versions of the mise-pinned tools
+	@command -v mise >/dev/null 2>&1 || $(MISE_MISSING)
+	mise outdated --bump
 
 ##@ Quality gate
 quality-check: toolchain-check server-check server-observability-smoke android-check android-release-config-check release-tooling-check contracts-lint deps-lint compose-lint ## Run the full CI quality gate
