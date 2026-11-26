@@ -1,4 +1,7 @@
+import os
+import sys
 import unittest
+from android_release import run
 from check_release_ci import require_workflow
 
 
@@ -25,6 +28,14 @@ class ReleaseCiTests(unittest.TestCase):
     def test_missing_workflow_is_refused(self):
         with self.assertRaises(RuntimeError):
             require_workflow({"workflow_runs": []}, "a" * 40, "android.yml")
+
+
+class AndroidReleaseOutputTests(unittest.TestCase):
+    def test_manifest_output_excludes_stderr_warnings(self):
+        command = [sys.executable, "-c", "import sys; print('<manifest/>'); print('WARNING: noisy stderr', file=sys.stderr)"]
+        env = {"PATH": os.environ.get("PATH", "")}
+        self.assertEqual(run(command, env, merge_stderr=False), "<manifest/>\n")
+        self.assertIn("WARNING: noisy stderr", run(command, env))
 
 
 if __name__ == "__main__":

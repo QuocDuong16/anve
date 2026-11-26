@@ -31,10 +31,12 @@ def redact(text, env):
     return text
 
 
-def run(args, env, *, expected=0, visible=False, cwd=ANDROID):
+def run(args, env, *, expected=0, visible=False, cwd=ANDROID, merge_stderr=True):
     result = subprocess.run([str(arg) for arg in args], cwd=cwd, env=env,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=1800)
-    output = redact(result.stdout, env)
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT if merge_stderr else subprocess.PIPE,
+                            text=True, timeout=1800)
+    output = redact(result.stdout + ("" if merge_stderr else result.stderr), env)
     if (expected == 0 and result.returncode != 0) or (expected != 0 and result.returncode == 0):
         print(output, flush=True)
         raise RuntimeError("Release check command did not return the expected outcome")
@@ -113,7 +115,9 @@ def verify_bundle(bundle, variant, env):
     tool = bundletool(env)
     run([*tool, "validate", f"--bundle={bundle}"], env)
     # The XML contains client configuration. Parse it in memory, never echo it.
-    manifest_text = run([*tool, "dump", "manifest", f"--bundle={bundle}", "--module=base"], env)
+    # Keep JVM warnings on stderr out of the document: newer JDKs warn about
+    # bundletool's sun.misc.Unsafe use before the XML is emitted.
+    manifest_text = run([*tool, "dump", "manifest", f"--bundle={bundle}", "--module=base"], env, merge_stderr=False)
     document = ET.fromstring(manifest_text)
     android = "{http://schemas.android.com/apk/res/android}"
     expected_package = "com.anve.app" + (".releasevalidation" if variant == "releaseValidation" else "")
