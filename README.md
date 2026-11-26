@@ -173,7 +173,7 @@ Chi tiết exit criteria và bằng chứng xác minh của từng mốc:
 | --- | --- | --- |
 | mise | ≥ 2026 | Cài mọi toolchain pin: https://mise.jdx.dev |
 | Docker | ≥ 24 | Chạy PostgreSQL/PostGIS stack |
-| JDK | 21 | Cài qua mise (`temurin-21.0.12+8.0.LTS`) |
+| JDK | 25 | Cài qua mise (`temurin-25.0.5.1+2.0.LTS`) |
 | Go | 1.27.4 | Cài qua mise |
 | Android SDK | API 37 | Đặt `ANDROID_HOME`; không quản lý qua mise |
 

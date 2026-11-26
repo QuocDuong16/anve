@@ -10,7 +10,7 @@
 
 - AGP 9 compiles Kotlin through its built-in Kotlin support: the `org.jetbrains.kotlin.android` plugin is deliberately NOT applied. Only `org.jetbrains.kotlin.plugin.compose` is applied; its version is the project-wide Kotlin version and must match the Kotlin compiler AGP uses. Do not "fix" a build by adding the Kotlin Android plugin.
 - The Gradle wrapper is pinned to the same Gradle version as `mise.toml` and verifies the distribution checksum; `scripts/check_toolchain_versions.sh` fails when any version appears in two places and disagrees.
-- Android JVM target is 17 (lower than the JDK 21 used to run Gradle). `buildConfig = true` is enabled explicitly because the app reports its version on the splash screen.
+- Android JVM target is 17 (lower than the JDK used to run Gradle). `buildConfig = true` is enabled explicitly because the app reports its version on the splash screen.
 - Debug build type gets `applicationIdSuffix ".debug"`.
 
 ## Go server
