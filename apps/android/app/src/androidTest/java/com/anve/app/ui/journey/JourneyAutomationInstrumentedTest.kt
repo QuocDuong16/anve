@@ -12,7 +12,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.test.espresso.Espresso.pressBackUnconditionally
 import com.anve.app.data.api.JourneyDestinationDto
 import com.anve.app.data.api.JourneyDto
 import com.anve.app.data.api.PlaceDto
@@ -61,7 +60,10 @@ class JourneyAutomationInstrumentedTest {
         openOptions()
         compose.onNodeWithTag("automatic-arrival").performClick()
         compose.onNodeWithTag("stale-reminder").performClick()
-        pressBackUnconditionally()
+        // Drive the activity's back dispatcher directly: Espresso's pressBack
+        // waits for window focus, which is not guaranteed right after a sheet
+        // settles and made this test flake on cold-booted emulators.
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
         openOptions()
         compose.onNodeWithTag("automatic-arrival").assertIsOff()
