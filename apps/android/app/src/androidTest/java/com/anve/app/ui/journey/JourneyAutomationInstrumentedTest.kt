@@ -62,8 +62,11 @@ class JourneyAutomationInstrumentedTest {
         compose.onNodeWithTag("stale-reminder").performClick()
         // Drive the activity's back dispatcher directly: Espresso's pressBack
         // waits for window focus, which is not guaranteed right after a sheet
-        // settles and made this test flake on cold-booted emulators.
+        // settles and made this test flake on cold-booted emulators. Back also
+        // leaves the creation form, so re-enter it to inspect a fresh draft.
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Bắt đầu hành trình").assertIsDisplayed().performClick()
         compose.waitForIdle()
         openOptions()
         compose.onNodeWithTag("automatic-arrival").assertIsOff()
